@@ -26,9 +26,9 @@ function handFind(hand, suitIndex, rank) {
 }
 
 function visibleFind(hands, suitIndex, rank) {
-	const found = [];
+	let found = [];
 	for (const hand of hands) {
-		found.concat(handFind(hand, suitIndex, rank));
+		found = found.concat(handFind(hand, suitIndex, rank));
 	}
 	return found;
 }
@@ -39,9 +39,8 @@ function isCritical(state, suitIndex, rank) {
 	// console.log(`checking if suitIndex ${suitIndex} and rank ${rank} are critical`);
 	// console.log(`card_count ${CARD_COUNT[rank - 1]} visibleFind len ${visibleFind(state.hands, suitIndex, rank - 1).length}`);
 	// console.log(`discard_stacks ${state.discard_stacks}`);
-
 	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1)
-		&& visibleFind(state.hands, suitIndex, rank - 1).length === 0;
+		&& state.play_stacks[suitIndex] < rank;
 }
 
 function cardMatch(card, suitIndex, rank) {

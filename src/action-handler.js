@@ -5,7 +5,7 @@ const Utils = require('./util.js');
 
 const CLUE = { COLOUR: 0, NUMBER: 1 };
 
-function handle_action(state, action, tableID) {
+function handle_action(state, action, tableID, catchup = false) {
 	switch(action.type) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
@@ -54,7 +54,7 @@ function handle_action(state, action, tableID) {
 
 			// Someone telling us about our hand
 			// TODO: look for all completely filled-in cards and remove them from possibilities
-			if (target === state.ourPlayerIndex) {
+			// if (target === state.ourPlayerIndex) {
 				const { focused_card, chop } = determine_focus(state.hands[target], list);
 				// console.log('focused_card', focused_card, 'chop?', chop);
 
@@ -126,7 +126,7 @@ function handle_action(state, action, tableID) {
 					}
 					// console.log('focus_possible', focus_possible);
 					focused_card.inferred = Utils.intersectCards(focused_card.inferred, focus_possible);
-					console.log('final inference on focused card', Utils.cardToString(focused_card.inferred));
+					console.log('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)));
 				}
 
 				// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
@@ -136,10 +136,10 @@ function handle_action(state, action, tableID) {
 					good_touch_elim(other_cards, focused_card.inferred);
 				}
 				console.log('hand state after clue', Utils.logHand(state.hands[target]));
-			}
-			else {
-				// TODO: Maintain theory of mind (i.e. keep track of what other players know about their hands)
-			}
+			// }
+			// else {
+			// 	// TODO: Maintain theory of mind (i.e. keep track of what other players know about their hands)
+			// }
 
 			// Going through each card that was clued
 			for (const order of list) {
@@ -191,8 +191,8 @@ function handle_action(state, action, tableID) {
 
 					// Also remove it from hand possibilities
 					for (const card of state.hands[state.ourPlayerIndex]) {
-						card.possible = Utils.subtractCards(card.possible, { suitIndex, rank });
-						card.inferred = Utils.subtractCards(card.inferred, { suitIndex, rank });
+						card.possible = Utils.subtractCards(card.possible, [{ suitIndex, rank }]);
+						card.inferred = Utils.subtractCards(card.inferred, [{ suitIndex, rank }]);
 					}
 					console.log(`removing suitIndex ${suitIndex} and rank ${rank} from hand and future possibilities`);
 				}
@@ -206,7 +206,7 @@ function handle_action(state, action, tableID) {
 			break;
 		case 'turn':
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
-			if (action.currentPlayerIndex === state.ourPlayerIndex) {
+			if (action.currentPlayerIndex === state.ourPlayerIndex && !catchup) {
 				setTimeout(() => take_action(state, tableID), 2000);
 			}
 			break;
