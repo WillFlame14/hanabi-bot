@@ -8,6 +8,67 @@ const ACTION = {
 	RANK: 3
 }
 
+const CLUE = { COLOUR: 0, NUMBER: 1 };
+
+function find_possibilities(clue, num_suits) {
+	const new_possible = [];
+	if (clue.type === CLUE.COLOUR) {
+		const suitIndex = clue.value;
+		for (let rank = 1; rank <= 5; rank++) {
+			new_possible.push({ suitIndex: clue.value, rank });
+		}
+	}
+	else {
+		const rank = clue.value;
+		for (let suitIndex = 0; suitIndex < num_suits; suitIndex++) {
+			new_possible.push({ suitIndex, rank });
+		}
+	}
+	return new_possible;
+}
+
+function find_bad_touch(state) {
+	const bad_touch = [];
+
+	// Find useless cards
+	for (let suitIndex = 0; suitIndex <= state.num_suits; suitIndex++) {
+		for (let rank = 0; rank <= state.play_stacks[suitIndex]; rank++) {
+			bad_touch.push({suitIndex, rank});
+		}
+	}
+
+	// Find cards clued in other hands (or inferred cards in our hand)
+	// TODO: Modify if the person giving the clue has the card potentially in their hand
+	for (let i = 0; i < state.hands.length; i++) {
+		const hand = state.hands[i];
+		for (const card of hand) {
+			if (!card.clued) {
+				continue;
+			}
+			let suitIndex, rank;
+			if (i === state.ourPlayerIndex) {
+				if (card.possible.length === 1) {
+					({suitIndex, rank} = card.possible[0]);
+				}
+				else if (card.inferred.length === 1) {
+					({suitIndex, rank} = card.inferred[0]);
+				}
+				else {
+					continue;
+				}
+			} else {
+				({suitIndex, rank} = card);
+			}
+
+			if (state.play_stacks[suitIndex] < rank) {
+				bad_touch.push({suitIndex, rank});
+			}
+		}
+	}
+
+	return bad_touch;
+}
+
 function find_own_playables(stacks, hand) {
 	// console.log('finding playables with stack', stacks, 'and hand', hand);
 	const playables = [];
@@ -62,23 +123,21 @@ function find_known_trash(play_stacks, hand) {
 }
 
 function find_clues(state) {
-	let type, value;
-
 	const play_clues = [];
 	const save_clues = [];
 
 	// Find all valid clues
 	for (let target = 0; target < state.hands.length; target++) {
+		// Ignore our own hand
+		if (target === state.ourPlayerIndex) {
+			continue;
+		}
+
 		play_clues[target] = [];
 		save_clues[target] = undefined;
 
 		const hand = state.hands[target];
 		const chopIndex = find_chop(hand);
-
-		// Ignore our own hand
-		if (target === state.ourPlayerIndex) {
-			continue;
-		}
 
 		// Play clue
 		for (let cardIndex = chopIndex; cardIndex >= 0; cardIndex--) {
@@ -141,7 +200,7 @@ function find_clues(state) {
 				}
 				else if (chop.rank === 2) {
 					// Play stack hasn't started and other copy of 2 isn't visible
-					if (state.play_stacks[chop.suitIndex] === 0 && Utils.visibleFind(state.hands, chop.suitIndex, 2).length === 0) {
+					if (state.play_stacks[chop.suitIndex] === 0 && Utils.visibleFind(state.hands, chop.suitIndex, 2).length === 1) {
 						// Also check if not reasonably certain in our hand
 						if(!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && Utils.cardMatch(c.inferred[0], suitIndex, rank))) {
 							save_clues[target] = { type: ACTION.RANK, value: 2, target };
@@ -178,4 +237,9 @@ function remove_card_from_hand(hand, order) {
 	hand.splice(card_index, 1);
 }
 
-module.exports = { ACTION, find_own_playables, find_known_trash, find_clues, remove_card_from_hand };
+module.exports = {
+	ACTION, CLUE,
+	find_possibilities, find_bad_touch,
+	find_own_playables, find_known_trash, find_clues,
+	remove_card_from_hand
+};

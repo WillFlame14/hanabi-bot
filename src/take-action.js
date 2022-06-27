@@ -45,7 +45,9 @@ function take_action(state, tableID) {
 		const card = playable_cards[i];
 
 		let all_duplicates = true;
-		for (const possible of card.inferred) {
+		// Playable card from inference or from lie
+		const possibilities = (card.inferred.length !== 0) ? card.inferred : card.possible;
+		for (const possible of possibilities) {
 			const duplicates = Utils.visibleFind(state.hands, possible.suitIndex, possible.rank);
 			console.log('checking for duplicate of suitIndex', possible.suitIndex, 'rank', possible.rank, 'duplicates', duplicates.map(c => c.clued));
 

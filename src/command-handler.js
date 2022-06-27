@@ -53,9 +53,10 @@ const handle = {
 	},
 	// Received at the beginning of the game, as a list of all actions that have happened so far
 	gameActionList: (data) => {
-		for (const action of data.list) {
-			handle_action(state, action, data.tableID, true);
+		for (let i = 0; i < data.list.length - 1; i++) {
+			handle_action(state, data.list[i], data.tableID, true);
 		}
+		handle_action(state, data.list.at(-1), data.tableID);
 
 		// Send "loaded" to let server know that we have "finished loading the UI"
 		Utils.sendCmd('loaded', { tableID: data.tableID });
