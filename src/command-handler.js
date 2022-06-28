@@ -1,5 +1,6 @@
 const Utils = require('./util.js');
 const { handle_action } = require('./action-handler.js');
+const { CLUE } = require('./action-helper.js');
 const { take_action } = require('./take-action.js');
 
 let self, tables = {}, state;
@@ -46,10 +47,47 @@ const handle = {
 	},
 	// Received when an action is taken in the current active game
 	gameAction: (data) => {
-		if (!['status', 'turn'].includes(data.action.type)) {
-			console.log('game action', data);
+		const { action, tableID } = data;
+
+		switch (action.type) {
+			case 'play': {
+				const playerName = state.playerNames[action.playerIndex];
+				console.log(`${playerName} plays ${Utils.cardToString(action)}`);
+				break;
+			}
+			case 'clue': {
+				const playerName = state.playerNames[action.giver];
+				const targetName = state.playerNames[action.target];
+				let clue_value;
+
+				if (action.clue.type === CLUE.COLOUR) {
+					clue_value = ['red', 'yellow', 'green', 'blue', 'purple'][action.clue.value];
+				}
+				else {
+					clue_value = action.clue.value;
+				}
+				console.log(`${playerName} clues ${clue_value} to ${targetName}`);
+				break;
+			}
+			case 'discard': {
+				const playerName = state.playerNames[action.playerIndex];
+
+				if (!action.failed) {
+					console.log(`${playerName} discards ${Utils.cardToString(action)}`);
+				}
+				else {
+					console.log(`${playerName} bombs ${Utils.cardToString(action)}`);
+				}
+				break;
+			}
+			default:
+				if (!['status', 'turn', 'draw'].includes(data.action.type)) {
+					console.log('game action', data);
+				}
+				break;
 		}
-		handle_action(state, data.action, data.tableID);
+
+		handle_action(state, action, tableID);
 	},
 	// Received at the beginning of the game, as a list of all actions that have happened so far
 	gameActionList: (data) => {
@@ -74,6 +112,7 @@ const handle = {
 		state = {
 			clue_tokens: 8,
 			playerNames,
+			numPlayers: playerNames.length,
 			ourPlayerIndex,
 			hands: [],
 			num_suits: 5,
@@ -83,7 +122,7 @@ const handle = {
 			all_possible: []
 		}
 
-		for (let i = 0; i < state.playerNames.length; i++) {
+		for (let i = 0; i < state.numPlayers; i++) {
 			state.hands.push([]);
 		}
 

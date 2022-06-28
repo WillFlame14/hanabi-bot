@@ -27,7 +27,7 @@ function find_possibilities(clue, num_suits) {
 	return new_possible;
 }
 
-function find_bad_touch(state) {
+function find_bad_touch(state, giver) {
 	const bad_touch = [];
 
 	// Find useless cards
@@ -37,16 +37,17 @@ function find_bad_touch(state) {
 		}
 	}
 
-	// Find cards clued in other hands (or inferred cards in our hand)
-	// TODO: Modify if the person giving the clue has the card potentially in their hand
+	// Find cards clued in other hands (or inferred cards in our hand or giver's hand)
 	for (let i = 0; i < state.hands.length; i++) {
 		const hand = state.hands[i];
 		for (const card of hand) {
 			if (!card.clued) {
 				continue;
 			}
+
 			let suitIndex, rank;
-			if (i === state.ourPlayerIndex) {
+			// Cards in our hand and the giver's hand are not known
+			if (i === state.ourPlayerIndex || i === giver) {
 				if (card.possible.length === 1) {
 					({suitIndex, rank} = card.possible[0]);
 				}
@@ -61,6 +62,7 @@ function find_bad_touch(state) {
 			}
 
 			if (state.play_stacks[suitIndex] < rank) {
+				console.log(`adding ${Utils.cardToString({suitIndex, rank})} to bad touch`);
 				bad_touch.push({suitIndex, rank});
 			}
 		}
@@ -175,8 +177,9 @@ function find_clues(state) {
 				}
 				// Else, can't focus this card
 			}
-			// Save clue (chop is unclued by definition)
-			else if (cardIndex === chopIndex) {
+
+			// Save clue
+			if (cardIndex === chopIndex) {
 				const chop = hand[chopIndex];
 				// TODO: See if someone else can save
 				if (Utils.isCritical(state, chop.suitIndex, chop.rank)) {
@@ -215,7 +218,7 @@ function find_clues(state) {
 					}
 				}
 				else {
-					// console.log('chop card with suitIndex', chop.suitIndex, 'and rank', chop.rank, 'is not critical');
+					console.log('chop card', Utils.cardToString(chop), 'is not critical');
 				}
 			}
 		}

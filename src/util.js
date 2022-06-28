@@ -22,7 +22,7 @@ function findOrder(hand, order) {
 }
 
 function handFind(hand, suitIndex, rank) {
-	return hand.filter(c => c.suitIndex === suitIndex && c.rank === rank);
+	return hand.filter(c => cardMatch(c, suitIndex, rank));
 }
 
 function visibleFind(hands, suitIndex, rank) {
@@ -84,6 +84,11 @@ function logHand(hand) {
 	return copy;
 }
 
+function writeNote(card, tableID) {
+	const note = card.inferred.map(c => cardToString(c)).join(',');
+	sendCmd('note', { tableID, order: card.order, note });
+}
+
 module.exports = {
 	CARD_COUNT,
 	wsInit,
@@ -93,5 +98,5 @@ module.exports = {
 	isCritical,
 	cardMatch, intersectCards, subtractCards,
 	objClone,
-	cardToString, logHand
+	cardToString, logHand, writeNote
 };

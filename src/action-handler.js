@@ -9,22 +9,27 @@ function handle_action(state, action, tableID, catchup = false) {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
 			const { clue, giver, list, target } = action;
 
-			// Update all positive and negative possibilities for all cards, plus good touch for touched cards
+			// Update all positive and negative possibilities for all cards, first ignoring good touch
 			const new_possible = find_possibilities(clue, state.num_suits);
-			const bad_touch = find_bad_touch(state);
 
 			for (const card of state.hands[target]) {
 				if (list.includes(card.order)) {
 					card.possible = Utils.intersectCards(card.possible, new_possible);
 					card.inferred = Utils.intersectCards(card.inferred, new_possible);
-
-					// Touched cards should also obey good touch principle
-					card.inferred = Utils.subtractCards(card.inferred, bad_touch);
 				}
 				else {
 					// Untouched cards don't have to obey good touch principle
 					card.possible = Utils.subtractCards(card.possible, new_possible);
 					card.inferred = Utils.subtractCards(card.inferred, new_possible);
+				}
+			}
+
+			// Touched cards should also obey good touch principle
+			// FIX: Need to do this in a loop to recursively deduce information
+			const bad_touch = find_bad_touch(state, giver);
+			for (const card of state.hands[target]) {
+				if (list.includes(card.order)) {
+					card.inferred = Utils.subtractCards(card.inferred, bad_touch);
 				}
 			}
 
@@ -37,13 +42,34 @@ function handle_action(state, action, tableID, catchup = false) {
 
 				if (clue.type === CLUE.COLOUR) {
 					const suitIndex = clue.value;
-					let next_playable_rank = state.play_stacks[suitIndex] + 1;
+					let next_playable_rank = state.play_stacks[suitIndex];
+					let connecting = true;
 
 					// Play clue
 					// TODO: look for 1-away finesse
-					// FIX: don't count cards that are clued but not inferred in the giver's hand
-					while (Utils.allFind(state, suitIndex, next_playable_rank).some(c => c.clued)) {
+					while (connecting) {
 						next_playable_rank++;
+						connecting = false;
+
+						for (let i = 0; i < state.numPlayers; i++) {
+							const hand = state.hands[i];
+
+							// Looking through our hand or the giver's hand
+							if (i === state.ourPlayerIndex || i === giver) {
+								connecting = hand.some(card => card.clued &&
+									(card.possible.length === 1 && Utils.cardMatch(card.possible[0], suitIndex, next_playable_rank)) ||
+									(card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, next_playable_rank))
+								);
+							}
+							// Looking through another player's hand
+							else {
+								connecting = Utils.handFind(hand, suitIndex, next_playable_rank).some(c => c.clued);
+							}
+
+							if (connecting) {
+								break;
+							}
+						}
 					}
 					focus_possible.push({ suitIndex, rank: next_playable_rank });
 
@@ -101,7 +127,7 @@ function handle_action(state, action, tableID, catchup = false) {
 				}
 				// console.log('focus_possible', focus_possible);
 				focused_card.inferred = Utils.intersectCards(focused_card.inferred, focus_possible);
-				console.log('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)));
+				console.log('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)).join(','));
 			}
 
 			// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
@@ -111,14 +137,6 @@ function handle_action(state, action, tableID, catchup = false) {
 				good_touch_elim(other_cards, focused_card.inferred);
 			}
 			console.log('hand state after clue', Utils.logHand(state.hands[target]));
-
-			// Someone telling us about our hand
-			if (target === state.ourPlayerIndex) {
-				
-			}
-			else {
-				// TODO: Maintain theory of mind (i.e. keep track of what other players know about their hands)
-			}
 
 			// Going through each card that was clued
 			for (const order of list) {
@@ -136,6 +154,20 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			state.discard_stacks[suitIndex][rank - 1]++;
 			// console.log('suit', suitIndex, 'now has discard stack', state.discard_stacks[suitIndex]);
+
+			// Discarded all copies of a card
+			if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
+				// This card previously wasn't known to be all visible
+				if (state.all_possible.some(c => Utils.cardMatch(c, suitIndex, rank))) {
+					console.log('Discarded all copies of', Utils.cardToString(action), 'which was previously unknown.');
+					for (const hand of state.hands) {
+						for (const card of hand) {
+							card.possible = Utils.subtractCards(card.possible, [{suitIndex, rank}]);
+							card.inferred = Utils.subtractCards(card.inferred, [{suitIndex, rank}]);
+						}
+					}
+				}
+			}
 
 			// bombs count as discards, but they don't give a clue token
 			if (!failed) {
@@ -159,9 +191,6 @@ function handle_action(state, action, tableID, catchup = false) {
 					Utils.visibleFind(state.hands, suitIndex, rank).length +
 					(state.play_stacks[suitIndex] >= rank ? 1 : 0);
 				// console.log('full count of', full_count);
-				// console.log(state.discard_stacks[suitIndex][rank - 1]);
-				// console.log(Utils.visibleFind(state.hands, suitIndex, rank).length);
-				// console.log(state.play_stacks[suitIndex] >= rank ? 1 : 0);
 
 				// If all copies of a card are already visible
 				if (full_count === Utils.CARD_COUNT[rank - 1]) {
@@ -187,6 +216,13 @@ function handle_action(state, action, tableID, catchup = false) {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
 			if (action.currentPlayerIndex === state.ourPlayerIndex && !catchup) {
 				setTimeout(() => take_action(state, tableID), 2000);
+
+				// Update notes on cards
+				for (const card of state.hands[state.ourPlayerIndex]) {
+					if (card.inferred.length < 5) {
+						setTimeout(() => Utils.writeNote(card, tableID), Math.random() * 5000);
+					}
+				}
 			}
 			break;
 		case 'play': {

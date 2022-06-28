@@ -11,8 +11,8 @@ function take_action(state, tableID) {
 	// TODO: Check if someone else can save
 	// TODO: scream discard?
 	if (state.clue_tokens > 0) {
-		for (let i = 1; i < state.playerNames.length; i++) {
-			const target = (state.ourPlayerIndex + i) % state.playerNames.length;
+		for (let i = 1; i < state.numPlayers; i++) {
+			const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
 			// They require a save clue and cannot be given a play clue
 			if (save_clues[target] !== undefined && play_clues[target].length === 0) {
@@ -24,8 +24,8 @@ function take_action(state, tableID) {
 
 		// Then, check if anyone needs a save that can be distracted by a play
 		// TODO: Check if someone else can save
-		for (let i = 1; i < state.playerNames.length; i++) {
-			const target = (state.ourPlayerIndex + i) % state.playerNames.length;
+		for (let i = 1; i < state.numPlayers; i++) {
+			const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
 			// They require a save clue and can be given a play clue
 			if (save_clues[target] !== undefined && play_clues[target].length > 0) {
@@ -69,14 +69,15 @@ function take_action(state, tableID) {
 	console.log('playable cards', playable_cards);
 
 	// No saves needed, so play
+	// TODO: Give "save" to playable cards on chop instead
 	if (playable_cards.length > 0) {
 		// TODO: Play order (connecting card in other hand, 5, connecting card in own hand, lowest card)
 		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: playable_cards[0].order });
 	}
 	else {
 		if (state.clue_tokens > 0) {
-			for (let i = 1; i < state.playerNames.length; i++) {
-				const target = (state.ourPlayerIndex + i) % state.playerNames.length;
+			for (let i = 1; i < state.numPlayers; i++) {
+				const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
 				if (play_clues[target].length > 0) {
 					const { type, value } = play_clues[target][0];
@@ -89,7 +90,7 @@ function take_action(state, tableID) {
 		// 8 clue state
 		// TODO: Add stall clues
 		if (state.clue_tokens === 8) {
-			const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.playerNames.length;
+			const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
 			Utils.sendCmd('action', { tableID, type: ACTION.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank });
 			return;
 		}
@@ -106,7 +107,7 @@ function take_action(state, tableID) {
 			// Give stall clue if possible
 			// TODO: Add stall clues
 			if (state.clue_tokens > 0) {
-				const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.playerNames.length;
+				const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
 				Utils.sendCmd('action', { tableID, type: ACTION.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank });
 				return;
 			}
