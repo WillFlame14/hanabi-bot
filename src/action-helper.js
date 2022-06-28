@@ -26,7 +26,7 @@ function find_possibilities(clue, num_suits) {
 	return new_possible;
 }
 
-function find_bad_touch(state, giver) {
+function find_bad_touch(state, giver, target) {
 	const bad_touch = [];
 
 	// Find useless cards
@@ -40,28 +40,31 @@ function find_bad_touch(state, giver) {
 	for (let i = 0; i < state.hands.length; i++) {
 		const hand = state.hands[i];
 		for (const card of hand) {
-			if (!card.clued) {
+			if (!card.clued || card.rank <= state.play_stacks[card.suitIndex]) {
 				continue;
 			}
 
-			let suitIndex, rank;
+			let suitIndex, rank, method;
 			// Cards in our hand and the giver's hand are not known
-			if (i === state.ourPlayerIndex || i === giver) {
+			if ([state.ourPlayerIndex, giver, target].includes(i)) {
 				if (card.possible.length === 1) {
 					({suitIndex, rank} = card.possible[0]);
+					method = 'elim';
 				}
 				else if (card.inferred.length === 1) {
 					({suitIndex, rank} = card.inferred[0]);
+					method = 'inference';
 				}
 				else {
 					continue;
 				}
 			} else {
 				({suitIndex, rank} = card);
+				method = 'known';
 			}
 
 			if (state.play_stacks[suitIndex] < rank) {
-				console.log(`adding ${Utils.cardToString({suitIndex, rank})} to bad touch`);
+				console.log(`adding ${Utils.cardToString({suitIndex, rank})} to bad touch via ${method}`);
 				bad_touch.push({suitIndex, rank});
 			}
 		}

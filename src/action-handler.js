@@ -26,9 +26,9 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// Touched cards should also obey good touch principle
 			// FIX: Need to do this in a loop to recursively deduce information
-			const bad_touch = find_bad_touch(state, giver);
+			const bad_touch = find_bad_touch(state, giver, target);
 			for (const card of state.hands[target]) {
-				if (list.includes(card.order)) {
+				if (card.inferred.length > 1 && (card.clued || list.includes(card.order))) {
 					card.inferred = Utils.subtractCards(card.inferred, bad_touch);
 				}
 			}
@@ -38,17 +38,19 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// Try to determine all the possible inferences of the card
 			if (focused_card.possible.length > 1) {
+				let save = false;
 				const focus_possible = [];
 
 				if (clue.type === CLUE.COLOUR) {
 					const suitIndex = clue.value;
-					let next_playable_rank = state.play_stacks[suitIndex] + 1;
+					let next_playable_rank = state.hypo_stacks[suitIndex] + 1;
+					console.log('determining if play clue. suitIndex:', suitIndex, 'play:', state.play_stacks[suitIndex], 'hypo:', state.hypo_stacks[suitIndex]);
 
 					// Play clue
 					// TODO: look for 1-away finesse
-					while (find_connecting(state, giver, target, suitIndex, next_playable_rank)) {
-						next_playable_rank++;
-					}
+					// while (find_connecting(state, giver, target, suitIndex, next_playable_rank)) {
+					// 	next_playable_rank++;
+					// }
 					focus_possible.push({ suitIndex, rank: next_playable_rank });
 
 					// Save clue on chop (5 save cannot be done with number)
@@ -57,6 +59,7 @@ function handle_action(state, action, tableID, catchup = false) {
 							// Check if card is critical and not visible in anyone's hand
 							if (Utils.isCritical(state, suitIndex, rank)) {
 								focus_possible.push({ suitIndex, rank });
+								save = true;
 							}
 						}
 					}
@@ -66,12 +69,14 @@ function handle_action(state, action, tableID, catchup = false) {
 
 					// Play clue
 					for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
-						let stack_rank = state.play_stacks[suitIndex] + 1;
+						let stack_rank = state.hypo_stacks[suitIndex] + 1;
+
+						console.log('determining if play clue. suitIndex:', suitIndex, 'play:', state.play_stacks[suitIndex], 'hypo:', state.hypo_stacks[suitIndex]);
 
 						// TODO: look for 1-away finesse
-						while (find_connecting(state, giver, target, suitIndex, stack_rank)) {
-							stack_rank++;
-						}
+						// while (find_connecting(state, giver, target, suitIndex, stack_rank)) {
+						// 	stack_rank++;
+						// }
 
 						if (rank === stack_rank) {
 							focus_possible.push({ suitIndex, rank });
@@ -80,29 +85,35 @@ function handle_action(state, action, tableID, catchup = false) {
 
 					// Save clue on chop
 					if (chop) {
+						console.log('received clue with focus on chop');
 						for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
 							let save2 = false;
 
 							// Determine if it's a 2 save
 							if (rank === 2 && state.play_stacks[suitIndex] + 1 !== rank) {
-								const duplicates = Utils.visibleFind(state.hands, suitIndex, rank);
+								console.log('checking for possible 2 save', Utils.cardToString({suitIndex, rank}));
+								const duplicates = Utils.visibleFind(state, target, suitIndex, rank);
 
 								// No duplicates found, so can be a 2 save
 								if (duplicates.length === 0) {
 									save2 = true;
+									console.log('no duplicates found');
 								}
 								// Both duplicates found, so can't be a 2 save
 								else if (duplicates.length === 2) {
+									console.log('both duplicates found');
 									continue;
 								}
 								else {
 									// Can be a 2 save if the other 2 is in the giver's hand
 									save2 = state.hands[giver].some(c => c.order === duplicates[0].order);
+									console.log('in giver hand?', save2);
 								}
 							}
 
 							if ((Utils.isCritical(state, suitIndex, rank) && state.play_stacks[suitIndex] + 1 !== rank) || save2) {
 								focus_possible.push({ suitIndex, rank });
+								save = true;
 							}
 						}
 					}
@@ -110,13 +121,24 @@ function handle_action(state, action, tableID, catchup = false) {
 				// console.log('focus_possible', focus_possible);
 				focused_card.inferred = Utils.intersectCards(focused_card.inferred, focus_possible);
 				console.log('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)).join(','));
-			}
 
-			// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
-			// TODO: maybe modify if focused card is unplayable now but has rank high enough
-			if (focused_card.inferred.length === 1) {
-				const other_cards = state.hands[target].filter(c => c.order !== focused_card.order);
-				good_touch_elim(other_cards, focused_card.inferred);
+				// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
+				// TODO: maybe modify if focused card is unplayable now but has rank high enough
+				if (focused_card.inferred.length === 1) {
+					const other_cards = state.hands[target].filter(c => c.order !== focused_card.order);
+					good_touch_elim(other_cards, focused_card.inferred);
+
+					// Update hypo stacks
+					if (!save) {
+						const { suitIndex, rank } = focused_card.inferred[0];
+						console.log('updating hypo stack (inference)');
+						update_hypo_stacks(state, target, suitIndex, rank);
+					}
+				}
+				else if (focused_card.inferred.length === 0) {
+					console.log('no inference found, resetting to all possibilities', focused_card.possible.map(c => Utils.cardToString(c)).join(','));
+					focused_card.inferred = Utils.objClone(focused_card.possible);
+				}
 			}
 			console.log('hand state after clue', Utils.logHand(state.hands[target]));
 
@@ -170,7 +192,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			// We can't see our own cards, but we can see others' at least
 			if (playerIndex !== state.ourPlayerIndex) {
 				const full_count = state.discard_stacks[suitIndex][rank - 1] +
-					Utils.visibleFind(state.hands, suitIndex, rank).length +
+					Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length +
 					(state.play_stacks[suitIndex] >= rank ? 1 : 0);
 				// console.log('full count of', full_count);
 
@@ -218,6 +240,10 @@ function handle_action(state, action, tableID, catchup = false) {
 				good_touch_elim(hand, [{suitIndex, rank}]);
 			}
 
+			// Update hypo stacks
+			console.log('updating hypo stack (play)');
+			update_hypo_stacks(state, playerIndex, suitIndex, rank);
+
 			// Get a clue token back for playing a 5
 			if (rank === 5) {
 				state.clue_tokens++;
@@ -227,6 +253,22 @@ function handle_action(state, action, tableID, catchup = false) {
 		}
 		default:
 			break;
+	}
+}
+
+function update_hypo_stacks(state, target, suitIndex, rank) {
+	if (state.hypo_stacks[suitIndex] < rank) {
+		state.hypo_stacks[suitIndex] = rank;
+
+		let final_hypo_rank = rank + 1;
+
+		// FIX: Not all of these cards can necessarily be prompted
+		while (Utils.visibleFind(state, target, suitIndex, final_hypo_rank).length !== 0) {
+			console.log('found connecting hypo card with rank', final_hypo_rank);
+			final_hypo_rank++;
+		}
+		state.hypo_stacks[suitIndex] = final_hypo_rank - 1;
+		console.log('final hypo stack of', suitIndex, 'is', final_hypo_rank - 1);
 	}
 }
 

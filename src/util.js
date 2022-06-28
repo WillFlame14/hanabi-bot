@@ -25,10 +25,32 @@ function handFind(hand, suitIndex, rank) {
 	return hand.filter(c => cardMatch(c, suitIndex, rank));
 }
 
-function visibleFind(hands, suitIndex, rank) {
+function handFindInfer(hand, suitIndex, rank) {
+	return hand.filter(c => {
+		if (c.possible.length === 1) {
+			return cardMatch(c.possible[0], suitIndex, rank);
+		}
+		else if (c.inferred.length === 1) {
+			return cardMatch(c.inferred[0], suitIndex, rank);
+		}
+		return false;
+	});
+}
+
+function visibleFind(state, target, suitIndex, rank, ignoreIndex = -1) {
 	let found = [];
-	for (const hand of hands) {
-		found = found.concat(handFind(hand, suitIndex, rank));
+	for (let i = 0; i < state.hands.length; i++) {
+		if (i === ignoreIndex) {
+			continue;
+		}
+
+		const hand = state.hands[i];
+		if (i === target || i === state.ourPlayerIndex) {
+			found = found.concat(handFindInfer(hand, suitIndex, rank));
+		}
+		else {
+			found = found.concat(handFind(hand, suitIndex, rank));
+		}
 	}
 	return found;
 }
@@ -37,7 +59,6 @@ const CARD_COUNT = [3, 2, 2, 2, 1];
 
 function isCritical(state, suitIndex, rank) {
 	// console.log(`checking if suitIndex ${suitIndex} and rank ${rank} are critical`);
-	// console.log(`card_count ${CARD_COUNT[rank - 1]} visibleFind len ${visibleFind(state.hands, suitIndex, rank - 1).length}`);
 	// console.log(`discard_stacks ${state.discard_stacks}`);
 	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1)
 		&& state.play_stacks[suitIndex] < rank;
@@ -83,7 +104,7 @@ module.exports = {
 	wsInit,
 	sendChat, sendCmd,
 	findOrder,
-	handFind, visibleFind, allFind,
+	handFind, visibleFind,
 	isCritical,
 	cardMatch, intersectCards, subtractCards,
 	objClone,

@@ -49,7 +49,8 @@ function take_action(state, tableID) {
 		// Playable card from inference or from lie
 		const possibilities = (card.inferred.length !== 0) ? card.inferred : card.possible;
 		for (const possible of possibilities) {
-			const duplicates = Utils.visibleFind(state.hands, possible.suitIndex, possible.rank);
+			// Find all duplicates, excluding itself
+			const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, possible.suitIndex, possible.rank).filter(c => c.order !== card.order);
 			console.log('checking for duplicate of suitIndex', possible.suitIndex, 'rank', possible.rank, 'duplicates', duplicates.map(c => c.clued));
 
 			// No duplicates or none of duplicates are clued

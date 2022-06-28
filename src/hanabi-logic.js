@@ -42,7 +42,7 @@ function good_touch_elim(hand, cards) {
 	}
 }
 
-function bad_touch_num(state, cards) {
+function bad_touch_num(state, target, cards) {
 	let count = 0;
 	for (const card of cards) {
 		let bad_touch = false;
@@ -53,7 +53,7 @@ function bad_touch_num(state, cards) {
 			bad_touch = true;
 		}
 		// Someone else has the card clued already
-		else if (Utils.visibleFind(state.hands, suitIndex, rank).some(c => c.clued)) {
+		else if (Utils.visibleFind(state, target, suitIndex, rank).some(c => c.clued)) {
 			bad_touch = true;
 		}
 		else {
