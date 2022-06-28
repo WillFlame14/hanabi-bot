@@ -1,5 +1,5 @@
 const { determine_focus, good_touch_elim } = require('./hanabi-logic.js');
-const { CLUE, find_possibilities, find_bad_touch, remove_card_from_hand } = require('./action-helper.js');
+const { CLUE, find_possibilities, find_connecting, find_bad_touch, remove_card_from_hand } = require('./action-helper.js');
 const { take_action } = require('./take-action.js');
 const Utils = require('./util.js');
 
@@ -42,34 +42,12 @@ function handle_action(state, action, tableID, catchup = false) {
 
 				if (clue.type === CLUE.COLOUR) {
 					const suitIndex = clue.value;
-					let next_playable_rank = state.play_stacks[suitIndex];
-					let connecting = true;
+					let next_playable_rank = state.play_stacks[suitIndex] + 1;
 
 					// Play clue
 					// TODO: look for 1-away finesse
-					while (connecting) {
+					while (find_connecting(state, giver, target, suitIndex, next_playable_rank)) {
 						next_playable_rank++;
-						connecting = false;
-
-						for (let i = 0; i < state.numPlayers; i++) {
-							const hand = state.hands[i];
-
-							// Looking through our hand or the giver's hand
-							if (i === state.ourPlayerIndex || i === giver) {
-								connecting = hand.some(card => card.clued &&
-									(card.possible.length === 1 && Utils.cardMatch(card.possible[0], suitIndex, next_playable_rank)) ||
-									(card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, next_playable_rank))
-								);
-							}
-							// Looking through another player's hand
-							else {
-								connecting = Utils.handFind(hand, suitIndex, next_playable_rank).some(c => c.clued);
-							}
-
-							if (connecting) {
-								break;
-							}
-						}
 					}
 					focus_possible.push({ suitIndex, rank: next_playable_rank });
 
@@ -88,10 +66,14 @@ function handle_action(state, action, tableID, catchup = false) {
 
 					// Play clue
 					for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
-						// TODO: need to check for other clued cards in other hands (hypo stacks should fix this)
+						let stack_rank = state.play_stacks[suitIndex] + 1;
+
 						// TODO: look for 1-away finesse
-						const stack_rank = state.play_stacks[suitIndex];
-						if (rank === stack_rank + 1) {
+						while (find_connecting(state, giver, target, suitIndex, stack_rank)) {
+							stack_rank++;
+						}
+
+						if (rank === stack_rank) {
 							focus_possible.push({ suitIndex, rank });
 						}
 					}

@@ -33,17 +33,6 @@ function visibleFind(hands, suitIndex, rank) {
 	return found;
 }
 
-function allFind(state, suitIndex, rank) {
-	const found = visibleFind(state.hands, suitIndex, rank);
-	for (const card of state.hands[state.ourPlayerIndex]) {
-		if ((card.possible.length === 1 && cardMatch(card, suitIndex, rank)) ||
-			(card.inferred.length === 1 && cardMatch(card, suitIndex, rank))) {
-			found.push(card);
-		}
-	}
-	return found;
-}
-
 const CARD_COUNT = [3, 2, 2, 2, 1];
 
 function isCritical(state, suitIndex, rank) {
