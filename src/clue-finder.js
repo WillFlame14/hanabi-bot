@@ -29,7 +29,7 @@ function find_clues(state) {
 			// TODO: Examine tempo clues
 			if (!card.clued) {
 				const next_playable_rank = state.hypo_stacks[suitIndex] + 1;
-				console.log('giving play clue. play stack:', state.play_stacks[suitIndex], 'hypo stack:', state.hypo_stacks[suitIndex]);
+				console.log('giving play clue. suitIndex', suitIndex, 'play stack:', state.play_stacks[suitIndex], 'hypo stack:', state.hypo_stacks[suitIndex]);
 				// while (find_connecting(state, state.ourPlayerIndex, target, suitIndex, next_playable_rank)) {
 
 				// }
@@ -86,8 +86,8 @@ function find_clues(state) {
 						}
 					}
 					else if (chop.rank === 2) {
-						// Play stack hasn't started and other copy of 2 isn't visible
-						if (state.play_stacks[chop.suitIndex] === 0 && Utils.visibleFind(state, target, chop.suitIndex, 2).length === 1) {
+						// Play stack hasn't started and other copy of 2 isn't visible (to us)
+						if (state.play_stacks[chop.suitIndex] === 0 && Utils.visibleFind(state, state.ourPlayerIndex, chop.suitIndex, 2).length === 1) {
 							// Also check if not reasonably certain in our hand
 							if(!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && Utils.cardMatch(c.inferred[0], suitIndex, rank))) {
 								save_clues[target] = { type: ACTION.RANK, value: 2, target };

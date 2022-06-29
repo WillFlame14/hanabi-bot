@@ -131,8 +131,13 @@ function handle_action(state, action, tableID, catchup = false) {
 					// Update hypo stacks
 					if (!save) {
 						const { suitIndex, rank } = focused_card.inferred[0];
-						console.log('updating hypo stack (inference)');
-						update_hypo_stacks(state, target, suitIndex, rank);
+						if (!Utils.cardMatch(focused_card, suitIndex, rank)) {
+							console.log('Known card doesn\'t match inference! Not updating hypo stack.');
+						}
+						else {
+							console.log('updating hypo stack (inference)');
+							update_hypo_stacks(state, target, suitIndex, rank);
+						}
 					}
 				}
 				else if (focused_card.inferred.length === 0) {
@@ -263,7 +268,8 @@ function update_hypo_stacks(state, target, suitIndex, rank) {
 		let final_hypo_rank = rank + 1;
 
 		// FIX: Not all of these cards can necessarily be prompted
-		while (Utils.visibleFind(state, target, suitIndex, final_hypo_rank).length !== 0) {
+		// FIX: Unsure if only 'target' is enough
+		while (Utils.visibleFind(state, target, suitIndex, final_hypo_rank).filter(c => c.clued && c.inferred.length === 1).length !== 0) {
 			console.log('found connecting hypo card with rank', final_hypo_rank);
 			final_hypo_rank++;
 		}

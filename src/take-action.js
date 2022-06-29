@@ -42,6 +42,7 @@ function take_action(state, tableID) {
 	const trash_cards = find_known_trash(state.play_stacks, hand);
 
 	// Determine if any playable cards are clued duplicates, and if so, perform a sarcastic discard
+	// TODO: Doesn't have to be playable, just any certain cards (maybe include inferred 1 too?)
 	for (let i = 0; i < playable_cards.length; i++) {
 		const card = playable_cards[i];
 
