@@ -41,18 +41,18 @@ function take_action(state, tableID) {
 	let playable_cards = find_own_playables(state.play_stacks, hand);
 	const trash_cards = find_known_trash(state.play_stacks, hand);
 
-	// Determine if any playable cards are clued duplicates, and if so, perform a sarcastic discard
-	// TODO: Doesn't have to be playable, just any certain cards (maybe include inferred 1 too?)
-	for (let i = 0; i < playable_cards.length; i++) {
-		const card = playable_cards[i];
-
+	// Determine if any cards are clued duplicates, and if so, perform a sarcastic discard
+	for (const card of hand) {
+		if (!card.clued) {
+			continue;
+		}
 		let all_duplicates = true;
-		// Playable card from inference or from lie
+		// Playable card from inference or from known
 		const possibilities = (card.inferred.length !== 0) ? card.inferred : card.possible;
 		for (const possible of possibilities) {
 			// Find all duplicates, excluding itself
 			const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, possible.suitIndex, possible.rank).filter(c => c.order !== card.order);
-			console.log('checking for duplicate of suitIndex', possible.suitIndex, 'rank', possible.rank, 'duplicates', duplicates.map(c => c.clued));
+			console.log('checking for duplicate of', Utils.cardToString(possible), 'duplicates', duplicates.map(c => c.clued));
 
 			// No duplicates or none of duplicates are clued
 			if (duplicates.length === 0 || !duplicates.some(c => c.clued)) {
@@ -64,12 +64,11 @@ function take_action(state, tableID) {
 		if (all_duplicates) {
 			console.log('found duplicate card');
 			trash_cards.unshift(card);
-			playable_cards[i] = null;
+			playable_cards = playable_cards.filter(c => c.order !== card.order);
 			break;
 		}
 	}
-	playable_cards = playable_cards.filter(c => c !== null);
-	console.log('playable cards', playable_cards);
+	console.log('playable cards', Utils.logHand(playable_cards));
 
 	// No saves needed, so play
 	// TODO: Give "save" to playable cards on chop instead

@@ -131,7 +131,7 @@ function handle_action(state, action, tableID, catchup = false) {
 					// Update hypo stacks
 					if (!save) {
 						const { suitIndex, rank } = focused_card.inferred[0];
-						if (!Utils.cardMatch(focused_card, suitIndex, rank)) {
+						if (target !== state.ourPlayerIndex && !Utils.cardMatch(focused_card, suitIndex, rank)) {
 							console.log('Known card doesn\'t match inference! Not updating hypo stack.');
 						}
 						else {
@@ -179,7 +179,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			}
 
 			// bombs count as discards, but they don't give a clue token
-			if (!failed) {
+			if (!failed && state.clue_tokens < 8) {
 				state.clue_tokens++;
 			}
 			break;
@@ -250,7 +250,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			update_hypo_stacks(state, playerIndex, suitIndex, rank);
 
 			// Get a clue token back for playing a 5
-			if (rank === 5) {
+			if (rank === 5 && state.clue_tokens < 8) {
 				state.clue_tokens++;
 			}
 			// console.log('suit', suitIndex, 'now has play stack', state.play_stacks[suitIndex]);

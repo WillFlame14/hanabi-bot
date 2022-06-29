@@ -55,9 +55,17 @@ function find_clues(state) {
 
 					if (clue_type === ACTION.COLOUR) {
 						play_clues[target].push({ type: ACTION.COLOUR, value: suitIndex, target });
+
+						// If the card is on chop, add this as potential save
+						if (cardIndex === chopIndex) {
+							save_clues[target] = { type: ACTION.COLOUR, value: suitIndex, target };
+						}
 					}
 					else if (clue_type === ACTION.RANK) {
 						play_clues[target].push({ type: ACTION.RANK, value: rank, target });
+						if (cardIndex === chopIndex) {
+							save_clues[target] = { type: ACTION.RANK, value: rank, target };
+						}
 					}
 					// Else, can't focus this card
 				}
