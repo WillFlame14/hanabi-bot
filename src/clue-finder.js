@@ -1,4 +1,5 @@
-const { ACTION, find_connecting } = require('./action-helper.js');
+const { ACTION } = require('./action-helper.js');
+const { determine_clue } = require('./clue-helper.js');
 const { find_chop, determine_focus, bad_touch_num } = require('./hanabi-logic.js');
 const Utils = require('./util.js');
 
@@ -7,14 +8,14 @@ function find_clues(state) {
 	const save_clues = [];
 
 	// Find all valid clues
-	for (let target = 0; target < state.hands.length; target++) {
+	for (let target = 0; target < state.numPlayers; target++) {
+		play_clues[target] = [];
+		save_clues[target] = undefined;
+
 		// Ignore our own hand
 		if (target === state.ourPlayerIndex) {
 			continue;
 		}
-
-		play_clues[target] = [];
-		save_clues[target] = undefined;
 
 		const hand = state.hands[target];
 		const chopIndex = find_chop(hand);
@@ -23,51 +24,21 @@ function find_clues(state) {
 		for (let cardIndex = chopIndex; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
 			const { suitIndex, rank } = card;
-			// TODO: Should eventually use hypo stacks
-			// TODO: Should eventually find all possible clues and determine the best one
-			// TODO: Try both types of clues, see which one touches more cards or has less bad touch or fills in more cards
-			// TODO: Examine tempo clues
+
 			if (!card.clued) {
 				const next_playable_rank = state.hypo_stacks[suitIndex] + 1;
 				console.log('giving play clue. suitIndex', suitIndex, 'play stack:', state.play_stacks[suitIndex], 'hypo stack:', state.hypo_stacks[suitIndex]);
-				// while (find_connecting(state, state.ourPlayerIndex, target, suitIndex, next_playable_rank)) {
 
-				// }
 				if (next_playable_rank === rank) {
 					// console.log('found playable card to clue', card);
-					const colour_focus = determine_focus(hand, hand.filter(c => c.suitIndex === suitIndex).map(c => c.order)).focused_card;
-					const rank_focus = determine_focus(hand, hand.filter(c => c.rank === rank).map(c => c.order)).focused_card;
+					const clue = determine_clue(state, target, card);
+					if (clue !== undefined) {
+						play_clues[target].push(clue);
 
-					let clue_type;
-
-					// Number clue doesn't focus, pick colour clue
-					if (colour_focus.order === card.order && rank_focus.order !== card.order) {
-						clue_type = ACTION.COLOUR;
-					}
-					// Colour clue doesn't focus, pick rank clue
-					else if (colour_focus.order !== card.order && rank_focus.order === card.order) {
-						clue_type = ACTION.RANK;
-					}
-					// Both clues focus, determine more
-					else if (colour_focus.order === card.order && rank_focus.order === card.order) {
-						clue_type = ACTION.COLOUR;
-					}
-
-					if (clue_type === ACTION.COLOUR) {
-						play_clues[target].push({ type: ACTION.COLOUR, value: suitIndex, target });
-
-						// If the card is on chop, add this as potential save
 						if (cardIndex === chopIndex) {
-							save_clues[target] = { type: ACTION.COLOUR, value: suitIndex, target };
+							save_clues[target] = clue;
 						}
 					}
-					else if (clue_type === ACTION.RANK) {
-						play_clues[target].push({ type: ACTION.RANK, value: rank, target });
-						if (cardIndex === chopIndex) {
-							save_clues[target] = { type: ACTION.RANK, value: rank, target };
-						}
-					}
-					// Else, can't focus this card
 				}
 
 				// Save clue
@@ -80,17 +51,8 @@ function find_clues(state) {
 							save_clues[target] = { type: ACTION.RANK, value: 5, target };
 						}
 						else {
-							const colour_touch = hand.filter(c => c.suitIndex === suitIndex);
-							const rank_touch = hand.filter(c => c.suitIndex === suitIndex);
-
-							const [colour_bad_touch, rank_bad_touch] = [colour_touch, rank_touch].map(cards => bad_touch_num(state, target, cards));
-							if (colour_bad_touch < rank_bad_touch) {
-								save_clues[target] = { type: ACTION.COLOUR, value: chop.suitIndex, target };
-							}
-							else  {
-								save_clues[target] = { type: ACTION.RANK, value: chop.rank, target };
-							}
-							// TODO: More conditions
+							// The card is on chop, so it can always be focused
+							save_clues[target] = determine_clue(state, target, card);
 						}
 					}
 					else if (chop.rank === 2) {
@@ -114,14 +76,100 @@ function find_clues(state) {
 					}
 				}
 			}
-			else {
-				// Tempo clue
-			}
 		}
 	}
+
+	// In 2 player, all tempo clues become valuable
+	if (state.numPlayers === 2) {
+		const otherPlayerIndex = (state.ourPlayerIndex + 1) % 2;
+		const tempo_clues = find_tempo_clues(state);
+		play_clues[otherPlayerIndex] = play_clues[otherPlayerIndex].concat(tempo_clues[otherPlayerIndex]);
+	}
+
 	console.log('found play clues', play_clues);
 	console.log('found save clues', save_clues);
 	return { play_clues, save_clues };
 }
 
-module.exports = { find_clues };
+function find_tempo_clues(state) {
+	const tempo_clues = [];
+
+	for (let target = 0; target < state.numPlayers; target++) {
+		tempo_clues[target] = [];
+
+		if (target === state.ourPlayerIndex) {
+			continue;
+		}
+
+		const hand = state.hands[target];
+		for (const card of hand) {
+			// Card must be clued and playable
+			if (card.clued && card.inferred.length > 1 && state.hypo_stacks[card.suitIndex] + 1 === card.rank) {
+				const clue = determine_clue(state, target, card);
+				if (clue !== undefined) {
+					console.log('found tempo clue to', state.playerNames[target], clue);
+					tempo_clues[target].push(clue);
+				}
+			}
+		}
+	}
+	return tempo_clues;
+}
+
+/**
+ * Finds a stall clue to give. Always finds a clue if severity is greater than 1 (hard burn).
+ */
+function find_stall_clue(state, severity) {
+	const stall_clues = [[], [], [], []];
+	stall_clues[1] = find_tempo_clues(state).flat();
+
+	for (let target = 0; target < state.numPlayers; target++) {
+		if (target === state.ourPlayerIndex) {
+			continue;
+		}
+
+		const hand = state.hands[target];
+
+		// Early game
+		if (severity > 0) {
+			// 5 Stall (priority 0)
+			if (hand.some(c => c.rank === 5 && !c.clued)) {
+				stall_clues[0].push({ type: ACTION.RANK, target, value: 5 });
+				console.log(`found 5 stall to ${state.playerNames[target]}`);
+				break;
+			}
+		}
+
+		// Double discard/Scream discard
+		if (severity > 1) {
+			// Tempo clue (priority 1) is already covered
+
+			// Fill-in (priority 2)
+
+			// Hard burn (priority 3)
+			const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
+			stall_clues[3].push({ type: ACTION.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank });
+		}
+
+		// Locked hand
+		if (severity > 2) {
+			// Locked hand save (priority 2)
+		}
+
+		// 8 clues
+		if (severity > 3) {
+			// 8 clue save (priority 2)
+		}
+	}
+
+	console.log('all stall clues', stall_clues);
+
+	// Go through each priority
+	for (const clues of stall_clues) {
+		if (clues.length > 0) {
+			return clues[0];
+		}
+	}
+}
+
+module.exports = { find_clues, find_tempo_clues, find_stall_clue };

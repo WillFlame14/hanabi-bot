@@ -1,5 +1,5 @@
 const { determine_focus, good_touch_elim } = require('./hanabi-logic.js');
-const { CLUE, find_possibilities, find_connecting, find_bad_touch, remove_card_from_hand } = require('./action-helper.js');
+const { CLUE, find_possibilities, find_bad_touch, remove_card_from_hand } = require('./action-helper.js');
 const { take_action } = require('./take-action.js');
 const Utils = require('./util.js');
 
@@ -48,9 +48,6 @@ function handle_action(state, action, tableID, catchup = false) {
 
 					// Play clue
 					// TODO: look for 1-away finesse
-					// while (find_connecting(state, giver, target, suitIndex, next_playable_rank)) {
-					// 	next_playable_rank++;
-					// }
 					focus_possible.push({ suitIndex, rank: next_playable_rank });
 
 					// Save clue on chop (5 save cannot be done with number)
@@ -74,10 +71,6 @@ function handle_action(state, action, tableID, catchup = false) {
 						console.log('determining if play clue. suitIndex:', suitIndex, 'play:', state.play_stacks[suitIndex], 'hypo:', state.hypo_stacks[suitIndex]);
 
 						// TODO: look for 1-away finesse
-						// while (find_connecting(state, giver, target, suitIndex, stack_rank)) {
-						// 	stack_rank++;
-						// }
-
 						if (rank === stack_rank) {
 							focus_possible.push({ suitIndex, rank });
 						}

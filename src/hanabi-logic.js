@@ -56,6 +56,10 @@ function bad_touch_num(state, target, cards) {
 		else if (Utils.visibleFind(state, target, suitIndex, rank).some(c => c.clued)) {
 			bad_touch = true;
 		}
+		// Cluing both copies of a card (only include < so we don't double count)
+		else if (cards.some(c => Utils.cardMatch(c, suitIndex, rank) && c.order < card.order)) {
+			bad_touch = true;
+		}
 		else {
 			// The card is inferred in our hand with high likelihood
 			const our_hand = state.hands[state.ourPlayerIndex];

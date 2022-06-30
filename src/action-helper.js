@@ -73,31 +73,6 @@ function find_bad_touch(state, giver, target) {
 	return bad_touch;
 }
 
-function find_connecting(state, giver, target, suitIndex, rank) {
-	let connecting = false;
-
-	for (let i = 0; i < state.numPlayers; i++) {
-		const hand = state.hands[i];
-
-		// Looking through the target's hand or the giver's hand
-		if (i === target || i === giver) {
-			connecting = hand.some(card => card.clued &&
-				(card.possible.length === 1 && Utils.cardMatch(card.possible[0], suitIndex, rank)) ||
-				(card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, rank))
-			);
-		}
-		// Looking through another player's hand
-		else {
-			connecting = Utils.handFind(hand, suitIndex, rank).some(c => c.clued);
-		}
-
-		if (connecting) {
-			return true;
-		}
-	}
-	return false;
-}
-
 function find_own_playables(stacks, hand) {
 	// console.log('finding playables with stack', stacks, 'and hand', hand);
 	const playables = [];
@@ -166,7 +141,6 @@ function remove_card_from_hand(hand, order) {
 module.exports = {
 	ACTION, CLUE,
 	find_possibilities, find_bad_touch,
-	find_connecting,
 	find_own_playables, find_known_trash,
 	remove_card_from_hand
 };

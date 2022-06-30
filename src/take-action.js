@@ -1,5 +1,5 @@
 const { ACTION, find_own_playables, find_known_trash, remove_card_from_hand } = require('./action-helper.js');
-const { find_clues } = require('./clue-finder.js');
+const { find_clues, find_stall_clue } = require('./clue-finder.js');
 const { find_chop } = require('./hanabi-logic.js');
 const Utils = require('./util.js');
 
@@ -52,7 +52,7 @@ function take_action(state, tableID) {
 		for (const possible of possibilities) {
 			// Find all duplicates, excluding itself
 			const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, possible.suitIndex, possible.rank).filter(c => c.order !== card.order);
-			console.log('checking for duplicate of', Utils.cardToString(possible), 'duplicates', duplicates.map(c => c.clued));
+			console.log('checking for duplicate of', Utils.cardToString(possible), '- duplicates', duplicates.map(c => c.clued));
 
 			// No duplicates or none of duplicates are clued
 			if (duplicates.length === 0 || !duplicates.some(c => c.clued)) {
@@ -71,7 +71,6 @@ function take_action(state, tableID) {
 	console.log('playable cards', Utils.logHand(playable_cards));
 
 	// No saves needed, so play
-	// TODO: Give "save" to playable cards on chop instead
 	if (playable_cards.length > 0) {
 		// TODO: Play order (connecting card in other hand, 5, connecting card in own hand, lowest card)
 		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: playable_cards[0].order });
@@ -89,16 +88,16 @@ function take_action(state, tableID) {
 			}
 		}
 
-		// 8 clue state
-		// TODO: Add stall clues
+		// 8 clues
 		if (state.clue_tokens === 8) {
-			const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-			Utils.sendCmd('action', { tableID, type: ACTION.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank });
+			const { type, value, target } = find_stall_clue(state, 4);
+
+			// Should always be able to find a clue, even if it's a hard burn
+			Utils.sendCmd('action', { tableID, type, target, value });
 			return;
 		}
 
 		// Locked hand and no good clues to give
-		// TODO: Add stall clues
 		if (state.hands[state.ourPlayerIndex].every(c => c.clued)) {
 			// Discard if possible
 			if (trash_cards.length > 0) {
@@ -107,10 +106,9 @@ function take_action(state, tableID) {
 			}
 
 			// Give stall clue if possible
-			// TODO: Add stall clues
 			if (state.clue_tokens > 0) {
-				const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-				Utils.sendCmd('action', { tableID, type: ACTION.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank });
+				const { type, value, target } = find_stall_clue(state, 3);
+				Utils.sendCmd('action', { tableID, type, target, value });
 				return;
 			}
 		}
@@ -128,7 +126,7 @@ function take_action(state, tableID) {
 		else {
 			discard = hand[Math.floor(Math.random() * hand.length)];
 		}
-		console.log('trash cards', trash_cards, 'chop index', chopIndex);
+		console.log('trash cards', Utils.logHand(trash_cards), 'chop index', chopIndex);
 
 		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: discard.order });
 	}
