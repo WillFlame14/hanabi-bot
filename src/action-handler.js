@@ -1,5 +1,5 @@
-const { determine_focus, good_touch_elim } = require('./hanabi-logic.js');
-const { CLUE, find_possibilities, find_bad_touch, remove_card_from_hand } = require('./action-helper.js');
+const { find_finesse_pos, determine_focus, good_touch_elim } = require('./hanabi-logic.js');
+const { CLUE, find_possibilities, find_bad_touch, find_connecting, remove_card_from_hand } = require('./action-helper.js');
 const { take_action } = require('./take-action.js');
 const Utils = require('./util.js');
 
@@ -37,18 +37,47 @@ function handle_action(state, action, tableID, catchup = false) {
 			// console.log('focused_card', focused_card, 'chop?', chop);
 
 			// Try to determine all the possible inferences of the card
-			if (focused_card.possible.length > 1) {
+			if (focused_card.inferred.length > 1) {
 				let save = false;
 				const focus_possible = [];
+				console.log('hypo stacks in clue interpretation:', state.hypo_stacks);
 
 				if (clue.type === CLUE.COLOUR) {
 					const suitIndex = clue.value;
 					let next_playable_rank = state.hypo_stacks[suitIndex] + 1;
-					console.log('determining if play clue. suitIndex:', suitIndex, 'play:', state.play_stacks[suitIndex], 'hypo:', state.hypo_stacks[suitIndex]);
+					//console.log('determining if play clue. suitIndex:', suitIndex, 'play:', state.play_stacks[suitIndex], 'hypo:', state.hypo_stacks[suitIndex]);
 
 					// Play clue
-					// TODO: look for 1-away finesse
 					focus_possible.push({ suitIndex, rank: next_playable_rank });
+
+					// Try looking for a connecting card
+					let connecting = find_connecting(state, giver, target, suitIndex, next_playable_rank);
+					while (connecting !== undefined) {
+						// TODO: Use the reacting person to see if they do something urgent instead of playing into finesse
+						const { type, reacting, card } = connecting;
+
+						if (type === 'prompt' || type === 'known') {
+							state.hypo_stacks[suitIndex]++;
+						}
+						else if (type === 'finesse') {
+							focused_card.waiting_finesse_players.push(reacting);
+							card.finessed = true;
+
+							// Even if a finesse is possible, it might not be a finesse
+							focus_possible.push({ suitIndex, rank: next_playable_rank });
+						}
+
+						next_playable_rank++;
+						connecting = find_connecting(state, giver, target, suitIndex, next_playable_rank);
+					}
+
+					// Our card could be the final rank that we can't find
+					if (next_playable_rank !== state.hypo_stacks[suitIndex] + 1) {
+						focus_possible.push({ suitIndex, rank: next_playable_rank });
+					}
+
+					// Include our card on hypo stacks so we can give selfish clues
+					// state.hypo_stacks[suitIndex]++;
 
 					// Save clue on chop (5 save cannot be done with number)
 					if (chop) {
@@ -68,11 +97,38 @@ function handle_action(state, action, tableID, catchup = false) {
 					for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
 						let stack_rank = state.hypo_stacks[suitIndex] + 1;
 
-						console.log('determining if play clue. suitIndex:', suitIndex, 'play:', state.play_stacks[suitIndex], 'hypo:', state.hypo_stacks[suitIndex]);
+						//console.log('determining if play clue. suitIndex:', suitIndex, 'play:', state.play_stacks[suitIndex], 'hypo:', state.hypo_stacks[suitIndex]);
 
 						// TODO: look for 1-away finesse
 						if (rank === stack_rank) {
 							focus_possible.push({ suitIndex, rank });
+						}
+						else if (rank > stack_rank) {
+							// Try looking for all connecting cards
+							let connecting = find_connecting(state, giver, target, suitIndex, stack_rank);
+							const connections = [];
+
+							while (connecting !== undefined) {
+								connections.push(connecting);
+								stack_rank++;
+								connecting = find_connecting(state, giver, target, suitIndex, stack_rank);
+							}
+
+							// Connected cards can stack up to this rank
+							if (rank === stack_rank) {
+								for (const connection of connections) {
+									// TODO: Use the reacting person to see if they do something urgent instead of playing into finesse
+									const { type, reacting, card } = connection;
+
+									if (type === 'prompt' || type === 'known') {
+										state.hypo_stacks[suitIndex]++;
+									}
+									else if (type === 'finesse') {
+										focused_card.waiting_finesse_players.push(reacting);
+									}
+								}
+								focus_possible.push({ suitIndex, rank });
+							}
 						}
 					}
 
@@ -134,8 +190,52 @@ function handle_action(state, action, tableID, catchup = false) {
 					}
 				}
 				else if (focused_card.inferred.length === 0) {
-					console.log('no inference found, resetting to all possibilities', focused_card.possible.map(c => Utils.cardToString(c)).join(','));
-					focused_card.inferred = Utils.objClone(focused_card.possible);
+					// Check for a prompt/finesse on us?
+					if (target !== state.ourPlayerIndex) {
+						const our_hand = state.hands[state.ourPlayerIndex];
+						const { suitIndex, rank } = focused_card;
+						const connections = [];
+
+						for (let i = state.hypo_stacks[suitIndex] + 1; i < rank; i++) {
+							const prompted = our_hand.find(c => c.clued && c.inferred.some(inf => Utils.cardMatch(inf, suitIndex, rank)));
+							if (prompted !== undefined) {
+								console.log('found prompt in our hand');
+								connections.push({type: 'prompt', card: prompted});
+							}
+							else {
+								const finesse_pos = find_finesse_pos(our_hand);
+
+								if (finesse_pos !== -1 && our_hand[finesse_pos].possible.some(c => Utils.cardMatch(c, suitIndex, rank))) {
+									console.log('found finesse in our hand');
+									connections.push({type: 'finesse', card: our_hand[finesse_pos]});
+								}
+								else {
+									break;
+								}
+							}
+						}
+
+						// Found all connecting cards
+						if (connections.length === rank - state.hypo_stacks[suitIndex] - 1) {
+							for (let i = state.hypo_stacks[suitIndex] + 1; i < rank; i++) {
+								const { type, card } = connections[i];
+
+								card.inferred = [{ suitIndex, rank: i }];
+								if (type === 'finesse') {
+									card.finessed = true;
+								}
+							}
+						}
+						else {
+							console.log('no inference found, resetting to all possibilities', focused_card.possible.map(c => Utils.cardToString(c)).join(','));
+							focused_card.inferred = Utils.objClone(focused_card.possible);
+						}
+					}
+					else {
+						// TODO: We are the target and must also play (self-prompt, self-finesse)
+						console.log('no inference found, resetting to all possibilities', focused_card.possible.map(c => Utils.cardToString(c)).join(','));
+						focused_card.inferred = Utils.objClone(focused_card.possible);
+					}
 				}
 			}
 			console.log('hand state after clue', Utils.logHand(state.hands[target]));
@@ -184,8 +284,9 @@ function handle_action(state, action, tableID, catchup = false) {
 				order, suitIndex, rank,
 				clued: false,
 				possible: Utils.objClone(state.all_possible),
-				inferred: Utils.objClone(state.all_possible)}
-			);
+				inferred: Utils.objClone(state.all_possible),
+				waiting_finesse_players: []
+			});
 
 			// We can't see our own cards, but we can see others' at least
 			if (playerIndex !== state.ourPlayerIndex) {
@@ -255,6 +356,7 @@ function handle_action(state, action, tableID, catchup = false) {
 }
 
 function update_hypo_stacks(state, target, suitIndex, rank) {
+	console.log('in update hypo stacks', rank);
 	if (state.hypo_stacks[suitIndex] < rank) {
 		state.hypo_stacks[suitIndex] = rank;
 

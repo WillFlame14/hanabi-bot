@@ -1,6 +1,6 @@
 const { ACTION } = require('./action-helper.js');
 const { determine_clue } = require('./clue-helper.js');
-const { find_chop, determine_focus, bad_touch_num } = require('./hanabi-logic.js');
+const { find_chop } = require('./hanabi-logic.js');
 const Utils = require('./util.js');
 
 function find_clues(state) {

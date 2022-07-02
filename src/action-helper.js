@@ -1,3 +1,4 @@
+const { find_finesse_pos } = require('./hanabi-logic.js');
 const Utils = require('./util.js');
 
 const ACTION = {
@@ -14,7 +15,7 @@ function find_possibilities(clue, num_suits) {
 	if (clue.type === CLUE.COLOUR) {
 		const suitIndex = clue.value;
 		for (let rank = 1; rank <= 5; rank++) {
-			new_possible.push({ suitIndex: clue.value, rank });
+			new_possible.push({ suitIndex, rank });
 		}
 	}
 	else {
@@ -71,6 +72,45 @@ function find_bad_touch(state, giver, target) {
 	}
 
 	return bad_touch;
+}
+
+function find_connecting(state, giver, target, suitIndex, rank) {
+	for (let i = 0; i < state.numPlayers; i++) {
+		const hand = state.hands[i];
+
+		const known_connecting = hand.find(card => card.clued &&
+			(card.possible.length === 1 && Utils.cardMatch(card.possible[0], suitIndex, rank)) ||
+			(card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, rank))
+		);
+
+		if (known_connecting !== undefined) {
+			return { type: 'known', reacting: i, card: known_connecting };
+		}
+	}
+
+	for (let i = 0; i < state.numPlayers; i++) {
+		if (i === target || i === giver) {
+			continue;
+		}
+		else {
+			// Try looking through another player's hand (known to both giver and target)
+			const hand = state.hands[i];
+
+			const prompt_pos = hand.findIndex(c => c.clued);
+			const finesse_pos = find_finesse_pos(hand);
+
+			if (prompt_pos !== -1 && Utils.cardMatch(hand[prompt_pos], suitIndex, rank)) {
+				console.log(`found prompt ${Utils.cardToString(hand[prompt_pos])} in ${state.playerNames[i]}'s hand`);
+				return { type: 'prompt', reacting: i, card: hand[prompt_pos] };
+			}
+			// Prompt takes priority over finesse
+			else if (finesse_pos !== -1 && Utils.cardMatch(hand[finesse_pos], suitIndex, rank)) {
+				console.log(`found finesse ${Utils.cardToString(hand[finesse_pos])} in ${state.playerNames[i]}'s hand`);
+				return { type: 'finesse', reacting: i, card: hand[finesse_pos] };
+			}
+		}
+	}
+	// TODO: Prompt or finesse on me (includes self-prompt, self-finesse)
 }
 
 function find_own_playables(stacks, hand) {
@@ -141,6 +181,7 @@ function remove_card_from_hand(hand, order) {
 module.exports = {
 	ACTION, CLUE,
 	find_possibilities, find_bad_touch,
+	find_connecting,
 	find_own_playables, find_known_trash,
 	remove_card_from_hand
 };

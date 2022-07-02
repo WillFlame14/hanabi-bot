@@ -1,13 +1,16 @@
 const Utils = require('./util.js');
 
 function find_chop(hand) {
-	let chop = -1;
 	for (let i = hand.length - 1; i >= 0; i--) {
 		if (!hand[i].clued) {
 			return i;
 		}
 	}
 	return -1;
+}
+
+function find_finesse_pos(hand) {
+	return hand.findIndex(c => !c.clued && !c.finessed);
 }
 
 function determine_focus(hand, list) {
@@ -79,4 +82,4 @@ function bad_touch_num(state, target, cards) {
 	return count;
 }
 
-module.exports = { find_chop, determine_focus, good_touch_elim, bad_touch_num };
+module.exports = { find_chop, find_finesse_pos, determine_focus, good_touch_elim, bad_touch_num };
