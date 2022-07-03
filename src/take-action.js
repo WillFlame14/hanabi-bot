@@ -1,5 +1,5 @@
-const { ACTION, find_own_playables, find_known_trash } = require('./action-helper.js');
-const { find_clues, find_stall_clue } = require('./clue-finder.js');
+const { ACTION, find_playables, find_known_trash } = require('./action-helper.js');
+const { find_clues, find_tempo_clues, find_stall_clue } = require('./clue-finder.js');
 const { find_chop } = require('./hanabi-logic.js');
 const Utils = require('./util.js');
 
@@ -16,7 +16,7 @@ function take_action(state, tableID) {
 			const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
 			// They require a save clue and cannot be given a play clue
-			if (save_clues[target] !== undefined && play_clues[target].length === 0) {
+			if (save_clues[target] !== undefined && find_playables(state.play_stacks, state.hands[target]).length === 0 && play_clues[target].length === 0) {
 				const { type, value } = save_clues[target];
 				Utils.sendCmd('action', { tableID, type, target, value });
 				return;
@@ -29,7 +29,7 @@ function take_action(state, tableID) {
 			const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
 			// They require a save clue and can be given a play clue
-			if (save_clues[target] !== undefined && play_clues[target].length > 0) {
+			if (save_clues[target] !== undefined && find_playables(state.play_stacks, state.hands[target]).length === 0 && play_clues[target].length > 0) {
 				const { type, value } = play_clues[target][0];
 				Utils.sendCmd('action', { tableID, type, target, value });
 				return;
@@ -83,6 +83,18 @@ function take_action(state, tableID) {
 				if (play_clues[target].length > 0) {
 					const { type, value } = play_clues[target][0];
 					Utils.sendCmd('action', { tableID, type, target, value });
+					return;
+				}
+			}
+
+			// In 2 player, all tempo clues become valuable
+			if (state.numPlayers === 2) {
+				const otherPlayerIndex = (state.ourPlayerIndex + 1) % 2;
+				const tempo_clues = find_tempo_clues(state);
+
+				if (tempo_clues[otherPlayerIndex].length > 0) {
+					const { type, value } = tempo_clues[otherPlayerIndex][0];
+					Utils.sendCmd('action', { tableID, type, target: otherPlayerIndex, value });
 					return;
 				}
 			}

@@ -75,6 +75,7 @@ function find_bad_touch(state, giver, target) {
 }
 
 function find_connecting(state, giver, target, suitIndex, rank) {
+	console.log('looking for connecting', Utils.cardToString({suitIndex, rank}));
 	for (let i = 0; i < state.numPlayers; i++) {
 		const hand = state.hands[i];
 
@@ -110,10 +111,9 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 			}
 		}
 	}
-	// TODO: Prompt or finesse on me (includes self-prompt, self-finesse)
 }
 
-function find_own_playables(stacks, hand) {
+function find_playables(stacks, hand) {
 	// console.log('finding playables with stack', stacks, 'and hand', hand);
 	const playables = [];
 
@@ -182,6 +182,6 @@ module.exports = {
 	ACTION, CLUE,
 	find_possibilities, find_bad_touch,
 	find_connecting,
-	find_own_playables, find_known_trash,
+	find_playables, find_known_trash,
 	remove_card_from_hand
 };

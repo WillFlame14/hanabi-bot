@@ -52,7 +52,10 @@ function handle_action(state, action, tableID, catchup = false) {
 
 					// Try looking for a connecting card
 					let connecting = find_connecting(state, giver, target, suitIndex, next_playable_rank);
+					let found_connecting = false;
+
 					while (connecting !== undefined) {
+						found_connecting = true;
 						// TODO: Use the reacting person to see if they do something urgent instead of playing into finesse
 						const { type, reacting, card } = connecting;
 
@@ -72,7 +75,7 @@ function handle_action(state, action, tableID, catchup = false) {
 					}
 
 					// Our card could be the final rank that we can't find
-					if (next_playable_rank !== state.hypo_stacks[suitIndex] + 1) {
+					if (found_connecting) {
 						focus_possible.push({ suitIndex, rank: next_playable_rank });
 					}
 
@@ -134,7 +137,6 @@ function handle_action(state, action, tableID, catchup = false) {
 
 					// Save clue on chop
 					if (chop) {
-						console.log('received clue with focus on chop');
 						for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
 							let save2 = false;
 
@@ -191,6 +193,7 @@ function handle_action(state, action, tableID, catchup = false) {
 				}
 				else if (focused_card.inferred.length === 0) {
 					// Check for a prompt/finesse on us?
+					// FIX: Not all the cards need to be from us (use visibleFind?)
 					if (target !== state.ourPlayerIndex) {
 						const our_hand = state.hands[state.ourPlayerIndex];
 						const { suitIndex, rank } = focused_card;
@@ -271,6 +274,19 @@ function handle_action(state, action, tableID, catchup = false) {
 				}
 			}
 
+			// Discarding a useful card (for whatever reason)
+			if (state.hypo_stacks[suitIndex] >= rank &&
+				state.play_stacks[suitIndex] < rank &&
+				Utils.visibleFind(state, playerIndex, suitIndex, rank).length === 0) {
+				console.log(`${state.playerNames[playerIndex]} discarded useful card ${Utils.cardToString(action)}, setting hypo stack ${rank - 1}`);
+				state.hypo_stacks[suitIndex] = rank - 1;
+			}
+			else {
+				console.log(state.hypo_stacks[suitIndex]);
+				console.log(state.play_stacks[suitIndex]);
+				console.log('found', Utils.visibleFind(state, playerIndex, suitIndex, rank));
+			}
+
 			// bombs count as discards, but they don't give a clue token
 			if (!failed && state.clue_tokens < 8) {
 				state.clue_tokens++;
@@ -302,6 +318,10 @@ function handle_action(state, action, tableID, catchup = false) {
 
 					// Also remove it from hand possibilities
 					for (const card of state.hands[state.ourPlayerIndex]) {
+						// Do not remove it from itself
+						if (card.possible.length === 1 || (card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, rank))) {
+							continue;
+						}
 						card.possible = Utils.subtractCards(card.possible, [{ suitIndex, rank }]);
 						card.inferred = Utils.subtractCards(card.inferred, [{ suitIndex, rank }]);
 					}
@@ -356,7 +376,6 @@ function handle_action(state, action, tableID, catchup = false) {
 }
 
 function update_hypo_stacks(state, target, suitIndex, rank) {
-	console.log('in update hypo stacks', rank);
 	if (state.hypo_stacks[suitIndex] < rank) {
 		state.hypo_stacks[suitIndex] = rank;
 

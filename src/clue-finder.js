@@ -79,13 +79,6 @@ function find_clues(state) {
 		}
 	}
 
-	// In 2 player, all tempo clues become valuable
-	if (state.numPlayers === 2) {
-		const otherPlayerIndex = (state.ourPlayerIndex + 1) % 2;
-		const tempo_clues = find_tempo_clues(state);
-		play_clues[otherPlayerIndex] = play_clues[otherPlayerIndex].concat(tempo_clues[otherPlayerIndex]);
-	}
-
 	console.log('found play clues', play_clues);
 	console.log('found save clues', save_clues);
 	return { play_clues, save_clues };
