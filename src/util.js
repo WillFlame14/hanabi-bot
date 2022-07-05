@@ -58,10 +58,7 @@ function visibleFind(state, target, suitIndex, rank, ignoreIndex = -1) {
 const CARD_COUNT = [3, 2, 2, 2, 1];
 
 function isCritical(state, suitIndex, rank) {
-	// console.log(`checking if suitIndex ${suitIndex} and rank ${rank} are critical`);
-	// console.log(`discard_stacks ${state.discard_stacks}`);
-	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1)
-		&& state.play_stacks[suitIndex] < rank;
+	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1);
 }
 
 function cardMatch(card, suitIndex, rank) {
@@ -95,7 +92,11 @@ function logHand(hand) {
 }
 
 function writeNote(card, tableID) {
-	const note = card.inferred.map(c => cardToString(c)).join(',');
+	let note = card.inferred.map(c => cardToString(c)).join(',');
+	if (card.finessed) {
+		note = `[f] [${note}]`;
+	}
+
 	sendCmd('note', { tableID, order: card.order, note });
 }
 

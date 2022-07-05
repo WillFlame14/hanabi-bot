@@ -119,7 +119,8 @@ const handle = {
 			play_stacks: [],
 			hypo_stacks: [],
 			discard_stacks: [],
-			all_possible: []
+			all_possible: [],
+			max_ranks: []
 		}
 
 		for (let i = 0; i < state.numPlayers; i++) {
@@ -130,6 +131,7 @@ const handle = {
 			state.play_stacks.push(0);
 			state.hypo_stacks.push(0);
 			state.discard_stacks.push([0, 0, 0, 0, 0]);
+			state.max_ranks.push(5);
 
 			for (let rank = 1; rank <= 5; rank++) {
 				state.all_possible.push({ suitIndex, rank });

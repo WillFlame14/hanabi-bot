@@ -8,29 +8,33 @@ function take_action(state, tableID) {
 	const { play_clues, save_clues } = find_clues(state);
 
 	// First, check if anyone needs an urgent save
-	// TODO: Check if players have something safe to do (playable or trash)
 	// TODO: Check if someone else can save
 	// TODO: scream discard?
 	if (state.clue_tokens > 0) {
+		const urgent_save_clues = [[], []];
+
 		for (let i = 1; i < state.numPlayers; i++) {
 			const target = (state.ourPlayerIndex + i) % state.numPlayers;
+			const playable_cards = find_playables(state.play_stacks, state.hands[target]);
+			const trash_cards = find_known_trash(state.play_stacks, state.max_ranks, state.hands[target]);
 
-			// They require a save clue and cannot be given a play clue
-			if (save_clues[target] !== undefined && find_playables(state.play_stacks, state.hands[target]).length === 0 && play_clues[target].length === 0) {
-				const { type, value } = save_clues[target];
-				Utils.sendCmd('action', { tableID, type, target, value });
-				return;
+			// They require a save clue and don't have a playable or trash
+			if (save_clues[target] !== undefined && playable_cards.length === 0 && trash_cards.length === 0) {
+				if (play_clues[target].length > 0 && state.clue_tokens > 1) {
+					// Can give them a play clue, so less urgent (need at least 2 clue tokens)
+					urgent_save_clues[1].push(play_clues[target][0]);
+				}
+				else {
+					// Cannot give them a play clue, so more urgent
+					urgent_save_clues[0].push(save_clues[target]);
+				}
 			}
 		}
 
-		// Then, check if anyone needs a save that can be distracted by a play
-		// TODO: Check if someone else can save
-		for (let i = 1; i < state.numPlayers; i++) {
-			const target = (state.ourPlayerIndex + i) % state.numPlayers;
-
-			// They require a save clue and can be given a play clue
-			if (save_clues[target] !== undefined && find_playables(state.play_stacks, state.hands[target]).length === 0 && play_clues[target].length > 0) {
-				const { type, value } = play_clues[target][0];
+		// Go through urgent save clues in order of priority
+		for (const clues of urgent_save_clues) {
+			if (clues.length > 0) {
+				const { type, target, value } = clues[0];
 				Utils.sendCmd('action', { tableID, type, target, value });
 				return;
 			}
@@ -38,8 +42,8 @@ function take_action(state, tableID) {
 	}
 
 	// Then, look for playables or trash in own hand
-	let playable_cards = find_own_playables(state.play_stacks, hand);
-	const trash_cards = find_known_trash(state.play_stacks, hand);
+	let playable_cards = find_playables(state.play_stacks, hand);
+	const trash_cards = find_known_trash(state.play_stacks, state.max_ranks, hand);
 
 	// Determine if any cards are clued duplicates, and if so, perform a sarcastic discard
 	for (const card of hand) {
@@ -52,7 +56,6 @@ function take_action(state, tableID) {
 		for (const possible of possibilities) {
 			// Find all duplicates, excluding itself
 			const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, possible.suitIndex, possible.rank).filter(c => c.order !== card.order);
-			console.log('checking for duplicate of', Utils.cardToString(possible), '- duplicates', duplicates.map(c => c.clued));
 
 			// No duplicates or none of duplicates are clued
 			if (duplicates.length === 0 || !duplicates.some(c => c.clued)) {
@@ -62,7 +65,6 @@ function take_action(state, tableID) {
 		}
 
 		if (all_duplicates) {
-			console.log('found duplicate card');
 			trash_cards.unshift(card);
 			playable_cards = playable_cards.filter(c => c.order !== card.order);
 			break;
@@ -80,6 +82,7 @@ function take_action(state, tableID) {
 			for (let i = 1; i < state.numPlayers; i++) {
 				const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
+				// TODO: Only give selfish clues to save cards on chop
 				if (play_clues[target].length > 0) {
 					const { type, value } = play_clues[target][0];
 					Utils.sendCmd('action', { tableID, type, target, value });
@@ -138,7 +141,6 @@ function take_action(state, tableID) {
 		else {
 			discard = hand[Math.floor(Math.random() * hand.length)];
 		}
-		console.log('trash cards', Utils.logHand(trash_cards), 'chop index', chopIndex);
 
 		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: discard.order });
 	}

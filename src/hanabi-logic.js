@@ -9,8 +9,19 @@ function find_chop(hand) {
 	return -1;
 }
 
-function find_finesse_pos(hand) {
-	return hand.findIndex(c => !c.clued && !c.finessed);
+function find_finesse_pos(hand, already_finessed = 0) {
+	for (let i = 0; i < hand.length; i++) {
+		const card = hand[i];
+		if (!(card.clued || card.finessed)) {
+			if (already_finessed === 0) {
+				return i;
+			}
+			else {
+				already_finessed--;
+			}
+		}
+	}
+	return -1;
 }
 
 function determine_focus(hand, list) {
@@ -37,9 +48,9 @@ function determine_focus(hand, list) {
 	}
 }
 
-function good_touch_elim(hand, cards) {
+function good_touch_elim(hand, cards, ignoreOrders = []) {
 	for (const card of hand) {
-		if (card.clued) {
+		if (card.clued && !ignoreOrders.includes(card.order)) {
 			card.inferred = Utils.subtractCards(card.inferred, cards);
 		}
 	}

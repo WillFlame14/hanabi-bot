@@ -1,5 +1,5 @@
 const { find_finesse_pos, determine_focus, good_touch_elim } = require('./hanabi-logic.js');
-const { CLUE, find_possibilities, find_bad_touch, find_connecting, remove_card_from_hand } = require('./action-helper.js');
+const { CLUE, find_possibilities, find_bad_touch, find_connecting, find_own_finesses, remove_card_from_hand } = require('./action-helper.js');
 const { take_action } = require('./take-action.js');
 const Utils = require('./util.js');
 
@@ -8,6 +8,14 @@ function handle_action(state, action, tableID, catchup = false) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
 			const { clue, giver, list, target } = action;
+			const { focused_card, chop } = determine_focus(state.hands[target], list);
+			// console.log('focused_card', focused_card, 'chop?', chop);
+
+			// Going through each card that was clued
+			for (const order of list) {
+				const card = Utils.findOrder(state.hands[target], order);
+				card.clued = true;
+			}
 
 			// Update all positive and negative possibilities for all cards, first ignoring good touch
 			const new_possible = find_possibilities(clue, state.num_suits);
@@ -32,9 +40,7 @@ function handle_action(state, action, tableID, catchup = false) {
 					card.inferred = Utils.subtractCards(card.inferred, bad_touch);
 				}
 			}
-
-			const { focused_card, chop } = determine_focus(state.hands[target], list);
-			// console.log('focused_card', focused_card, 'chop?', chop);
+			console.log('bad touch', bad_touch.map(c => Utils.cardToString(c)).join(','));
 
 			// Try to determine all the possible inferences of the card
 			if (focused_card.inferred.length > 1) {
@@ -78,9 +84,6 @@ function handle_action(state, action, tableID, catchup = false) {
 					if (found_connecting) {
 						focus_possible.push({ suitIndex, rank: next_playable_rank });
 					}
-
-					// Include our card on hypo stacks so we can give selfish clues
-					// state.hypo_stacks[suitIndex]++;
 
 					// Save clue on chop (5 save cannot be done with number)
 					if (chop) {
@@ -142,23 +145,19 @@ function handle_action(state, action, tableID, catchup = false) {
 
 							// Determine if it's a 2 save
 							if (rank === 2 && state.play_stacks[suitIndex] + 1 !== rank) {
-								console.log('checking for possible 2 save', Utils.cardToString({suitIndex, rank}));
 								const duplicates = Utils.visibleFind(state, target, suitIndex, rank);
 
 								// No duplicates found, so can be a 2 save
 								if (duplicates.length === 0) {
 									save2 = true;
-									console.log('no duplicates found');
 								}
 								// Both duplicates found, so can't be a 2 save
 								else if (duplicates.length === 2) {
-									console.log('both duplicates found');
 									continue;
 								}
 								else {
 									// Can be a 2 save if the other 2 is in the giver's hand
 									save2 = state.hands[giver].some(c => c.order === duplicates[0].order);
-									console.log('in giver hand?', save2);
 								}
 							}
 
@@ -169,85 +168,71 @@ function handle_action(state, action, tableID, catchup = false) {
 						}
 					}
 				}
-				// console.log('focus_possible', focus_possible);
 				focused_card.inferred = Utils.intersectCards(focused_card.inferred, focus_possible);
 				console.log('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)).join(','));
 
-				// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
-				// TODO: maybe modify if focused card is unplayable now but has rank high enough
-				if (focused_card.inferred.length === 1) {
-					const other_cards = state.hands[target].filter(c => c.order !== focused_card.order);
-					good_touch_elim(other_cards, focused_card.inferred);
+				let feasible = false, connections, conn_suit;
 
-					// Update hypo stacks
-					if (!save) {
-						const { suitIndex, rank } = focused_card.inferred[0];
-						if (target !== state.ourPlayerIndex && !Utils.cardMatch(focused_card, suitIndex, rank)) {
-							console.log('Known card doesn\'t match inference! Not updating hypo stack.');
-						}
-						else {
-							console.log('updating hypo stack (inference)');
-							update_hypo_stacks(state, target, suitIndex, rank);
-						}
-					}
-				}
-				else if (focused_card.inferred.length === 0) {
-					// Check for a prompt/finesse on us?
-					// FIX: Not all the cards need to be from us (use visibleFind?)
-					if (target !== state.ourPlayerIndex) {
-						const our_hand = state.hands[state.ourPlayerIndex];
-						const { suitIndex, rank } = focused_card;
-						const connections = [];
+				if (focused_card.inferred.length === 0) {
+					// Reset inference
+					focused_card.inferred = Utils.objClone(focused_card.possible);
 
-						for (let i = state.hypo_stacks[suitIndex] + 1; i < rank; i++) {
-							const prompted = our_hand.find(c => c.clued && c.inferred.some(inf => Utils.cardMatch(inf, suitIndex, rank)));
-							if (prompted !== undefined) {
-								console.log('found prompt in our hand');
-								connections.push({type: 'prompt', card: prompted});
-							}
-							else {
-								const finesse_pos = find_finesse_pos(our_hand);
-
-								if (finesse_pos !== -1 && our_hand[finesse_pos].possible.some(c => Utils.cardMatch(c, suitIndex, rank))) {
-									console.log('found finesse in our hand');
-									connections.push({type: 'finesse', card: our_hand[finesse_pos]});
-								}
-								else {
-									break;
-								}
+					if (target === state.ourPlayerIndex) {
+						// FIX: Look at the card that results from blind play to determine the connection
+						let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
+						for (const card of focused_card.possible) {
+							({ feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank));
+							const blind_plays = connections.filter(conn => conn.self).length;
+							if (feasible && blind_plays < min_blind_plays) {
+								conn_save = connections;
+								conn_suit = card.suitIndex;
+								min_blind_plays = blind_plays;
 							}
 						}
-
-						// Found all connecting cards
-						if (connections.length === rank - state.hypo_stacks[suitIndex] - 1) {
-							for (let i = state.hypo_stacks[suitIndex] + 1; i < rank; i++) {
-								const { type, card } = connections[i];
-
-								card.inferred = [{ suitIndex, rank: i }];
-								if (type === 'finesse') {
-									card.finessed = true;
-								}
-							}
-						}
-						else {
-							console.log('no inference found, resetting to all possibilities', focused_card.possible.map(c => Utils.cardToString(c)).join(','));
-							focused_card.inferred = Utils.objClone(focused_card.possible);
-						}
+						connections = conn_save;
 					}
 					else {
-						// TODO: We are the target and must also play (self-prompt, self-finesse)
-						console.log('no inference found, resetting to all possibilities', focused_card.possible.map(c => Utils.cardToString(c)).join(','));
-						focused_card.inferred = Utils.objClone(focused_card.possible);
+						({ feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank));
+						conn_suit = focused_card.suitIndex;
 					}
 				}
+				else if (focused_card.inferred.length === 1) {
+					const { suitIndex, rank } = (target === state.ourPlayerIndex) ? focused_card.inferred[0] : focused_card;
+
+					// Card doesn't match inference, or card isn't playable
+					if (!Utils.cardMatch(focused_card.inferred[0], suitIndex, rank) || rank > state.hypo_stacks[suitIndex] + 1) {
+						// Reset inference
+						focused_card.inferred = Utils.objClone(focused_card.possible);
+						({ feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank));
+						conn_suit = suitIndex;
+					}
+				}
+
+				if (feasible) {
+					let next_rank = state.hypo_stacks[conn_suit] + 1;
+					for (const connection of connections) {
+						const { type, card } = connection;
+
+						card.inferred = [{ suitIndex: conn_suit, rank: next_rank }];
+						card.finessed = (type === 'finesse');
+						next_rank++;
+					}
+					// Set correct inference on focused card
+					focused_card.inferred = [{suitIndex: conn_suit, rank: next_rank}];
+				}
+			}
+
+			// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
+			if (focused_card.inferred.length === 1) {
+				// Don't elim on the focused card
+				good_touch_elim(state.hands[target], focused_card.inferred, [focused_card.order]);
+
+				// Update hypo stacks (need to check if was save?)
+				const { suitIndex, rank } = focused_card.inferred[0];
+				console.log('updating hypo stack (inference)');
+				update_hypo_stacks(state, target, suitIndex, rank);
 			}
 			console.log('hand state after clue', Utils.logHand(state.hands[target]));
-
-			// Going through each card that was clued
-			for (const order of list) {
-				const card = Utils.findOrder(state.hands[target], order);
-				card.clued = true;
-			}
 
 			state.clue_tokens--;
 			break;
@@ -258,7 +243,6 @@ function handle_action(state, action, tableID, catchup = false) {
 			remove_card_from_hand(state.hands[playerIndex], order);
 
 			state.discard_stacks[suitIndex][rank - 1]++;
-			// console.log('suit', suitIndex, 'now has discard stack', state.discard_stacks[suitIndex]);
 
 			// Discarded all copies of a card
 			if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
@@ -272,19 +256,20 @@ function handle_action(state, action, tableID, catchup = false) {
 						}
 					}
 				}
+				if (state.max_ranks[suitIndex] > rank - 1) {
+					state.max_ranks[suitIndex] = rank - 1;
+				}
 			}
 
 			// Discarding a useful card (for whatever reason)
-			if (state.hypo_stacks[suitIndex] >= rank &&
-				state.play_stacks[suitIndex] < rank &&
-				Utils.visibleFind(state, playerIndex, suitIndex, rank).length === 0) {
-				console.log(`${state.playerNames[playerIndex]} discarded useful card ${Utils.cardToString(action)}, setting hypo stack ${rank - 1}`);
-				state.hypo_stacks[suitIndex] = rank - 1;
-			}
-			else {
-				console.log(state.hypo_stacks[suitIndex]);
-				console.log(state.play_stacks[suitIndex]);
-				console.log('found', Utils.visibleFind(state, playerIndex, suitIndex, rank));
+			if (state.hypo_stacks[suitIndex] >= rank && state.play_stacks[suitIndex] < rank) {
+				const duplicates = Utils.visibleFind(state, playerIndex, suitIndex, rank);
+
+				// Mistake discard or sarcastic discard (but unknown transfer location)
+				if (duplicates.length === 0 || duplicates[0].inferred.length > 1) {
+					console.log(`${state.playerNames[playerIndex]} discarded useful card ${Utils.cardToString(action)}, setting hypo stack ${rank - 1}`);
+					state.hypo_stacks[suitIndex] = rank - 1;
+				}
 			}
 
 			// bombs count as discards, but they don't give a clue token
@@ -299,6 +284,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			state.hands[playerIndex].unshift({
 				order, suitIndex, rank,
 				clued: false,
+				finessed: false,
 				possible: Utils.objClone(state.all_possible),
 				inferred: Utils.objClone(state.all_possible),
 				waiting_finesse_players: []
@@ -309,7 +295,6 @@ function handle_action(state, action, tableID, catchup = false) {
 				const full_count = state.discard_stacks[suitIndex][rank - 1] +
 					Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length +
 					(state.play_stacks[suitIndex] >= rank ? 1 : 0);
-				// console.log('full count of', full_count);
 
 				// If all copies of a card are already visible
 				if (full_count === Utils.CARD_COUNT[rank - 1]) {
@@ -325,7 +310,7 @@ function handle_action(state, action, tableID, catchup = false) {
 						card.possible = Utils.subtractCards(card.possible, [{ suitIndex, rank }]);
 						card.inferred = Utils.subtractCards(card.inferred, [{ suitIndex, rank }]);
 					}
-					console.log(`removing suitIndex ${suitIndex} and rank ${rank} from hand and future possibilities`);
+					console.log(`removing ${Utils.cardToString({suitIndex, rank})} from hand and future possibilities`);
 				}
 			}
 

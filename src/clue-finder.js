@@ -20,17 +20,16 @@ function find_clues(state) {
 		const hand = state.hands[target];
 		const chopIndex = find_chop(hand);
 
-		// Play clue
+		console.log('hypo stacks in clue finder:', state.hypo_stacks);
 		for (let cardIndex = chopIndex; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
 			const { suitIndex, rank } = card;
 
-			if (!card.clued) {
+			if (!card.clued && !card.finessed && rank <= state.max_ranks[suitIndex]) {
+				// Play clue
 				const next_playable_rank = state.hypo_stacks[suitIndex] + 1;
-				console.log('giving play clue. suitIndex', suitIndex, 'play stack:', state.play_stacks[suitIndex], 'hypo stack:', state.hypo_stacks[suitIndex]);
 
 				if (next_playable_rank === rank) {
-					// console.log('found playable card to clue', card);
 					const clue = determine_clue(state, target, card);
 					if (clue !== undefined) {
 						play_clues[target].push(clue);
@@ -62,17 +61,7 @@ function find_clues(state) {
 							if(!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && Utils.cardMatch(c.inferred[0], suitIndex, rank))) {
 								save_clues[target] = { type: ACTION.RANK, value: 2, target };
 							}
-							else {
-								console.log('condition not met for 2 save: inferred in hand');
-							}
 						}
-						else {
-							console.log('condition not met for 2 save: play stack', state.play_stacks[chop.suitIndex] === 0,
-								'visible:', Utils.visibleFind(state, target, chop.suitIndex, 2).length);
-						}
-					}
-					else {
-						console.log('chop card', Utils.cardToString(chop), 'is not critical');
 					}
 				}
 			}
@@ -100,7 +89,6 @@ function find_tempo_clues(state) {
 			if (card.clued && card.inferred.length > 1 && state.hypo_stacks[card.suitIndex] + 1 === card.rank) {
 				const clue = determine_clue(state, target, card);
 				if (clue !== undefined) {
-					console.log('found tempo clue to', state.playerNames[target], clue);
 					tempo_clues[target].push(clue);
 				}
 			}
@@ -128,7 +116,6 @@ function find_stall_clue(state, severity) {
 			// 5 Stall (priority 0)
 			if (hand.some(c => c.rank === 5 && !c.clued)) {
 				stall_clues[0].push({ type: ACTION.RANK, target, value: 5 });
-				console.log(`found 5 stall to ${state.playerNames[target]}`);
 				break;
 			}
 		}
