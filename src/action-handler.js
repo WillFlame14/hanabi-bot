@@ -15,6 +15,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			for (const order of list) {
 				const card = Utils.findOrder(state.hands[target], order);
 				card.clued = true;
+				card.newly_clued = true;
 			}
 
 			// Update all positive and negative possibilities for all cards, first ignoring good touch
@@ -131,6 +132,7 @@ function handle_action(state, action, tableID, catchup = false) {
 									}
 									else if (type === 'finesse') {
 										focused_card.waiting_finesse_players.push(reacting);
+										card.finessed = true;
 									}
 								}
 								focus_possible.push({ suitIndex, rank });
@@ -170,56 +172,64 @@ function handle_action(state, action, tableID, catchup = false) {
 				}
 				focused_card.inferred = Utils.intersectCards(focused_card.inferred, focus_possible);
 				console.log('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)).join(','));
+			}
 
-				let feasible = false, connections, conn_suit;
+			let feasible = false, connections, conn_suit;
 
-				if (focused_card.inferred.length === 0) {
+			if (focused_card.inferred.length === 0) {
+				// Reset inference
+				focused_card.inferred = Utils.objClone(focused_card.possible);
+
+				if (target === state.ourPlayerIndex) {
+					// FIX: Look at the card that results from blind play to determine the connection
+					let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
+
+					for (const card of focused_card.possible) {
+						({ feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank));
+						const blind_plays = connections.filter(conn => conn.self).length;
+						console.log('feasible?', feasible, 'blind plays', blind_plays);
+
+						if (feasible && blind_plays < min_blind_plays) {
+							conn_save = connections;
+							conn_suit = card.suitIndex;
+							min_blind_plays = blind_plays;
+						}
+					}
+
+					if (conn_save !== undefined) {
+						connections = conn_save;
+						feasible = true;
+					}
+				}
+				else {
+					({ feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank));
+					conn_suit = focused_card.suitIndex;
+				}
+			}
+			else if (focused_card.inferred.length === 1) {
+				const { suitIndex, rank } = (target === state.ourPlayerIndex) ? focused_card.inferred[0] : focused_card;
+
+				// Card doesn't match inference, or card isn't playable
+				if (!Utils.cardMatch(focused_card.inferred[0], suitIndex, rank) || rank > state.hypo_stacks[suitIndex] + 1) {
 					// Reset inference
 					focused_card.inferred = Utils.objClone(focused_card.possible);
-
-					if (target === state.ourPlayerIndex) {
-						// FIX: Look at the card that results from blind play to determine the connection
-						let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
-						for (const card of focused_card.possible) {
-							({ feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank));
-							const blind_plays = connections.filter(conn => conn.self).length;
-							if (feasible && blind_plays < min_blind_plays) {
-								conn_save = connections;
-								conn_suit = card.suitIndex;
-								min_blind_plays = blind_plays;
-							}
-						}
-						connections = conn_save;
-					}
-					else {
-						({ feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank));
-						conn_suit = focused_card.suitIndex;
-					}
+					({ feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank));
+					conn_suit = suitIndex;
 				}
-				else if (focused_card.inferred.length === 1) {
-					const { suitIndex, rank } = (target === state.ourPlayerIndex) ? focused_card.inferred[0] : focused_card;
+			}
 
-					// Card doesn't match inference, or card isn't playable
-					if (!Utils.cardMatch(focused_card.inferred[0], suitIndex, rank) || rank > state.hypo_stacks[suitIndex] + 1) {
-						// Reset inference
-						focused_card.inferred = Utils.objClone(focused_card.possible);
-						({ feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank));
-						conn_suit = suitIndex;
-					}
+			if (feasible) {
+				console.log('finesse possible!');
+				let next_rank = state.hypo_stacks[conn_suit] + 1;
+				for (const connection of connections) {
+					const { type, card } = connection;
+
+					card.inferred = [{ suitIndex: conn_suit, rank: next_rank }];
+					card.finessed = (type === 'finesse');
+					next_rank++;
 				}
-
-				if (feasible) {
-					let next_rank = state.hypo_stacks[conn_suit] + 1;
-					for (const connection of connections) {
-						const { type, card } = connection;
-
-						card.inferred = [{ suitIndex: conn_suit, rank: next_rank }];
-						card.finessed = (type === 'finesse');
-						next_rank++;
-					}
-					// Set correct inference on focused card
-					focused_card.inferred = [{suitIndex: conn_suit, rank: next_rank}];
-				}
+				// Set correct inference on focused card
+				focused_card.inferred = [{suitIndex: conn_suit, rank: next_rank}];
 			}
 
 			// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
@@ -233,6 +243,12 @@ function handle_action(state, action, tableID, catchup = false) {
 				update_hypo_stacks(state, target, suitIndex, rank);
 			}
 			console.log('hand state after clue', Utils.logHand(state.hands[target]));
+
+			// Remove the newly_clued flag
+			for (const order of list) {
+				const card = Utils.findOrder(state.hands[target], order);
+				card.newly_clued = false;
+			}
 
 			state.clue_tokens--;
 			break;
@@ -284,6 +300,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			state.hands[playerIndex].unshift({
 				order, suitIndex, rank,
 				clued: false,
+				newly_clued: false,
 				finessed: false,
 				possible: Utils.objClone(state.all_possible),
 				inferred: Utils.objClone(state.all_possible),

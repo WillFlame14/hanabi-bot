@@ -79,14 +79,22 @@ function take_action(state, tableID) {
 	}
 	else {
 		if (state.clue_tokens > 0) {
+			let best_touch_value = 0;
+			let best_clue;
+
 			for (let i = 1; i < state.numPlayers; i++) {
 				const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
 				// TODO: Only give selfish clues to save cards on chop
 				if (play_clues[target].length > 0) {
-					const { type, value } = play_clues[target][0];
-					Utils.sendCmd('action', { tableID, type, target, value });
-					return;
+					for (const clue of play_clues[target]) {
+						const { bad_touch, touch } = clue;
+
+						if (touch - 2*bad_touch > best_touch_value) {
+							best_touch_value = touch - 2*bad_touch;
+							best_clue = clue;
+						}
+					}
 				}
 			}
 
@@ -95,11 +103,17 @@ function take_action(state, tableID) {
 				const otherPlayerIndex = (state.ourPlayerIndex + 1) % 2;
 				const tempo_clues = find_tempo_clues(state);
 
-				if (tempo_clues[otherPlayerIndex].length > 0) {
+				if (tempo_clues[otherPlayerIndex].length > 0 && best_clue === undefined) {
 					const { type, value } = tempo_clues[otherPlayerIndex][0];
 					Utils.sendCmd('action', { tableID, type, target: otherPlayerIndex, value });
 					return;
 				}
+			}
+
+			if (best_clue !== undefined) {
+				const { type, target, value} = best_clue;
+				Utils.sendCmd('action', { tableID, type, target, value });
+				return;
 			}
 		}
 

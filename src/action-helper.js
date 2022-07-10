@@ -96,14 +96,14 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 	}
 
 	for (let i = 0; i < state.numPlayers; i++) {
-		if (i === target || i === giver) {
+		if (i === giver || i === state.ourPlayerIndex) {
 			continue;
 		}
 		else {
-			// Try looking through another player's hand (known to both giver and target)
+			// Try looking through another player's hand (known to giver) (target?)
 			const hand = state.hands[i];
 
-			const prompt_pos = hand.findIndex(c => c.clued);
+			const prompt_pos = hand.findIndex(c => c.clued && !c.newly_clued && (c.suitIndex === suitIndex || c.rank === rank));
 			const finesse_pos = find_finesse_pos(hand);
 
 			if (prompt_pos !== -1 && Utils.cardMatch(hand[prompt_pos], suitIndex, rank)) {

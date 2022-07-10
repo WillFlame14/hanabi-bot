@@ -43,10 +43,10 @@ function determine_clue(state, target, card) {
 	}
 
 	if (clue_type === ACTION.COLOUR) {
-		return { type: ACTION.COLOUR, value: suitIndex, target };
+		return { type: ACTION.COLOUR, value: suitIndex, target, bad_touch: colour_bad_touch, touch: colour_touch.length };
 	}
 	else if (clue_type === ACTION.RANK) {
-		return { type: ACTION.RANK, value: rank, target };
+		return { type: ACTION.RANK, value: rank, target, bad_touch: rank_bad_touch, touch: rank_touch.length };
 	}
 	// Else, can't focus this card
 	return;

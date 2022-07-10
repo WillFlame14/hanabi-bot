@@ -29,6 +29,11 @@ function find_clues(state) {
 				// Play clue
 				const next_playable_rank = state.hypo_stacks[suitIndex] + 1;
 
+				// Do not clue cards that have already been clued
+				if (Utils.visibleFind(state, target, suitIndex, rank).some(c => c.clued)) {
+					continue;
+				}
+
 				if (next_playable_rank === rank) {
 					const clue = determine_clue(state, target, card);
 					if (clue !== undefined) {
