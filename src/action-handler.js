@@ -43,9 +43,10 @@ function handle_action(state, action, tableID, catchup = false) {
 			}
 			console.log('bad touch', bad_touch.map(c => Utils.cardToString(c)).join(','));
 
+			let found_connecting = false;
+
 			// Try to determine all the possible inferences of the card
 			if (focused_card.inferred.length > 1) {
-				let save = false;
 				const focus_possible = [];
 				console.log('hypo stacks in clue interpretation:', state.hypo_stacks);
 
@@ -59,7 +60,6 @@ function handle_action(state, action, tableID, catchup = false) {
 
 					// Try looking for a connecting card
 					let connecting = find_connecting(state, giver, target, suitIndex, next_playable_rank);
-					let found_connecting = false;
 
 					while (connecting !== undefined) {
 						found_connecting = true;
@@ -136,6 +136,7 @@ function handle_action(state, action, tableID, catchup = false) {
 									}
 								}
 								focus_possible.push({ suitIndex, rank });
+								found_connecting = true;
 							}
 						}
 					}
@@ -165,7 +166,6 @@ function handle_action(state, action, tableID, catchup = false) {
 
 							if ((Utils.isCritical(state, suitIndex, rank) && state.play_stacks[suitIndex] + 1 !== rank) || save2) {
 								focus_possible.push({ suitIndex, rank });
-								save = true;
 							}
 						}
 					}
@@ -210,7 +210,7 @@ function handle_action(state, action, tableID, catchup = false) {
 				const { suitIndex, rank } = (target === state.ourPlayerIndex) ? focused_card.inferred[0] : focused_card;
 
 				// Card doesn't match inference, or card isn't playable
-				if (!Utils.cardMatch(focused_card.inferred[0], suitIndex, rank) || rank > state.hypo_stacks[suitIndex] + 1) {
+				if (!Utils.cardMatch(focused_card.inferred[0], suitIndex, rank) || (rank > state.hypo_stacks[suitIndex] + 1 && !found_connecting)) {
 					// Reset inference
 					focused_card.inferred = Utils.objClone(focused_card.possible);
 					({ feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank));
@@ -330,6 +330,8 @@ function handle_action(state, action, tableID, catchup = false) {
 					console.log(`removing ${Utils.cardToString({suitIndex, rank})} from hand and future possibilities`);
 				}
 			}
+
+			state.cards_left--;
 
 			// suitIndex and rank are -1 if they're your own cards
 			break;

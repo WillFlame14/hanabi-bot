@@ -120,8 +120,11 @@ const handle = {
 			hypo_stacks: [],
 			discard_stacks: [],
 			all_possible: [],
-			max_ranks: []
+			max_ranks: [],
 		}
+
+		const HAND_SIZES = [-1, -1, 5, 5, 4, 3, 3];
+		state.cards_left = state.num_suits * 5 - state.numPlayers * HAND_SIZES[state.numPlayers];
 
 		for (let i = 0; i < state.numPlayers; i++) {
 			state.hands.push([]);

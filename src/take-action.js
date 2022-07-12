@@ -79,7 +79,7 @@ function take_action(state, tableID) {
 	}
 	else {
 		if (state.clue_tokens > 0) {
-			let best_touch_value = 0;
+			let best_touch_value = (state.cards_left < 5 ? -2 : 0);
 			let best_clue;
 
 			for (let i = 1; i < state.numPlayers; i++) {
