@@ -44,6 +44,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			console.log('bad touch', bad_touch.map(c => Utils.cardToString(c)).join(','));
 
 			let found_connecting = false;
+			let save = false;
 
 			// Try to determine all the possible inferences of the card
 			if (focused_card.inferred.length > 1) {
@@ -166,6 +167,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 							if ((Utils.isCritical(state, suitIndex, rank) && state.play_stacks[suitIndex] + 1 !== rank) || save2) {
 								focus_possible.push({ suitIndex, rank });
+								save = true;
 							}
 						}
 					}
@@ -206,7 +208,7 @@ function handle_action(state, action, tableID, catchup = false) {
 					conn_suit = focused_card.suitIndex;
 				}
 			}
-			else if (focused_card.inferred.length === 1) {
+			else if (focused_card.inferred.length === 1 && !save) {
 				const { suitIndex, rank } = (target === state.ourPlayerIndex) ? focused_card.inferred[0] : focused_card;
 
 				// Card doesn't match inference, or card isn't playable
@@ -238,9 +240,11 @@ function handle_action(state, action, tableID, catchup = false) {
 				good_touch_elim(state.hands[target], focused_card.inferred, [focused_card.order]);
 
 				// Update hypo stacks (need to check if was save?)
-				const { suitIndex, rank } = focused_card.inferred[0];
-				console.log('updating hypo stack (inference)');
-				update_hypo_stacks(state, target, suitIndex, rank);
+				if (!save) {
+					const { suitIndex, rank } = focused_card.inferred[0];
+					console.log('updating hypo stack (inference)');
+					update_hypo_stacks(state, target, suitIndex, rank);
+				}
 			}
 			console.log('hand state after clue', Utils.logHand(state.hands[target]));
 
