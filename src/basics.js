@@ -1,4 +1,3 @@
-const { find_finesse_pos } = require('./hanabi-logic.js');
 const Utils = require('./util.js');
 
 const ACTION = {
@@ -13,15 +12,13 @@ const CLUE = { COLOUR: 0, NUMBER: 1 };
 function find_possibilities(clue, num_suits) {
 	const new_possible = [];
 	if (clue.type === CLUE.COLOUR) {
-		const suitIndex = clue.value;
 		for (let rank = 1; rank <= 5; rank++) {
-			new_possible.push({ suitIndex, rank });
+			new_possible.push({ suitIndex: clue.value, rank });
 		}
 	}
 	else {
-		const rank = clue.value;
 		for (let suitIndex = 0; suitIndex < num_suits; suitIndex++) {
-			new_possible.push({ suitIndex, rank });
+			new_possible.push({ suitIndex, rank: clue.value });
 		}
 	}
 	return new_possible;
@@ -80,45 +77,6 @@ function find_bad_touch(state, giver, target) {
 	return bad_touch;
 }
 
-function find_connecting(state, giver, target, suitIndex, rank) {
-	console.log('looking for connecting', Utils.cardToString({suitIndex, rank}));
-	for (let i = 0; i < state.numPlayers; i++) {
-		const hand = state.hands[i];
-
-		const known_connecting = hand.find(card => card.clued &&
-			(card.possible.length === 1 && Utils.cardMatch(card.possible[0], suitIndex, rank)) ||
-			(card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, rank))
-		);
-
-		if (known_connecting !== undefined) {
-			return { type: 'known', reacting: i, card: known_connecting };
-		}
-	}
-
-	for (let i = 0; i < state.numPlayers; i++) {
-		if (i === giver || i === state.ourPlayerIndex) {
-			continue;
-		}
-		else {
-			// Try looking through another player's hand (known to giver) (target?)
-			const hand = state.hands[i];
-
-			const prompt_pos = hand.findIndex(c => c.clued && !c.newly_clued && (c.suitIndex === suitIndex || c.rank === rank));
-			const finesse_pos = find_finesse_pos(hand);
-
-			if (prompt_pos !== -1 && Utils.cardMatch(hand[prompt_pos], suitIndex, rank)) {
-				console.log(`found prompt ${Utils.cardToString(hand[prompt_pos])} in ${state.playerNames[i]}'s hand`);
-				return { type: 'prompt', reacting: i, card: hand[prompt_pos], self: false };
-			}
-			// Prompt takes priority over finesse
-			else if (finesse_pos !== -1 && Utils.cardMatch(hand[finesse_pos], suitIndex, rank)) {
-				console.log(`found finesse ${Utils.cardToString(hand[finesse_pos])} in ${state.playerNames[i]}'s hand`);
-				return { type: 'finesse', reacting: i, card: hand[finesse_pos], self: false };
-			}
-		}
-	}
-}
-
 function find_playables(stacks, hand) {
 	// console.log('finding playables with stack', stacks, 'and hand', hand);
 	const playables = [];
@@ -172,41 +130,12 @@ function find_known_trash(play_stacks, max_ranks, hand) {
 	return trash;
 }
 
-function find_own_finesses(state, giver, target, suitIndex, rank) {
-	console.log('finding finesse for (potentially) clued card', Utils.cardToString({suitIndex, rank}));
-	const our_hand = state.hands[state.ourPlayerIndex];
-	const connections = [];
-
-	const already_prompted = [];
-	let already_finessed = 0;
-
-	for (let i = state.hypo_stacks[suitIndex] + 1; i < rank; i++) {
-		const other_connecting = find_connecting(state, giver, target, suitIndex, i);
-		if (other_connecting !== undefined) {
-			connections.push(other_connecting);
-		}
-		else {
-			const prompted = our_hand.find(c => c.clued && !already_prompted.includes(c.order) && c.inferred.some(inf => Utils.cardMatch(inf, suitIndex, i)));
-			if (prompted !== undefined) {
-				console.log('found prompt in our hand');
-				connections.push({ type: 'prompt', card: prompted, self: true });
-				already_prompted.push(prompted.order)
-			}
-			else {
-				const finesse_pos = find_finesse_pos(our_hand, already_finessed);
-
-				if (finesse_pos !== -1 && our_hand[finesse_pos].possible.some(c => Utils.cardMatch(c, suitIndex, i))) {
-					console.log('found finesse in our hand');
-					connections.push({ type: 'finesse', card: our_hand[finesse_pos], self: true });
-					already_finessed++;
-				}
-				else {
-					break;
-				}
-			}
+function good_touch_elim(hand, cards, ignoreOrders = []) {
+	for (const card of hand) {
+		if (card.clued && !ignoreOrders.includes(card.order)) {
+			card.inferred = Utils.subtractCards(card.inferred, cards);
 		}
 	}
-	return { feasible: connections.length === rank - state.hypo_stacks[suitIndex] - 1, connections };
 }
 
 function remove_card_from_hand(hand, order) {
@@ -221,11 +150,28 @@ function remove_card_from_hand(hand, order) {
 	hand.splice(card_index, 1);
 }
 
+function update_hypo_stacks(state, target, suitIndex, rank) {
+	if (state.hypo_stacks[suitIndex] < rank) {
+		state.hypo_stacks[suitIndex] = rank;
+
+		let final_hypo_rank = rank + 1;
+
+		// FIX: Not all of these cards can necessarily be prompted
+		// FIX: Unsure if only 'target' is enough
+		while (Utils.visibleFind(state, target, suitIndex, final_hypo_rank).filter(c => c.clued && c.inferred.length === 1).length !== 0) {
+			console.log('found connecting hypo card with rank', final_hypo_rank);
+			final_hypo_rank++;
+		}
+		state.hypo_stacks[suitIndex] = final_hypo_rank - 1;
+		console.log('final hypo stack of', suitIndex, 'is', final_hypo_rank - 1);
+	}
+}
+
 module.exports = {
 	ACTION, CLUE,
 	find_possibilities, find_bad_touch,
-	find_connecting,
 	find_playables, find_known_trash,
-	find_own_finesses,
-	remove_card_from_hand
+	good_touch_elim,
+	remove_card_from_hand,
+	update_hypo_stacks
 };

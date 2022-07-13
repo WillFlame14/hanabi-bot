@@ -1,7 +1,7 @@
-const { ACTION, find_playables, find_known_trash } = require('./action-helper.js');
 const { find_clues, find_tempo_clues, find_stall_clue } = require('./clue-finder.js');
 const { find_chop } = require('./hanabi-logic.js');
-const Utils = require('./util.js');
+const { ACTION, find_playables, find_known_trash } = require('../../basics.js');
+const Utils = require('../../util.js');
 
 function take_action(state, tableID) {
 	const hand = state.hands[state.ourPlayerIndex];

@@ -1,4 +1,4 @@
-const Utils = require('./util.js');
+const Utils = require('../../util.js');
 
 function find_chop(hand) {
 	for (let i = hand.length - 1; i >= 0; i--) {
@@ -48,14 +48,6 @@ function determine_focus(hand, list) {
 	}
 }
 
-function good_touch_elim(hand, cards, ignoreOrders = []) {
-	for (const card of hand) {
-		if (card.clued && !ignoreOrders.includes(card.order)) {
-			card.inferred = Utils.subtractCards(card.inferred, cards);
-		}
-	}
-}
-
 function bad_touch_num(state, target, cards) {
 	let count = 0;
 	for (const card of cards) {
@@ -93,4 +85,4 @@ function bad_touch_num(state, target, cards) {
 	return count;
 }
 
-module.exports = { find_chop, find_finesse_pos, determine_focus, good_touch_elim, bad_touch_num };
+module.exports = { find_chop, find_finesse_pos, determine_focus, bad_touch_num };

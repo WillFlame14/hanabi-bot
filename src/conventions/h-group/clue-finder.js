@@ -1,11 +1,19 @@
-const { ACTION } = require('./action-helper.js');
 const { determine_clue } = require('./clue-helper.js');
 const { find_chop } = require('./hanabi-logic.js');
-const Utils = require('./util.js');
+const { ACTION } = require('../../basics.js');
+const Utils = require('../../util.js');
+
+function valid_play(state, target, card) {
+	const { clued, finessed, suitIndex, rank } = card;
+
+	return !clued && !finessed &&												// not already touched
+		rank <= state.max_ranks[suitIndex] &&									// not new trash
+		rank === state.hypo_stacks[suitIndex] + 1 &&							// playable
+		!Utils.visibleFind(state, target, suitIndex, rank).some(c => c.clued);	// not clued elsewhere
+}
 
 function find_clues(state) {
-	const play_clues = [];
-	const save_clues = [];
+	const play_clues = [], save_clues = [];
 
 	// Find all valid clues
 	for (let target = 0; target < state.numPlayers; target++) {
@@ -25,23 +33,14 @@ function find_clues(state) {
 			const card = hand[cardIndex];
 			const { suitIndex, rank } = card;
 
-			if (!card.clued && !card.finessed && rank <= state.max_ranks[suitIndex]) {
+			if (valid_play(state, target, card)) {
 				// Play clue
-				const next_playable_rank = state.hypo_stacks[suitIndex] + 1;
+				const clue = determine_clue(state, target, card);
+				if (clue !== undefined) {
+					play_clues[target].push(clue);
 
-				// Do not clue cards that have already been clued
-				if (Utils.visibleFind(state, target, suitIndex, rank).some(c => c.clued)) {
-					continue;
-				}
-
-				if (next_playable_rank === rank) {
-					const clue = determine_clue(state, target, card);
-					if (clue !== undefined) {
-						play_clues[target].push(clue);
-
-						if (cardIndex === chopIndex) {
-							save_clues[target] = clue;
-						}
+					if (cardIndex === chopIndex) {
+						save_clues[target] = clue;
 					}
 				}
 

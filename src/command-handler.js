@@ -1,7 +1,12 @@
 const Utils = require('./util.js');
 const { handle_action } = require('./action-handler.js');
-const { CLUE } = require('./action-helper.js');
-const { take_action } = require('./take-action.js');
+const { CLUE } = require('./basics.js');
+
+const HGroup = require('./conventions/h-group/_export.js');
+
+const conventions = {
+	HGroup
+};
 
 let self, tables = {}, state;
 
@@ -101,7 +106,7 @@ const handle = {
 
 		// If we are going first, we need to take an action now
 		if (state.ourPlayerIndex === 0) {
-			setTimeout(() => take_action(state, data.tableID), 3000);
+			setTimeout(() => state.take_action(state, data.tableID), 3000);
 		}
 	},
 	// Received at the beginning of the game, with information about the game
@@ -140,6 +145,10 @@ const handle = {
 				state.all_possible.push({ suitIndex, rank });
 			}
 		}
+
+		// Initialize convention set
+		const convention = process.env.MODE || 'HGroup';
+		Object.assign(state, conventions[convention]);
 
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });

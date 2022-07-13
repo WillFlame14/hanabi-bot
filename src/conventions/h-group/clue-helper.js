@@ -1,6 +1,6 @@
-const { ACTION } = require('./action-helper.js');
 const { determine_focus, bad_touch_num } = require('./hanabi-logic.js');
-const Utils = require('./util.js');
+const { ACTION } = require('../../basics.js');
+const Utils = require('../../util.js');
 
 function determine_clue(state, target, card) {
 	const { suitIndex, rank } = card;
