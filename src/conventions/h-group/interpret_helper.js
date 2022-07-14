@@ -6,7 +6,7 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 	for (let i = 0; i < state.numPlayers; i++) {
 		const hand = state.hands[i];
 
-		const known_connecting = hand.find(card => card.clued &&
+		const known_connecting = hand.find(card =>
 			(card.possible.length === 1 && Utils.cardMatch(card.possible[0], suitIndex, rank)) ||
 			(card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, rank))
 		);

@@ -126,6 +126,8 @@ const handle = {
 			discard_stacks: [],
 			all_possible: [],
 			max_ranks: [],
+			history: [],
+			actionList: []
 		}
 
 		const HAND_SIZES = [-1, -1, 5, 5, 4, 3, 3];

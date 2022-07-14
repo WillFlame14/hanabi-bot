@@ -2,6 +2,14 @@ const { good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('
 const Utils = require('./util.js');
 
 function handle_action(state, action, tableID, catchup = false) {
+	const save_state = Utils.objClone(state);
+	// Avoid storing unnecessary and recursive structures
+	save_state.actionList = undefined;
+	save_state.history = undefined;
+
+	state.history.push(save_state);
+	state.actionList.push(action);
+
 	switch(action.type) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
@@ -61,7 +69,8 @@ function handle_action(state, action, tableID, catchup = false) {
 				finessed: false,
 				possible: Utils.objClone(state.all_possible),
 				inferred: Utils.objClone(state.all_possible),
-				waiting_finesse_players: []
+				waiting_finesse_players: [],
+				reasoning: []
 			});
 
 			// We can't see our own cards, but we can see others' at least

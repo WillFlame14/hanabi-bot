@@ -27,6 +27,7 @@ function interpret_clue(state, action) {
 			card.possible = Utils.subtractCards(card.possible, new_possible);
 			card.inferred = Utils.subtractCards(card.inferred, new_possible);
 		}
+		card.reasoning.push(state.history.length - 1);
 	}
 
 	// Touched cards should also obey good touch principle

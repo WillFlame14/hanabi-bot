@@ -97,6 +97,8 @@ function writeNote(card, tableID) {
 		note = `[f] [${note}]`;
 	}
 
+	note = `t${card.reasoning.at(-1)}: ${note}`;
+
 	sendCmd('note', { tableID, order: card.order, note });
 }
 
