@@ -2,12 +2,6 @@ const { good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('
 const Utils = require('./util.js');
 
 function handle_action(state, action, tableID, catchup = false) {
-	const save_state = Utils.objClone(state);
-	// Avoid storing unnecessary and recursive structures
-	save_state.actionList = undefined;
-	save_state.history = undefined;
-
-	state.history.push(save_state);
 	state.actionList.push(action);
 
 	switch(action.type) {
@@ -70,7 +64,8 @@ function handle_action(state, action, tableID, catchup = false) {
 				possible: Utils.objClone(state.all_possible),
 				inferred: Utils.objClone(state.all_possible),
 				waiting_finesse_players: [],
-				reasoning: []
+				reasoning: [],
+				reasoning_turn: []
 			});
 
 			// We can't see our own cards, but we can see others' at least
@@ -117,9 +112,16 @@ function handle_action(state, action, tableID, catchup = false) {
 					}
 				}
 			}
+			state.turn_count++;
 			break;
 		case 'play': {
 			const { order, playerIndex, rank, suitIndex } = action;
+			const card = Utils.findOrder(state.hands[playerIndex], order);
+
+			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
+			if (!card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank))) {
+				//rewind(state, card.reasoning.pop(), order, suitIndex, rank, tableID);
+			}
 			remove_card_from_hand(state.hands[playerIndex], order);
 
 			state.play_stacks[suitIndex] = rank;
@@ -143,6 +145,36 @@ function handle_action(state, action, tableID, catchup = false) {
 		default:
 			break;
 	}
+}
+
+function rewind(state, action_index, order, suitIndex, rank, tableID) {
+	console.log('rewinding to action_index', action_index);
+	const new_state = Utils.objClone(state.blank);
+	new_state.blank = Utils.objClone(new_state);
+	const history = state.actionList.slice(0, action_index);
+
+	// Get up to speed
+	for (const action of history) {
+		handle_action(new_state, action, tableID, true);
+	}
+
+	const card = Utils.findOrder(new_state.hands[new_state.ourPlayerIndex], order);
+	if (card === undefined) {
+		console.log('Could not find card to rewrite!');
+		new_state = state;
+	}
+	card.possible = [{suitIndex, rank}];
+	console.log('Rewriting order', order, 'to', Utils.cardToString({suitIndex, rank}));
+
+	// Redo all the following actions
+	const future = state.actionList.slice(action_index);
+	for (const action of future) {
+		handle_action(new_state, action, tableID, true);
+	}
+
+	// Overwrite state
+	Object.assign(state, new_state);
+	console.log('hand state after rewind', Utils.logHand(state.hands[state.ourPlayerIndex]));
 }
 
 module.exports = { handle_action };

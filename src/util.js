@@ -74,7 +74,24 @@ function subtractCards(cards1, cards2) {
 }
 
 function objClone(obj) {
-	return JSON.parse(JSON.stringify(obj));
+	if (typeof obj === 'object' && !Array.isArray(obj)) {
+		console.log('cloning object', obj);
+		const new_obj = {};
+		for (const [name, value] of Object.entries(obj)) {
+			if (typeof value === 'function') {
+				console.log('assigning function', name);
+				new_obj[name] = value;
+			}
+			else {
+				new_obj[name] = JSON.parse(JSON.stringify(value));
+			}
+		}
+		console.log(new_obj);
+		return new_obj;
+	}
+	else {
+		return JSON.parse(JSON.stringify(obj));
+	}
 }
 
 function cardToString(card) {
@@ -97,7 +114,7 @@ function writeNote(card, tableID) {
 		note = `[f] [${note}]`;
 	}
 
-	note = `t${card.reasoning.at(-1)}: ${note}`;
+	note = `t${card.reasoning_turn.at(-1)}: ${note}`;
 
 	sendCmd('note', { tableID, order: card.order, note });
 }

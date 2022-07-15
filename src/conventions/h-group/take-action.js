@@ -16,7 +16,7 @@ function take_action(state, tableID) {
 		for (let i = 1; i < state.numPlayers; i++) {
 			const target = (state.ourPlayerIndex + i) % state.numPlayers;
 			const playable_cards = find_playables(state.play_stacks, state.hands[target]);
-			const trash_cards = find_known_trash(state.play_stacks, state.max_ranks, state.hands[target]);
+			const trash_cards = find_known_trash(state, state.hands[target]);
 
 			// They require a save clue and don't have a playable or trash
 			if (save_clues[target] !== undefined && playable_cards.length === 0 && trash_cards.length === 0) {
@@ -43,34 +43,12 @@ function take_action(state, tableID) {
 
 	// Then, look for playables or trash in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
-	const trash_cards = find_known_trash(state.play_stacks, state.max_ranks, hand);
+	const trash_cards = find_known_trash(state, hand);
 
-	// Determine if any cards are clued duplicates, and if so, perform a sarcastic discard
-	for (const card of hand) {
-		if (!card.clued) {
-			continue;
-		}
-		let all_duplicates = true;
-		// Playable card from inference or from known
-		const possibilities = (card.inferred.length !== 0) ? card.inferred : card.possible;
-		for (const possible of possibilities) {
-			// Find all duplicates, excluding itself
-			const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, possible.suitIndex, possible.rank).filter(c => c.order !== card.order);
-
-			// No duplicates or none of duplicates are clued
-			if (duplicates.length === 0 || !duplicates.some(c => c.clued)) {
-				all_duplicates = false;
-				break;
-			}
-		}
-
-		if (all_duplicates) {
-			trash_cards.unshift(card);
-			playable_cards = playable_cards.filter(c => c.order !== card.order);
-			break;
-		}
-	}
+	// Remove sarcastic discards from playables
+	playable_cards = Utils.subtractCards(playable_cards, trash_cards);
 	console.log('playable cards', Utils.logHand(playable_cards));
+	console.log('trash cards', Utils.logHand(trash_cards));
 
 	// No saves needed, so play
 	if (playable_cards.length > 0) {

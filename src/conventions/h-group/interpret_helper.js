@@ -12,6 +12,7 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 		);
 
 		if (known_connecting !== undefined) {
+			console.log(`found known ${Utils.cardToString({ suitIndex, rank })} in ${state.playerNames[i]}'s hand`);
 			return { type: 'known', reacting: i, card: known_connecting };
 		}
 	}

@@ -28,7 +28,7 @@ function find_clues(state) {
 		const hand = state.hands[target];
 		const chopIndex = find_chop(hand);
 
-		console.log('hypo stacks in clue finder:', state.hypo_stacks);
+		console.log('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 		for (let cardIndex = chopIndex; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
 			const { suitIndex, rank } = card;
@@ -43,30 +43,32 @@ function find_clues(state) {
 						save_clues[target] = clue;
 					}
 				}
-
+			}
+			else if (cardIndex === chopIndex) {
 				// Save clue
-				if (cardIndex === chopIndex) {
-					const chop = hand[chopIndex];
-					// TODO: See if someone else can save
-					if (Utils.isCritical(state, chop.suitIndex, chop.rank)) {
-						console.log('saving critical card', Utils.cardToString(chop));
-						if (chop.rank === 5) {
-							save_clues[target] = { type: ACTION.RANK, value: 5, target };
-						}
-						else {
-							// The card is on chop, so it can always be focused
-							save_clues[target] = determine_clue(state, target, card);
+				const chop = hand[chopIndex];
+				// TODO: See if someone else can save
+				if (Utils.isCritical(state, chop.suitIndex, chop.rank)) {
+					console.log('saving critical card', Utils.cardToString(chop));
+					if (chop.rank === 5) {
+						save_clues[target] = { type: ACTION.RANK, value: 5, target };
+					}
+					else {
+						// The card is on chop, so it can always be focused
+						save_clues[target] = determine_clue(state, target, card);
+					}
+				}
+				else if (chop.rank === 2) {
+					// Play stack hasn't started and other copy of 2 isn't visible (to us)
+					if (state.play_stacks[chop.suitIndex] === 0 && Utils.visibleFind(state, state.ourPlayerIndex, chop.suitIndex, 2).length === 1) {
+						// Also check if not reasonably certain in our hand
+						if(!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && Utils.cardMatch(c.inferred[0], suitIndex, rank))) {
+							save_clues[target] = { type: ACTION.RANK, value: 2, target };
 						}
 					}
-					else if (chop.rank === 2) {
-						// Play stack hasn't started and other copy of 2 isn't visible (to us)
-						if (state.play_stacks[chop.suitIndex] === 0 && Utils.visibleFind(state, state.ourPlayerIndex, chop.suitIndex, 2).length === 1) {
-							// Also check if not reasonably certain in our hand
-							if(!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && Utils.cardMatch(c.inferred[0], suitIndex, rank))) {
-								save_clues[target] = { type: ACTION.RANK, value: 2, target };
-							}
-						}
-					}
+				}
+				else {
+					console.log('not saving card', Utils.cardToString(chop), 'on chop');
 				}
 			}
 		}
@@ -90,7 +92,11 @@ function find_tempo_clues(state) {
 		const hand = state.hands[target];
 		for (const card of hand) {
 			// Card must be clued and playable
-			if (card.clued && card.inferred.length > 1 && state.hypo_stacks[card.suitIndex] + 1 === card.rank) {
+			if (card.clued && state.hypo_stacks[card.suitIndex] + 1 === card.rank) {
+				// Card is known playable
+				if (card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank)) {
+					continue;
+				}
 				const clue = determine_clue(state, target, card);
 				if (clue !== undefined) {
 					tempo_clues[target].push(clue);

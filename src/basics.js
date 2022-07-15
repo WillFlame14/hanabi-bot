@@ -111,16 +111,27 @@ function find_playables(stacks, hand) {
 	return playables;
 }
 
-function find_known_trash(play_stacks, max_ranks, hand) {
+function find_known_trash(state, hand) {
 	const trash = [];
 
 	for (const card of hand) {
+		if (card.inferred.length === 0) {
+			trash.push(card);
+			continue;
+		}
+
 		let can_discard = true;
-		for (const possible of card.possible) {
+		for (const possible of (card.suitIndex !== -1 ? card.possible : card.inferred)) {
 			const { rank, suitIndex } = possible;
-			if (rank > play_stacks[suitIndex] && rank <= max_ranks[suitIndex]) {
-				can_discard = false;
-				break;
+
+			// Card is not trash
+			if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
+				// Card is not known duplicated in another hand (NOT our own, we can play first)
+				const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank, state.ourPlayerIndex).filter(c => c.order !== card.order);
+				if (duplicates.length === 0 || !duplicates.some(c => c.clued)) {
+					can_discard = false;
+					break;
+				}
 			}
 		}
 		if (can_discard) {
@@ -130,9 +141,9 @@ function find_known_trash(play_stacks, max_ranks, hand) {
 	return trash;
 }
 
-function good_touch_elim(hand, cards, ignoreOrders = []) {
+function good_touch_elim(hand, cards, options = {}) {
 	for (const card of hand) {
-		if (card.clued && !ignoreOrders.includes(card.order)) {
+		if (card.clued && (options.ignoreOrders === undefined || !options.ignoreOrders.includes(card.order))) {
 			card.inferred = Utils.subtractCards(card.inferred, cards);
 		}
 	}

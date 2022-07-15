@@ -51,7 +51,7 @@ const handle = {
 		}
 	},
 	// Received when an action is taken in the current active game
-	gameAction: (data) => {
+	gameAction: (data, catchup = false) => {
 		const { action, tableID } = data;
 
 		switch (action.type) {
@@ -92,20 +92,22 @@ const handle = {
 				break;
 		}
 
-		handle_action(state, action, tableID);
+		handle_action(state, action, tableID, catchup);
 	},
 	// Received at the beginning of the game, as a list of all actions that have happened so far
 	gameActionList: (data) => {
 		for (let i = 0; i < data.list.length - 1; i++) {
-			handle_action(state, data.list[i], data.tableID, true);
+			//handle_action(state, data.list[i], data.tableID, true);
+			handle.gameAction({ action: data.list[i], tableID: data.tableID }, true);
 		}
-		handle_action(state, data.list.at(-1), data.tableID);
+		handle.gameAction({ action: data.list.at(-1), tableID: data.tableID });
+		//handle_action(state, data.list.at(-1), data.tableID);
 
 		// Send "loaded" to let server know that we have "finished loading the UI"
 		Utils.sendCmd('loaded', { tableID: data.tableID });
 
 		// If we are going first, we need to take an action now
-		if (state.ourPlayerIndex === 0) {
+		if (state.ourPlayerIndex === 0 && state.turn_count === 0) {
 			setTimeout(() => state.take_action(state, data.tableID), 3000);
 		}
 	},
@@ -115,6 +117,7 @@ const handle = {
 
 		// Initialize global game state
 		state = {
+			turn_count: 0,
 			clue_tokens: 8,
 			playerNames,
 			numPlayers: playerNames.length,
@@ -126,7 +129,6 @@ const handle = {
 			discard_stacks: [],
 			all_possible: [],
 			max_ranks: [],
-			history: [],
 			actionList: []
 		}
 
@@ -151,6 +153,10 @@ const handle = {
 		// Initialize convention set
 		const convention = process.env.MODE || 'HGroup';
 		Object.assign(state, conventions[convention]);
+
+		// Save blank state
+		state.blank = Utils.objClone(state);
+		//state.blank.blank = Utils.objClone(state.blank);
 
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });
