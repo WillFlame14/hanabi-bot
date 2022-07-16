@@ -1,3 +1,4 @@
+const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function find_chop(hand) {
@@ -26,7 +27,7 @@ function find_finesse_pos(hand, already_finessed = 0) {
 
 function determine_focus(hand, list) {
 	const chopIndex = find_chop(hand);
-	// console.log('determining focus with chopIndex', chopIndex, 'list', list, 'chop card', hand[chopIndex]);
+	logger.debug('determining focus with chopIndex', chopIndex, 'list', list, 'chopIndex', chopIndex);
 
 	// Chop card exists, check for chop focus
 	if (chopIndex !== -1 && list.includes(hand[chopIndex].order)) {

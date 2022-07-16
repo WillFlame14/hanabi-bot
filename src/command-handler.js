@@ -1,6 +1,7 @@
-const Utils = require('./util.js');
 const { handle_action } = require('./action-handler.js');
 const { CLUE } = require('./basics.js');
+const { logger } = require('./logger.js');
+const Utils = require('./util.js');
 
 const HGroup = require('./conventions/h-group/_export.js');
 
@@ -57,7 +58,7 @@ const handle = {
 		switch (action.type) {
 			case 'play': {
 				const playerName = state.playerNames[action.playerIndex];
-				console.log(`${playerName} plays ${Utils.cardToString(action)}`);
+				logger.info(`${playerName} plays ${Utils.cardToString(action)}`);
 				break;
 			}
 			case 'clue': {
@@ -71,23 +72,23 @@ const handle = {
 				else {
 					clue_value = action.clue.value;
 				}
-				console.log(`${playerName} clues ${clue_value} to ${targetName}`);
+				logger.info(`${playerName} clues ${clue_value} to ${targetName}`);
 				break;
 			}
 			case 'discard': {
 				const playerName = state.playerNames[action.playerIndex];
 
 				if (!action.failed) {
-					console.log(`${playerName} discards ${Utils.cardToString(action)}`);
+					logger.info(`${playerName} discards ${Utils.cardToString(action)}`);
 				}
 				else {
-					console.log(`${playerName} bombs ${Utils.cardToString(action)}`);
+					logger.info(`${playerName} bombs ${Utils.cardToString(action)}`);
 				}
 				break;
 			}
 			default:
 				if (!['status', 'turn', 'draw'].includes(data.action.type)) {
-					console.log('game action', data);
+					logger.info('game action', data);
 				}
 				break;
 		}
@@ -178,7 +179,7 @@ const handle = {
 	// Received when the current table starts a game
 	tableStart: (data) => Utils.sendCmd('getGameInfo1', { tableID: data.tableID }),
 	// Received when we send an invalid command
-	warning: (warn) => console.log('warn', warn),
+	warning: (warn) => logger.error(warn),
 	// Received when we first register a websocket
 	welcome: (data) => { self = data; },
 }

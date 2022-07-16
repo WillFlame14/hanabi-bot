@@ -1,7 +1,24 @@
 const { find_clues, find_tempo_clues, find_stall_clue } = require('./clue-finder.js');
 const { find_chop } = require('./hanabi-logic.js');
 const { ACTION, find_playables, find_known_trash } = require('../../basics.js');
+const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
+
+function select_play_clue(play_clues) {
+	let best_clue_value = -99;
+	let best_clue;
+
+	for (const clue of play_clues) {
+		const { bad_touch, touch } = clue;
+
+		if (touch - 2*bad_touch > best_clue_value) {
+			best_clue_value = touch - 2*bad_touch;
+			best_clue = clue;
+		}
+	}
+
+	return { clue: best_clue, value: best_clue_value };
+}
 
 function take_action(state, tableID) {
 	const hand = state.hands[state.ourPlayerIndex];
@@ -20,9 +37,10 @@ function take_action(state, tableID) {
 
 			// They require a save clue and don't have a playable or trash
 			if (save_clues[target] !== undefined && playable_cards.length === 0 && trash_cards.length === 0) {
-				if (play_clues[target].length > 0 && state.clue_tokens > 1) {
+				const { clue, value } = select_play_clue(play_clues[target]);
+				if (value > 0 && state.clue_tokens >= 2) {
 					// Can give them a play clue, so less urgent (need at least 2 clue tokens)
-					urgent_save_clues[1].push(play_clues[target][0]);
+					urgent_save_clues[1].push(clue);
 				}
 				else {
 					// Cannot give them a play clue, so more urgent
@@ -57,39 +75,19 @@ function take_action(state, tableID) {
 	}
 	else {
 		if (state.clue_tokens > 0) {
-			let best_touch_value = (state.cards_left < 5 ? -2 : 0);
-			let best_clue;
-
-			for (let i = 1; i < state.numPlayers; i++) {
-				const target = (state.ourPlayerIndex + i) % state.numPlayers;
-
-				// TODO: Only give selfish clues to save cards on chop
-				if (play_clues[target].length > 0) {
-					for (const clue of play_clues[target]) {
-						const { bad_touch, touch } = clue;
-
-						if (touch - 2*bad_touch > best_touch_value) {
-							best_touch_value = touch - 2*bad_touch;
-							best_clue = clue;
-						}
-					}
-				}
-			}
+			let all_play_clues = play_clues.flat();
 
 			// In 2 player, all tempo clues become valuable
 			if (state.numPlayers === 2) {
 				const otherPlayerIndex = (state.ourPlayerIndex + 1) % 2;
-				const tempo_clues = find_tempo_clues(state);
-
-				if (tempo_clues[otherPlayerIndex].length > 0 && best_clue === undefined) {
-					const { type, value } = tempo_clues[otherPlayerIndex][0];
-					Utils.sendCmd('action', { tableID, type, target: otherPlayerIndex, value });
-					return;
-				}
+				all_play_clues = all_play_clues.concat(find_tempo_clues(state)[otherPlayerIndex]);
 			}
 
-			if (best_clue !== undefined) {
-				const { type, target, value} = best_clue;
+			const { clue, value } = select_play_clue(all_play_clues, state.cards_left < 5 ? -2 : 0);
+			const minimum_clue_value = state.cards_left < 5 ? -2 : 0;
+
+			if (value > minimum_clue_value) {
+				const { type, target, value } = clue;
 				Utils.sendCmd('action', { tableID, type, target, value });
 				return;
 			}
@@ -122,6 +120,7 @@ function take_action(state, tableID) {
 
 		// Nothing else to do, so discard
 		const chopIndex = find_chop(hand);
+		logger.debug('discarding chop index', chopIndex);
 		let discard;
 
 		if (trash_cards.length > 0) {

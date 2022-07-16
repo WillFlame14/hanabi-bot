@@ -1,4 +1,5 @@
 const { good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics.js');
+const { LEVELS, logger } = require('./logger.js');
 const Utils = require('./util.js');
 
 function handle_action(state, action, tableID, catchup = false) {
@@ -7,6 +8,7 @@ function handle_action(state, action, tableID, catchup = false) {
 	switch(action.type) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
+			action.mistake = action.mistake || false;
 			state.interpret_clue(state, action);
 
 			state.clue_tokens--;
@@ -15,6 +17,14 @@ function handle_action(state, action, tableID, catchup = false) {
 		case 'discard': {
 			// {type: 'discard', playerIndex: 2, order: 12, suitIndex: 0, rank: 3, failed: true}
 			const { failed, order, playerIndex, rank, suitIndex } = action;
+			const card = Utils.findOrder(state.hands[playerIndex], order);
+
+			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
+			if (!card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank))) {
+				rewind(state, card.reasoning.pop(), order, suitIndex, rank, true, tableID);
+				return;
+			}
+
 			remove_card_from_hand(state.hands[playerIndex], order);
 
 			state.discard_stacks[suitIndex][rank - 1]++;
@@ -23,7 +33,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
 				// This card previously wasn't known to be all visible
 				if (state.all_possible.some(c => Utils.cardMatch(c, suitIndex, rank))) {
-					console.log('Discarded all copies of', Utils.cardToString(action), 'which was previously unknown.');
+					logger.info('Discarded all copies of', Utils.cardToString(action), 'which was previously unknown.');
 					for (const hand of state.hands) {
 						for (const card of hand) {
 							card.possible = Utils.subtractCards(card.possible, [{suitIndex, rank}]);
@@ -42,7 +52,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 				// Mistake discard or sarcastic discard (but unknown transfer location)
 				if (duplicates.length === 0 || duplicates[0].inferred.length > 1) {
-					console.log(`${state.playerNames[playerIndex]} discarded useful card ${Utils.cardToString(action)}, setting hypo stack ${rank - 1}`);
+					logger.info(`${state.playerNames[playerIndex]} discarded useful card ${Utils.cardToString(action)}, setting hypo stack ${rank - 1}`);
 					state.hypo_stacks[suitIndex] = rank - 1;
 				}
 			}
@@ -88,7 +98,7 @@ function handle_action(state, action, tableID, catchup = false) {
 						card.possible = Utils.subtractCards(card.possible, [{ suitIndex, rank }]);
 						card.inferred = Utils.subtractCards(card.inferred, [{ suitIndex, rank }]);
 					}
-					console.log(`removing ${Utils.cardToString({suitIndex, rank})} from hand and future possibilities`);
+					logger.info(`removing ${Utils.cardToString({suitIndex, rank})} from hand and future possibilities`);
 				}
 			}
 
@@ -120,7 +130,8 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
 			if (!card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank))) {
-				//rewind(state, card.reasoning.pop(), order, suitIndex, rank, tableID);
+				rewind(state, card.reasoning.pop(), order, suitIndex, rank, false, tableID);
+				return;
 			}
 			remove_card_from_hand(state.hands[playerIndex], order);
 
@@ -132,14 +143,24 @@ function handle_action(state, action, tableID, catchup = false) {
 			}
 
 			// Update hypo stacks
-			console.log('updating hypo stack (play)');
+			logger.debug('updating hypo stack (play)');
 			update_hypo_stacks(state, playerIndex, suitIndex, rank);
 
 			// Get a clue token back for playing a 5
 			if (rank === 5 && state.clue_tokens < 8) {
 				state.clue_tokens++;
 			}
-			// console.log('suit', suitIndex, 'now has play stack', state.play_stacks[suitIndex]);
+			break;
+		}
+		case 'rewind': {
+			const { order, playerIndex, suitIndex, rank } = action;
+
+			const card = Utils.findOrder(state.hands[playerIndex], order);
+			if (card === undefined) {
+				throw new Error('Could not find card to rewrite!');
+			}
+			card.possible = [{suitIndex, rank}];
+			card.finessed = true;
 			break;
 		}
 		default:
@@ -147,34 +168,40 @@ function handle_action(state, action, tableID, catchup = false) {
 	}
 }
 
-function rewind(state, action_index, order, suitIndex, rank, tableID) {
-	console.log('rewinding to action_index', action_index);
-	const new_state = Utils.objClone(state.blank);
+function rewind(state, action_index, order, suitIndex, rank, bomb, tableID) {
+	logger.info('rewinding to action_index', action_index);
+	let new_state = Utils.objClone(state.blank);
 	new_state.blank = Utils.objClone(new_state);
 	const history = state.actionList.slice(0, action_index);
+
+	logger.setLevel(LEVELS.WARN);
 
 	// Get up to speed
 	for (const action of history) {
 		handle_action(new_state, action, tableID, true);
 	}
 
-	const card = Utils.findOrder(new_state.hands[new_state.ourPlayerIndex], order);
-	if (card === undefined) {
-		console.log('Could not find card to rewrite!');
-		new_state = state;
-	}
-	card.possible = [{suitIndex, rank}];
-	console.log('Rewriting order', order, 'to', Utils.cardToString({suitIndex, rank}));
+	logger.setLevel(LEVELS.INFO);
+
+	// Rewrite and save as a rewind action
+	const known_action = { type: 'rewind', order, playerIndex: new_state.ourPlayerIndex, suitIndex, rank };
+	handle_action(new_state, known_action, tableID, true);
+	logger.warn('Rewriting order', order, 'to', Utils.cardToString({suitIndex, rank}));
+
+	const pivotal_action = state.actionList[action_index];
+	pivotal_action.mistake = bomb;
+	logger.info('pivotal action', pivotal_action);
+	handle_action(new_state, pivotal_action, tableID, true);
 
 	// Redo all the following actions
-	const future = state.actionList.slice(action_index);
+	const future = state.actionList.slice(action_index + 1);
 	for (const action of future) {
 		handle_action(new_state, action, tableID, true);
 	}
 
 	// Overwrite state
 	Object.assign(state, new_state);
-	console.log('hand state after rewind', Utils.logHand(state.hands[state.ourPlayerIndex]));
+	logger.info('hand state after rewind', Utils.logHand(state.hands[state.ourPlayerIndex]));
 }
 
 module.exports = { handle_action };

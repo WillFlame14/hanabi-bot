@@ -1,3 +1,5 @@
+const { logger } = require('./logger.js');
+
 let ws;
 
 /**
@@ -13,7 +15,7 @@ function sendChat(recipient, msg) {
 
 function sendCmd(command, arg) {
 	const cmd = command + ' ' + JSON.stringify(arg);
-	console.log('sending cmd ' + cmd);
+	logger.debug('sending cmd ' + cmd);
 	ws.send(cmd);
 }
 
@@ -75,18 +77,15 @@ function subtractCards(cards1, cards2) {
 
 function objClone(obj) {
 	if (typeof obj === 'object' && !Array.isArray(obj)) {
-		console.log('cloning object', obj);
 		const new_obj = {};
 		for (const [name, value] of Object.entries(obj)) {
 			if (typeof value === 'function') {
-				console.log('assigning function', name);
 				new_obj[name] = value;
 			}
 			else {
 				new_obj[name] = JSON.parse(JSON.stringify(value));
 			}
 		}
-		console.log(new_obj);
 		return new_obj;
 	}
 	else {

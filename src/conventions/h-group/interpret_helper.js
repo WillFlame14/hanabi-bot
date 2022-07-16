@@ -1,8 +1,9 @@
 const { find_finesse_pos } = require('./hanabi-logic.js');
+const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function find_connecting(state, giver, target, suitIndex, rank) {
-	console.log('looking for connecting', Utils.cardToString({suitIndex, rank}));
+	logger.info('looking for connecting', Utils.cardToString({suitIndex, rank}));
 	for (let i = 0; i < state.numPlayers; i++) {
 		const hand = state.hands[i];
 
@@ -12,7 +13,7 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 		);
 
 		if (known_connecting !== undefined) {
-			console.log(`found known ${Utils.cardToString({ suitIndex, rank })} in ${state.playerNames[i]}'s hand`);
+			logger.info(`found known ${Utils.cardToString({ suitIndex, rank })} in ${state.playerNames[i]}'s hand`);
 			return { type: 'known', reacting: i, card: known_connecting };
 		}
 	}
@@ -29,12 +30,12 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 			const finesse_pos = find_finesse_pos(hand);
 
 			if (prompt_pos !== -1 && Utils.cardMatch(hand[prompt_pos], suitIndex, rank)) {
-				console.log(`found prompt ${Utils.cardToString(hand[prompt_pos])} in ${state.playerNames[i]}'s hand`);
+				logger.info(`found prompt ${Utils.cardToString(hand[prompt_pos])} in ${state.playerNames[i]}'s hand`);
 				return { type: 'prompt', reacting: i, card: hand[prompt_pos], self: false };
 			}
 			// Prompt takes priority over finesse
 			else if (finesse_pos !== -1 && Utils.cardMatch(hand[finesse_pos], suitIndex, rank)) {
-				console.log(`found finesse ${Utils.cardToString(hand[finesse_pos])} in ${state.playerNames[i]}'s hand`);
+				logger.info(`found finesse ${Utils.cardToString(hand[finesse_pos])} in ${state.playerNames[i]}'s hand`);
 				return { type: 'finesse', reacting: i, card: hand[finesse_pos], self: false };
 			}
 		}
@@ -42,7 +43,7 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 }
 
 function find_own_finesses(state, giver, target, suitIndex, rank) {
-	console.log('finding finesse for (potentially) clued card', Utils.cardToString({suitIndex, rank}));
+	logger.info('finding finesse for (potentially) clued card', Utils.cardToString({suitIndex, rank}));
 	const our_hand = state.hands[state.ourPlayerIndex];
 	const connections = [];
 
@@ -57,15 +58,17 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 		else {
 			const prompted = our_hand.find(c => c.clued && !already_prompted.includes(c.order) && c.inferred.some(inf => Utils.cardMatch(inf, suitIndex, i)));
 			if (prompted !== undefined) {
-				console.log('found prompt in our hand');
+				logger.info('found prompt in our hand');
 				connections.push({ type: 'prompt', card: prompted, self: true });
 				already_prompted.push(prompted.order)
 			}
 			else {
 				const finesse_pos = find_finesse_pos(our_hand, already_finessed);
+				console.log('checking for finesse pos', finesse_pos, 'order', our_hand[finesse_pos].order);
+				console.log('our hand', Utils.logHand(our_hand));
 
 				if (finesse_pos !== -1 && our_hand[finesse_pos].possible.some(c => Utils.cardMatch(c, suitIndex, i))) {
-					console.log('found finesse in our hand');
+					logger.info('found finesse in our hand');
 					connections.push({ type: 'finesse', card: our_hand[finesse_pos], self: true });
 					already_finessed++;
 				}

@@ -1,10 +1,11 @@
 const { determine_focus } = require('./hanabi-logic.js');
 const { find_connecting, find_own_finesses } = require('./interpret_helper.js');
 const { CLUE, find_possibilities, find_bad_touch, update_hypo_stacks, good_touch_elim } = require('../../basics.js');
+const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function interpret_clue(state, action) {
-	const { clue, giver, list, target } = action;
+	const { clue, giver, list, target, mistake } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
 	// Going through each card that was clued
@@ -39,7 +40,7 @@ function interpret_clue(state, action) {
 			card.inferred = Utils.subtractCards(card.inferred, bad_touch);
 		}
 	}
-	console.log('bad touch', bad_touch.map(c => Utils.cardToString(c)).join(','));
+	logger.debug('bad touch', bad_touch.map(c => Utils.cardToString(c)).join(','));
 
 	let found_connecting = false;
 	let save = false;
@@ -47,12 +48,11 @@ function interpret_clue(state, action) {
 	// Try to determine all the possible inferences of the card
 	if (focused_card.inferred.length > 1) {
 		const focus_possible = [];
-		console.log('hypo/max stacks in clue interpretation:', state.hypo_stacks, state.max_ranks);
+		logger.info('hypo/max stacks in clue interpretation:', state.hypo_stacks, state.max_ranks);
 
 		if (clue.type === CLUE.COLOUR) {
 			const suitIndex = clue.value;
 			let next_playable_rank = state.hypo_stacks[suitIndex] + 1;
-			//console.log('determining if play clue. suitIndex:', suitIndex, 'play:', state.play_stacks[suitIndex], 'hypo:', state.hypo_stacks[suitIndex]);
 
 			// Play clue
 			focus_possible.push({ suitIndex, rank: next_playable_rank });
@@ -102,8 +102,6 @@ function interpret_clue(state, action) {
 			// Play clue
 			for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
 				let stack_rank = state.hypo_stacks[suitIndex] + 1;
-
-				//console.log('determining if play clue. suitIndex:', suitIndex, 'play:', state.play_stacks[suitIndex], 'hypo:', state.hypo_stacks[suitIndex]);
 
 				// TODO: look for 1-away finesse
 				if (rank === stack_rank) {
@@ -171,11 +169,12 @@ function interpret_clue(state, action) {
 			}
 		}
 		focused_card.inferred = Utils.intersectCards(focused_card.inferred, focus_possible);
-		console.log('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)).join(','));
+		logger.warn('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)).join(','));
 	}
 
 	// Not a save, so might be a finesse
-	if (!save) {
+	logger.info('mistake?', mistake);
+	if (!save && !mistake) {
 		let feasible = false, connections, conn_suit;
 
 		// No idea what the card could be
@@ -189,7 +188,7 @@ function interpret_clue(state, action) {
 				for (const card of focused_card.possible) {
 					({ feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank));
 					const blind_plays = connections.filter(conn => conn.self).length;
-					console.log('feasible?', feasible, 'blind plays', blind_plays);
+					logger.info('feasible?', feasible, 'blind plays', blind_plays);
 
 					if (feasible && blind_plays < min_blind_plays) {
 						conn_save = connections;
@@ -208,9 +207,9 @@ function interpret_clue(state, action) {
 				conn_suit = focused_card.suitIndex;
 			}
 		}
-		// Card clued in someone else's hand, so we know exactly what it is
-		else if (target !== state.ourPlayerIndex) {
-			const { suitIndex, rank } = focused_card;
+		// We know exactly what card it is
+		else if (focused_card.possible.length === 1) {
+			const { suitIndex, rank } = focused_card.possible[0];
 
 			// Card doesn't match inference, or card isn't playable
 			if (!focused_card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank)) || (rank > state.hypo_stacks[suitIndex] + 1 && !found_connecting)) {
@@ -234,7 +233,7 @@ function interpret_clue(state, action) {
 		}
 
 		if (feasible) {
-			console.log('finesse possible!');
+			logger.info('finesse possible!');
 			let next_rank = state.hypo_stacks[conn_suit] + 1;
 			for (const connection of connections) {
 				const { type, card } = connection;
@@ -257,16 +256,16 @@ function interpret_clue(state, action) {
 	// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
 	if (focused_card.inferred.length === 1) {
 		// Don't elim on the focused card
-		good_touch_elim(state.hands[target], focused_card.inferred, [focused_card.order]);
+		good_touch_elim(state.hands[target], focused_card.inferred, {ignore: [focused_card.order]});
 
 		// Update hypo stacks (need to check if was save?)
-		if (!save) {
+		if (!save && found_connecting) {
 			const { suitIndex, rank } = focused_card.inferred[0];
-			console.log('updating hypo stack (inference)');
+			logger.debug('updating hypo stack (inference)');
 			update_hypo_stacks(state, target, suitIndex, rank);
 		}
 	}
-	console.log('hand state after clue', Utils.logHand(state.hands[target]));
+	logger.debug('hand state after clue', Utils.logHand(state.hands[target]));
 
 	// Remove the newly_clued flag
 	for (const order of list) {

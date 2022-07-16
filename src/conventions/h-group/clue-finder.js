@@ -1,6 +1,7 @@
 const { determine_clue } = require('./clue-helper.js');
 const { find_chop } = require('./hanabi-logic.js');
 const { ACTION } = require('../../basics.js');
+const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function valid_play(state, target, card) {
@@ -28,7 +29,7 @@ function find_clues(state) {
 		const hand = state.hands[target];
 		const chopIndex = find_chop(hand);
 
-		console.log('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
+		logger.info('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 		for (let cardIndex = chopIndex; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
 			const { suitIndex, rank } = card;
@@ -49,7 +50,7 @@ function find_clues(state) {
 				const chop = hand[chopIndex];
 				// TODO: See if someone else can save
 				if (Utils.isCritical(state, chop.suitIndex, chop.rank)) {
-					console.log('saving critical card', Utils.cardToString(chop));
+					logger.warn('saving critical card', Utils.cardToString(chop));
 					if (chop.rank === 5) {
 						save_clues[target] = { type: ACTION.RANK, value: 5, target };
 					}
@@ -68,14 +69,14 @@ function find_clues(state) {
 					}
 				}
 				else {
-					console.log('not saving card', Utils.cardToString(chop), 'on chop');
+					logger.debug('not saving card', Utils.cardToString(chop), 'on chop');
 				}
 			}
 		}
 	}
 
-	console.log('found play clues', play_clues);
-	console.log('found save clues', save_clues);
+	logger.info('found play clues', play_clues);
+	logger.info('found save clues', save_clues);
 	return { play_clues, save_clues };
 }
 
@@ -152,7 +153,7 @@ function find_stall_clue(state, severity) {
 		}
 	}
 
-	console.log('all stall clues', stall_clues);
+	logger.info('all stall clues', stall_clues);
 
 	// Go through each priority
 	for (const clues of stall_clues) {

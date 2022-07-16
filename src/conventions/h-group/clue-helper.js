@@ -1,8 +1,10 @@
 const { determine_focus, bad_touch_num } = require('./hanabi-logic.js');
 const { ACTION } = require('../../basics.js');
+const { LEVELS, logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function determine_clue(state, target, card) {
+	logger.debug('determining clue to target card', Utils.cardToString(card));
 	const { suitIndex, rank } = card;
 	const hand = state.hands[target];
 
@@ -12,6 +14,7 @@ function determine_clue(state, target, card) {
 	const [colour_focus, rank_focus] = [colour_touch, rank_touch].map(cards => determine_focus(hand, cards.map(c => c.order)).focused_card);
 
 	let clue_type;
+	logger.debug(`colour_focused ${colour_focus.order === card.order} rank_focused ${rank_focus.order === card.order}`);
 
 	// Number clue doesn't focus, pick colour clue
 	if (colour_focus.order === card.order && rank_focus.order !== card.order) {
@@ -23,6 +26,7 @@ function determine_clue(state, target, card) {
 	}
 	// Both clues focus, determine more
 	else if (colour_focus.order === card.order && rank_focus.order === card.order) {
+		logger.debug(`colour_bad_touch ${colour_bad_touch} rank_bad_touch ${rank_bad_touch}`);
 		// Figure out which clue has less bad touch
 		if (colour_bad_touch < rank_bad_touch) {
 			clue_type = ACTION.COLOUR;
@@ -31,6 +35,7 @@ function determine_clue(state, target, card) {
 			clue_type = ACTION.RANK;
 		}
 		else {
+			logger.debug(`colour_touch ${colour_touch.length} rank_touch ${rank_touch.length}`);
 			// Figure out which clue touches more cards
 			// TODO: Should probably be which one "fills in" more cards
 			if (colour_touch.length >= rank_touch.length) {

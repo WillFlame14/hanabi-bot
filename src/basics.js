@@ -1,3 +1,4 @@
+const { logger } = require('./logger.js');
 const Utils = require('./util.js');
 
 const ACTION = {
@@ -68,7 +69,7 @@ function find_bad_touch(state, giver, target) {
 			}
 
 			if (state.play_stacks[suitIndex] < rank) {
-				console.log(`adding ${Utils.cardToString({suitIndex, rank})} to bad touch via ${method}`);
+				logger.debug(`adding ${Utils.cardToString({suitIndex, rank})} to bad touch via ${method}`);
 				bad_touch.push({suitIndex, rank});
 			}
 		}
@@ -78,7 +79,6 @@ function find_bad_touch(state, giver, target) {
 }
 
 function find_playables(stacks, hand) {
-	// console.log('finding playables with stack', stacks, 'and hand', hand);
 	const playables = [];
 
 	for (const card of hand) {
@@ -143,7 +143,7 @@ function find_known_trash(state, hand) {
 
 function good_touch_elim(hand, cards, options = {}) {
 	for (const card of hand) {
-		if (card.clued && (options.ignoreOrders === undefined || !options.ignoreOrders.includes(card.order))) {
+		if (card.clued && (options.ignore === undefined || !options.ignore.includes(card.order))) {
 			card.inferred = Utils.subtractCards(card.inferred, cards);
 		}
 	}
@@ -153,7 +153,7 @@ function remove_card_from_hand(hand, order) {
 	const card_index = hand.findIndex((card) => card.order === order);
 
 	if (card_index === undefined) {
-		console.log('could not find such card index!');
+		logger.error('could not find such card index!');
 		return;
 	}
 
@@ -170,11 +170,11 @@ function update_hypo_stacks(state, target, suitIndex, rank) {
 		// FIX: Not all of these cards can necessarily be prompted
 		// FIX: Unsure if only 'target' is enough
 		while (Utils.visibleFind(state, target, suitIndex, final_hypo_rank).filter(c => c.clued && c.inferred.length === 1).length !== 0) {
-			console.log('found connecting hypo card with rank', final_hypo_rank);
+			logger.info('found connecting hypo card with rank', final_hypo_rank);
 			final_hypo_rank++;
 		}
 		state.hypo_stacks[suitIndex] = final_hypo_rank - 1;
-		console.log('final hypo stack of', suitIndex, 'is', final_hypo_rank - 1);
+		logger.info('final hypo stack of', suitIndex, 'is', final_hypo_rank - 1);
 	}
 }
 
