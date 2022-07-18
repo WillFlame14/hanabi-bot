@@ -1,7 +1,7 @@
 # hanabi-bot
 A NodeJS bot that plays on the [hanab.live](https://hanab.live/) interface. Basic structure and ideas were taken from [Zamiell's example bot](https://github.com/Zamiell/hanabi-live-bot).
 
-Currently, the bot plays at around level 0.5 of H-Group. It can handle direct play clues, save clues, clue focus, and some general ideas of Good Touch Principle.
+Currently, the bot plays around level 2 of H-Group. It can accept some mistakes, but will eventually get confused if you don't play using the conventions.
 
 ## Running locally
 - You'll need to have NodeJS v16 or above.
