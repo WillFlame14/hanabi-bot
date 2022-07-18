@@ -9,8 +9,8 @@ function select_play_clue(play_clues) {
 	let best_clue;
 
 	for (const clue of play_clues) {
-		const { bad_touch, touch } = clue;
-		const clue_value = touch - 2.1*bad_touch;
+		const { bad_touch, touch, finesses } = clue;
+		const clue_value = 2*finesses + touch - 2.1*bad_touch;
 
 		if (clue_value > best_clue_value) {
 			best_clue_value = clue_value;

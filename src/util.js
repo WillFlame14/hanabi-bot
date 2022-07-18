@@ -150,8 +150,26 @@ function objClone(obj) {
 }
 
 function cardToString(card) {
+	let suitIndex, rank;
+	let append = '';
+
+	if (card.suitIndex !== -1) {
+		({ suitIndex, rank } = card);
+	}
+	else if (card.possible.length === 1) {
+		({ suitIndex, rank } = card.possible[0]);
+		append = '(known)';
+	}
+	else if (card.inferred.length === 1) {
+		({ suitIndex, rank } = card.inferred[0]);
+		append = '(infer)';
+	}
+	else {
+		return '(unknown)'
+	}
+
 	const colours = ['r', 'y', 'g', 'b', 'p'];
-	return colours[card.suitIndex] + card.rank;
+	return colours[suitIndex] + rank + append;
 }
 
 function logHand(hand) {
@@ -171,6 +189,7 @@ function logHand(hand) {
 
 		new_card.possible = card.possible.map(c => cardToString(c));
 		new_card.inferred = card.inferred.map(c => cardToString(c));
+		new_card.reasoning = card.reasoning_turn;
 		new_hand.push(new_card);
 	}
 	return new_hand;

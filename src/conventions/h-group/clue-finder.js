@@ -1,20 +1,54 @@
 const { determine_clue } = require('./clue-helper.js');
-const { find_chop } = require('./hanabi-logic.js');
+const { find_chop, find_finesse_pos } = require('./hanabi-logic.js');
 const { ACTION } = require('../../basics.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function valid_play(state, target, card) {
-	const { clued, finessed, suitIndex, rank } = card;
+	const { suitIndex, rank } = card;
 
-	return !clued && !finessed &&												// not already touched
-		rank <= state.max_ranks[suitIndex] &&									// not new trash
-		rank === state.hypo_stacks[suitIndex] + 1 &&							// playable
-		!Utils.visibleFind(state, target, suitIndex, rank).some(c => c.clued);	// not clued elsewhere
+	const finesses = state.hands.map(_ => 0);
+
+	const known_cards = state.hands.map(hand => hand.filter(card => card.possible.length === 1 || card.inferred.length === 1)).flat();
+	const p_cards = [], f_cards = [];
+
+	// Cannot prompt or finesse on self
+	for (let i = 1; i < state.numPlayers; i++) {
+		const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
+		const hand = state.hands[playerIndex];
+
+		p_cards.push(hand.find(c => c.clued));
+		f_cards.push(hand[find_finesse_pos(hand)]);
+	}
+
+	logger.info('known', known_cards.map(c => Utils.cardToString(c)));
+	logger.info('promptable', p_cards.filter(c => c !== undefined).map(c => Utils.cardToString(c)));
+	logger.info('finessable', f_cards.filter(c => c !== undefined).map(c => Utils.cardToString(c)));
+
+	for (let conn_rank = state.hypo_stacks[suitIndex] + 1; conn_rank < rank; conn_rank++) {
+		logger.info('looking for connecting', Utils.cardToString({suitIndex, rank: conn_rank}));
+		const all_cards = known_cards.concat(p_cards).concat(f_cards).filter(c => c !== undefined);
+
+		if (!all_cards.some(c => Utils.cardMatch(c, suitIndex, conn_rank))) {
+			return { valid: false };
+		}
+
+		const finessedPlayer = f_cards.findIndex(c => Utils.cardMatch(c, suitIndex, conn_rank));
+		if (finessedPlayer !== -1) {
+			finesses[finessedPlayer]++;
+
+			const f_hand = state.hands[finessedPlayer];
+			f_cards.splice(finessedPlayer, 1, f_hand[find_finesse_pos(f_hand, finesses[finessedPlayer])]);
+		}
+	}
+	logger.info(Utils.cardToString(card),'can be finessed!');
+	return { valid: true, finesses: finesses.reduce((sum, curr) => sum + curr, 0) };
 }
 
 function find_clues(state) {
 	const play_clues = [], save_clues = [];
+
+	logger.info('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
 	// Find all valid clues
 	for (let target = 0; target < state.numPlayers; target++) {
@@ -29,16 +63,23 @@ function find_clues(state) {
 		const hand = state.hands[target];
 		const chopIndex = find_chop(hand);
 
-		logger.info('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 		for (let cardIndex = chopIndex; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
 			const { suitIndex, rank } = card;
 
-			if (valid_play(state, target, card)) {
+			// Clued, finessed, trash or visible elsewhere
+			if (card.clued || card.finessed || rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex] ||
+				Utils.visibleFind(state, target, suitIndex, rank).some(c => c.clued)) {
+				continue;
+			}
+
+			const { valid, finesses } = valid_play(state, target, card);
+
+			if (valid) {
 				// Play clue
 				const clue = determine_clue(state, target, card);
 				if (clue !== undefined) {
-					play_clues[target].push(clue);
+					play_clues[target].push(Object.assign(clue, {finesses}));
 
 					if (cardIndex === chopIndex) {
 						save_clues[target] = clue;

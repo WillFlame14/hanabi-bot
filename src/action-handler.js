@@ -126,7 +126,7 @@ function handle_action(state, action, tableID, catchup = false) {
 						card.possible = Utils.subtractCards(card.possible, [{ suitIndex, rank }]);
 						card.inferred = Utils.subtractCards(card.inferred, [{ suitIndex, rank }]);
 					}
-					logger.info(`removing ${Utils.cardToString({suitIndex, rank})} from hand and future possibilities`);
+					logger.debug(`removing ${Utils.cardToString({suitIndex, rank})} from hand and future possibilities`);
 				}
 			}
 
