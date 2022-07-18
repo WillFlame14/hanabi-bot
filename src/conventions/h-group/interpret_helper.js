@@ -4,6 +4,12 @@ const Utils = require('../../util.js');
 
 function find_connecting(state, giver, target, suitIndex, rank) {
 	logger.info('looking for connecting', Utils.cardToString({suitIndex, rank}));
+
+	if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
+		logger.info('all cards in trash');
+		return;
+	}
+
 	for (let i = 0; i < state.numPlayers; i++) {
 		const hand = state.hands[i];
 
@@ -51,6 +57,11 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 	let already_finessed = 0;
 
 	for (let i = state.hypo_stacks[suitIndex] + 1; i < rank; i++) {
+		if (state.discard_stacks[suitIndex][i - 1] === Utils.CARD_COUNT[i - 1]) {
+			logger.info(`impossible to find ${Utils.cardToString({ suitIndex, rank: i })}, both cards in trash`);
+			break;
+		}
+
 		const other_connecting = find_connecting(state, giver, target, suitIndex, i);
 		if (other_connecting !== undefined) {
 			connections.push(other_connecting);
@@ -64,8 +75,6 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 			}
 			else {
 				const finesse_pos = find_finesse_pos(our_hand, already_finessed);
-				console.log('checking for finesse pos', finesse_pos, 'order', our_hand[finesse_pos].order);
-				console.log('our hand', Utils.logHand(our_hand));
 
 				if (finesse_pos !== -1 && our_hand[finesse_pos].possible.some(c => Utils.cardMatch(c, suitIndex, i))) {
 					logger.info('found finesse in our hand');

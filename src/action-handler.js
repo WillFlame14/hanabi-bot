@@ -1,6 +1,8 @@
-const { good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics.js');
+const { CLUE, good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics.js');
 const { LEVELS, logger } = require('./logger.js');
 const Utils = require('./util.js');
+
+let rewind_depth = 0;
 
 function handle_action(state, action, tableID, catchup = false) {
 	state.actionList.push(action);
@@ -8,6 +10,20 @@ function handle_action(state, action, tableID, catchup = false) {
 	switch(action.type) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
+			const { giver, target, clue } = action;
+
+			const playerName = state.playerNames[giver];
+			const targetName = state.playerNames[target];
+			let clue_value;
+
+			if (clue.type === CLUE.COLOUR) {
+				clue_value = ['red', 'yellow', 'green', 'blue', 'purple'][clue.value];
+			}
+			else {
+				clue_value = clue.value;
+			}
+			logger.info(`${playerName} clues ${clue_value} to ${targetName}`);
+
 			action.mistake = action.mistake || false;
 			state.interpret_clue(state, action);
 
@@ -17,11 +33,21 @@ function handle_action(state, action, tableID, catchup = false) {
 		case 'discard': {
 			// {type: 'discard', playerIndex: 2, order: 12, suitIndex: 0, rank: 3, failed: true}
 			const { failed, order, playerIndex, rank, suitIndex } = action;
+			const playerName = state.playerNames[action.playerIndex];
+
+			if (!action.failed) {
+				logger.info(`${playerName} discards ${Utils.cardToString(action)}`);
+			}
+			else {
+				logger.info(`${playerName} bombs ${Utils.cardToString(action)}`);
+			}
+
 			const card = Utils.findOrder(state.hands[playerIndex], order);
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-			if (!card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank))) {
-				rewind(state, card.reasoning.pop(), order, suitIndex, rank, true, tableID);
+			if (!card.rewinded && card.inferred.length > 0 && !card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank))) {
+				logger.info('all inferences', card.inferred.map(c => Utils.cardToString(c)));
+				rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, true, tableID);
 				return;
 			}
 
@@ -70,12 +96,14 @@ function handle_action(state, action, tableID, catchup = false) {
 				order, suitIndex, rank,
 				clued: false,
 				newly_clued: false,
+				prompted: false,
 				finessed: false,
 				possible: Utils.objClone(state.all_possible),
 				inferred: Utils.objClone(state.all_possible),
 				waiting_finesse_players: [],
 				reasoning: [],
-				reasoning_turn: []
+				reasoning_turn: [],
+				rewinded: false
 			});
 
 			// We can't see our own cards, but we can see others' at least
@@ -108,6 +136,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			break;
 		}
 		case 'gameOver':
+			logger.info('gameOver', action);
 			Utils.sendCmd('tableUnattend', { tableID });
 			break;
 		case 'turn':
@@ -126,11 +155,15 @@ function handle_action(state, action, tableID, catchup = false) {
 			break;
 		case 'play': {
 			const { order, playerIndex, rank, suitIndex } = action;
+			const playerName = state.playerNames[playerIndex];
+			logger.info(`${playerName} plays ${Utils.cardToString(action)}`);
+
 			const card = Utils.findOrder(state.hands[playerIndex], order);
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-			if (!card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank))) {
-				rewind(state, card.reasoning.pop(), order, suitIndex, rank, false, tableID);
+			if (!card.rewinded && !card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank))) {
+				logger.info('all inferences', card.inferred.map(c => Utils.cardToString(c)));
+				rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false, tableID);
 				return;
 			}
 			remove_card_from_hand(state.hands[playerIndex], order);
@@ -161,6 +194,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			}
 			card.possible = [{suitIndex, rank}];
 			card.finessed = true;
+			card.rewinded = true;
 			break;
 		}
 		default:
@@ -168,9 +202,14 @@ function handle_action(state, action, tableID, catchup = false) {
 	}
 }
 
-function rewind(state, action_index, order, suitIndex, rank, bomb, tableID) {
-	logger.info('rewinding to action_index', action_index);
-	let new_state = Utils.objClone(state.blank);
+function rewind(state, action_index, playerIndex, order, suitIndex, rank, bomb, tableID) {
+	if (rewind_depth > 2) {
+		throw new Error('attempted to rewind too many times!');
+	}
+	rewind_depth++;
+
+	logger.info(`expected ${Utils.cardToString({suitIndex, rank})}, rewinding to action_index ${action_index}`);
+	const new_state = Utils.objClone(state.blank);
 	new_state.blank = Utils.objClone(new_state);
 	const history = state.actionList.slice(0, action_index);
 
@@ -184,12 +223,12 @@ function rewind(state, action_index, order, suitIndex, rank, bomb, tableID) {
 	logger.setLevel(LEVELS.INFO);
 
 	// Rewrite and save as a rewind action
-	const known_action = { type: 'rewind', order, playerIndex: new_state.ourPlayerIndex, suitIndex, rank };
+	const known_action = { type: 'rewind', order, playerIndex, suitIndex, rank };
 	handle_action(new_state, known_action, tableID, true);
 	logger.warn('Rewriting order', order, 'to', Utils.cardToString({suitIndex, rank}));
 
 	const pivotal_action = state.actionList[action_index];
-	pivotal_action.mistake = bomb;
+	pivotal_action.mistake = bomb || rewind_depth > 1;
 	logger.info('pivotal action', pivotal_action);
 	handle_action(new_state, pivotal_action, tableID, true);
 
@@ -201,7 +240,7 @@ function rewind(state, action_index, order, suitIndex, rank, bomb, tableID) {
 
 	// Overwrite state
 	Object.assign(state, new_state);
-	logger.info('hand state after rewind', Utils.logHand(state.hands[state.ourPlayerIndex]));
+	rewind_depth = 0;
 }
 
 module.exports = { handle_action };

@@ -1,6 +1,6 @@
 const { determine_focus, bad_touch_num } = require('./hanabi-logic.js');
 const { ACTION } = require('../../basics.js');
-const { LEVELS, logger } = require('../../logger.js');
+const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function determine_clue(state, target, card) {

@@ -56,7 +56,8 @@ async function main() {
 	const ws = new WebSocket('wss://hanab.live/ws', { headers: { Cookie: cookie } });
 
 	// Pass the websocket to utils
-	Utils.wsInit(ws);
+	Utils.globalModify({ ws });
+	Utils.initConsole();
 
 	ws.on('open', () => console.log('Established websocket connection!'));
 	ws.on('error', (err) => console.log('Websocket error:', err));

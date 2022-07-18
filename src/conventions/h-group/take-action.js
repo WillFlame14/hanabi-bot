@@ -10,9 +10,10 @@ function select_play_clue(play_clues) {
 
 	for (const clue of play_clues) {
 		const { bad_touch, touch } = clue;
+		const clue_value = touch - 2.1*bad_touch;
 
-		if (touch - 2*bad_touch > best_clue_value) {
-			best_clue_value = touch - 2*bad_touch;
+		if (clue_value > best_clue_value) {
+			best_clue_value = clue_value;
 			best_clue = clue;
 		}
 	}
@@ -43,7 +44,7 @@ function take_action(state, tableID) {
 					urgent_save_clues[1].push(clue);
 				}
 				else {
-					// Cannot give them a play clue, so more urgent
+					// Play clue value is too low or cannot give play, give save clue
 					urgent_save_clues[0].push(save_clues[target]);
 				}
 			}
@@ -61,10 +62,11 @@ function take_action(state, tableID) {
 
 	// Then, look for playables or trash in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
+	console.log('initial playable cards', Utils.logHand(playable_cards));
 	const trash_cards = find_known_trash(state, hand);
 
 	// Remove sarcastic discards from playables
-	playable_cards = Utils.subtractCards(playable_cards, trash_cards);
+	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order));
 	console.log('playable cards', Utils.logHand(playable_cards));
 	console.log('trash cards', Utils.logHand(trash_cards));
 

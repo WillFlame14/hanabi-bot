@@ -1,5 +1,4 @@
 const { handle_action } = require('./action-handler.js');
-const { CLUE } = require('./basics.js');
 const { logger } = require('./logger.js');
 const Utils = require('./util.js');
 
@@ -54,45 +53,6 @@ const handle = {
 	// Received when an action is taken in the current active game
 	gameAction: (data, catchup = false) => {
 		const { action, tableID } = data;
-
-		switch (action.type) {
-			case 'play': {
-				const playerName = state.playerNames[action.playerIndex];
-				logger.info(`${playerName} plays ${Utils.cardToString(action)}`);
-				break;
-			}
-			case 'clue': {
-				const playerName = state.playerNames[action.giver];
-				const targetName = state.playerNames[action.target];
-				let clue_value;
-
-				if (action.clue.type === CLUE.COLOUR) {
-					clue_value = ['red', 'yellow', 'green', 'blue', 'purple'][action.clue.value];
-				}
-				else {
-					clue_value = action.clue.value;
-				}
-				logger.info(`${playerName} clues ${clue_value} to ${targetName}`);
-				break;
-			}
-			case 'discard': {
-				const playerName = state.playerNames[action.playerIndex];
-
-				if (!action.failed) {
-					logger.info(`${playerName} discards ${Utils.cardToString(action)}`);
-				}
-				else {
-					logger.info(`${playerName} bombs ${Utils.cardToString(action)}`);
-				}
-				break;
-			}
-			default:
-				if (!['status', 'turn', 'draw'].includes(data.action.type)) {
-					logger.info('game action', data);
-				}
-				break;
-		}
-
 		handle_action(state, action, tableID, catchup);
 	},
 	// Received at the beginning of the game, as a list of all actions that have happened so far
@@ -157,7 +117,7 @@ const handle = {
 
 		// Save blank state
 		state.blank = Utils.objClone(state);
-		//state.blank.blank = Utils.objClone(state.blank);
+		Utils.globalModify({state});
 
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });

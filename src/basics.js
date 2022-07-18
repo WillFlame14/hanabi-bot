@@ -95,9 +95,9 @@ function find_playables(stacks, hand) {
 			}
 		}
 		else {
-			for (const possible of card.inferred) {
+			for (const inferred of card.inferred) {
 				// Note: Do NOT use hypo stacks
-				if (stacks[possible.suitIndex] + 1 !== possible.rank) {
+				if (stacks[inferred.suitIndex] + 1 !== inferred.rank) {
 					playable = false;
 					break;
 				}
@@ -114,18 +114,24 @@ function find_playables(stacks, hand) {
 function find_known_trash(state, hand) {
 	const trash = [];
 
+	const not_trash = (suitIndex, rank) => rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex];
+
 	for (const card of hand) {
+		// No inference and every possibility is trash
 		if (card.inferred.length === 0) {
-			trash.push(card);
+			if (!card.possible.some(c => not_trash(c.suitIndex, c.rank))) {
+				console.log('no inference trash');
+				trash.push(card);
+			}
 			continue;
 		}
 
 		let can_discard = true;
 		for (const possible of (card.suitIndex !== -1 ? card.possible : card.inferred)) {
-			const { rank, suitIndex } = possible;
+			const { suitIndex, rank } = possible;
 
 			// Card is not trash
-			if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
+			if (not_trash(suitIndex, rank)) {
 				// Card is not known duplicated in another hand (NOT our own, we can play first)
 				const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank, state.ourPlayerIndex).filter(c => c.order !== card.order);
 				if (duplicates.length === 0 || !duplicates.some(c => c.clued)) {

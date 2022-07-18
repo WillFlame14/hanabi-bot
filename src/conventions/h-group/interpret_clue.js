@@ -48,7 +48,7 @@ function interpret_clue(state, action) {
 	// Try to determine all the possible inferences of the card
 	if (focused_card.inferred.length > 1) {
 		const focus_possible = [];
-		logger.info('hypo/max stacks in clue interpretation:', state.hypo_stacks, state.max_ranks);
+		logger.info('play/hypo/max stacks in clue interpretation:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
 		if (clue.type === CLUE.COLOUR) {
 			const suitIndex = clue.value;
@@ -169,11 +169,11 @@ function interpret_clue(state, action) {
 			}
 		}
 		focused_card.inferred = Utils.intersectCards(focused_card.inferred, focus_possible);
-		logger.warn('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)).join(','));
 	}
+	logger.info('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)).join(','), 'order', focused_card.order);
 
 	// Not a save, so might be a finesse
-	logger.info('mistake?', mistake);
+	logger.info('save?', save, 'mistake?', mistake);
 	if (!save && !mistake) {
 		let feasible = false, connections, conn_suit;
 
@@ -187,7 +187,7 @@ function interpret_clue(state, action) {
 
 				for (const card of focused_card.possible) {
 					({ feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank));
-					const blind_plays = connections.filter(conn => conn.self).length;
+					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('feasible?', feasible, 'blind plays', blind_plays);
 
 					if (feasible && blind_plays < min_blind_plays) {
@@ -206,13 +206,21 @@ function interpret_clue(state, action) {
 				({ feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank));
 				conn_suit = focused_card.suitIndex;
 			}
+
+			// No inference, but a finesse isn't possible - default to good touch principle
+			if (!feasible) {
+				focused_card.inferred = Utils.objClone(focused_card.possible);
+				focused_card.inferred = Utils.subtractCards(focused_card.inferred, bad_touch);
+				logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => Utils.cardToString(c)));
+			}
 		}
 		// We know exactly what card it is
-		else if (focused_card.possible.length === 1) {
-			const { suitIndex, rank } = focused_card.possible[0];
+		else if (focused_card.suitIndex !== -1 || focused_card.possible.length === 1) {
+			const { suitIndex, rank } = focused_card.suitIndex !== -1 ? focused_card : focused_card.possible[0];
 
-			// Card doesn't match inference, or card isn't playable
-			if (!focused_card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank)) || (rank > state.hypo_stacks[suitIndex] + 1 && !found_connecting)) {
+			// Card doesn't match inference, or card isn't playable (and isn't trash)
+			if (!focused_card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank)) ||
+				(!found_connecting && rank > state.hypo_stacks[suitIndex] + 1 && rank <= state.max_ranks[suitIndex])) {
 				// Reset inference
 				focused_card.inferred = Utils.objClone(focused_card.possible);
 				({ feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank));
@@ -233,7 +241,7 @@ function interpret_clue(state, action) {
 		}
 
 		if (feasible) {
-			logger.info('finesse possible!');
+			logger.info('finesse possible! suit', conn_suit);
 			let next_rank = state.hypo_stacks[conn_suit] + 1;
 			for (const connection of connections) {
 				const { type, card } = connection;
@@ -254,7 +262,7 @@ function interpret_clue(state, action) {
 	}
 
 	// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
-	if (focused_card.inferred.length === 1) {
+	if (focused_card.inferred.length === 1 && !mistake) {
 		// Don't elim on the focused card
 		good_touch_elim(state.hands[target], focused_card.inferred, {ignore: [focused_card.order]});
 

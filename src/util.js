@@ -1,12 +1,68 @@
+const readline = require('readline');
 const { logger } = require('./logger.js');
 
-let ws;
+const globals = {};
 
 /**
- * Initializes a local reference of the websocket.
+ * Modifies the global object.
  */
-function wsInit(_ws) {
-	ws = _ws;
+function globalModify(obj) {
+	Object.assign(globals, obj);
+}
+
+/**
+ * Initializes the console interactivity with the game state.
+ */
+function initConsole() {
+	readline.emitKeypressEvents(process.stdin);
+	process.stdin.setRawMode(true);
+
+	let command = [];
+
+	process.stdin.on('keypress', (_, key) => {
+		if (key.ctrl && key.name === 'c') {
+			process.exit();
+		}
+
+		if (globals.state === undefined) {
+			return;
+		}
+
+		process.stdout.write(key.sequence);
+		switch(key.sequence) {
+			case '\r': {
+				console.log();
+				const parts = command.join('').split(' ');
+				const { state } = globals;
+
+				switch(parts[0]) {
+					case 'hand': {
+						if (parts.length !== 2) {
+							console.log('Correct usage is "hand <playerName>"');
+							break;
+						}
+						const playerName = parts[1];
+						if (!state.playerNames.includes(playerName)) {
+							console.log('That player is not in this room.');
+							console.log(state.playerNames, playerName);
+							break;
+						}
+						const playerIndex = state.playerNames.indexOf(playerName);
+						console.log(logHand(state.hands[playerIndex]));
+						break;
+					}
+				}
+				command = [];
+				break;
+			}
+			case '\b':
+				command = command.slice(0, -1);
+				break;
+			default:
+				command.push(key.sequence);
+				break;
+		}
+	});
 }
 
 function sendChat(recipient, msg) {
@@ -16,7 +72,7 @@ function sendChat(recipient, msg) {
 function sendCmd(command, arg) {
 	const cmd = command + ' ' + JSON.stringify(arg);
 	logger.debug('sending cmd ' + cmd);
-	ws.send(cmd);
+	globals.ws.send(cmd);
 }
 
 function findOrder(hand, order) {
@@ -99,12 +155,25 @@ function cardToString(card) {
 }
 
 function logHand(hand) {
-	const copy = objClone(hand);
-	for (const card of copy) {
-		card.possible = card.possible.map(c => cardToString(c));
-		card.inferred = card.inferred.map(c => cardToString(c));
+	const new_hand = [];
+
+	for (const card of hand) {
+		const new_card = {};
+		new_card.visible = (card.suitIndex === -1 ? 'unknown' : cardToString(card));
+		new_card.order = card.order;
+
+		new_card.flags = [];
+		for (const flag of ['clued', 'newly_clued', 'prompted', 'finessed', 'rewinded']) {
+			if (card[flag]) {
+				new_card.flags.push(flag);
+			}
+		}
+
+		new_card.possible = card.possible.map(c => cardToString(c));
+		new_card.inferred = card.inferred.map(c => cardToString(c));
+		new_hand.push(new_card);
 	}
-	return copy;
+	return new_hand;
 }
 
 function writeNote(card, tableID) {
@@ -120,7 +189,7 @@ function writeNote(card, tableID) {
 
 module.exports = {
 	CARD_COUNT,
-	wsInit,
+	globalModify, initConsole,
 	sendChat, sendCmd,
 	findOrder,
 	handFind, visibleFind,

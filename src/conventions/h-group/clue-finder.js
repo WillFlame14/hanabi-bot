@@ -45,7 +45,7 @@ function find_clues(state) {
 					}
 				}
 			}
-			else if (cardIndex === chopIndex) {
+			else if (cardIndex === chopIndex && !card.finessed) {
 				// Save clue
 				const chop = hand[chopIndex];
 				// TODO: See if someone else can save
