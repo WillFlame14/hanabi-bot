@@ -15,7 +15,7 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 
 		const known_connecting = hand.find(card =>
 			(card.possible.length === 1 && Utils.cardMatch(card.possible[0], suitIndex, rank)) ||
-			(card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, rank))
+			(card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, rank) && i === state.ourPlayerIndex)
 		);
 
 		if (known_connecting !== undefined) {
@@ -71,7 +71,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 			if (prompted !== undefined) {
 				logger.info('found prompt in our hand');
 				connections.push({ type: 'prompt', card: prompted, self: true });
-				already_prompted.push(prompted.order)
+				already_prompted.push(prompted.order);
 			}
 			else {
 				const finesse_pos = find_finesse_pos(our_hand, already_finessed);

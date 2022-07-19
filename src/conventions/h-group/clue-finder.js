@@ -33,7 +33,7 @@ function valid_play(state, target, card) {
 			return { valid: false };
 		}
 
-		const finessedPlayer = f_cards.findIndex(c => Utils.cardMatch(c, suitIndex, conn_rank));
+		const finessedPlayer = f_cards.findIndex(c => c !== undefined && Utils.cardMatch(c, suitIndex, conn_rank));
 		if (finessedPlayer !== -1) {
 			finesses[finessedPlayer]++;
 

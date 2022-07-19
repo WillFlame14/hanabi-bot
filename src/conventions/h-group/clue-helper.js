@@ -26,6 +26,10 @@ function determine_clue(state, target, card) {
 	}
 	// Both clues focus, determine more
 	else if (colour_focus.order === card.order && rank_focus.order === card.order) {
+		// Could be interpreted as rank save
+		if (state.discard_stacks.some(stack => stack[rank - 1] === 1)) {
+			clue_type = ACTION.COLOUR;
+		}
 		logger.debug(`colour_bad_touch ${colour_bad_touch} rank_bad_touch ${rank_bad_touch}`);
 		// Figure out which clue has less bad touch
 		if (colour_bad_touch < rank_bad_touch) {
