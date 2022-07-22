@@ -3,9 +3,10 @@ const Utils = require('../../util.js');
 
 function find_chop(hand) {
 	for (let i = hand.length - 1; i >= 0; i--) {
-		if (!hand[i].clued) {
-			return i;
+		if (hand[i].clued && !hand[i].newly_clued) {
+			continue;
 		}
+		return i;
 	}
 	return -1;
 }
@@ -27,7 +28,7 @@ function find_finesse_pos(hand, already_finessed = 0) {
 
 function determine_focus(hand, list) {
 	const chopIndex = find_chop(hand);
-	logger.debug('determining focus with chopIndex', chopIndex, 'list', list, 'chopIndex', chopIndex);
+	logger.debug('determining focus with chopIndex', chopIndex, 'list', list, 'hand', Utils.logHand(hand));
 
 	// Chop card exists, check for chop focus
 	if (chopIndex !== -1 && list.includes(hand[chopIndex].order)) {

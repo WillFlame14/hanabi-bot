@@ -9,12 +9,6 @@ function interpret_clue(state, action) {
 	const { clue, giver, list, target, mistake } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
-	// Going through each card that was clued
-	for (const order of list) {
-		const card = Utils.findOrder(state.hands[target], order);
-		card.newly_clued = true;
-	}
-
 	// Touched cards should also obey good touch principle
 	// FIX: Need to do this in a loop to recursively deduce information
 	const bad_touch = find_bad_touch(state, giver, target);
@@ -257,12 +251,6 @@ function interpret_clue(state, action) {
 		}
 	}
 	logger.debug('hand state after clue', Utils.logHand(state.hands[target]));
-
-	// Remove the newly_clued flag
-	for (const order of list) {
-		const card = Utils.findOrder(state.hands[target], order);
-		card.newly_clued = false;
-	}
 }
 
 module.exports = { interpret_clue };

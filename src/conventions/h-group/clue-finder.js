@@ -1,6 +1,5 @@
 const { determine_clue } = require('./clue-helper.js');
 const { find_chop, find_finesse_pos } = require('./hanabi-logic.js');
-const { Card } = require('../../basics/Card.js');
 const { ACTION } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
@@ -22,12 +21,12 @@ function valid_play(state, target, card) {
 		f_cards.push(hand[find_finesse_pos(hand)]);
 	}
 
-	logger.info('known', known_cards.map(c => c.toString()));
-	logger.info('promptable', p_cards.filter(c => c !== undefined).map(c => c.toString()));
-	logger.info('finessable', f_cards.filter(c => c !== undefined).map(c => c.toString()));
+	logger.debug('known', known_cards.map(c => c.toString()));
+	logger.debug('promptable', p_cards.filter(c => c !== undefined).map(c => c.toString()));
+	logger.debug('finessable', f_cards.filter(c => c !== undefined).map(c => c.toString()));
 
 	for (let conn_rank = state.hypo_stacks[suitIndex] + 1; conn_rank < rank; conn_rank++) {
-		logger.info('looking for connecting', Utils.logCard(suitIndex, conn_rank).toString());
+		logger.debug('looking for connecting', Utils.logCard(suitIndex, conn_rank).toString());
 		const all_cards = known_cards.concat(p_cards).concat(f_cards).filter(c => c !== undefined);
 
 		if (!all_cards.some(c => c.matches(suitIndex, conn_rank))) {
@@ -42,7 +41,7 @@ function valid_play(state, target, card) {
 			f_cards.splice(finessedPlayer, 1, f_hand[find_finesse_pos(f_hand, finesses[finessedPlayer])]);
 		}
 	}
-	logger.info(card.toString(),'can be finessed!');
+	logger.debug(card.toString(),'is a valid play clue!');
 	return { valid: true, finesses: finesses.reduce((sum, curr) => sum + curr, 0) };
 }
 

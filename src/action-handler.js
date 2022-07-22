@@ -12,7 +12,7 @@ function handle_action(state, action, tableID, catchup = false) {
 	switch(action.type) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
-			const { giver, target, clue } = action;
+			const { giver, target, list, clue } = action;
 
 			const playerName = state.playerNames[giver];
 			const targetName = state.playerNames[target];
@@ -29,6 +29,12 @@ function handle_action(state, action, tableID, catchup = false) {
 			action.mistake = action.mistake || false;
 			Basics.onClue(state, action);
 			state.interpret_clue(state, action);
+
+			// Remove the newly_clued flag
+			for (const order of list) {
+				const card = Utils.findOrder(state.hands[target], order);
+				card.newly_clued = false;
+			}
 			break;
 		}
 		case 'discard': {

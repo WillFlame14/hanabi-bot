@@ -70,9 +70,6 @@ class Card {
 	}
 
 	subtract(type, cards) {
-		if (this[type].length > 0 && typeof this[type][0].matches !== 'function') {
-			console.log(type, this[type]);
-		}
 		this[type] = this[type].filter(c1 => !cards.some(c2 => c1.matches(c2.suitIndex, c2.rank)));
 	}
 }

@@ -11,7 +11,11 @@ function onClue(state, action) {
 		if (list.includes(card.order)) {
 			card.intersect('possible', new_possible);
 			card.intersect('inferred', new_possible);
-			card.clued = true;
+
+			if (!card.clued) {
+				card.newly_clued = true;
+				card.clued = true;
+			}
 		}
 		else {
 			card.subtract('possible', new_possible);

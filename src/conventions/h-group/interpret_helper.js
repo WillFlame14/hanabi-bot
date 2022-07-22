@@ -15,7 +15,7 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 
 		const known_connecting = hand.find(card =>
 			(card.possible.length === 1 && card.possible[0].matches(suitIndex, rank)) ||
-			(card.inferred.length === 1 && card.inferred[0].matches(suitIndex, rank) && i === state.ourPlayerIndex)
+			(card.inferred.length === 1 && card.inferred[0].matches(suitIndex, rank)) // && i === state.ourPlayerIndex) ?
 		);
 
 		if (known_connecting !== undefined) {

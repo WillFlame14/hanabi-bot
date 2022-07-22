@@ -171,7 +171,7 @@ function update_hypo_stacks(state, target, suitIndex, rank) {
 	if (state.hypo_stacks[suitIndex] < rank) {
 		state.hypo_stacks[suitIndex] = rank;
 
-		let final_hypo_rank = rank + 1;
+		/*let final_hypo_rank = rank + 1;
 
 		// FIX: Not all of these cards can necessarily be prompted
 		// FIX: Unsure if only 'target' is enough
@@ -180,7 +180,7 @@ function update_hypo_stacks(state, target, suitIndex, rank) {
 			final_hypo_rank++;
 		}
 		state.hypo_stacks[suitIndex] = final_hypo_rank - 1;
-		logger.info('final hypo stack of', suitIndex, 'is', final_hypo_rank - 1);
+		logger.info('final hypo stack of', suitIndex, 'is', final_hypo_rank - 1);*/
 	}
 }
 
