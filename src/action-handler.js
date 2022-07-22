@@ -1,5 +1,7 @@
-const { CLUE, good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics.js');
+const { Card } = require('./basics/Card.js')
+const { CLUE, good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics/helper.js');
 const { LEVELS, logger } = require('./logger.js');
+const Basics = require('./basics.js')
 const Utils = require('./util.js');
 
 let rewind_depth = 0;
@@ -25,51 +27,27 @@ function handle_action(state, action, tableID, catchup = false) {
 			logger.info(`${playerName} clues ${clue_value} to ${targetName}`);
 
 			action.mistake = action.mistake || false;
+			Basics.onClue(state, action);
 			state.interpret_clue(state, action);
-
-			state.clue_tokens--;
 			break;
 		}
 		case 'discard': {
 			// {type: 'discard', playerIndex: 2, order: 12, suitIndex: 0, rank: 3, failed: true}
-			const { failed, order, playerIndex, rank, suitIndex } = action;
+			const { order, playerIndex, rank, suitIndex } = action;
+			const card = Utils.findOrder(state.hands[playerIndex], order);
 			const playerName = state.playerNames[action.playerIndex];
 
-			if (!action.failed) {
-				logger.info(`${playerName} discards ${Utils.cardToString(action)}`);
-			}
-			else {
-				logger.info(`${playerName} bombs ${Utils.cardToString(action)}`);
-			}
+			// Assign the card's identity if it isn't already known
+			Object.assign(card, {suitIndex, rank});
+			logger.info(`${playerName} ${action.failed ? 'bombs' : 'discards'} ${card.toString()}`);
 
-			const card = Utils.findOrder(state.hands[playerIndex], order);
+			Basics.onDiscard(state, action);
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-			if (!card.rewinded && card.inferred.length > 0 && !card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank))) {
-				logger.info('all inferences', card.inferred.map(c => Utils.cardToString(c)));
+			if (!card.rewinded && card.inferred.length > 0 && !card.inferred.some(c => c.matches(suitIndex, rank))) {
+				logger.info('all inferences', card.inferred.map(c => c.toString()));
 				rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, true, tableID);
 				return;
-			}
-
-			remove_card_from_hand(state.hands[playerIndex], order);
-
-			state.discard_stacks[suitIndex][rank - 1]++;
-
-			// Discarded all copies of a card
-			if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
-				// This card previously wasn't known to be all visible
-				if (state.all_possible.some(c => Utils.cardMatch(c, suitIndex, rank))) {
-					logger.info('Discarded all copies of', Utils.cardToString(action), 'which was previously unknown.');
-					for (const hand of state.hands) {
-						for (const card of hand) {
-							card.possible = Utils.subtractCards(card.possible, [{suitIndex, rank}]);
-							card.inferred = Utils.subtractCards(card.inferred, [{suitIndex, rank}]);
-						}
-					}
-				}
-				if (state.max_ranks[suitIndex] > rank - 1) {
-					state.max_ranks[suitIndex] = rank - 1;
-				}
 			}
 
 			// Discarding a useful card (for whatever reason)
@@ -78,61 +56,15 @@ function handle_action(state, action, tableID, catchup = false) {
 
 				// Mistake discard or sarcastic discard (but unknown transfer location)
 				if (duplicates.length === 0 || duplicates[0].inferred.length > 1) {
-					logger.info(`${state.playerNames[playerIndex]} discarded useful card ${Utils.cardToString(action)}, setting hypo stack ${rank - 1}`);
+					logger.info(`${state.playerNames[playerIndex]} discarded useful card ${card.toString()}, setting hypo stack ${rank - 1}`);
 					state.hypo_stacks[suitIndex] = rank - 1;
 				}
-			}
-
-			// bombs count as discards, but they don't give a clue token
-			if (!failed && state.clue_tokens < 8) {
-				state.clue_tokens++;
 			}
 			break;
 		}
 		case 'draw': {
 			// { type: 'draw', playerIndex: 0, order: 2, suitIndex: 1, rank: 2 },
-			const { order, playerIndex, suitIndex, rank } = action;
-			state.hands[playerIndex].unshift({
-				order, suitIndex, rank,
-				clued: false,
-				newly_clued: false,
-				prompted: false,
-				finessed: false,
-				possible: Utils.objClone(state.all_possible),
-				inferred: Utils.objClone(state.all_possible),
-				waiting_finesse_players: [],
-				reasoning: [],
-				reasoning_turn: [],
-				rewinded: false
-			});
-
-			// We can't see our own cards, but we can see others' at least
-			if (playerIndex !== state.ourPlayerIndex) {
-				const full_count = state.discard_stacks[suitIndex][rank - 1] +
-					Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length +
-					(state.play_stacks[suitIndex] >= rank ? 1 : 0);
-
-				// If all copies of a card are already visible
-				if (full_count === Utils.CARD_COUNT[rank - 1]) {
-					// Remove it from the list of future possibilities
-					state.all_possible = state.all_possible.filter(c => !Utils.cardMatch(c, suitIndex, rank));
-
-					// Also remove it from hand possibilities
-					for (const card of state.hands[state.ourPlayerIndex]) {
-						// Do not remove it from itself
-						if (card.possible.length === 1 || (card.inferred.length === 1 && Utils.cardMatch(card.inferred[0], suitIndex, rank))) {
-							continue;
-						}
-						card.possible = Utils.subtractCards(card.possible, [{ suitIndex, rank }]);
-						card.inferred = Utils.subtractCards(card.inferred, [{ suitIndex, rank }]);
-					}
-					logger.debug(`removing ${Utils.cardToString({suitIndex, rank})} from hand and future possibilities`);
-				}
-			}
-
-			state.cards_left--;
-
-			// suitIndex and rank are -1 if they're your own cards
+			Basics.onDraw(state, action);
 			break;
 		}
 		case 'gameOver':
@@ -155,14 +87,16 @@ function handle_action(state, action, tableID, catchup = false) {
 			break;
 		case 'play': {
 			const { order, playerIndex, rank, suitIndex } = action;
-			const playerName = state.playerNames[playerIndex];
-			logger.info(`${playerName} plays ${Utils.cardToString(action)}`);
-
 			const card = Utils.findOrder(state.hands[playerIndex], order);
+			const playerName = state.playerNames[playerIndex];
+
+			// Assign the card's identity if it isn't already known
+			Object.assign(card, {suitIndex, rank});
+			logger.info(`${playerName} plays ${card.toString()}`);
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-			if (!card.rewinded && !card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank))) {
-				logger.info('all inferences', card.inferred.map(c => Utils.cardToString(c)));
+			if (!card.rewinded && !card.inferred.some(c => c.matches(suitIndex, rank))) {
+				logger.info('all inferences', card.inferred.map(c => c.toString()));
 				rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false, tableID);
 				return;
 			}
@@ -192,7 +126,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			if (card === undefined) {
 				throw new Error('Could not find card to rewrite!');
 			}
-			card.possible = [{suitIndex, rank}];
+			card.possible = [new Card(suitIndex, rank)];
 			card.finessed = true;
 			card.rewinded = true;
 			break;
@@ -208,7 +142,7 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, bomb, 
 	}
 	rewind_depth++;
 
-	logger.info(`expected ${Utils.cardToString({suitIndex, rank})}, rewinding to action_index ${action_index}`);
+	logger.info(`expected ${Utils.logCard(suitIndex, rank)}, rewinding to action_index ${action_index}`);
 	const new_state = Utils.objClone(state.blank);
 	new_state.blank = Utils.objClone(new_state);
 	const history = state.actionList.slice(0, action_index);
@@ -225,7 +159,7 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, bomb, 
 	// Rewrite and save as a rewind action
 	const known_action = { type: 'rewind', order, playerIndex, suitIndex, rank };
 	handle_action(new_state, known_action, tableID, true);
-	logger.warn('Rewriting order', order, 'to', Utils.cardToString({suitIndex, rank}));
+	logger.warn('Rewriting order', order, 'to', Utils.logCard(suitIndex, rank));
 
 	const pivotal_action = state.actionList[action_index];
 	pivotal_action.mistake = bomb || rewind_depth > 1;

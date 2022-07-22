@@ -1,6 +1,7 @@
 const { determine_clue } = require('./clue-helper.js');
 const { find_chop, find_finesse_pos } = require('./hanabi-logic.js');
-const { ACTION } = require('../../basics.js');
+const { Card } = require('../../basics/Card.js');
+const { ACTION } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -21,19 +22,19 @@ function valid_play(state, target, card) {
 		f_cards.push(hand[find_finesse_pos(hand)]);
 	}
 
-	logger.info('known', known_cards.map(c => Utils.cardToString(c)));
-	logger.info('promptable', p_cards.filter(c => c !== undefined).map(c => Utils.cardToString(c)));
-	logger.info('finessable', f_cards.filter(c => c !== undefined).map(c => Utils.cardToString(c)));
+	logger.info('known', known_cards.map(c => c.toString()));
+	logger.info('promptable', p_cards.filter(c => c !== undefined).map(c => c.toString()));
+	logger.info('finessable', f_cards.filter(c => c !== undefined).map(c => c.toString()));
 
 	for (let conn_rank = state.hypo_stacks[suitIndex] + 1; conn_rank < rank; conn_rank++) {
-		logger.info('looking for connecting', Utils.cardToString({suitIndex, rank: conn_rank}));
+		logger.info('looking for connecting', Utils.logCard(suitIndex, conn_rank).toString());
 		const all_cards = known_cards.concat(p_cards).concat(f_cards).filter(c => c !== undefined);
 
-		if (!all_cards.some(c => Utils.cardMatch(c, suitIndex, conn_rank))) {
+		if (!all_cards.some(c => c.matches(suitIndex, conn_rank))) {
 			return { valid: false };
 		}
 
-		const finessedPlayer = f_cards.findIndex(c => c !== undefined && Utils.cardMatch(c, suitIndex, conn_rank));
+		const finessedPlayer = f_cards.findIndex(c => c !== undefined && c.matches(suitIndex, conn_rank));
 		if (finessedPlayer !== -1) {
 			finesses[finessedPlayer]++;
 
@@ -41,7 +42,7 @@ function valid_play(state, target, card) {
 			f_cards.splice(finessedPlayer, 1, f_hand[find_finesse_pos(f_hand, finesses[finessedPlayer])]);
 		}
 	}
-	logger.info(Utils.cardToString(card),'can be finessed!');
+	logger.info(card.toString(),'can be finessed!');
 	return { valid: true, finesses: finesses.reduce((sum, curr) => sum + curr, 0) };
 }
 
@@ -91,7 +92,7 @@ function find_clues(state) {
 				const chop = hand[chopIndex];
 				// TODO: See if someone else can save
 				if (Utils.isCritical(state, chop.suitIndex, chop.rank)) {
-					logger.warn('saving critical card', Utils.cardToString(chop));
+					logger.warn('saving critical card', chop.toString());
 					if (chop.rank === 5) {
 						save_clues[target] = { type: ACTION.RANK, value: 5, target };
 					}
@@ -104,13 +105,13 @@ function find_clues(state) {
 					// Play stack hasn't started and other copy of 2 isn't visible (to us)
 					if (state.play_stacks[chop.suitIndex] === 0 && Utils.visibleFind(state, state.ourPlayerIndex, chop.suitIndex, 2).length === 1) {
 						// Also check if not reasonably certain in our hand
-						if(!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && Utils.cardMatch(c.inferred[0], suitIndex, rank))) {
+						if(!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank))) {
 							save_clues[target] = { type: ACTION.RANK, value: 2, target };
 						}
 					}
 				}
 				else {
-					logger.debug('not saving card', Utils.cardToString(chop), 'on chop');
+					logger.debug('not saving card', chop.toString(), 'on chop');
 				}
 			}
 		}

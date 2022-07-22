@@ -73,7 +73,7 @@ async function main() {
 		if (handle[command] !== undefined) {
 			handle[command](JSON.parse(arg));
 		}
-	});	
+	});
 }
 
 main();

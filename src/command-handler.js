@@ -1,8 +1,9 @@
 const { handle_action } = require('./action-handler.js');
+const { Card } = require('./basics/Card.js')
 const { logger } = require('./logger.js');
 const Utils = require('./util.js');
 
-const HGroup = require('./conventions/h-group/_export.js');
+const HGroup = require('./conventions/h-group.js');
 
 const conventions = {
 	HGroup
@@ -107,7 +108,7 @@ const handle = {
 			state.max_ranks.push(5);
 
 			for (let rank = 1; rank <= 5; rank++) {
-				state.all_possible.push({ suitIndex, rank });
+				state.all_possible.push(new Card(suitIndex, rank));
 			}
 		}
 

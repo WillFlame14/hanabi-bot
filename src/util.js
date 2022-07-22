@@ -1,4 +1,5 @@
 const readline = require('readline');
+const { Card } = require('./basics/Card.js');
 const { logger } = require('./logger.js');
 
 const globals = {};
@@ -80,16 +81,16 @@ function findOrder(hand, order) {
 }
 
 function handFind(hand, suitIndex, rank) {
-	return hand.filter(c => cardMatch(c, suitIndex, rank));
+	return hand.filter(c => c.matches(suitIndex, rank));
 }
 
 function handFindInfer(hand, suitIndex, rank) {
 	return hand.filter(c => {
 		if (c.possible.length === 1) {
-			return cardMatch(c.possible[0], suitIndex, rank);
+			return c.possible[0].matches(suitIndex, rank);
 		}
 		else if (c.inferred.length === 1) {
-			return cardMatch(c.inferred[0], suitIndex, rank);
+			return c.inferred[0].matches(suitIndex, rank);
 		}
 		return false;
 	});
@@ -119,57 +120,30 @@ function isCritical(state, suitIndex, rank) {
 	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1);
 }
 
-function cardMatch(card, suitIndex, rank) {
-	return card.suitIndex === suitIndex && card.rank === rank;
-}
-
-function intersectCards(cards1, cards2) {
-	return cards1.filter(c1 => cards2.some(c2 => cardMatch(c1, c2.suitIndex, c2.rank)));
-}
-
-function subtractCards(cards1, cards2) {
-	return cards1.filter(c1 => !cards2.some(c2 => cardMatch(c1, c2.suitIndex, c2.rank)));
-}
-
 function objClone(obj) {
-	if (typeof obj === 'object' && !Array.isArray(obj)) {
-		const new_obj = {};
-		for (const [name, value] of Object.entries(obj)) {
-			if (typeof value === 'function') {
-				new_obj[name] = value;
-			}
-			else {
-				new_obj[name] = JSON.parse(JSON.stringify(value));
-			}
+	if (typeof obj === 'object') {
+		if (obj instanceof Card) {
+			return obj.clone();
 		}
-		return new_obj;
+		else if (Array.isArray(obj)) {
+			return obj.map(elem => objClone(elem));
+		}
+		else {
+			const new_obj = {};
+			for (const [name, value] of Object.entries(obj)) {
+					new_obj[name] = objClone(value);
+			}
+			return new_obj;
+		}
 	}
 	else {
-		return JSON.parse(JSON.stringify(obj));
+		return obj;
 	}
 }
 
-function cardToString(card) {
-	let suitIndex, rank;
-	let append = '';
-
-	if (card.suitIndex !== -1) {
-		({ suitIndex, rank } = card);
-	}
-	else if (card.possible.length === 1) {
-		({ suitIndex, rank } = card.possible[0]);
-		append = '(known)';
-	}
-	else if (card.inferred.length === 1) {
-		({ suitIndex, rank } = card.inferred[0]);
-		append = '(infer)';
-	}
-	else {
-		return '(unknown)'
-	}
-
+function logCard(suitIndex, rank) {
 	const colours = ['r', 'y', 'g', 'b', 'p'];
-	return colours[suitIndex] + rank + append;
+	return colours[suitIndex] + rank;
 }
 
 function logHand(hand) {
@@ -177,7 +151,7 @@ function logHand(hand) {
 
 	for (const card of hand) {
 		const new_card = {};
-		new_card.visible = (card.suitIndex === -1 ? 'unknown' : cardToString(card));
+		new_card.visible = (card.suitIndex === -1 ? 'unknown' : card.toString());
 		new_card.order = card.order;
 
 		new_card.flags = [];
@@ -187,8 +161,8 @@ function logHand(hand) {
 			}
 		}
 
-		new_card.possible = card.possible.map(c => cardToString(c));
-		new_card.inferred = card.inferred.map(c => cardToString(c));
+		new_card.possible = card.possible.map(c => c.toString());
+		new_card.inferred = card.inferred.map(c => c.toString());
 		new_card.reasoning = card.reasoning_turn;
 		new_hand.push(new_card);
 	}
@@ -196,7 +170,7 @@ function logHand(hand) {
 }
 
 function writeNote(card, tableID) {
-	let note = card.inferred.map(c => cardToString(c)).join(',');
+	let note = card.inferred.map(c => c.toString()).join(',');
 	if (card.finessed) {
 		note = `[f] [${note}]`;
 	}
@@ -213,7 +187,6 @@ module.exports = {
 	findOrder,
 	handFind, visibleFind,
 	isCritical,
-	cardMatch, intersectCards, subtractCards,
 	objClone,
-	cardToString, logHand, writeNote
+	logCard, logHand, writeNote
 };

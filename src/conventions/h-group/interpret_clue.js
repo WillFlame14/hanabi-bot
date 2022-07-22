@@ -1,6 +1,7 @@
 const { determine_focus } = require('./hanabi-logic.js');
 const { find_connecting, find_own_finesses } = require('./interpret_helper.js');
-const { CLUE, find_possibilities, find_bad_touch, update_hypo_stacks, good_touch_elim } = require('../../basics.js');
+const { Card } = require('../../basics/Card.js')
+const { CLUE, find_bad_touch, update_hypo_stacks, good_touch_elim } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -11,25 +12,7 @@ function interpret_clue(state, action) {
 	// Going through each card that was clued
 	for (const order of list) {
 		const card = Utils.findOrder(state.hands[target], order);
-		card.clued = true;
 		card.newly_clued = true;
-	}
-
-	// Update all positive and negative possibilities for all cards, first ignoring good touch
-	const new_possible = find_possibilities(clue, state.num_suits);
-
-	for (const card of state.hands[target]) {
-		if (list.includes(card.order)) {
-			card.possible = Utils.intersectCards(card.possible, new_possible);
-			card.inferred = Utils.intersectCards(card.inferred, new_possible);
-		}
-		else {
-			// Untouched cards don't have to obey good touch principle
-			card.possible = Utils.subtractCards(card.possible, new_possible);
-			card.inferred = Utils.subtractCards(card.inferred, new_possible);
-		}
-		card.reasoning.push(state.actionList.length - 1);
-		card.reasoning_turn.push(state.turn_count + 1);
 	}
 
 	// Touched cards should also obey good touch principle
@@ -37,10 +20,10 @@ function interpret_clue(state, action) {
 	const bad_touch = find_bad_touch(state, giver, target);
 	for (const card of state.hands[target]) {
 		if (card.inferred.length > 1 && (card.clued || list.includes(card.order))) {
-			card.inferred = Utils.subtractCards(card.inferred, bad_touch);
+			card.subtract('inferred', bad_touch);
 		}
 	}
-	logger.debug('bad touch', bad_touch.map(c => Utils.cardToString(c)).join(','));
+	logger.debug('bad touch', bad_touch.map(c => c.toString()).join(','));
 
 	let found_connecting = false;
 	let save = false;
@@ -168,9 +151,9 @@ function interpret_clue(state, action) {
 				}
 			}
 		}
-		focused_card.inferred = Utils.intersectCards(focused_card.inferred, focus_possible);
+		focused_card.intersect('inferred', focus_possible);
 	}
-	logger.info('final inference on focused card', focused_card.inferred.map(c => Utils.cardToString(c)).join(','), 'order', focused_card.order);
+	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','), 'order', focused_card.order);
 
 	// Not a save, so might be a finesse
 	logger.info('save?', save, 'mistake?', mistake);
@@ -210,8 +193,8 @@ function interpret_clue(state, action) {
 			// No inference, but a finesse isn't possible - default to good touch principle
 			if (!feasible) {
 				focused_card.inferred = Utils.objClone(focused_card.possible);
-				focused_card.inferred = Utils.subtractCards(focused_card.inferred, bad_touch);
-				logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => Utils.cardToString(c)));
+				focused_card.subtract('inferred', bad_touch);
+				logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
 			}
 		}
 		// We know exactly what card it is
@@ -219,7 +202,7 @@ function interpret_clue(state, action) {
 			const { suitIndex, rank } = focused_card.suitIndex !== -1 ? focused_card : focused_card.possible[0];
 
 			// Card doesn't match inference, or card isn't playable (and isn't trash)
-			if (!focused_card.inferred.some(c => Utils.cardMatch(c, suitIndex, rank)) ||
+			if (!focused_card.inferred.some(c => c.matches(suitIndex, rank)) ||
 				(!found_connecting && rank > state.hypo_stacks[suitIndex] + 1 && rank <= state.max_ranks[suitIndex])) {
 				// Reset inference
 				focused_card.inferred = Utils.objClone(focused_card.possible);
@@ -246,7 +229,7 @@ function interpret_clue(state, action) {
 			for (const connection of connections) {
 				const { type, card } = connection;
 
-				card.inferred = [{ suitIndex: conn_suit, rank: next_rank }];
+				card.inferred = [new Card(conn_suit, next_rank)];
 				card.finessed = (type === 'finesse');
 				next_rank++;
 
@@ -257,7 +240,7 @@ function interpret_clue(state, action) {
 				}
 			}
 			// Set correct inference on focused card
-			focused_card.inferred = [{suitIndex: conn_suit, rank: next_rank}];
+			focused_card.inferred = [new Card(conn_suit, next_rank)];
 		}
 	}
 

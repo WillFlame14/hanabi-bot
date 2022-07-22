@@ -1,10 +1,9 @@
 const { determine_focus, bad_touch_num } = require('./hanabi-logic.js');
-const { ACTION } = require('../../basics.js');
+const { ACTION } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
-const Utils = require('../../util.js');
 
 function determine_clue(state, target, card) {
-	logger.debug('determining clue to target card', Utils.cardToString(card));
+	logger.debug('determining clue to target card', card.toString());
 	const { suitIndex, rank } = card;
 	const hand = state.hands[target];
 

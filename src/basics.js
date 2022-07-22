@@ -1,194 +1,99 @@
+const { Card } = require('./basics/Card.js');
+const { find_possibilities, remove_card_from_hand } = require('./basics/helper.js');
 const { logger } = require('./logger.js');
 const Utils = require('./util.js');
 
-const ACTION = {
-	PLAY: 0,
-	DISCARD: 1,
-	COLOUR: 2,
-	RANK: 3
-}
+function onClue(state, action) {
+	const { target, clue, list } = action;
+	const new_possible = find_possibilities(clue, state.num_suits);
 
-const CLUE = { COLOUR: 0, NUMBER: 1 };
-
-function find_possibilities(clue, num_suits) {
-	const new_possible = [];
-	if (clue.type === CLUE.COLOUR) {
-		for (let rank = 1; rank <= 5; rank++) {
-			new_possible.push({ suitIndex: clue.value, rank });
-		}
-	}
-	else {
-		for (let suitIndex = 0; suitIndex < num_suits; suitIndex++) {
-			new_possible.push({ suitIndex, rank: clue.value });
-		}
-	}
-	return new_possible;
-}
-
-function find_bad_touch(state, giver, target) {
-	const bad_touch = [];
-
-	// Find useless cards
-	for (let suitIndex = 0; suitIndex <= state.num_suits; suitIndex++) {
-		// Cards that have already been played on the stack
-		for (let rank = 1; rank <= state.play_stacks[suitIndex]; rank++) {
-			bad_touch.push({suitIndex, rank});
-		}
-
-		// Cards that can never be played on the stack
-		for (let rank = state.max_ranks[suitIndex] + 1; rank <= 5; rank++) {
-			bad_touch.push({suitIndex, rank});
-		}
-	}
-
-	// Find cards clued in other hands (or inferred cards in our hand or giver's hand)
-	for (let i = 0; i < state.hands.length; i++) {
-		const hand = state.hands[i];
-		for (const card of hand) {
-			if (!card.clued || card.rank <= state.play_stacks[card.suitIndex]) {
-				continue;
-			}
-
-			let suitIndex, rank, method;
-			// Cards in our hand and the giver's hand are not known
-			if ([state.ourPlayerIndex, giver, target].includes(i)) {
-				if (card.possible.length === 1) {
-					({suitIndex, rank} = card.possible[0]);
-					method = 'elim';
-				}
-				else if (card.inferred.length === 1) {
-					({suitIndex, rank} = card.inferred[0]);
-					method = 'inference';
-				}
-				else {
-					continue;
-				}
-			} else {
-				({suitIndex, rank} = card);
-				method = 'known';
-			}
-
-			if (state.play_stacks[suitIndex] < rank) {
-				logger.debug(`adding ${Utils.cardToString({suitIndex, rank})} to bad touch via ${method}`);
-				bad_touch.push({suitIndex, rank});
-			}
-		}
-	}
-
-	return bad_touch;
-}
-
-function find_playables(stacks, hand) {
-	const playables = [];
-
-	for (const card of hand) {
-		let playable = true;
-
-		// Card is probably trash
-		if (card.inferred.length === 0) {
-			// Still, double check if all possibilities are playable
-			for (const possible of card.possible) {
-				if (stacks[possible.suitIndex] + 1 !== possible.rank) {
-					playable = false;
-					break;
-				}
-			}
+	for (const card of state.hands[target]) {
+		if (list.includes(card.order)) {
+			card.intersect('possible', new_possible);
+			card.intersect('inferred', new_possible);
+			card.clued = true;
 		}
 		else {
-			for (const inferred of card.inferred) {
-				// Note: Do NOT use hypo stacks
-				if (stacks[inferred.suitIndex] + 1 !== inferred.rank) {
-					playable = false;
-					break;
+			card.subtract('possible', new_possible);
+			card.subtract('inferred', new_possible);
+		}
+
+		card.reasoning.push(state.actionList.length - 1);
+		card.reasoning_turn.push(state.turn_count + 1);
+	}
+
+	state.clue_tokens--;
+}
+
+function onDiscard(state, action) {
+	const { failed, order, playerIndex, rank, suitIndex } = action;
+	remove_card_from_hand(state.hands[playerIndex], order);
+
+	state.discard_stacks[suitIndex][rank - 1]++;
+
+	// Discarded all copies of a card
+	if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
+		// This card previously wasn't known to be all visible
+		if (state.all_possible.some(c => c.matches(suitIndex, rank))) {
+			logger.info('Discarded all copies of', Utils.logCard(suitIndex, rank), 'which was previously unknown.');
+			for (const hand of state.hands) {
+				for (const card of hand) {
+					card.subtract('possible', [{suitIndex, rank}]);
+					card.subtract('inferred', [{suitIndex, rank}]);
 				}
 			}
 		}
-
-		if (playable) {
-			playables.push(card);
+		if (state.max_ranks[suitIndex] > rank - 1) {
+			state.max_ranks[suitIndex] = rank - 1;
 		}
 	}
-	return playables;
+
+	// bombs count as discards, but they don't give a clue token
+	if (!failed && state.clue_tokens < 8) {
+		state.clue_tokens++;
+	}
 }
 
-function find_known_trash(state, hand) {
-	const trash = [];
+function onDraw(state, action) {
+	const { order, playerIndex, suitIndex, rank } = action;
+	const card = new Card(suitIndex, rank, {
+		order,
+		possible: Utils.objClone(state.all_possible),
+		inferred: Utils.objClone(state.all_possible)
+	});
+	state.hands[playerIndex].unshift(card);
 
-	const not_trash = (suitIndex, rank) => rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex];
+	// We can't see our own cards, but we can see others' at least
+	if (playerIndex !== state.ourPlayerIndex) {
+		const full_count = state.discard_stacks[suitIndex][rank - 1] +
+			Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length +
+			(state.play_stacks[suitIndex] >= rank ? 1 : 0);
 
-	for (const card of hand) {
-		// No inference and every possibility is trash
-		if (card.inferred.length === 0) {
-			if (!card.possible.some(c => not_trash(c.suitIndex, c.rank))) {
-				console.log('no inference trash');
-				trash.push(card);
-			}
-			continue;
-		}
+		// If all copies of a card are already visible
+		if (full_count === Utils.CARD_COUNT[rank - 1]) {
+			// Remove it from the list of future possibilities
+			state.all_possible = state.all_possible.filter(c => !c.matches(suitIndex, rank));
 
-		let can_discard = true;
-		for (const possible of (card.suitIndex !== -1 ? card.possible : card.inferred)) {
-			const { suitIndex, rank } = possible;
-
-			// Card is not trash
-			if (not_trash(suitIndex, rank)) {
-				// Card is not known duplicated in another hand (NOT our own, we can play first)
-				const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank, state.ourPlayerIndex).filter(c => c.order !== card.order);
-				if (duplicates.length === 0 || !duplicates.some(c => c.clued)) {
-					can_discard = false;
-					break;
+			// Also remove it from hand possibilities
+			for (const card of state.hands[state.ourPlayerIndex]) {
+				// Do not remove it from itself
+				if (card.possible.length === 1 || (card.inferred.length === 1 && card.inferred[0].matches(suitIndex, rank))) {
+					continue;
 				}
+				card.subtract('possible', [{suitIndex, rank}]);
+				card.subtract('inferred', [{suitIndex, rank}]);
 			}
-		}
-		if (can_discard) {
-			trash.push(card);
+			logger.debug(`removing ${card.toString()} from hand and future possibilities`);
 		}
 	}
-	return trash;
-}
 
-function good_touch_elim(hand, cards, options = {}) {
-	for (const card of hand) {
-		if (card.clued && (options.ignore === undefined || !options.ignore.includes(card.order))) {
-			card.inferred = Utils.subtractCards(card.inferred, cards);
-		}
-	}
-}
+	state.cards_left--;
 
-function remove_card_from_hand(hand, order) {
-	const card_index = hand.findIndex((card) => card.order === order);
-
-	if (card_index === undefined) {
-		logger.error('could not find such card index!');
-		return;
-	}
-
-	// Remove the card from their hand
-	hand.splice(card_index, 1);
-}
-
-function update_hypo_stacks(state, target, suitIndex, rank) {
-	if (state.hypo_stacks[suitIndex] < rank) {
-		state.hypo_stacks[suitIndex] = rank;
-
-		let final_hypo_rank = rank + 1;
-
-		// FIX: Not all of these cards can necessarily be prompted
-		// FIX: Unsure if only 'target' is enough
-		while (Utils.visibleFind(state, target, suitIndex, final_hypo_rank).filter(c => c.clued && c.inferred.length === 1).length !== 0) {
-			logger.info('found connecting hypo card with rank', final_hypo_rank);
-			final_hypo_rank++;
-		}
-		state.hypo_stacks[suitIndex] = final_hypo_rank - 1;
-		logger.info('final hypo stack of', suitIndex, 'is', final_hypo_rank - 1);
-	}
+	// suitIndex and rank are -1 if they're your own cards
 }
 
 module.exports = {
-	ACTION, CLUE,
-	find_possibilities, find_bad_touch,
-	find_playables, find_known_trash,
-	good_touch_elim,
-	remove_card_from_hand,
-	update_hypo_stacks
-};
+	onClue,
+	onDiscard,
+	onDraw
+}
