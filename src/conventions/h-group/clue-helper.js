@@ -2,7 +2,7 @@ const { determine_focus, bad_touch_num } = require('./hanabi-logic.js');
 const { ACTION } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 
-function determine_clue(state, target, card) {
+function determine_clue(state, target, card, force = undefined) {
 	logger.debug('determining clue to target card', card.toString());
 	const { suitIndex, rank } = card;
 	const hand = state.hands[target];
@@ -15,39 +15,44 @@ function determine_clue(state, target, card) {
 	let clue_type;
 	logger.debug(`colour_focused ${colour_focus.order === card.order} rank_focused ${rank_focus.order === card.order}`);
 
-	// Number clue doesn't focus, pick colour clue
-	if (colour_focus.order === card.order && rank_focus.order !== card.order) {
-		clue_type = ACTION.COLOUR;
-	}
-	// Colour clue doesn't focus, pick rank clue
-	else if (colour_focus.order !== card.order && rank_focus.order === card.order) {
-		clue_type = ACTION.RANK;
-	}
-	// Both clues focus, determine more
-	else if (colour_focus.order === card.order && rank_focus.order === card.order) {
-		// Could be interpreted as rank save
-		if (state.discard_stacks.some(stack => stack[rank - 1] === 1)) {
+	if (!force) {
+		// Number clue doesn't focus, pick colour clue
+		if (colour_focus.order === card.order && rank_focus.order !== card.order) {
 			clue_type = ACTION.COLOUR;
 		}
-		logger.debug(`colour_bad_touch ${colour_bad_touch} rank_bad_touch ${rank_bad_touch}`);
-		// Figure out which clue has less bad touch
-		if (colour_bad_touch < rank_bad_touch) {
-			clue_type = ACTION.COLOUR;
-		}
-		else if (rank_bad_touch < colour_bad_touch) {
+		// Colour clue doesn't focus, pick rank clue
+		else if (colour_focus.order !== card.order && rank_focus.order === card.order) {
 			clue_type = ACTION.RANK;
 		}
-		else {
-			logger.debug(`colour_touch ${colour_touch.length} rank_touch ${rank_touch.length}`);
-			// Figure out which clue touches more cards
-			// TODO: Should probably be which one "fills in" more cards
-			if (colour_touch.length >= rank_touch.length) {
+		// Both clues focus, determine more
+		else if (colour_focus.order === card.order && rank_focus.order === card.order) {
+			// Could be interpreted as rank save
+			if (state.discard_stacks.some(stack => stack[rank - 1] === 1)) {
 				clue_type = ACTION.COLOUR;
 			}
-			else {
+			logger.debug(`colour_bad_touch ${colour_bad_touch} rank_bad_touch ${rank_bad_touch}`);
+			// Figure out which clue has less bad touch
+			if (colour_bad_touch < rank_bad_touch) {
+				clue_type = ACTION.COLOUR;
+			}
+			else if (rank_bad_touch < colour_bad_touch) {
 				clue_type = ACTION.RANK;
 			}
+			else {
+				logger.debug(`colour_touch ${colour_touch.length} rank_touch ${rank_touch.length}`);
+				// Figure out which clue touches more cards
+				// TODO: Should probably be which one "fills in" more cards
+				if (colour_touch.length >= rank_touch.length) {
+					clue_type = ACTION.COLOUR;
+				}
+				else {
+					clue_type = ACTION.RANK;
+				}
+			}
 		}
+	}
+	else {
+		clue_type = force;
 	}
 
 	if (clue_type === ACTION.COLOUR) {

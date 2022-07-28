@@ -42,7 +42,7 @@ function valid_play(state, target, card) {
 		}
 	}
 	logger.debug(card.toString(),'is a valid play clue!');
-	return { valid: true, finesses: finesses.reduce((sum, curr) => sum + curr, 0) };
+	return { valid: true, finesses: finesses.reduce((sum, curr) => sum + curr, 0), self: finesses[target] > 0 };
 }
 
 function find_clues(state) {
@@ -73,11 +73,11 @@ function find_clues(state) {
 				continue;
 			}
 
-			const { valid, finesses } = valid_play(state, target, card);
+			const { valid, finesses, self } = valid_play(state, target, card);
 
 			if (valid) {
 				// Play clue
-				const clue = determine_clue(state, target, card);
+				const clue = determine_clue(state, target, card, self ? ACTION.RANK: undefined);
 				if (clue !== undefined) {
 					play_clues[target].push(Object.assign(clue, {finesses}));
 

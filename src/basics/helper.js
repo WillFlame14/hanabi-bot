@@ -120,7 +120,6 @@ function find_known_trash(state, hand) {
 		// No inference and every possibility is trash
 		if (card.inferred.length === 0) {
 			if (!card.possible.some(c => not_trash(c.suitIndex, c.rank))) {
-				console.log('no inference trash');
 				trash.push(card);
 			}
 			continue;
@@ -149,7 +148,11 @@ function find_known_trash(state, hand) {
 
 function good_touch_elim(hand, cards, options = {}) {
 	for (const card of hand) {
-		if (card.clued && (options.ignore === undefined || !options.ignore.includes(card.order))) {
+		if (options.ignore?.includes(card.order)) {
+			continue;
+		}
+
+		if (card.clued && (options.hard || card.inferred.length > 1)) {
 			card.subtract('inferred', cards);
 		}
 	}
