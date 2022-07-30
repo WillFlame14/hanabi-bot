@@ -82,6 +82,10 @@ function take_action(state, tableID) {
 			if (state.numPlayers === 2) {
 				const otherPlayerIndex = (state.ourPlayerIndex + 1) % 2;
 				all_play_clues = all_play_clues.concat(find_tempo_clues(state)[otherPlayerIndex]);
+				console.log('all play clues', all_play_clues);
+			}
+			else {
+				console.log(state.numPlayers);
 			}
 
 			const { clue, value } = select_play_clue(all_play_clues, state.cards_left < 5 ? -2 : 0);

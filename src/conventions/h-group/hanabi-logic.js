@@ -73,7 +73,7 @@ function bad_touch_num(state, target, cards) {
 			const our_hand = state.hands[state.ourPlayerIndex];
 
 			for (const card of our_hand) {
-				if (card.inferred.length < 5 && card.inferred.some(c => c.matches(suitIndex, rank))) {
+				if (card.inferred.length <= 2 && card.inferred.some(c => c.matches(suitIndex, rank))) {
 					bad_touch = true;
 					break;
 				}

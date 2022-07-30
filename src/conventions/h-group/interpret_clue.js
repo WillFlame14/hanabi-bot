@@ -20,10 +20,11 @@ function interpret_clue(state, action) {
 	logger.debug('bad touch', bad_touch.map(c => c.toString()).join(','));
 
 	let save = false;
-	const focus_possible = find_focus_possible(state, giver, target, clue, chop);
+	let focus_possible = focused_card.inferred;
 
 	// Try to determine all the possible inferences of the card
-	if (focused_card.inferred.length > 1) {
+	if (focus_possible.length > 1) {
+		focus_possible = find_focus_possible(state, giver, target, clue, chop);
 		focused_card.intersect('inferred', focus_possible);
 		save = focused_card.inferred.some(card => focus_possible.some(p => card.matches(p.suitIndex, p.rank) && p.save));
 	}
@@ -134,7 +135,7 @@ function interpret_clue(state, action) {
 
 		// Valid focus and not save
 		if (focus_result !== undefined && !save) {
-			for (const { type, card } of focus_result.connections) {
+			for (const { type, card } of focus_result.connections || []) {
 				if (type === 'finesse') {
 					card.finessed = true;
 					// focused_card.waiting_finesse_players.push(reacting);
