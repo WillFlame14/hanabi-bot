@@ -9,7 +9,7 @@ function select_play_clue(play_clues) {
 	let best_clue;
 
 	for (const clue of play_clues) {
-		const { bad_touch, touch, finesses } = clue;
+		const { bad_touch, touch, finesses = 0 } = clue;
 		const clue_value = 2*finesses + touch - 2.1*bad_touch;
 
 		if (clue_value > best_clue_value) {
@@ -84,9 +84,6 @@ function take_action(state, tableID) {
 				all_play_clues = all_play_clues.concat(find_tempo_clues(state)[otherPlayerIndex]);
 				console.log('all play clues', all_play_clues);
 			}
-			else {
-				console.log(state.numPlayers);
-			}
 
 			const { clue, value } = select_play_clue(all_play_clues, state.cards_left < 5 ? -2 : 0);
 			const minimum_clue_value = state.cards_left < 5 ? -2 : 0;
@@ -95,6 +92,9 @@ function take_action(state, tableID) {
 				const { type, target, value } = clue;
 				Utils.sendCmd('action', { tableID, type, target, value });
 				return;
+			}
+			else {
+				console.log('clue too low value', clue, value);
 			}
 		}
 

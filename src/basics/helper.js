@@ -117,9 +117,9 @@ function find_known_trash(state, hand) {
 	const not_trash = (suitIndex, rank) => rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex];
 
 	for (const card of hand) {
-		// No inference and every possibility is trash
+		// No inference and every possibility is trash or clued in someone's hand
 		if (card.inferred.length === 0) {
-			if (!card.possible.some(c => not_trash(c.suitIndex, c.rank))) {
+			if (!card.possible.some(c => not_trash(c.suitIndex, c.rank) && !Utils.visibleFind(state, state.ourPlayerIndex, c.suitIndex, c.rank)).some(c2 => c2.clued)) {
 				trash.push(card);
 			}
 			continue;

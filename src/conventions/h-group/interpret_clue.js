@@ -6,7 +6,7 @@ const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function interpret_clue(state, action) {
-	const { clue, giver, list, target, mistake } = action;
+	const { clue, giver, list, target, mistake = false } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
 	// Touched cards should also obey good touch principle
