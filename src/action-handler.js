@@ -26,7 +26,6 @@ function handle_action(state, action, tableID, catchup = false) {
 			}
 			logger.info(`${playerName} clues ${clue_value} to ${targetName}`);
 
-			action.mistake = action.mistake || false;
 			Basics.onClue(state, action);
 			state.interpret_clue(state, action);
 
