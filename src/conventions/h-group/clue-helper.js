@@ -4,7 +4,7 @@ const { LEVELS, logger } = require('../../logger.js');
 const Basics = require('../../basics.js')
 const Utils = require('../../util.js');
 
-function determine_clue(state, target, card, save = false) {
+function determine_clue(state, target, card) {
 	logger.info('determining clue to target card', card.toString());
 	const { suitIndex, rank } = card;
 	const hand = state.hands[target];
