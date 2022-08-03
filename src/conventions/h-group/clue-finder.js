@@ -69,7 +69,7 @@ function find_clues(state) {
 
 			// Clued, finessed, trash or visible elsewhere
 			if (card.clued || card.finessed || rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex] ||
-				Utils.visibleFind(state, target, suitIndex, rank).some(c => c.clued)) {
+				Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued)) {
 				continue;
 			}
 
@@ -104,8 +104,19 @@ function find_clues(state) {
 					// Play stack hasn't started and other copy of 2 isn't visible (to us)
 					if (state.play_stacks[chop.suitIndex] === 0 && Utils.visibleFind(state, state.ourPlayerIndex, chop.suitIndex, 2).length === 1) {
 						// Also check if not reasonably certain in our hand
-						if(!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank))) {
-							save_clues[target] = { type: ACTION.RANK, value: 2, target };
+						if (!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank))) {
+							// Also check if not putting a critical card on chop
+							let next_critical = false;
+							for (let i = chopIndex - 1; i >= 0; i--) {
+								const card = hand[i];
+								if (!card.clued && !card.finessed) {
+									next_critical = Utils.isCritical(state, card.suitIndex, card.rank);
+									break;
+								}
+							}
+							if (!next_critical) {
+								save_clues[target] = { type: ACTION.RANK, value: 2, target };
+							}
 						}
 					}
 				}

@@ -82,14 +82,35 @@ function determine_clue(state, target, card, save = false) {
 			clue_type = ACTION.RANK;
 		}
 		else {
-			logger.info(`colour_touch ${colour_elim} rank_touch ${rank_elim}`);
-			// Figure out which clue touches more cards
-			// TODO: Should probably be which one "fills in" more cards
-			if (colour_elim >= rank_elim) {
+			const [colour_save, rank_save] = [colour_interpret, rank_interpret].map(ps => ps.some(p => {
+				return Utils.isCritical(state, p.suitIndex, p.rank) && state.hypo_stacks[p.suitIndex] + 1 !== p.rank;
+			}));
+			logger.info(`colour_save ${colour_save} rank_save ${rank_save}`);
+			// Figure out which clue doesn't look like a save clue
+			if (!colour_save && rank_save) {
 				clue_type = ACTION.COLOUR;
 			}
-			else {
+			else if (!rank_save && colour_save) {
 				clue_type = ACTION.RANK;
+			}
+			else {
+				logger.info(`colour_touch ${colour_elim} rank_touch ${rank_elim}`);
+				// Figure out which clue "fills in" more cards
+				if (colour_elim > rank_elim) {
+					clue_type = ACTION.COLOUR;
+				}
+				else if (colour_elim < rank_elim) {
+					clue_type = ACTION.RANK;
+				}
+				else {
+					// Figure out which clue has less interpretations
+					if (colour_interpret.length <= rank_interpret.length) {
+						clue_type = ACTION.COLOUR;
+					}
+					else {
+						clue_type = ACTION.RANK;
+					}
+				}
 			}
 		}
 	}

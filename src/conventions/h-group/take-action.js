@@ -94,7 +94,7 @@ function take_action(state, tableID) {
 				return;
 			}
 			else {
-				console.log('clue too low value', clue, value);
+				logger.debug('clue too low value', clue, value);
 			}
 		}
 

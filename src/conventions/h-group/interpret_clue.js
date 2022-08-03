@@ -26,7 +26,11 @@ function interpret_clue(state, action) {
 	if (focus_possible.length > 1) {
 		focus_possible = find_focus_possible(state, giver, target, clue, chop);
 		focused_card.intersect('inferred', focus_possible);
-		save = focused_card.inferred.some(card => focus_possible.some(p => card.matches(p.suitIndex, p.rank) && p.save));
+		save = focused_card.newly_clued && focused_card.inferred.some(card => focus_possible.some(p => card.matches(p.suitIndex, p.rank) && p.save));
+	}
+	else if (focus_possible.length === 1) {
+		const { suitIndex, rank } = focused_card.inferred[0];
+		save = focused_card.newly_clued && (Utils.isCritical(state, suitIndex, rank) || (rank === 2 && chop)) && state.hypo_stacks[suitIndex] + 1 !== rank;
 	}
 	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','), 'order', focused_card.order, 'save?', save, 'mistake?', mistake);
 
@@ -76,12 +80,13 @@ function interpret_clue(state, action) {
 			const card = focused_card.suitIndex !== -1 ? focused_card : focused_card.possible[0];
 			const { suitIndex, rank } = card;
 
-			// If this card is playable
-			const found_connecting = focus_possible.some(p => card.matches(p.suitIndex, p.rank));
+			const matches_inference = focused_card.inferred.some(c => c.matches(suitIndex, rank));
+			const inferred = focus_possible.find(p => card.matches(p.suitIndex, p.rank));
+			const playable = state.hypo_stacks[suitIndex] + (inferred?.connections || []).length === rank;
+			const not_trash = rank > state.hypo_stacks[suitIndex] + 1 && rank <= state.max_ranks[suitIndex];
 
 			// Card doesn't match inference, or card isn't playable (and isn't trash)
-			if (!focused_card.inferred.some(c => c.matches(suitIndex, rank)) ||
-				(!found_connecting && rank > state.hypo_stacks[suitIndex] + 1 && rank <= state.max_ranks[suitIndex])) {
+			if (!matches_inference || (!playable && not_trash)) {
 				// Reset inference
 				focused_card.inferred = Utils.objClone(focused_card.possible);
 				({ feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank));
@@ -90,13 +95,15 @@ function interpret_clue(state, action) {
 		}
 		// Card clued in our hand and we have exactly one inference
 		else if (focused_card.inferred.length === 1) {
-			const { suitIndex, rank } = focused_card.inferred[0];
+			const card = focused_card.inferred[0];
+			const { suitIndex, rank } = card;
 
-			// If this card is playable
-			const found_connecting = focus_possible.some(p => focused_card.inferred[0].matches(p));
+			const inferred = focus_possible.find(p => card.matches(p.suitIndex, p.rank));
+			const playable = state.hypo_stacks[suitIndex] + (inferred?.connections || []).length === rank;
+			const not_trash = rank > state.hypo_stacks[suitIndex] + 1 && rank <= state.max_ranks[suitIndex];
 
 			// Card isn't playable
-			if (rank > state.hypo_stacks[suitIndex] + 1 && !found_connecting) {
+			if (!playable && not_trash) {
 				// Reset inference
 				focused_card.inferred = Utils.objClone(focused_card.possible);
 				({ feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank));

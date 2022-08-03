@@ -8,7 +8,7 @@ const ACTION = {
 	RANK: 3
 }
 
-const CLUE = { COLOUR: 0, NUMBER: 1 };
+const CLUE = { COLOUR: 0, RANK: 1 };
 
 function find_possibilities(clue, num_suits) {
 	const new_possible = [];
@@ -119,7 +119,7 @@ function find_known_trash(state, hand) {
 	for (const card of hand) {
 		// No inference and every possibility is trash or clued in someone's hand
 		if (card.inferred.length === 0) {
-			if (!card.possible.some(c => not_trash(c.suitIndex, c.rank) && !Utils.visibleFind(state, state.ourPlayerIndex, c.suitIndex, c.rank)).some(c2 => c2.clued)) {
+			if (!card.possible.some(c => not_trash(c.suitIndex, c.rank) && !Utils.visibleFind(state, state.ourPlayerIndex, c.suitIndex, c.rank).some(c2 => c2.clued))) {
 				trash.push(card);
 			}
 			continue;
