@@ -39,7 +39,7 @@ function determine_clue(state, target, card) {
 			const old_card = state.hands[target][i];
 			const hypo_card = hypo_state.hands[target][i];
 
-			if (hypo_card.inferred.length < old_card.inferred.length) {
+			if (hypo_card.clued && hypo_card.inferred.length < old_card.inferred.length) {
 				elim_sum++;
 			}
 		}

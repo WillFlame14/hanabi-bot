@@ -32,28 +32,26 @@ function take_action(state, tableID) {
 	if (state.clue_tokens > 0) {
 		const urgent_clues = [[], [], []];
 
-		for (let i = 1; i < state.numPlayers; i++) {
-			const target = (state.ourPlayerIndex + i) % state.numPlayers;
-			const playable_cards = find_playables(state.play_stacks, state.hands[target]);
-			const trash_cards = find_known_trash(state, state.hands[target]);
+		const target = (state.ourPlayerIndex + 1) % state.numPlayers;
+		const playable_cards = find_playables(state.play_stacks, state.hands[target]);
+		const trash_cards = find_known_trash(state, state.hands[target]);
 
-			// They require a save clue and don't already have a playable or trash
-			if (save_clues[target] !== undefined && playable_cards.length === 0 && trash_cards.length === 0) {
-				const { clue, value } = select_play_clue(play_clues[target]);
-				if (value > 0 && state.clue_tokens >= 2) {
-					// Can give them a play clue, so less urgent (need at least 2 clue tokens)
-					urgent_clues[1].push(clue);
-				}
-				else {
-					// Play clue value is too low or cannot give play, give save clue
-					urgent_clues[0].push(save_clues[target]);
-				}
+		// They require a save clue and don't already have a playable or trash
+		if (save_clues[target] !== undefined && playable_cards.length === 0 && trash_cards.length === 0) {
+			const { clue, value } = select_play_clue(play_clues[target]);
+			if (value > 0 && state.clue_tokens >= 2) {
+				// Can give them a play clue, so less urgent (need at least 2 clue tokens)
+				urgent_clues[1].push(clue);
 			}
+			else {
+				// Play clue value is too low or cannot give play, give save clue
+				urgent_clues[0].push(save_clues[target]);
+			}
+		}
 
-			// They require a fix clue
-			if (fix_clues[target].length > 0) {
-				urgent_clues[2].push(fix_clues[target][0]);
-			}
+		// They require a fix clue
+		if (fix_clues[target].length > 0) {
+			urgent_clues[2].push(fix_clues[target][0]);
 		}
 
 		// Go through urgent save clues in order of priority

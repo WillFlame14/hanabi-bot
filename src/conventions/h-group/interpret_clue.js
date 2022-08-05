@@ -16,6 +16,12 @@ function interpret_clue(state, action) {
 		if (card.inferred.length > 1 && (card.clued || list.includes(card.order))) {
 			card.subtract('inferred', bad_touch);
 		}
+
+		// Somehow lost all inferences, revert to good touch principle
+		if (card.inferred.length === 0) {
+			card.inferred = Utils.objClone(card.possible);
+			card.subtract('inferred', bad_touch);
+		}
 	}
 	logger.debug('bad touch', bad_touch.map(c => c.toString()).join(','));
 
