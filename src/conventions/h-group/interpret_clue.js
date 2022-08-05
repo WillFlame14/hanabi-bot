@@ -71,7 +71,9 @@ function interpret_clue(state, action) {
 			// No inference, but a finesse isn't possible - default to good touch principle
 			if (!feasible) {
 				focused_card.inferred = Utils.objClone(focused_card.possible);
-				focused_card.subtract('inferred', bad_touch);
+				if (focused_card.inferred.length > 1) {
+					focused_card.subtract('inferred', bad_touch);
+				}
 				logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
 			}
 		}

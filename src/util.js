@@ -120,6 +120,10 @@ function isCritical(state, suitIndex, rank) {
 	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1);
 }
 
+function isPlayable(state, suitIndex, rank) {
+	return state.play_stacks[suitIndex] + 1 === rank;
+}
+
 function objClone(obj) {
 	if (typeof obj === 'object') {
 		if (obj instanceof Card) {
@@ -186,7 +190,7 @@ module.exports = {
 	sendChat, sendCmd,
 	findOrder,
 	handFind, visibleFind,
-	isCritical,
+	isCritical, isPlayable,
 	objClone,
 	logCard, logHand, writeNote
 };

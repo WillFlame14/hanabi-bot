@@ -24,8 +24,6 @@ function determine_clue(state, target, card) {
 		const touched = clue.type === CLUE.COLOUR ? colour_touch : rank_touch;
 		const action = { giver: state.ourPlayerIndex, target, list: touched.map(c => c.order), clue, mistake: false };
 
-		logger.info('trying to clue', clue);
-
 		logger.setLevel(LEVELS.ERROR);
 
 		Basics.onClue(hypo_state, action);

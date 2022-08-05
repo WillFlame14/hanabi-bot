@@ -1,6 +1,6 @@
 const { determine_clue } = require('./clue-helper.js');
 const { find_chop, find_finesse_pos } = require('./hanabi-logic.js');
-const { ACTION } = require('../../basics/helper.js');
+const { ACTION, CLUE, find_possibilities } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -127,9 +127,12 @@ function find_clues(state) {
 		}
 	}
 
+	const fix_clues = find_fix_clues(state);
+
 	logger.info('found play clues', play_clues);
 	logger.info('found save clues', save_clues);
-	return { play_clues, save_clues };
+	logger.info('found fix clues', fix_clues);
+	return { play_clues, save_clues, fix_clues };
 }
 
 function find_tempo_clues(state) {
@@ -147,7 +150,7 @@ function find_tempo_clues(state) {
 			// Card must be clued and playable
 			if (card.clued && state.hypo_stacks[card.suitIndex] + 1 === card.rank) {
 				// Card is known playable
-				if (card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank)) {
+				if (card.inferred.every(c => Utils.isPlayable(state, c.suitIndex, c.rank))) {
 					continue;
 				}
 				const clue = determine_clue(state, target, card);
@@ -215,4 +218,54 @@ function find_stall_clue(state, severity) {
 	}
 }
 
-module.exports = { find_clues, find_tempo_clues, find_stall_clue };
+function find_fix_clues(state) {
+	const fix_clues = [];
+	for (let target = 0; target < state.numPlayers; target++) {
+		fix_clues[target] = [];
+		// Ignore our own hand
+		if (target === state.ourPlayerIndex) {
+			continue;
+		}
+
+		const hand = state.hands[target];
+
+		for (const card of hand) {
+			// Card known, doesn't need fix
+			if (card.possible.length === 1) {
+				continue;
+			}
+
+			if (card.inferred.length === 0) {
+				// TODO
+			}
+			else {
+				const matches_inferences = card.inferred.some(p => card.matches(p.suitIndex, p.rank));
+				// const seems_playable = card.inferred.every(p => Utils.isPlayable(state, p.suitIndex, p.rank));
+
+				// Card doesn't match any inferences and seems playable (need to fix)
+				if (!matches_inferences) {
+					const colour_clue = { type: CLUE.COLOUR, value: card.suitIndex };
+					const rank_clue = { type: CLUE.RANK, value: card.rank };
+					const [colour_fixed, rank_fixed] = [colour_clue, rank_clue].map(clue => {
+						const copy = card.clone();
+						copy.intersect('inferred', find_possibilities(clue, state.num_suits));
+
+						// Fixed if every inference is now unplayable
+						return copy.inferred.every(p => !Utils.isPlayable(state, p.suitIndex, p.rank));
+					});
+
+					if (colour_fixed && !rank_fixed) {
+						fix_clues[target].push({ type: ACTION.COLOUR, target, value: card.suitIndex });
+					}
+					// Always prefer rank fix if it works
+					else {
+						fix_clues[target].push({ type: ACTION.RANK, target, value: card.rank });
+					}
+				}
+			}
+		}
+	}
+	return fix_clues;
+}
+
+module.exports = { find_clues, find_tempo_clues, find_stall_clue, find_fix_clues };

@@ -75,10 +75,15 @@ function find_focus_possible(state, giver, target, clue, chop) {
 		// Save clue on chop
 		if (chop) {
 			for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
+				// Don't need to consider save on playable cards
+				if (Utils.isPlayable(state, suitIndex, rank)) {
+					continue;
+				}
+
 				let save2 = false;
 
 				// Determine if it's a 2 save
-				if (rank === 2 && state.play_stacks[suitIndex] + 1 !== rank) {
+				if (rank === 2) {
 					const duplicates = Utils.visibleFind(state, target, suitIndex, rank);
 
 					// No duplicates found, so can be a 2 save
@@ -95,7 +100,7 @@ function find_focus_possible(state, giver, target, clue, chop) {
 					}
 				}
 
-				if ((Utils.isCritical(state, suitIndex, rank) && state.play_stacks[suitIndex] + 1 !== rank) || save2) {
+				if (Utils.isCritical(state, suitIndex, rank) || save2) {
 					focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				}
 			}
@@ -151,6 +156,11 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 }
 
 function find_own_finesses(state, giver, target, suitIndex, rank) {
+	// We cannot finesse ourselves
+	if (giver === state.ourPlayerIndex) {
+		return { feasible: false, connections: [] };
+	}
+
 	logger.info('finding finesse for (potentially) clued card', Utils.logCard(suitIndex, rank));
 	const our_hand = state.hands[state.ourPlayerIndex];
 	const connections = [];
