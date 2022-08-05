@@ -14,7 +14,7 @@ const options = {
 		'Content-Type': 'application/x-www-form-urlencoded',
 		'Content-Length': data.length
 	}
-}
+};
 
 /**
  * Logs in to hanab.live and returns the session cookie to authenticate future requests.

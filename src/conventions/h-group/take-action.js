@@ -38,6 +38,30 @@ function take_action(state, tableID) {
 
 		// They require a save clue and don't already have a playable or trash
 		if (save_clues[target] !== undefined && playable_cards.length === 0 && trash_cards.length === 0) {
+			// Try to see if they have a playable card that connects to one in our hand
+			for (const card of state.hands[target]) {
+				const { suitIndex, rank } = card;
+				const one_away = Utils.playableAway(state, suitIndex, rank) === 1;
+
+				if (one_away) {
+					// See if we have the connecting card (should be certain)
+					const our_connecting = state.hands[state.ourPlayerIndex].find(c => {
+						return c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank - 1);
+					});
+
+					if (our_connecting !== undefined) {
+						// The card must become playable
+						const known = card.inferred.every(c => {
+							return Utils.playableAway(state, c.suitIndex, c.rank) === 0 || c.matches(suitIndex, rank);
+						});
+
+						if (known) {
+							Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: our_connecting.order });
+						}
+					}
+				}
+			}
+
 			const { clue, value } = select_play_clue(play_clues[target]);
 			if (value > 0 && state.clue_tokens >= 2) {
 				// Can give them a play clue, so less urgent (need at least 2 clue tokens)

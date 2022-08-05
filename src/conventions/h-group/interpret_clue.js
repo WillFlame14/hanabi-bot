@@ -1,6 +1,6 @@
 const { determine_focus } = require('./hanabi-logic.js');
 const { find_focus_possible, find_own_finesses } = require('./interpret_helper.js');
-const { Card } = require('../../basics/Card.js')
+const { Card } = require('../../basics/Card.js');
 const { find_bad_touch, update_hypo_stacks, good_touch_elim } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
@@ -24,20 +24,31 @@ function interpret_clue(state, action) {
 		}
 	}
 	logger.debug('bad touch', bad_touch.map(c => c.toString()).join(','));
-
-	let save = false;
 	let focus_possible = focused_card.inferred;
 
 	// Try to determine all the possible inferences of the card
 	if (focus_possible.length > 1) {
 		focus_possible = find_focus_possible(state, giver, target, clue, chop);
 		focused_card.intersect('inferred', focus_possible);
-		save = focused_card.newly_clued && focused_card.inferred.some(card => focus_possible.some(p => card.matches(p.suitIndex, p.rank) && p.save));
 	}
-	else if (focus_possible.length === 1) {
-		const { suitIndex, rank } = focused_card.inferred[0];
-		save = focused_card.newly_clued && (Utils.isCritical(state, suitIndex, rank) || (rank === 2 && chop)) && state.hypo_stacks[suitIndex] + 1 !== rank;
+
+	let save = focused_card.newly_clued;
+	if (target === state.ourPlayerIndex) {
+		// Known save
+		if (focused_card.inferred.length === 1) {
+			const { suitIndex, rank } = focused_card.inferred[0];
+			save &&= (Utils.isCritical(state, suitIndex, rank) || (rank === 2 && chop)) && state.hypo_stacks[suitIndex] + 1 !== rank;
+		}
+		else {
+			// At least one of the inferences is a save
+			save &&= focused_card.inferred.some(card => focus_possible.some(p => card.matches(p.suitIndex, p.rank) && p.save));
+		}
 	}
+	else {
+		// The correct inference exists and is a save
+		save &&= focus_possible.some(p => focused_card.matches(p.suitIndex, p.rank) && p.save);
+	}
+
 	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','), 'order', focused_card.order, 'save?', save, 'mistake?', mistake);
 
 	// Not a save, so might be a finesse

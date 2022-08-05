@@ -76,7 +76,7 @@ function find_focus_possible(state, giver, target, clue, chop) {
 		if (chop) {
 			for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
 				// Don't need to consider save on playable cards
-				if (Utils.isPlayable(state, suitIndex, rank)) {
+				if (Utils.playableAway(state, suitIndex, rank) === 0) {
 					continue;
 				}
 

@@ -150,7 +150,7 @@ function find_tempo_clues(state) {
 			// Card must be clued and playable
 			if (card.clued && state.hypo_stacks[card.suitIndex] + 1 === card.rank) {
 				// Card is known playable
-				if (card.inferred.every(c => Utils.isPlayable(state, c.suitIndex, c.rank))) {
+				if (card.inferred.every(c => Utils.playableAway(state, c.suitIndex, c.rank) === 0)) {
 					continue;
 				}
 				const clue = determine_clue(state, target, card);
@@ -240,10 +240,16 @@ function find_fix_clues(state) {
 			}
 			else {
 				const matches_inferences = card.inferred.some(p => card.matches(p.suitIndex, p.rank));
-				// const seems_playable = card.inferred.every(p => Utils.isPlayable(state, p.suitIndex, p.rank));
+				const seems_playable = card.inferred.every(p => {
+					const playableAway = Utils.playableAway(state, p.suitIndex, p.rank);
+					const our_hand = state.hands[state.ourPlayerIndex];
+
+					// Possibility is immediately playable or 1-away and we have the connecting card
+					return playableAway === 0 || (playableAway === 1 && our_hand.some(c => c.matches(p.suitIndex, p.rank - 1)));
+				});
 
 				// Card doesn't match any inferences and seems playable (need to fix)
-				if (!matches_inferences) {
+				if (!matches_inferences && seems_playable) {
 					const colour_clue = { type: CLUE.COLOUR, value: card.suitIndex };
 					const rank_clue = { type: CLUE.RANK, value: card.rank };
 					const [colour_fixed, rank_fixed] = [colour_clue, rank_clue].map(clue => {
@@ -251,7 +257,7 @@ function find_fix_clues(state) {
 						copy.intersect('inferred', find_possibilities(clue, state.num_suits));
 
 						// Fixed if every inference is now unplayable
-						return copy.inferred.every(p => !Utils.isPlayable(state, p.suitIndex, p.rank));
+						return copy.inferred.every(p => Utils.playableAway(state, p.suitIndex, p.rank) !== 0);
 					});
 
 					if (colour_fixed && !rank_fixed) {

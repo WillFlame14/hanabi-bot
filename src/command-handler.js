@@ -1,5 +1,5 @@
 const { handle_action } = require('./action-handler.js');
-const { Card } = require('./basics/Card.js')
+const { Card } = require('./basics/Card.js');
 const { logger } = require('./logger.js');
 const Utils = require('./util.js');
 
@@ -92,7 +92,7 @@ const handle = {
 			all_possible: [],
 			max_ranks: [],
 			actionList: []
-		}
+		};
 
 		const HAND_SIZES = [-1, -1, 5, 5, 4, 3, 3];
 		state.cards_left = state.num_suits * 5 - state.numPlayers * HAND_SIZES[state.numPlayers];
@@ -143,6 +143,6 @@ const handle = {
 	warning: (warn) => logger.error(warn),
 	// Received when we first register a websocket
 	welcome: (data) => { self = data; },
-}
+};
 
 module.exports = { handle };

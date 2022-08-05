@@ -1,7 +1,7 @@
-const { Card } = require('./basics/Card.js')
+const { Card } = require('./basics/Card.js');
 const { CLUE, good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics/helper.js');
 const { LEVELS, logger } = require('./logger.js');
-const Basics = require('./basics.js')
+const Basics = require('./basics.js');
 const Utils = require('./util.js');
 
 let rewind_depth = 0;

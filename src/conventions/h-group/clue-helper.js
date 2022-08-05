@@ -1,7 +1,7 @@
 const { determine_focus, bad_touch_num } = require('./hanabi-logic.js');
 const { ACTION, CLUE } = require('../../basics/helper.js');
 const { LEVELS, logger } = require('../../logger.js');
-const Basics = require('../../basics.js')
+const Basics = require('../../basics.js');
 const Utils = require('../../util.js');
 
 function determine_clue(state, target, card) {
@@ -24,12 +24,14 @@ function determine_clue(state, target, card) {
 		const touched = clue.type === CLUE.COLOUR ? colour_touch : rank_touch;
 		const action = { giver: state.ourPlayerIndex, target, list: touched.map(c => c.order), clue, mistake: false };
 
-		logger.setLevel(LEVELS.ERROR);
+		//logger.setLevel(LEVELS.ERROR);
+		console.log('------- ENTERING HYPO --------');
 
 		Basics.onClue(hypo_state, action);
 		hypo_state.interpret_clue(hypo_state, action);
 
-		logger.setLevel(LEVELS.INFO);
+		//logger.setLevel(LEVELS.INFO);
+		console.log('------- EXITING HYPO --------');
 
 		const inferred_after_cluing = hypo_state.hands[target].find(c => c.order === card.order).inferred;
 		let elim_sum = 0;

@@ -6,7 +6,7 @@ const ACTION = {
 	DISCARD: 1,
 	COLOUR: 2,
 	RANK: 3
-}
+};
 
 const CLUE = { COLOUR: 0, RANK: 1 };
 
