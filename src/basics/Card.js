@@ -12,6 +12,9 @@
  *  reasoning: [number]			the action indexes of when a card's possibiltiies/inferences were updated
  *  reasoning_turn: [number]	the game turns of when a card's possibiltiies/inferences were updated
  *  rewinded: boolean			whether the card was rewinded or not
+ *
+ *  full_note: string		the entire note on the card
+ *  last_note: string		the most recent note on the card
  */
 class Card {
 	constructor(suitIndex, rank, additions = {}) {
@@ -30,6 +33,9 @@ class Card {
 		this.reasoning = [];
 		this.reasoning_turn = [];
 		this.rewinded = false;
+
+		this.full_note = '';
+		this.last_note = '';
 
 		Object.assign(this, additions);
 	}

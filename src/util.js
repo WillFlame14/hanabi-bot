@@ -96,10 +96,10 @@ function handFindInfer(hand, suitIndex, rank) {
 	});
 }
 
-function visibleFind(state, target, suitIndex, rank, ignoreIndex = -1) {
+function visibleFind(state, target, suitIndex, rank, ignore = []) {
 	let found = [];
 	for (let i = 0; i < state.hands.length; i++) {
-		if (i === ignoreIndex) {
+		if (ignore.includes(i)) {
 			continue;
 		}
 
@@ -179,9 +179,23 @@ function writeNote(card, tableID) {
 		note = `[f] [${note}]`;
 	}
 
-	note = `t${card.reasoning_turn.at(-1)}: ${note}`;
+	if (note === '') {
+		note = '??';
+	}
 
-	sendCmd('note', { tableID, order: card.order, note });
+	// Only write a new note if it's different from the last note
+	if (note !== card.last_note) {
+		card.last_note = note;
+
+		if (card.full_note === '') {
+			card.full_note = `t${card.reasoning_turn.at(-1)}: ${note}`;
+		}
+		else {
+			card.full_note = `${card.full_note} | t${card.reasoning_turn.at(-1)}: ${note}`;
+		}
+
+		setTimeout(() => sendCmd('note', { tableID, order: card.order, note: card.full_note }), Math.random() * 5000);
+	}
 }
 
 module.exports = {

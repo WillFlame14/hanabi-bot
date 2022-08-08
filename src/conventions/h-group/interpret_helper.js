@@ -37,8 +37,8 @@ function find_focus_possible(state, giver, target, clue, chop) {
 		// Save clue on chop (5 save cannot be done with number)
 		if (chop) {
 			for (let rank = next_playable_rank + 1; rank < 5; rank++) {
-				// Check if card is critical and not visible in anyone's hand
-				if (Utils.isCritical(state, suitIndex, rank)) {
+				// Check if card is critical or locked hand save
+				if (Utils.isCritical(state, suitIndex, rank) || state.hands[giver].every(c => c.clued)) {
 					focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				}
 			}
@@ -47,8 +47,8 @@ function find_focus_possible(state, giver, target, clue, chop) {
 	else {
 		const rank = clue.value;
 
-		// Play clue
 		for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
+			// Play clue
 			let stack_rank = state.hypo_stacks[suitIndex] + 1;
 			const connections = [];
 
@@ -70,11 +70,9 @@ function find_focus_possible(state, giver, target, clue, chop) {
 					focus_possible.push({ suitIndex, rank, save: false, connections });
 				}
 			}
-		}
 
-		// Save clue on chop
-		if (chop) {
-			for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
+			// Save clue on chop
+			if (chop) {
 				// Don't need to consider save on playable cards
 				if (Utils.playableAway(state, suitIndex, rank) === 0) {
 					continue;
@@ -100,9 +98,15 @@ function find_focus_possible(state, giver, target, clue, chop) {
 					}
 				}
 
-				if (Utils.isCritical(state, suitIndex, rank) || save2) {
+				// Critical save, 2 save or locked hand save
+				if (Utils.isCritical(state, suitIndex, rank) || save2 || state.hands[giver].every(c => c.clued)) {
 					focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				}
+			}
+
+			// 5 Stall
+			if (rank === 5 && state.early_game) {
+				focus_possible.push({ suitIndex, rank, stall: true, connections: [] });
 			}
 		}
 	}

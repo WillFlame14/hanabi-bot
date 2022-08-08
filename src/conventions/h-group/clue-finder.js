@@ -47,7 +47,6 @@ function valid_play(state, target, card) {
 
 function find_clues(state) {
 	const play_clues = [], save_clues = [];
-
 	logger.info('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
 	// Find all valid clues
@@ -129,9 +128,9 @@ function find_clues(state) {
 
 	const fix_clues = find_fix_clues(state);
 
-	logger.info('found play clues', play_clues);
+	logger.debug('found play clues', play_clues);
 	logger.info('found save clues', save_clues);
-	logger.info('found fix clues', fix_clues);
+	logger.debug('found fix clues', fix_clues);
 	return { play_clues, save_clues, fix_clues };
 }
 
@@ -237,6 +236,7 @@ function find_fix_clues(state) {
 
 			if (card.inferred.length === 0) {
 				// TODO
+				logger.error(`card ${card.toString()} order ${card.order} need fix??`);
 			}
 			else {
 				const matches_inferences = card.inferred.some(p => card.matches(p.suitIndex, p.rank));
@@ -252,20 +252,26 @@ function find_fix_clues(state) {
 				if (!matches_inferences && seems_playable) {
 					const colour_clue = { type: CLUE.COLOUR, value: card.suitIndex };
 					const rank_clue = { type: CLUE.RANK, value: card.rank };
-					const [colour_fixed, rank_fixed] = [colour_clue, rank_clue].map(clue => {
+					const [colour_fix, rank_fix] = [colour_clue, rank_clue].map(clue => {
 						const copy = card.clone();
 						copy.intersect('inferred', find_possibilities(clue, state.num_suits));
 
 						// Fixed if every inference is now unplayable
-						return copy.inferred.every(p => Utils.playableAway(state, p.suitIndex, p.rank) !== 0);
+						return {
+							fixed: copy.inferred.every(p => Utils.playableAway(state, p.suitIndex, p.rank) !== 0),
+							trash: copy.inferred.every(p =>
+								p.rank <= state.play_stacks[p.suitIndex] ||
+								p.rank > state.max_ranks[p.suitIndex] ||
+								Utils.visibleFind(state, target, p.suitIndex, p.rank).some(c => c.clued)
+						)};
 					});
 
-					if (colour_fixed && !rank_fixed) {
-						fix_clues[target].push({ type: ACTION.COLOUR, target, value: card.suitIndex });
+					if (colour_fix.fixed && !rank_fix.fixed) {
+						fix_clues[target].push({ type: ACTION.COLOUR, target, value: card.suitIndex, trash: colour_fix.trash });
 					}
 					// Always prefer rank fix if it works
 					else {
-						fix_clues[target].push({ type: ACTION.RANK, target, value: card.rank });
+						fix_clues[target].push({ type: ACTION.RANK, target, value: card.rank, trash: rank_fix.trash });
 					}
 				}
 			}

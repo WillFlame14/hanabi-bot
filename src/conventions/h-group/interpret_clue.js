@@ -9,21 +9,30 @@ function interpret_clue(state, action) {
 	const { clue, giver, list, target, mistake = false } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
+	let fix = false;
+
 	// Touched cards should also obey good touch principle
 	// FIX: Need to do this in a loop to recursively deduce information
 	const bad_touch = find_bad_touch(state, giver, target);
 	for (const card of state.hands[target]) {
 		if (card.inferred.length > 1 && (card.clued || list.includes(card.order))) {
 			card.subtract('inferred', bad_touch);
-		}
 
-		// Somehow lost all inferences, revert to good touch principle
-		if (card.inferred.length === 0) {
-			card.inferred = Utils.objClone(card.possible);
-			card.subtract('inferred', bad_touch);
+			// Lost all inferences (fix), revert to good touch principle
+			if (!card.newly_clued && card.inferred.length === 0) {
+				fix = true;
+				card.inferred = Utils.objClone(card.possible);
+				card.subtract('inferred', bad_touch);
+			}
 		}
 	}
 	logger.debug('bad touch', bad_touch.map(c => c.toString()).join(','));
+
+	if (fix) {
+		logger.info('fix clue! not inferring anything else');
+		return;
+	}
+
 	let focus_possible = focused_card.inferred;
 
 	// Try to determine all the possible inferences of the card
@@ -32,27 +41,29 @@ function interpret_clue(state, action) {
 		focused_card.intersect('inferred', focus_possible);
 	}
 
-	let save = focused_card.newly_clued;
+	// Can only be not playable if the card was newly clued or stalling situation
+	let not_play = focused_card.newly_clued || (state.clue_tokens === 8 && !list.includes(state.hands[target][0].order)) || state.hands[giver].every(c => c.clued);
 	if (target === state.ourPlayerIndex) {
 		// Known save
-		if (focused_card.inferred.length === 1) {
-			const { suitIndex, rank } = focused_card.inferred[0];
-			save &&= (Utils.isCritical(state, suitIndex, rank) || (rank === 2 && chop)) && state.hypo_stacks[suitIndex] + 1 !== rank;
+		if (focused_card.possible.length === 1) {
+			const { suitIndex, rank } = focused_card.possible[0];
+			not_play &&= (Utils.isCritical(state, suitIndex, rank) || (rank === 2 && chop)) && state.hypo_stacks[suitIndex] + 1 !== rank;
 		}
 		else {
-			// At least one of the inferences is a save
-			save &&= focused_card.inferred.some(card => focus_possible.some(p => card.matches(p.suitIndex, p.rank) && p.save));
+			// At least one of the inferences is a save/stall
+			not_play &&= focused_card.inferred.some(card => focus_possible.some(p => card.matches(p.suitIndex, p.rank) && (p.save || p.stall)));
 		}
 	}
 	else {
-		// The correct inference exists and is a save
-		save &&= focus_possible.some(p => focused_card.matches(p.suitIndex, p.rank) && p.save);
+		// The correct inference exists and is a save/stall
+		not_play &&= focus_possible.some(p => focused_card.matches(p.suitIndex, p.rank) && (p.save || p.stall));
 	}
 
-	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','), 'order', focused_card.order, 'save?', save, 'mistake?', mistake);
+	logger.info('early inference on focused card', focused_card.inferred.map(c => c.toString()).join(','));
+	logger.info('order', focused_card.order, 'play?', !not_play, 'mistake?', mistake);
 
-	// Not a save, so might be a finesse
-	if (!save && !mistake) {
+	// Not save, stall or mistake, so card must be playable
+	if (!not_play && !mistake) {
 		let feasible = false, connections, conn_suit;
 
 		// No idea what the card could be
@@ -159,8 +170,8 @@ function interpret_clue(state, action) {
 
 		const focus_result = focus_possible.find(p => inference.matches(p.suitIndex, p.rank));
 
-		// Valid focus and not save
-		if (focus_result !== undefined && !save) {
+		// Valid focus and finesse
+		if (focus_result !== undefined && !not_play) {
 			for (const { type, card } of focus_result.connections || []) {
 				if (type === 'finesse') {
 					card.finessed = true;
@@ -174,6 +185,7 @@ function interpret_clue(state, action) {
 			update_hypo_stacks(state, target, suitIndex, rank);
 		}
 	}
+	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','));
 	logger.debug('hand state after clue', Utils.logHand(state.hands[target]));
 }
 

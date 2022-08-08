@@ -91,7 +91,8 @@ const handle = {
 			discard_stacks: [],
 			all_possible: [],
 			max_ranks: [],
-			actionList: []
+			actionList: [],
+			early_game: true
 		};
 
 		const HAND_SIZES = [-1, -1, 5, 5, 4, 3, 3];
@@ -115,6 +116,8 @@ const handle = {
 		// Initialize convention set
 		const convention = process.env.MODE || 'HGroup';
 		Object.assign(state, conventions[convention]);
+
+		state.rewind = rewind;
 
 		// Save blank state
 		state.blank = Utils.objClone(state);
@@ -144,5 +147,48 @@ const handle = {
 	// Received when we first register a websocket
 	welcome: (data) => { self = data; },
 };
+
+let rewind_depth = 0;
+
+function rewind(state, action_index, playerIndex, order, suitIndex, rank, bomb, tableID) {
+	if (rewind_depth > 2) {
+		throw new Error('attempted to rewind too many times!');
+	}
+	rewind_depth++;
+
+	logger.info(`expected ${Utils.logCard(suitIndex, rank)}, rewinding to action_index ${action_index}`);
+	const new_state = Utils.objClone(state.blank);
+	new_state.blank = Utils.objClone(new_state);
+	const history = state.actionList.slice(0, action_index);
+
+	logger.setLevel(logger.LEVELS.WARN);
+
+	// Get up to speed
+	for (const action of history) {
+		handle_action(new_state, action, tableID, true);
+	}
+
+	logger.setLevel(logger.LEVELS.INFO);
+
+	// Rewrite and save as a rewind action
+	const known_action = { type: 'rewind', order, playerIndex, suitIndex, rank };
+	handle_action(new_state, known_action, tableID, true);
+	logger.warn('Rewriting order', order, 'to', Utils.logCard(suitIndex, rank));
+
+	const pivotal_action = state.actionList[action_index];
+	pivotal_action.mistake = bomb || rewind_depth > 1;
+	logger.info('pivotal action', pivotal_action);
+	handle_action(new_state, pivotal_action, tableID, true);
+
+	// Redo all the following actions
+	const future = state.actionList.slice(action_index + 1);
+	for (const action of future) {
+		handle_action(new_state, action, tableID, true);
+	}
+
+	// Overwrite state
+	Object.assign(state, new_state);
+	rewind_depth = 0;
+}
 
 module.exports = { handle };

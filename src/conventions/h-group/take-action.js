@@ -26,60 +26,74 @@ function take_action(state, tableID) {
 	const { play_clues, save_clues, fix_clues } = find_clues(state);
 
 	// First, check if anyone needs an urgent save
-	// TODO: Check if someone else can save
-	// TODO: A fix clue can be used if it reveals trash
 	// TODO: scream discard?
+	const urgent_clues = [[], [], [], [], [], [], []];
 	if (state.clue_tokens > 0) {
-		const urgent_clues = [[], [], []];
+		for (let i = 1; i < state.numPlayers; i++) {
+			const target = (state.ourPlayerIndex + i) % state.numPlayers;
+			const playable_cards = find_playables(state.play_stacks, state.hands[target]);
+			const trash_cards = find_known_trash(state, target);
 
-		const target = (state.ourPlayerIndex + 1) % state.numPlayers;
-		const playable_cards = find_playables(state.play_stacks, state.hands[target]);
-		const trash_cards = find_known_trash(state, state.hands[target]);
+			// They require a save clue
+			// Urgency: [next, save only] [next, play/fix over save] [next, fix] (other actions) [other, save only] [other, play/fix over save] [other, fix] [early saves]
+			if (save_clues[target] !== undefined) {
+				// They don't already have a playable or trash
+				if (playable_cards.length === 0 && trash_cards.length === 0) {
+					// Try to see if they have a playable card that connects to one in our hand
+					for (const card of state.hands[target]) {
+						const { suitIndex, rank } = card;
+						const one_away = Utils.playableAway(state, suitIndex, rank) === 1;
 
-		// They require a save clue and don't already have a playable or trash
-		if (save_clues[target] !== undefined && playable_cards.length === 0 && trash_cards.length === 0) {
-			// Try to see if they have a playable card that connects to one in our hand
-			for (const card of state.hands[target]) {
-				const { suitIndex, rank } = card;
-				const one_away = Utils.playableAway(state, suitIndex, rank) === 1;
+						if (one_away) {
+							// See if we have the connecting card (should be certain)
+							const our_connecting = state.hands[state.ourPlayerIndex].find(c => {
+								return c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank - 1);
+							});
 
-				if (one_away) {
-					// See if we have the connecting card (should be certain)
-					const our_connecting = state.hands[state.ourPlayerIndex].find(c => {
-						return c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank - 1);
-					});
+							if (our_connecting !== undefined) {
+								// The card must become playable
+								const known = card.inferred.every(c => {
+									return Utils.playableAway(state, c.suitIndex, c.rank) === 0 || c.matches(suitIndex, rank);
+								});
 
-					if (our_connecting !== undefined) {
-						// The card must become playable
-						const known = card.inferred.every(c => {
-							return Utils.playableAway(state, c.suitIndex, c.rank) === 0 || c.matches(suitIndex, rank);
-						});
-
-						if (known) {
-							Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: our_connecting.order });
+								if (known) {
+									Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: our_connecting.order });
+								}
+							}
 						}
 					}
+
+					// Giving save clues to the player directly after us is more urgent
+					const { clue, value } = select_play_clue(play_clues[target]);
+					const trash_fix = fix_clues[target].find(clue => clue.trash);
+					if (value > 0 && state.clue_tokens >= 2) {
+						// Can give them a play clue, so less urgent (need at least 2 clue tokens)
+						urgent_clues[1 + (i !== 1 ? 3 : 0)].push(clue);
+					}
+					else if (trash_fix !== undefined && state.clue_tokens >= 2) {
+						// Can give them a fix clue, so less urgent
+						urgent_clues[1 + (i !== 1 ? 3 : 0)].push(trash_fix);
+					}
+					else {
+						// Play clue value is too low or cannot give play, give save clue
+						urgent_clues[i !== 1 ? 3 : 0].push(save_clues[target]);
+					}
+				}
+				// They have a playable or trash card
+				else {
+					urgent_clues[6].push(save_clues[target]);
 				}
 			}
 
-			const { clue, value } = select_play_clue(play_clues[target]);
-			if (value > 0 && state.clue_tokens >= 2) {
-				// Can give them a play clue, so less urgent (need at least 2 clue tokens)
-				urgent_clues[1].push(clue);
+			// They require a fix clue
+			if (fix_clues[target].length > 0) {
+				urgent_clues[2 + (i !== 1 ? 3 : 0)].push(fix_clues[target][0]);
 			}
-			else {
-				// Play clue value is too low or cannot give play, give save clue
-				urgent_clues[0].push(save_clues[target]);
-			}
-		}
-
-		// They require a fix clue
-		if (fix_clues[target].length > 0) {
-			urgent_clues[2].push(fix_clues[target][0]);
 		}
 
 		// Go through urgent save clues in order of priority
-		for (const clues of urgent_clues) {
+		for (let i = 0; i < 3; i++) {
+			const clues = urgent_clues[i];
 			if (clues.length > 0) {
 				const { type, target, value } = clues[0];
 				Utils.sendCmd('action', { tableID, type, target, value });
@@ -90,12 +104,12 @@ function take_action(state, tableID) {
 
 	// Then, look for playables or trash in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
-	const trash_cards = find_known_trash(state, hand);
+	const trash_cards = find_known_trash(state, state.ourPlayerIndex);
 
 	// Remove sarcastic discards from playables
 	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order));
 	logger.debug('playable cards', Utils.logHand(playable_cards));
-	logger.debug('trash cards', Utils.logHand(trash_cards));
+	logger.info('trash cards', Utils.logHand(trash_cards));
 
 	// No saves needed, so play
 	if (playable_cards.length > 0) {
@@ -122,6 +136,16 @@ function take_action(state, tableID) {
 			}
 			else {
 				logger.debug('clue too low value', clue, value);
+			}
+
+			// Go through rest of save clues in order of priority
+			for (let i = 4; i < 7; i++) {
+				const clues = urgent_clues[i];
+				if (clues.length > 0) {
+					const { type, target, value } = clues[0];
+					Utils.sendCmd('action', { tableID, type, target, value });
+					return;
+				}
 			}
 		}
 
