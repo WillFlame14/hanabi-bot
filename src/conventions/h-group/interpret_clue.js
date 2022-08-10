@@ -45,8 +45,8 @@ function interpret_clue(state, action) {
 	let not_play = focused_card.newly_clued || (state.clue_tokens === 8 && !list.includes(state.hands[target][0].order)) || state.hands[giver].every(c => c.clued);
 	if (target === state.ourPlayerIndex) {
 		// Known save
-		if (focused_card.possible.length === 1) {
-			const { suitIndex, rank } = focused_card.possible[0];
+		if (focused_card.inferred.length === 1) {
+			const { suitIndex, rank } = focused_card.inferred[0];
 			not_play &&= (Utils.isCritical(state, suitIndex, rank) || (rank === 2 && chop)) && state.hypo_stacks[suitIndex] + 1 !== rank;
 		}
 		else {
@@ -170,19 +170,34 @@ function interpret_clue(state, action) {
 
 		const focus_result = focus_possible.find(p => inference.matches(p.suitIndex, p.rank));
 
-		// Valid focus and finesse
+		// Valid focus and play
 		if (focus_result !== undefined && !not_play) {
 			for (const { type, card } of focus_result.connections || []) {
 				if (type === 'finesse') {
 					card.finessed = true;
-					// focused_card.waiting_finesse_players.push(reacting);
 				}
 			}
 
 			// Update hypo stacks
 			const { suitIndex, rank } = inference;
 			logger.debug('updating hypo stack (inference)');
-			update_hypo_stacks(state, target, suitIndex, rank);
+			update_hypo_stacks(state, suitIndex, rank);
+		}
+	}
+	else if (!mistake) {
+		for (const inference of focused_card.inferred) {
+			const focus_result = focus_possible.find(p => inference.matches(p.suitIndex, p.rank));
+			const connections = focus_result?.connections;
+
+			// Valid focus and waiting for someone to demonstrate connection
+			if (!not_play && connections?.length && !connections[0].self) {
+				for (const { type, card } of connections) {
+					if (type === 'finesse') {
+						card.finessed = true;
+					}
+				}
+				state.waiting_connections.push({ connections, focused_card, inference });
+			}
 		}
 	}
 	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','));

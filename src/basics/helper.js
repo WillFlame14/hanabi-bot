@@ -125,7 +125,7 @@ function find_known_trash(state, playerIndex) {
 	for (const card of hand) {
 		// No inference and every possibility is trash or visible elsewhere
 		if (card.inferred.length === 0) {
-			if (!card.possible.some(c => not_trash(c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
+			if (card.possible.every(c => !not_trash(c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
 				trash.push(card);
 				continue;
 			}
@@ -176,7 +176,7 @@ function remove_card_from_hand(hand, order) {
 	hand.splice(card_index, 1);
 }
 
-function update_hypo_stacks(state, target, suitIndex, rank) {
+function update_hypo_stacks(state, suitIndex, rank) {
 	if (state.hypo_stacks[suitIndex] < rank) {
 		state.hypo_stacks[suitIndex] = rank;
 

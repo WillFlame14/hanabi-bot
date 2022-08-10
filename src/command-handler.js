@@ -92,6 +92,7 @@ const handle = {
 			all_possible: [],
 			max_ranks: [],
 			actionList: [],
+			waiting_connections: [],
 			early_game: true
 		};
 

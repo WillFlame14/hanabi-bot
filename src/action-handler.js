@@ -80,9 +80,11 @@ function handle_action(state, action, tableID, catchup = false) {
 			logger.info('gameOver', action);
 			Utils.sendCmd('tableUnattend', { tableID });
 			break;
-		case 'turn':
+		case 'turn': {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
-			if (action.currentPlayerIndex === state.ourPlayerIndex && !catchup) {
+			const { currentPlayerIndex } = action;
+			const lastPlayerIndex = (currentPlayerIndex + state.numPlayers - 1) % state.numPlayers;
+			if (currentPlayerIndex === state.ourPlayerIndex && !catchup) {
 				setTimeout(() => state.take_action(state, tableID), 2000);
 
 				// Update notes on cards
@@ -92,8 +94,52 @@ function handle_action(state, action, tableID, catchup = false) {
 					}
 				}
 			}
+
+			const to_remove = [];
+			for (let i = 0; i < state.waiting_connections.length; i++) {
+				const { connections, focused_card, inference } = state.waiting_connections[i];
+				const { type, reacting, card } = connections[0];
+				// After the turn we were waiting for
+				if (reacting === lastPlayerIndex) {
+					// They still have the card
+					if (Utils.findOrder(state.hands[reacting], card.order) !== undefined) {
+						// Didn't play into finesse
+						if (type === 'finesse' && state.play_stacks[card.suitIndex] + 1 === card.rank) {
+							logger.info(`Didn't play into finesse, removing inference ${inference.toString()}`);
+							for (const connection of connections) {
+								if (connection.type === 'finesse') {
+									card.finessed = false;
+								}
+							}
+							focused_card.subtract('inferred', [inference]);
+							if (focused_card.inferred.length === 1) {
+								const { suitIndex, rank } = focused_card.inferred[0];
+								if (state.hypo_stacks[suitIndex] + 1 === rank) {
+									update_hypo_stacks(state, suitIndex, rank);
+								}
+							}
+							to_remove.push(i);
+						}
+						else {
+							logger.info(`didn't play into unplayable finesse`);
+						}
+					}
+					else {
+						// The card was played or discarded
+						logger.info(`waiting card ${card.toString()} gone`);
+						connections.shift();
+						if (connections.length === 0) {
+							to_remove.push(i);
+						}
+					}
+				}
+			}
+
+			// Filter out connections that have been removed
+			state.waiting_connections = state.waiting_connections.filter((_, i) => !to_remove.includes(i));
 			state.turn_count++;
 			break;
+		}
 		case 'play': {
 			const { order, playerIndex, rank, suitIndex } = action;
 			const card = Utils.findOrder(state.hands[playerIndex], order);
@@ -121,7 +167,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// Update hypo stacks
 			logger.debug('updating hypo stack (play)');
-			update_hypo_stacks(state, playerIndex, suitIndex, rank);
+			update_hypo_stacks(state, suitIndex, rank);
 
 			// Get a clue token back for playing a 5
 			if (rank === 5 && state.clue_tokens < 8) {

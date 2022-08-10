@@ -248,8 +248,8 @@ function find_fix_clues(state) {
 					return playableAway === 0 || (playableAway === 1 && our_hand.some(c => c.matches(p.suitIndex, p.rank - 1)));
 				});
 
-				// Card doesn't match any inferences and seems playable (need to fix)
-				if (!matches_inferences && seems_playable) {
+				// Card doesn't match any inferences and seems playable but isn't (need to fix)
+				if (!matches_inferences && seems_playable && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
 					const colour_clue = { type: CLUE.COLOUR, value: card.suitIndex };
 					const rank_clue = { type: CLUE.RANK, value: card.rank };
 					const [colour_fix, rank_fix] = [colour_clue, rank_clue].map(clue => {
