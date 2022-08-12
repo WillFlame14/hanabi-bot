@@ -15,20 +15,22 @@ function find_focus_possible(state, giver, target, clue, chop) {
 		const connections = [];
 
 		// Try looking for a connecting card
-		let connecting = find_connecting(state, giver, target, suitIndex, next_playable_rank);
+		const hypo_state = Utils.objClone(state);
+		let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank);
 
 		while (connecting !== undefined) {
-			// TODO: Use the reacting person to see if they do something urgent instead of playing into finesse
-			const { type } = connecting;
+			const { type, card } = connecting;
 
 			if (type === 'finesse') {
 				// Even if a finesse is possible, it might not be a finesse
 				focus_possible.push({ suitIndex, rank: next_playable_rank, save: false, connections: Utils.objClone(connections) });
+				card.finessed = true;
 			}
+			hypo_state.play_stacks[suitIndex]++;
 
 			next_playable_rank++;
 			connections.push(connecting);
-			connecting = find_connecting(state, giver, target, suitIndex, next_playable_rank, connections.length);
+			connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank);
 		}
 
 		// Our card could be the final rank that we can't find
@@ -57,12 +59,19 @@ function find_focus_possible(state, giver, target, clue, chop) {
 			}
 			else if (rank > stack_rank) {
 				// Try looking for all connecting cards
-				let connecting = find_connecting(state, giver, target, suitIndex, stack_rank);
+				const hypo_state = Utils.objClone(state);
+				let connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank);
 
 				while (connecting !== undefined && stack_rank !== rank) {
+					const { type, card } = connecting;
 					connections.push(connecting);
+
+					if (type === 'finesse') {
+						card.finessed = true;
+					}
 					stack_rank++;
-					connecting = find_connecting(state, giver, target, suitIndex, stack_rank, connections.length);
+					hypo_state.play_stacks[suitIndex]++;
+					connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank);
 				}
 
 				// Connected cards can stack up to this rank
@@ -113,7 +122,7 @@ function find_focus_possible(state, giver, target, clue, chop) {
 	return focus_possible;
 }
 
-function find_connecting(state, giver, target, suitIndex, rank, playable_connections = 0) {
+function find_connecting(state, giver, target, suitIndex, rank) {
 	logger.info('looking for connecting', Utils.logCard(suitIndex, rank));
 
 	if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
@@ -135,16 +144,14 @@ function find_connecting(state, giver, target, suitIndex, rank, playable_connect
 		}
 
 		let playable_connecting;
-		// Note that if connecting cards are found, the playable rank increases (but only for the same suit)
-		const playable_rank = (si) => state.play_stacks[si] + (si === suitIndex ? playable_connections : 0) + 1;
 		if (i !== state.ourPlayerIndex) {
 			playable_connecting = hand.find(card =>
-				(card.inferred.every(c => playable_rank(c.suitIndex) === c.rank) || card.finessed) && card.matches(suitIndex, rank)
+				(card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) || card.finessed) && card.matches(suitIndex, rank)
 			);
 		}
 		else {
 			playable_connecting = hand.find(card =>
-				card.inferred.every(c => playable_rank(c.suitIndex) === c.rank) && card.inferred.some(c => c.matches(suitIndex, rank))
+				card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) && card.inferred.some(c => c.matches(suitIndex, rank))
 			);
 		}
 

@@ -33,48 +33,65 @@ function interpret_clue(state, action) {
 		return;
 	}
 
-	let focus_possible = focused_card.inferred;
+	const focus_possible = find_focus_possible(state, giver, target, clue, chop);
+	focused_card.intersect('inferred', focus_possible);
 
-	// Try to determine all the possible inferences of the card
-	if (focus_possible.length > 1) {
-		focus_possible = find_focus_possible(state, giver, target, clue, chop);
-		focused_card.intersect('inferred', focus_possible);
-	}
+	let matched_inferences;
 
-	// Can only be not playable if the card was newly clued or stalling situation
-	let not_play = focused_card.newly_clued || (state.clue_tokens === 8 && !list.includes(state.hands[target][0].order)) || state.hands[giver].every(c => c.clued);
 	if (target === state.ourPlayerIndex) {
-		// Known save
-		if (focused_card.inferred.length === 1) {
-			const { suitIndex, rank } = focused_card.inferred[0];
-			not_play &&= (Utils.isCritical(state, suitIndex, rank) || (rank === 2 && chop)) && state.hypo_stacks[suitIndex] + 1 !== rank;
-		}
-		else {
-			// At least one of the inferences is a save/stall
-			not_play &&= focused_card.inferred.some(card => focus_possible.some(p => card.matches(p.suitIndex, p.rank) && (p.save || p.stall)));
-		}
+		matched_inferences = focus_possible.filter(p => focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank)));
 	}
 	else {
-		// The correct inference exists and is a save/stall
-		not_play &&= focus_possible.some(p => focused_card.matches(p.suitIndex, p.rank) && (p.save || p.stall));
+		matched_inferences = focus_possible.filter(p => focused_card.matches(p.suitIndex, p.rank));
 	}
 
-	logger.info('early inference on focused card', focused_card.inferred.map(c => c.toString()).join(','));
-	logger.info('order', focused_card.order, 'play?', !not_play, 'mistake?', mistake);
+	// Card matches an inference and not a save/stall
+	if (matched_inferences.length >= 1) {
+		for (const inference of matched_inferences) {
+			const { suitIndex, rank, save = false, stall = false, connections } = inference;
 
-	// Not save, stall or mistake, so card must be playable
-	if (!not_play && !mistake) {
+			if (!save && !stall) {
+				for (const { type, reacting, card } of connections) {
+					logger.info(`connecting on ${card.toString()} order ${card.order} type ${type}`);
+					if (type === 'finesse') {
+						Utils.findOrder(state.hands[reacting], card.order).finessed = true;
+						card.finessed = true;
+					}
+				}
+
+				// Only one inference, we can update hypo stacks
+				if (matched_inferences.length === 1) {
+					logger.debug('updating hypo stack (inference)');
+					update_hypo_stacks(state, suitIndex, rank);
+
+					// Inference is known
+					if (focused_card.inferred.length === 1) {
+						// Don't elim on the focused card
+						good_touch_elim(state.hands[target], [{ suitIndex, rank }], {ignore: [focused_card.order], hard: true});
+					}
+				}
+				// Multiple inferences, we need to wait for connections
+				else if (connections.length > 0 && !connections[0].self) {
+					state.waiting_connections.push({ connections, focused_card, inference });
+				}
+			}
+		}
+	}
+	// Card doesn't match any inferences
+	else {
+		logger.info(`card ${focused_card.toString()} order ${focused_card.order} doesn't match any inferences!`);
+		// First, reset inference to good touch principle
+		focused_card.inferred = Utils.objClone(focused_card.possible);
 		let feasible = false, connections, conn_suit;
 
-		// No idea what the card could be
-		if (focused_card.inferred.length === 0) {
-			// First, reset inference
-			focused_card.inferred = Utils.objClone(focused_card.possible);
+		const trash = (suitIndex, rank) => rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
 
+		// Only look for finesses if the card isn't trash
+		if (focused_card.inferred.some(c => !trash(c.suitIndex, c.rank))) {
 			if (target === state.ourPlayerIndex) {
 				let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
 
-				for (const card of focused_card.possible) {
+				for (const card of focused_card.inferred) {
 					({ feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank));
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('feasible?', feasible, 'blind plays', blind_plays);
@@ -95,54 +112,17 @@ function interpret_clue(state, action) {
 				({ feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank));
 				conn_suit = focused_card.suitIndex;
 			}
-
-			// No inference, but a finesse isn't possible - default to good touch principle
-			if (!feasible) {
-				focused_card.inferred = Utils.objClone(focused_card.possible);
-				if (focused_card.inferred.length > 1) {
-					focused_card.subtract('inferred', bad_touch);
-				}
-				logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
-			}
-		}
-		// We know exactly what card it is
-		else if (focused_card.suitIndex !== -1 || focused_card.possible.length === 1) {
-			const card = focused_card.suitIndex !== -1 ? focused_card : focused_card.possible[0];
-			const { suitIndex, rank } = card;
-
-			const matches_inference = focused_card.inferred.some(c => c.matches(suitIndex, rank));
-			const inferred = focus_possible.find(p => card.matches(p.suitIndex, p.rank));
-			const playable = state.hypo_stacks[suitIndex] + (inferred?.connections || []).length === rank;
-			const not_trash = rank > state.hypo_stacks[suitIndex] + 1 && rank <= state.max_ranks[suitIndex];
-
-			// Card doesn't match inference, or card isn't playable (and isn't trash)
-			if (!matches_inference || (!playable && not_trash)) {
-				// Reset inference
-				focused_card.inferred = Utils.objClone(focused_card.possible);
-				({ feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank));
-				conn_suit = suitIndex;
-			}
-		}
-		// Card clued in our hand and we have exactly one inference
-		else if (focused_card.inferred.length === 1) {
-			const card = focused_card.inferred[0];
-			const { suitIndex, rank } = card;
-
-			const inferred = focus_possible.find(p => card.matches(p.suitIndex, p.rank));
-			const playable = state.hypo_stacks[suitIndex] + (inferred?.connections || []).length === rank;
-			const not_trash = rank > state.hypo_stacks[suitIndex] + 1 && rank <= state.max_ranks[suitIndex];
-
-			// Card isn't playable
-			if (!playable && not_trash) {
-				// Reset inference
-				focused_card.inferred = Utils.objClone(focused_card.possible);
-				({ feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank));
-				conn_suit = suitIndex;
-			}
 		}
 
-		if (feasible) {
-			logger.info('finesse possible! suit', conn_suit);
+		// No inference, but a finesse isn't possible - default to good touch principle
+		if (!feasible) {
+			if (focused_card.inferred.length > 1) {
+				focused_card.subtract('inferred', bad_touch);
+			}
+			logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
+		}
+		else {
+			logger.info('playable!');
 			let next_rank = state.hypo_stacks[conn_suit] + 1;
 			for (const connection of connections) {
 				const { type, card } = connection;
@@ -159,45 +139,6 @@ function interpret_clue(state, action) {
 			}
 			// Set correct inference on focused card
 			focused_card.inferred = [new Card(conn_suit, next_rank)];
-		}
-	}
-
-	// Focused card only has one possible inference, so remove that possibility from other clued cards via good touch principle
-	if (focused_card.inferred.length === 1 && !mistake) {
-		const inference = focused_card.inferred[0];
-		// Don't elim on the focused card
-		good_touch_elim(state.hands[target], focused_card.inferred, {ignore: [focused_card.order], hard: true});
-
-		const focus_result = focus_possible.find(p => inference.matches(p.suitIndex, p.rank));
-
-		// Valid focus and play
-		if (focus_result !== undefined && !not_play) {
-			for (const { type, card } of focus_result.connections || []) {
-				if (type === 'finesse') {
-					card.finessed = true;
-				}
-			}
-
-			// Update hypo stacks
-			const { suitIndex, rank } = inference;
-			logger.debug('updating hypo stack (inference)');
-			update_hypo_stacks(state, suitIndex, rank);
-		}
-	}
-	else if (!mistake) {
-		for (const inference of focused_card.inferred) {
-			const focus_result = focus_possible.find(p => inference.matches(p.suitIndex, p.rank));
-			const connections = focus_result?.connections;
-
-			// Valid focus and waiting for someone to demonstrate connection
-			if (!not_play && connections?.length && !connections[0].self) {
-				for (const { type, card } of connections) {
-					if (type === 'finesse') {
-						card.finessed = true;
-					}
-				}
-				state.waiting_connections.push({ connections, focused_card, inference });
-			}
 		}
 	}
 	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','));

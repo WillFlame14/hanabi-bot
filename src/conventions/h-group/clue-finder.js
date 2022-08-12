@@ -67,8 +67,8 @@ function find_clues(state) {
 			const { suitIndex, rank } = card;
 
 			// Clued, finessed, trash or visible elsewhere
-			if (card.clued || card.finessed || rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex] ||
-				Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued)) {
+			if (card.clued || card.finessed || rank <= state.hypo_stacks[suitIndex] || rank > state.max_ranks[suitIndex] ||
+				Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued || c.finessed)) {
 				continue;
 			}
 

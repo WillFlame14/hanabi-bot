@@ -123,29 +123,10 @@ function find_known_trash(state, playerIndex) {
 	};
 
 	for (const card of hand) {
-		// No inference and every possibility is trash or visible elsewhere
-		if (card.inferred.length === 0) {
-			if (card.possible.every(c => !not_trash(c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
-				trash.push(card);
-				continue;
-			}
-		}
+		const possibilities = (card.inferred.length === 0 || playerIndex !== state.ourPlayerIndex) ? card.possible : card.inferred;
 
-		let can_discard = true;
-		for (const possible of (card.suitIndex !== -1 ? card.possible : card.inferred)) {
-			const { suitIndex, rank } = possible;
-
-			// Card is not trash
-			if (not_trash(suitIndex, rank)) {
-				// Card is not known duplicated somewhere
-				const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).filter(c => c.order !== card.order);
-				if (duplicates.length === 0 || !duplicates.some(c => c.clued)) {
-					can_discard = false;
-					break;
-				}
-			}
-		}
-		if (can_discard) {
+		// Every possibility is not trash and not known duplicated somewhere
+		if (possibilities.every(c => !not_trash(c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
 			trash.push(card);
 		}
 	}

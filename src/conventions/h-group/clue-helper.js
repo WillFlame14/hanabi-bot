@@ -11,7 +11,8 @@ function determine_clue(state, target, card) {
 
 	const colour_touch = hand.filter(c => c.suitIndex === suitIndex);
 	const rank_touch = hand.filter(c => c.rank === rank);
-	const [colour_bad_touch, rank_bad_touch] = [colour_touch, rank_touch].map(cards => bad_touch_num(state, target, cards));
+	// Ignore cards that are already clued when determining bad touch
+	const [colour_bad_touch, rank_bad_touch] = [colour_touch, rank_touch].map(cards => bad_touch_num(state, target, cards.filter(c => !c.clued)));
 	const [colour_focused, rank_focused] = [colour_touch, rank_touch].map(cards => determine_focus(hand, cards.map(c => c.order)).focused_card.order === card.order);
 
 	let colour_interpret, rank_interpret, colour_elim, rank_elim;
@@ -82,15 +83,16 @@ function determine_clue(state, target, card) {
 			clue_type = ACTION.RANK;
 		}
 		else {
-			const [colour_save, rank_save] = [colour_interpret, rank_interpret].map(ps => ps.some(p => {
-				return Utils.isCritical(state, p.suitIndex, p.rank) && state.hypo_stacks[p.suitIndex] + 1 !== p.rank;
+			let [colour_play, rank_play] = [colour_interpret, rank_interpret].map(ps => ps.every(p => {
+				return p.rank === state.hypo_stacks[p.suitIndex] + 1;
+				//Utils.isCritical(state, p.suitIndex, p.rank) && state.hypo_stacks[p.suitIndex] + 1 !== p.rank;
 			}));
-			logger.info(`colour_save ${colour_save} rank_save ${rank_save}`);
+			logger.info(`colour_play ${colour_play} rank_play ${rank_play}`);
 			// Figure out which clue doesn't look like a save clue
-			if (!colour_save && rank_save) {
+			if (colour_play && !rank_play) {
 				clue_type = ACTION.COLOUR;
 			}
-			else if (!rank_save && colour_save) {
+			else if (rank_play && !colour_play) {
 				clue_type = ACTION.RANK;
 			}
 			else {
