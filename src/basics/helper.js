@@ -125,8 +125,9 @@ function find_known_trash(state, playerIndex) {
 	for (const card of hand) {
 		const possibilities = (card.inferred.length === 0 || playerIndex !== state.ourPlayerIndex) ? card.possible : card.inferred;
 
-		// Every possibility is not trash and not known duplicated somewhere
+		// Every possibility is trash or known duplicated somewhere
 		if (possibilities.every(c => !not_trash(c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
+			logger.info(`order ${card.order} is trash, possibilities ${possibilities.map(c => c.toString()).join()}, results ${possibilities.map(c => !not_trash(c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
 			trash.push(card);
 		}
 	}
@@ -141,6 +142,10 @@ function good_touch_elim(hand, cards, options = {}) {
 
 		if (card.clued && (options.hard || card.inferred.length > 1)) {
 			card.subtract('inferred', cards);
+
+			if (card.inferred.length === 0) {
+				card.reset = true;
+			}
 		}
 	}
 }

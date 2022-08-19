@@ -139,7 +139,7 @@ function take_action(state, tableID) {
 			}
 
 			// Go through rest of save clues in order of priority
-			for (let i = 4; i < 7; i++) {
+			for (let i = 3; i < 7; i++) {
 				const clues = urgent_clues[i];
 				if (clues.length > 0) {
 					const { type, target, value } = clues[0];

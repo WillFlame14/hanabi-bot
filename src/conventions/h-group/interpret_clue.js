@@ -17,23 +17,24 @@ function interpret_clue(state, action) {
 	for (const card of state.hands[target]) {
 		if (card.inferred.length > 1 && (card.clued || list.includes(card.order))) {
 			card.subtract('inferred', bad_touch);
+		}
 
-			// Lost all inferences (fix), revert to good touch principle
-			if (!card.newly_clued && card.inferred.length === 0) {
-				fix = true;
-				card.inferred = Utils.objClone(card.possible);
-				card.subtract('inferred', bad_touch);
-			}
+		// Lost all inferences (fix), revert to good touch principle
+		if (!card.newly_clued && card.inferred.length === 0 && !card.reset) {
+			fix = true;
+			card.inferred = Utils.objClone(card.possible);
+			card.subtract('inferred', bad_touch);
+			card.reset = true;
 		}
 	}
 	logger.debug('bad touch', bad_touch.map(c => c.toString()).join(','));
 
-	if (fix) {
-		logger.info('fix clue! not inferring anything else');
+	if (fix || mistake) {
+		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
 		return;
 	}
 
-	const focus_possible = find_focus_possible(state, giver, target, clue, chop);
+	const focus_possible = find_focus_possible(state, giver, target, clue, chop, focused_card.order);
 	focused_card.intersect('inferred', focus_possible);
 
 	let matched_inferences;
@@ -82,6 +83,9 @@ function interpret_clue(state, action) {
 		logger.info(`card ${focused_card.toString()} order ${focused_card.order} doesn't match any inferences!`);
 		// First, reset inference to good touch principle
 		focused_card.inferred = Utils.objClone(focused_card.possible);
+		if (focused_card.inferred.length > 1) {
+			focused_card.subtract('inferred', bad_touch);
+		}
 		let feasible = false, connections, conn_suit;
 
 		const trash = (suitIndex, rank) => rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
@@ -116,10 +120,8 @@ function interpret_clue(state, action) {
 
 		// No inference, but a finesse isn't possible - default to good touch principle
 		if (!feasible) {
-			if (focused_card.inferred.length > 1) {
-				focused_card.subtract('inferred', bad_touch);
-			}
 			logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
+			focused_card.reset = true;
 		}
 		else {
 			logger.info('playable!');

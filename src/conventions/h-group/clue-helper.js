@@ -15,7 +15,7 @@ function determine_clue(state, target, card) {
 	const [colour_bad_touch, rank_bad_touch] = [colour_touch, rank_touch].map(cards => bad_touch_num(state, target, cards.filter(c => !c.clued)));
 	const [colour_focused, rank_focused] = [colour_touch, rank_touch].map(cards => determine_focus(hand, cards.map(c => c.order)).focused_card.order === card.order);
 
-	let colour_interpret, rank_interpret, colour_elim, rank_elim;
+	let colour_interpret, rank_interpret, colour_correct, rank_correct, colour_elim, rank_elim;
 
 	const colour_clue = {type: CLUE.COLOUR, value: suitIndex};
 	const rank_clue = {type: CLUE.RANK, value: rank};
@@ -34,7 +34,8 @@ function determine_clue(state, target, card) {
 		//logger.setLevel(logger.LEVELS.INFO);
 		console.log('------- EXITING HYPO --------');
 
-		const inferred_after_cluing = hypo_state.hands[target].find(c => c.order === card.order).inferred;
+		const card_after_cluing = hypo_state.hands[target].find(c => c.order === card.order);
+		const { inferred: inferred_after_cluing, reset } = card_after_cluing;
 		let elim_sum = 0;
 
 		// Count the number of cards that have increased elimination (i.e. cards that were "filled in")
@@ -47,12 +48,16 @@ function determine_clue(state, target, card) {
 			}
 		}
 
+		const matches_interpretation = (interpretations, card) => interpretations.some(p => card.matches(p.suitIndex, p.rank));
+
 		if (clue.type === CLUE.COLOUR) {
 			colour_interpret = inferred_after_cluing;
+			colour_correct = colour_focused && !card_after_cluing.reset && matches_interpretation(colour_interpret, card);
 			colour_elim = elim_sum;
 		}
 		else {
 			rank_interpret = inferred_after_cluing;
+			rank_correct = rank_focused && !card_after_cluing.reset && matches_interpretation(rank_interpret, card);
 			rank_elim = elim_sum;
 		}
 	});
@@ -60,9 +65,6 @@ function determine_clue(state, target, card) {
 	let clue_type;
 	logger.debug(`colour_focused ${colour_focused} rank_focused ${rank_focused}`);
 	logger.info('colour_interpret', colour_interpret.map(c => c.toString()), 'rank_interpret', rank_interpret.map(c => c.toString()));
-
-	const colour_correct = colour_focused && colour_interpret.some(p => card.matches(p.suitIndex, p.rank));
-	const rank_correct = rank_focused && rank_interpret.some(p => card.matches(p.suitIndex, p.rank));
 
 	// Number clue doesn't work
 	if (colour_correct && !rank_correct) {

@@ -162,7 +162,7 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, bomb, 
 	new_state.blank = Utils.objClone(new_state);
 	const history = state.actionList.slice(0, action_index);
 
-	logger.setLevel(logger.LEVELS.WARN);
+	logger.setLevel(logger.LEVELS.ERROR);
 
 	// Get up to speed
 	for (const action of history) {

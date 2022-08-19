@@ -151,7 +151,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
 			const matches_inference = card.inferred.some(c => c.matches(suitIndex, rank));
-			if (!card.rewinded && !matches_inference) {
+			if (!card.rewinded && (card.inferred.length > 1 || !matches_inference)) {
 				logger.info('all inferences', card.inferred.map(c => c.toString()));
 				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false, tableID);
 				return;
@@ -183,6 +183,7 @@ function handle_action(state, action, tableID, catchup = false) {
 				throw new Error('Could not find card to rewrite!');
 			}
 			card.possible = [new Card(suitIndex, rank)];
+			card.inferred = [new Card(suitIndex, rank)];
 			card.finessed = true;
 			card.rewinded = true;
 			break;

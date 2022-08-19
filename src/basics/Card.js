@@ -7,7 +7,7 @@
  *  possible: [Card]	all possibilities of the card (from positive/negative information)
  *  inferred: [Card]	all inferences of the card (from conventions)
  *
- *  clued, newly_clued, prompted, finessed are boolean flags
+ *  clued, newly_clued, prompted, finessed, reset are boolean flags
  *
  *  reasoning: [number]			the action indexes of when a card's possibiltiies/inferences were updated
  *  reasoning_turn: [number]	the game turns of when a card's possibiltiies/inferences were updated
@@ -29,6 +29,7 @@ class Card {
 		this.newly_clued = false;
 		this.prompted = false;
 		this.finessed = false;
+		this.reset = false;
 
 		this.reasoning = [];
 		this.reasoning_turn = [];

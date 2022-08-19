@@ -3,9 +3,10 @@ const { CLUE } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
-function find_focus_possible(state, giver, target, clue, chop) {
+function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
 	const focus_possible = [];
 	logger.info('play/hypo/max stacks in clue interpretation:', state.play_stacks, state.hypo_stacks, state.max_ranks);
+	logger.info('ignoreOrder', ignoreOrder);
 
 	if (clue.type === CLUE.COLOUR) {
 		const suitIndex = clue.value;
@@ -14,9 +15,9 @@ function find_focus_possible(state, giver, target, clue, chop) {
 		// Play clue
 		const connections = [];
 
-		// Try looking for a connecting card
+		// Try looking for a connecting card (other than itself)
 		const hypo_state = Utils.objClone(state);
-		let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank);
+		let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, ignoreOrder);
 
 		while (connecting !== undefined) {
 			const { type, card } = connecting;
@@ -30,7 +31,7 @@ function find_focus_possible(state, giver, target, clue, chop) {
 
 			next_playable_rank++;
 			connections.push(connecting);
-			connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank);
+			connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, ignoreOrder);
 		}
 
 		// Our card could be the final rank that we can't find
@@ -60,7 +61,7 @@ function find_focus_possible(state, giver, target, clue, chop) {
 			else if (rank > stack_rank) {
 				// Try looking for all connecting cards
 				const hypo_state = Utils.objClone(state);
-				let connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank);
+				let connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, ignoreOrder);
 
 				while (connecting !== undefined && stack_rank !== rank) {
 					const { type, card } = connecting;
@@ -71,7 +72,7 @@ function find_focus_possible(state, giver, target, clue, chop) {
 					}
 					stack_rank++;
 					hypo_state.play_stacks[suitIndex]++;
-					connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank);
+					connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, ignoreOrder);
 				}
 
 				// Connected cards can stack up to this rank
@@ -91,7 +92,7 @@ function find_focus_possible(state, giver, target, clue, chop) {
 
 				// Determine if it's a 2 save
 				if (rank === 2) {
-					const duplicates = Utils.visibleFind(state, target, suitIndex, rank);
+					const duplicates = Utils.visibleFind(state, target, suitIndex, rank).filter(c => c.clued);
 
 					// No duplicates found, so can be a 2 save
 					if (duplicates.length === 0) {
@@ -122,7 +123,7 @@ function find_focus_possible(state, giver, target, clue, chop) {
 	return focus_possible;
 }
 
-function find_connecting(state, giver, target, suitIndex, rank) {
+function find_connecting(state, giver, target, suitIndex, rank, ignoreOrder) {
 	logger.info('looking for connecting', Utils.logCard(suitIndex, rank));
 
 	if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
@@ -134,8 +135,9 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 		const hand = state.hands[i];
 
 		const known_connecting = hand.find(card =>
-			(card.possible.length === 1 && card.possible[0].matches(suitIndex, rank)) ||
-			(card.inferred.length === 1 && card.inferred[0].matches(suitIndex, rank)) // && i === state.ourPlayerIndex) ?
+			((card.possible.length === 1 && card.possible[0].matches(suitIndex, rank)) ||
+			(card.inferred.length === 1 && card.inferred[0].matches(suitIndex, rank))) && // && i === state.ourPlayerIndex) ?
+			card.order !== ignoreOrder
 		);
 
 		if (known_connecting !== undefined) {
@@ -146,18 +148,23 @@ function find_connecting(state, giver, target, suitIndex, rank) {
 		let playable_connecting;
 		if (i !== state.ourPlayerIndex) {
 			playable_connecting = hand.find(card =>
-				(card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) || card.finessed) && card.matches(suitIndex, rank)
+				(card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) || card.finessed) &&
+				card.matches(suitIndex, rank) &&
+				card.order !== ignoreOrder
 			);
 		}
 		else {
 			playable_connecting = hand.find(card =>
-				card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) && card.inferred.some(c => c.matches(suitIndex, rank))
+				card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) &&
+				card.inferred.some(c => c.matches(suitIndex, rank)) &&
+				card.order !== ignoreOrder
 			);
 		}
 
 		// There's a connecting card that is known playable (but not in the giver's hand!)
 		if (playable_connecting !== undefined && i !== giver) {
 			logger.info(`found playable ${Utils.logCard(suitIndex, rank)} in ${state.playerNames[i]}'s hand`);
+			logger.info('card inferred', playable_connecting.inferred.map(c => c.toString()).join());
 			return { type: 'playable', reacting: i, card: playable_connecting };
 		}
 	}

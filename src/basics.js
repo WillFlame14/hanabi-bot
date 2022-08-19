@@ -80,8 +80,9 @@ function onDraw(state, action) {
 
 			// Also remove it from hand possibilities
 			for (const card of state.hands[state.ourPlayerIndex]) {
-				// Do not remove it from itself
-				if (card.possible.length === 1 || (card.inferred.length === 1 && card.inferred[0].matches(suitIndex, rank))) {
+				// Do not remove it from itself (unless it's critical)
+				if (!Utils.isCritical(state, suitIndex, rank) &&
+					(card.possible.length === 1 || (card.inferred.length === 1 && card.inferred[0].matches(suitIndex, rank)))) {
 					continue;
 				}
 				card.subtract('possible', [{suitIndex, rank}]);
