@@ -49,6 +49,17 @@ const handle = {
 			else if (data.msg.startsWith('/leave')) {
 				Utils.sendCmd('tableUnattend', { tableID: Number(data.msg.slice(data.msg.indexOf(' ') + 1)) });
 			}
+			// Creates a new table
+			// Format: /create <name> <maxPlayers> <password>
+			else if (data.msg.startsWith('/create')) {
+				const parts = data.msg.split(' ');
+				Utils.sendCmd('tableCreate', { name: parts[1], maxPlayers: Number(parts[2]), password: parts[3] });
+			}
+			// Starts the game
+			// Format: /start <tableId>
+			else if (data.msg.startsWith('/start')) {
+				Utils.sendCmd('tableStart', { tableID: Number(data.msg.slice(data.msg.indexOf(' ') + 1)) });
+			}
 		}
 	},
 	// Received when an action is taken in the current active game

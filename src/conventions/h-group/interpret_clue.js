@@ -12,21 +12,29 @@ function interpret_clue(state, action) {
 	let fix = false;
 
 	// Touched cards should also obey good touch principle
-	// FIX: Need to do this in a loop to recursively deduce information
-	const bad_touch = find_bad_touch(state, giver, target);
-	for (const card of state.hands[target]) {
-		if (card.inferred.length > 1 && (card.clued || list.includes(card.order))) {
-			card.subtract('inferred', bad_touch);
-		}
+	let bad_touch = find_bad_touch(state, giver, target);
+	let bad_touch_len;
 
-		// Lost all inferences (fix), revert to good touch principle
-		if (!card.newly_clued && card.inferred.length === 0 && !card.reset) {
-			fix = true;
-			card.inferred = Utils.objClone(card.possible);
-			card.subtract('inferred', bad_touch);
-			card.reset = true;
+	// Recursively deduce information until no new information is learned
+	do {
+		bad_touch_len = bad_touch.length;
+		for (const card of state.hands[target]) {
+			if (card.inferred.length > 1 && (card.clued || list.includes(card.order))) {
+				card.subtract('inferred', bad_touch);
+			}
+
+			// Lost all inferences (fix), revert to good touch principle
+			if (!card.newly_clued && card.inferred.length === 0 && !card.reset) {
+				fix = true;
+				card.inferred = Utils.objClone(card.possible);
+				card.subtract('inferred', bad_touch);
+				card.reset = true;
+			}
 		}
+		bad_touch = find_bad_touch(state, giver, target);
 	}
+	while (bad_touch_len !== bad_touch.length);
+
 	logger.debug('bad touch', bad_touch.map(c => c.toString()).join(','));
 
 	if (fix || mistake) {
@@ -83,9 +91,8 @@ function interpret_clue(state, action) {
 		logger.info(`card ${focused_card.toString()} order ${focused_card.order} doesn't match any inferences!`);
 		// First, reset inference to good touch principle
 		focused_card.inferred = Utils.objClone(focused_card.possible);
-		if (focused_card.inferred.length > 1) {
-			focused_card.subtract('inferred', bad_touch);
-		}
+		focused_card.subtract('inferred', bad_touch);
+
 		let feasible = false, connections, conn_suit;
 
 		const trash = (suitIndex, rank) => rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
@@ -141,6 +148,9 @@ function interpret_clue(state, action) {
 			}
 			// Set correct inference on focused card
 			focused_card.inferred = [new Card(conn_suit, next_rank)];
+
+			// Don't elim on the focused card
+			good_touch_elim(state.hands[target], [{ conn_suit, next_rank }], {ignore: [focused_card.order], hard: true});
 		}
 	}
 	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','));

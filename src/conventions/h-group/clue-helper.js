@@ -52,12 +52,12 @@ function determine_clue(state, target, card) {
 
 		if (clue.type === CLUE.COLOUR) {
 			colour_interpret = inferred_after_cluing;
-			colour_correct = colour_focused && !card_after_cluing.reset && matches_interpretation(colour_interpret, card);
+			colour_correct = colour_focused && !reset && matches_interpretation(colour_interpret, card);
 			colour_elim = elim_sum;
 		}
 		else {
 			rank_interpret = inferred_after_cluing;
-			rank_correct = rank_focused && !card_after_cluing.reset && matches_interpretation(rank_interpret, card);
+			rank_correct = rank_focused && !reset && matches_interpretation(rank_interpret, card);
 			rank_elim = elim_sum;
 		}
 	});

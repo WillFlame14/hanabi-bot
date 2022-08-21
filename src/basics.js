@@ -73,8 +73,8 @@ function onDraw(state, action) {
 			Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length +
 			(state.play_stacks[suitIndex] >= rank ? 1 : 0);
 
-		// If all copies of a card are already visible
-		if (full_count === Utils.CARD_COUNT[rank - 1]) {
+		// If all copies of a card are already visible (or we have too many copies)
+		if (full_count >= Utils.CARD_COUNT[rank - 1]) {
 			// Remove it from the list of future possibilities
 			state.all_possible = state.all_possible.filter(c => !c.matches(suitIndex, rank));
 

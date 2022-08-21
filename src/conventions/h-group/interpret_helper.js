@@ -6,7 +6,6 @@ const Utils = require('../../util.js');
 function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
 	const focus_possible = [];
 	logger.info('play/hypo/max stacks in clue interpretation:', state.play_stacks, state.hypo_stacks, state.max_ranks);
-	logger.info('ignoreOrder', ignoreOrder);
 
 	if (clue.type === CLUE.COLOUR) {
 		const suitIndex = clue.value;
