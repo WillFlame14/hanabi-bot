@@ -219,7 +219,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 			const prompted = our_hand.find(c => c.clued && !already_prompted.includes(c.order) && c.inferred.some(inf => inf.matches(suitIndex, i)));
 			if (prompted !== undefined) {
 				logger.info('found prompt in our hand');
-				connections.push({ type: 'prompt', card: prompted, self: true });
+				connections.push({ type: 'prompt', reacting: state.ourPlayerIndex, card: prompted, self: true });
 				already_prompted.push(prompted.order);
 			}
 			else {
@@ -227,7 +227,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 
 				if (finesse_pos !== -1 && our_hand[finesse_pos].possible.some(c => c.matches(suitIndex, i))) {
 					logger.info('found finesse in our hand');
-					connections.push({ type: 'finesse', card: our_hand[finesse_pos], self: true });
+					connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: our_hand[finesse_pos], self: true });
 					already_finessed++;
 				}
 				else {

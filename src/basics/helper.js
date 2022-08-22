@@ -127,7 +127,7 @@ function find_known_trash(state, playerIndex) {
 
 		// Every possibility is trash or known duplicated somewhere
 		if (possibilities.every(c => !not_trash(c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
-			logger.info(`order ${card.order} is trash, possibilities ${possibilities.map(c => c.toString()).join()}, results ${possibilities.map(c => !not_trash(c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
+			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => c.toString()).join()}, results ${possibilities.map(c => !not_trash(c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
 			trash.push(card);
 		}
 	}

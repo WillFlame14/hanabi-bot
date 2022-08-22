@@ -151,7 +151,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
 			const matches_inference = card.inferred.some(c => c.matches(suitIndex, rank));
-			if (!card.rewinded && (card.inferred.length > 1 || !matches_inference)) {
+			if (!card.rewinded && (playerIndex === state.ourPlayerIndex && card.inferred.length > 1 || !matches_inference)) {
 				logger.info('all inferences', card.inferred.map(c => c.toString()));
 				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false, tableID);
 				return;

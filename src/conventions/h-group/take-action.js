@@ -101,6 +101,7 @@ function take_action(state, tableID) {
 			}
 		}
 	}
+	logger.info('all urgent clues', urgent_clues);
 
 	// Then, look for playables or trash in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);

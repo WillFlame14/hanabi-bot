@@ -60,12 +60,18 @@ function interpret_clue(state, action) {
 			const { suitIndex, rank, save = false, stall = false, connections } = inference;
 
 			if (!save && !stall) {
-				for (const { type, reacting, card } of connections) {
+				let next_rank = state.play_stacks[suitIndex] + 1;
+				for (const connection of connections) {
+					const { type, reacting } = connection;
+					// The connections can be cloned, so need to modify the card directly
+					const card = Utils.findOrder(state.hands[reacting], connection.card.order);
+
 					logger.info(`connecting on ${card.toString()} order ${card.order} type ${type}`);
 					if (type === 'finesse') {
-						Utils.findOrder(state.hands[reacting], card.order).finessed = true;
 						card.finessed = true;
+						card.inferred = [new Card(suitIndex, next_rank)];
 					}
+					next_rank++;
 				}
 
 				// Only one inference, we can update hypo stacks
@@ -86,7 +92,13 @@ function interpret_clue(state, action) {
 			}
 		}
 	}
-	// Card doesn't match any inferences
+	// Card doesn't match any inferences, check for 8 clue stall
+	else if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order)) {
+		logger.info('8 clue stall!');
+		// First, reset inference to good touch principle
+		focused_card.inferred = Utils.objClone(focused_card.possible);
+		focused_card.subtract('inferred', find_bad_touch(state, giver, target, focused_card.order));
+	}
 	else {
 		logger.info(`card ${focused_card.toString()} order ${focused_card.order} doesn't match any inferences!`);
 		// First, reset inference to good touch principle
@@ -134,7 +146,9 @@ function interpret_clue(state, action) {
 			logger.info('playable!');
 			let next_rank = state.hypo_stacks[conn_suit] + 1;
 			for (const connection of connections) {
-				const { type, card } = connection;
+				const { type, reacting } = connection;
+				// The connections can be cloned, so need to modify the card directly
+				const card = Utils.findOrder(state.hands[reacting], connection.card.order);
 
 				card.inferred = [new Card(conn_suit, next_rank)];
 				card.finessed = (type === 'finesse');
