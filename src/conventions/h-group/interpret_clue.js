@@ -92,79 +92,83 @@ function interpret_clue(state, action) {
 			}
 		}
 	}
-	// Card doesn't match any inferences, check for 8 clue stall
-	else if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order)) {
-		logger.info('8 clue stall!');
-		// First, reset inference to good touch principle
-		focused_card.inferred = Utils.objClone(focused_card.possible);
-		focused_card.subtract('inferred', find_bad_touch(state, giver, target, focused_card.order));
-	}
+	// Card doesn't match any inferences
 	else {
-		logger.info(`card ${focused_card.toString()} order ${focused_card.order} doesn't match any inferences!`);
 		// First, reset inference to good touch principle
 		focused_card.inferred = Utils.objClone(focused_card.possible);
 		focused_card.subtract('inferred', bad_touch);
 
-		let feasible = false, connections, conn_suit;
-
-		const trash = (suitIndex, rank) => rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
-
-		// Only look for finesses if the card isn't trash
-		if (focused_card.inferred.some(c => !trash(c.suitIndex, c.rank))) {
-			if (target === state.ourPlayerIndex) {
-				let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
-
-				for (const card of focused_card.inferred) {
-					({ feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank));
-					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
-					logger.info('feasible?', feasible, 'blind plays', blind_plays);
-
-					if (feasible && blind_plays < min_blind_plays) {
-						conn_save = connections;
-						conn_suit = card.suitIndex;
-						min_blind_plays = blind_plays;
-					}
-				}
-
-				if (conn_save !== undefined) {
-					connections = conn_save;
-					feasible = true;
-				}
-			}
-			else {
-				({ feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank));
-				conn_suit = focused_card.suitIndex;
-			}
-		}
-
-		// No inference, but a finesse isn't possible - default to good touch principle
-		if (!feasible) {
-			logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
-			focused_card.reset = true;
+		// Check for 8 clue stall
+		if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order)) {
+			logger.info('8 clue stall!');
 		}
 		else {
-			logger.info('playable!');
-			let next_rank = state.hypo_stacks[conn_suit] + 1;
-			for (const connection of connections) {
-				const { type, reacting } = connection;
-				// The connections can be cloned, so need to modify the card directly
-				const card = Utils.findOrder(state.hands[reacting], connection.card.order);
+			logger.info(`card ${focused_card.toString()} order ${focused_card.order} doesn't match any inferences!`);
+			// First, reset inference to good touch principle
+			focused_card.inferred = Utils.objClone(focused_card.possible);
+			focused_card.subtract('inferred', bad_touch);
 
-				card.inferred = [new Card(conn_suit, next_rank)];
-				card.finessed = (type === 'finesse');
-				next_rank++;
+			let feasible = false, connections, conn_suit;
 
-				// Updating notes not on our turn
-				if (target !== state.ourPlayerIndex && connection.self) {
-					card.reasoning.push(state.actionList.length - 1);
-					card.reasoning_turn.push(state.turn_count + 1);
+			const trash = (suitIndex, rank) => rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
+
+			// Only look for finesses if the card isn't trash
+			if (focused_card.inferred.some(c => !trash(c.suitIndex, c.rank))) {
+				if (target === state.ourPlayerIndex) {
+					let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
+
+					for (const card of focused_card.inferred) {
+						({ feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank));
+						const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
+						logger.info('feasible?', feasible, 'blind plays', blind_plays);
+
+						if (feasible && blind_plays < min_blind_plays) {
+							conn_save = connections;
+							conn_suit = card.suitIndex;
+							min_blind_plays = blind_plays;
+						}
+					}
+
+					if (conn_save !== undefined) {
+						connections = conn_save;
+						feasible = true;
+					}
+				}
+				else {
+					({ feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank));
+					conn_suit = focused_card.suitIndex;
 				}
 			}
-			// Set correct inference on focused card
-			focused_card.inferred = [new Card(conn_suit, next_rank)];
 
-			// Don't elim on the focused card
-			good_touch_elim(state.hands[target], [{ conn_suit, next_rank }], {ignore: [focused_card.order], hard: true});
+			// No inference, but a finesse isn't possible - default to good touch principle
+			if (!feasible) {
+				logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
+				focused_card.reset = true;
+			}
+			else {
+				logger.info('playable!');
+				let next_rank = state.hypo_stacks[conn_suit] + 1;
+				for (const connection of connections) {
+					const { type, reacting } = connection;
+					// The connections can be cloned, so need to modify the card directly
+					const card = Utils.findOrder(state.hands[reacting], connection.card.order);
+
+					card.inferred = [new Card(conn_suit, next_rank)];
+					card.finessed = (type === 'finesse');
+					next_rank++;
+
+					// Updating notes not on our turn
+					if (target !== state.ourPlayerIndex && connection.self) {
+						card.reasoning.push(state.actionList.length - 1);
+						card.reasoning_turn.push(state.turn_count + 1);
+					}
+				}
+				// Set correct inference on focused card
+				focused_card.inferred = [new Card(conn_suit, next_rank)];
+
+				// Don't elim on the focused card
+				good_touch_elim(state.hands[target], [{ conn_suit, next_rank }], {ignore: [focused_card.order], hard: true});
+			}
 		}
 	}
 	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','));

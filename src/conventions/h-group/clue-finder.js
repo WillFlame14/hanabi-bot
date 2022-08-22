@@ -64,11 +64,12 @@ function find_clues(state) {
 
 		for (let cardIndex = chopIndex; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
-			const { suitIndex, rank } = card;
+			const { suitIndex, rank, clued, finessed } = card;
 
-			// Clued, finessed, trash or visible elsewhere
-			if (card.clued || card.finessed || rank <= state.hypo_stacks[suitIndex] || rank > state.max_ranks[suitIndex] ||
-				Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued || c.finessed)) {
+			// Clued, finessed, trash, visible elsewhere or possibly part of a finesse
+			if (clued || finessed || rank <= state.hypo_stacks[suitIndex] || rank > state.max_ranks[suitIndex] ||
+				Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued || c.finessed) ||
+				state.waiting_connections.some(c => suitIndex === c.inference.suitIndex && rank <= c.inference.rank)) {
 				continue;
 			}
 
@@ -80,7 +81,8 @@ function find_clues(state) {
 				if (clue !== undefined) {
 					play_clues[target].push(Object.assign(clue, {finesses}));
 
-					if (cardIndex === chopIndex) {
+					// Save a playable card if it's on chop and its duplicate is not visible somewhere
+					if (cardIndex === chopIndex && Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
 						save_clues[target] = clue;
 					}
 				}

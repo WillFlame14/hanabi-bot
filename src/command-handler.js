@@ -166,6 +166,10 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, bomb, 
 	if (rewind_depth > 2) {
 		throw new Error('attempted to rewind too many times!');
 	}
+	else if (action_index === undefined) {
+		logger.error('tried to rewind before any reasoning was done!');
+		return;
+	}
 	rewind_depth++;
 
 	logger.info(`expected ${Utils.logCard(suitIndex, rank)}, rewinding to action_index ${action_index}`);
