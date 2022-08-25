@@ -1,4 +1,4 @@
-const { determine_clue } = require('./clue-helper.js');
+const { determine_clue, clue_safe } = require('./clue-helper.js');
 const { find_chop, find_finesse_pos } = require('./hanabi-logic.js');
 const { ACTION, CLUE, find_possibilities } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
@@ -17,7 +17,10 @@ function valid_play(state, target, card) {
 		const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
 		const hand = state.hands[playerIndex];
 
-		p_cards.push(hand.find(c => c.clued));
+		p_cards.push(hand.find(c => c.clued &&
+			known_cards.every(c1 => c1.order !== c.order) &&		// ignore known cards when prompting
+			(c.suitIndex === suitIndex || c.rank === rank))
+		);
 		f_cards.push(hand[find_finesse_pos(hand)]);
 	}
 
@@ -78,7 +81,7 @@ function find_clues(state) {
 			if (valid) {
 				// Play clue
 				const clue = determine_clue(state, target, card, self ? ACTION.RANK: undefined);
-				if (clue !== undefined) {
+				if (clue !== undefined && clue_safe(state, clue)) {
 					play_clues[target].push(Object.assign(clue, {finesses}));
 
 					// Save a playable card if it's on chop and its duplicate is not visible somewhere
@@ -115,8 +118,9 @@ function find_clues(state) {
 									break;
 								}
 							}
-							if (!next_critical) {
-								save_clues[target] = { type: ACTION.RANK, value: 2, target };
+							const clue = { type: ACTION.RANK, value: 2, target };
+							if (clue_safe(state, clue)) {
+								save_clues[target] = clue;
 							}
 						}
 					}
@@ -241,7 +245,7 @@ function find_fix_clues(state) {
 				logger.error(`card ${card.toString()} order ${card.order} need fix??`);
 			}
 			else {
-				const matches_inferences = card.inferred.some(p => card.matches(p.suitIndex, p.rank));
+				const matches_inferences = card.inferred.length > 0 && card.inferred.some(p => card.matches(p.suitIndex, p.rank));
 				const seems_playable = card.inferred.every(p => {
 					const playableAway = Utils.playableAway(state, p.suitIndex, p.rank);
 					const our_hand = state.hands[state.ourPlayerIndex];

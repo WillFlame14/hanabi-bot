@@ -25,7 +25,7 @@ function find_possibilities(clue, num_suits) {
 	return new_possible;
 }
 
-function find_bad_touch(state, giver, target) {
+function find_bad_touch(state, giver, target, ignoreOrder) {
 	const bad_touch = [];
 
 	// Find useless cards
@@ -45,7 +45,7 @@ function find_bad_touch(state, giver, target) {
 	for (let i = 0; i < state.hands.length; i++) {
 		const hand = state.hands[i];
 		for (const card of hand) {
-			if (!card.clued || card.rank <= state.play_stacks[card.suitIndex]) {
+			if (!card.clued || card.rank <= state.play_stacks[card.suitIndex] || card.order === ignoreOrder) {
 				continue;
 			}
 

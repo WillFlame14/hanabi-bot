@@ -94,9 +94,9 @@ function interpret_clue(state, action) {
 	}
 	// Card doesn't match any inferences
 	else {
-		// First, reset inference to good touch principle
+		// First, reset inference to good touch principle (need to find bad touch again so it doesn't elim itself)
 		focused_card.inferred = Utils.objClone(focused_card.possible);
-		focused_card.subtract('inferred', bad_touch);
+		focused_card.subtract('inferred', find_bad_touch(state, giver, target, focused_card.order));
 
 		// Check for 8 clue stall
 		if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order)) {
@@ -104,10 +104,6 @@ function interpret_clue(state, action) {
 		}
 		else {
 			logger.info(`card ${focused_card.toString()} order ${focused_card.order} doesn't match any inferences!`);
-			// First, reset inference to good touch principle
-			focused_card.inferred = Utils.objClone(focused_card.possible);
-			focused_card.subtract('inferred', bad_touch);
-
 			let feasible = false, connections, conn_suit;
 
 			const trash = (suitIndex, rank) => rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];

@@ -176,7 +176,8 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrder) {
 			// Try looking through another player's hand (known to giver) (target?)
 			const hand = state.hands[i];
 
-			const prompt_pos = hand.findIndex(c => c.clued && !c.newly_clued && (c.suitIndex === suitIndex || c.rank === rank));
+			// Do not prompt known cards
+			const prompt_pos = hand.findIndex(c => c.clued && !c.newly_clued && (c.suitIndex === suitIndex || c.rank === rank) && c.inferred.length !== 1);
 			const finesse_pos = find_finesse_pos(hand);
 
 			if (prompt_pos !== -1 && hand[prompt_pos].matches(suitIndex, rank)) {

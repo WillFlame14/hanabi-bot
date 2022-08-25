@@ -1,5 +1,5 @@
-const { determine_focus, bad_touch_num } = require('./hanabi-logic.js');
-const { ACTION, CLUE } = require('../../basics/helper.js');
+const { find_chop, determine_focus, bad_touch_num } = require('./hanabi-logic.js');
+const { ACTION, CLUE, find_playables, find_known_trash } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Basics = require('../../basics.js');
 const Utils = require('../../util.js');
@@ -28,6 +28,7 @@ function determine_clue(state, target, card) {
 		//logger.setLevel(logger.LEVELS.ERROR);
 		console.log('------- ENTERING HYPO --------');
 
+		hypo_state.ourPlayerIndex = target;
 		Basics.onClue(hypo_state, action);
 		hypo_state.interpret_clue(hypo_state, action);
 
@@ -129,4 +130,47 @@ function determine_clue(state, target, card) {
 	return;
 }
 
-module.exports = { determine_clue };
+// Determines if the clue is safe to give (i.e. doesn't put a critical on chop with nothing to do)
+function clue_safe(state, clue) {
+	const { type, value, target } = clue;
+	const hypo_state = Utils.objClone(state);
+
+	let list;
+	if (type === ACTION.COLOUR) {
+		list = hypo_state.hands[target].filter(c => c.suitIndex === value).map(c => c.order);
+	}
+	else {
+		list = hypo_state.hands[target].filter(c => c.rank === value).map(c => c.order);
+	}
+	const action = { giver: state.ourPlayerIndex, target, list, clue, mistake: false };
+
+	console.log('------- ENTERING SAFE CLUE HYPO --------');
+
+	logger.setLevel(logger.LEVELS.ERROR);
+	hypo_state.ourPlayerIndex = target;
+	Basics.onClue(hypo_state, action);
+	hypo_state.interpret_clue(hypo_state, action);
+	logger.setLevel(logger.LEVELS.INFO);
+
+	console.log('------- EXITING SAFE CLUE HYPO --------');
+
+	const hand = hypo_state.hands[target];
+	const playable_cards = find_playables(hypo_state.play_stacks, hand);
+	const trash_cards = find_known_trash(hypo_state, target);
+
+	// They won't discard next turn
+	if (playable_cards.length + trash_cards.length > 0) {
+		return true;
+	}
+
+	const chop = hand[find_chop(hand)];
+
+	if (Utils.isCritical(state, chop.suitIndex, chop.rank)) {
+		logger.error(`Not giving clue ${clue}, as ${chop.toString()} is critical.`);
+	}
+
+	// New chop isn't critical
+	return !Utils.isCritical(state, chop.suitIndex, chop.rank);
+}
+
+module.exports = { determine_clue, clue_safe };
