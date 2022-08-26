@@ -40,6 +40,11 @@ function onDiscard(state, action) {
 		// This card previously wasn't known to be all visible
 		if (state.all_possible.some(c => c.matches(suitIndex, rank))) {
 			logger.info('Discarded all copies of', Utils.logCard(suitIndex, rank), 'which was previously unknown.');
+
+			// Remove it from the list of future possibilities
+			state.all_possible = state.all_possible.filter(c => !c.matches(suitIndex, rank));
+
+			// Remove it from everyone's hands
 			for (const hand of state.hands) {
 				for (const card of hand) {
 					card.subtract('possible', [{suitIndex, rank}]);
@@ -78,16 +83,62 @@ function onDraw(state, action) {
 			// Remove it from the list of future possibilities
 			state.all_possible = state.all_possible.filter(c => !c.matches(suitIndex, rank));
 
-			// Also remove it from hand possibilities
-			for (const card of state.hands[state.ourPlayerIndex]) {
-				// Do not remove it from itself (unless it's critical)
-				if (!Utils.isCritical(state, suitIndex, rank) &&
-					(card.possible.length === 1 || (card.inferred.length === 1 && card.inferred[0].matches(suitIndex, rank)))) {
-					continue;
+			// If it's critical, no one else has other copies
+			if (Utils.isCritical(state, suitIndex, rank)) {
+				for (let i = 0; i < state.numPlayers; i++) {
+					const hand = state.hands[i];
+					if (i === playerIndex) {
+						continue;
+					}
+
+					for (const card of hand) {
+						card.subtract('possible', [{suitIndex, rank}]);
+						card.subtract('inferred', [{suitIndex, rank}]);
+					}
 				}
-				card.subtract('possible', [{suitIndex, rank}]);
-				card.subtract('inferred', [{suitIndex, rank}]);
 			}
+			// If it's not critical, everyone other than the ones holding the cards can elim
+			else {
+				for (let i = 0; i < state.numPlayers; i++) {
+					const hand = state.hands[i];
+					const matching_cards = hand.filter(c => {
+						if (i === state.ourPlayerIndex) {
+							return (c.possible.length === 1 && c.possible[0].matches(suitIndex, rank)) ||
+							(c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank));
+						}
+						else {
+							return c.matches(suitIndex, rank);
+						}
+					});
+
+					if (matching_cards.length > 0) {
+						// The matching cards (possibly only 1 in hand) are known
+						if (matching_cards.every(c => c.possible.length === 1 ||
+							(c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank)))
+						) {
+							// Elim on all the other cards in hand
+							for (const card of hand) {
+								if (matching_cards.some(c => c.order === card.order)) {
+									continue;
+								}
+
+								// Only elim from possible if 100% sure
+								if (matching_cards.every(c => c.possible.length === 1)) {
+									card.subtract('possible', [{suitIndex, rank}]);
+								}
+								card.subtract('inferred', [{suitIndex, rank}]);
+							}
+						}
+						continue;
+					}
+
+					for (const card of hand) {
+						card.subtract('possible', [{suitIndex, rank}]);
+						card.subtract('inferred', [{suitIndex, rank}]);
+					}
+				}
+			}
+
 			logger.debug(`removing ${card.toString()} from hand and future possibilities`);
 		}
 	}

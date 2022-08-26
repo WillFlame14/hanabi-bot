@@ -162,7 +162,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// Apply good touch principle on remaining possibilities
 			for (const hand of state.hands) {
-				good_touch_elim(hand, [{suitIndex, rank}]);
+				good_touch_elim(hand, [{suitIndex, rank}], { hard: true });
 			}
 
 			// Update hypo stacks

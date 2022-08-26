@@ -6,42 +6,39 @@ const Utils = require('../../util.js');
 
 function valid_play(state, target, card) {
 	const { suitIndex, rank } = card;
-
 	const finesses = state.hands.map(_ => 0);
-
 	const known_cards = state.hands.map(hand => hand.filter(card => card.possible.length === 1 || card.inferred.length === 1)).flat();
-	const p_cards = [], f_cards = [];
-
-	// Cannot prompt or finesse on self
-	for (let i = 1; i < state.numPlayers; i++) {
-		const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
-		const hand = state.hands[playerIndex];
-
-		p_cards.push(hand.find(c => c.clued &&
-			known_cards.every(c1 => c1.order !== c.order) &&		// ignore known cards when prompting
-			(c.suitIndex === suitIndex || c.rank === rank))
-		);
-		f_cards.push(hand[find_finesse_pos(hand)]);
-	}
-
-	logger.debug('known', known_cards.map(c => c.toString()));
-	logger.debug('promptable', p_cards.filter(c => c !== undefined).map(c => c.toString()));
-	logger.debug('finessable', f_cards.filter(c => c !== undefined).map(c => c.toString()));
 
 	for (let conn_rank = state.hypo_stacks[suitIndex] + 1; conn_rank < rank; conn_rank++) {
 		logger.debug('looking for connecting', Utils.logCard(suitIndex, conn_rank).toString());
-		const all_cards = known_cards.concat(p_cards).concat(f_cards).filter(c => c !== undefined);
 
-		if (!all_cards.some(c => c.matches(suitIndex, conn_rank))) {
-			return { valid: false };
-		}
+		if (!known_cards.some(c => c.matches(suitIndex, conn_rank))) {
+			// Try looking for prompt or finesse (note: cannot prompt or finesse on self)
+			for (let i = 1; i < state.numPlayers; i++) {
+				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
+				const hand = state.hands[playerIndex];
 
-		const finessedPlayer = f_cards.findIndex(c => c !== undefined && c.matches(suitIndex, conn_rank));
-		if (finessedPlayer !== -1) {
-			finesses[finessedPlayer]++;
+				const prompt = hand.find(c => c.clued &&
+					known_cards.every(c1 => c1.order !== c.order) &&		// ignore known cards when prompting
+					(c.suitIndex === suitIndex || c.rank === rank));
 
-			const f_hand = state.hands[finessedPlayer];
-			f_cards.splice(finessedPlayer, 1, f_hand[find_finesse_pos(f_hand, finesses[finessedPlayer])]);
+				// No prompt available, look for finesse
+				if (prompt === undefined) {
+					const finesse = hand[find_finesse_pos(hand, finesses[playerIndex])];
+
+					if (finesse === undefined || !finesse.matches(suitIndex, conn_rank)) {
+						return { valid: false };
+					}
+					else {
+						// Finesse found, move the player's finesse position by 1
+						finesses[playerIndex]++;
+					}
+				}
+				else if (!prompt.matches(suitIndex, conn_rank)) {
+					// Prompt doesn't match, we shouldn't look for a finesse (would be wrong prompt)
+					return { valid: false };
+				}
+			}
 		}
 	}
 	logger.debug(card.toString(),'is a valid play clue!');
@@ -92,11 +89,10 @@ function find_clues(state) {
 			}
 			else if (cardIndex === chopIndex && !card.finessed) {
 				// Save clue
-				const chop = hand[chopIndex];
 				// TODO: See if someone else can save
-				if (Utils.isCritical(state, chop.suitIndex, chop.rank)) {
-					logger.warn('saving critical card', chop.toString());
-					if (chop.rank === 5) {
+				if (Utils.isCritical(state, suitIndex, rank)) {
+					logger.warn('saving critical card', card.toString());
+					if (rank === 5) {
 						save_clues[target] = { type: ACTION.RANK, value: 5, target };
 					}
 					else {
@@ -104,29 +100,21 @@ function find_clues(state) {
 						save_clues[target] = determine_clue(state, target, card);
 					}
 				}
-				else if (chop.rank === 2) {
-					// Play stack hasn't started and other copy of 2 isn't visible (to us)
-					if (state.play_stacks[chop.suitIndex] === 0 && Utils.visibleFind(state, state.ourPlayerIndex, chop.suitIndex, 2).length === 1) {
-						// Also check if not reasonably certain in our hand
-						if (!state.hands[state.ourPlayerIndex].some(c => c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank))) {
-							// Also check if not putting a critical card on chop
-							let next_critical = false;
-							for (let i = chopIndex - 1; i >= 0; i--) {
-								const card = hand[i];
-								if (!card.clued && !card.finessed) {
-									next_critical = Utils.isCritical(state, card.suitIndex, card.rank);
-									break;
-								}
-							}
-							const clue = { type: ACTION.RANK, value: 2, target };
-							if (clue_safe(state, clue)) {
-								save_clues[target] = clue;
-							}
-						}
+				else if (rank === 2) {
+					const clue = { type: ACTION.RANK, value: 2, target };
+
+					const save2 = state.play_stacks[suitIndex] === 0 &&									// play stack at 0
+						Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&	// other copy isn't visible
+						!state.hands[state.ourPlayerIndex].some(c =>
+							c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank)) &&		// not in our hand
+						clue_safe(state, clue);															// doesn't put crit on chop
+					
+					if (save2) {
+						save_clues[target] = clue;
 					}
 				}
 				else {
-					logger.debug('not saving card', chop.toString(), 'on chop');
+					logger.debug('not saving card', card.toString(), 'on chop');
 				}
 			}
 		}

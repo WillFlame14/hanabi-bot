@@ -35,16 +35,15 @@ function interpret_clue(state, action) {
 	}
 	while (bad_touch_len !== bad_touch.length);
 
-	logger.debug('bad touch', bad_touch.map(c => c.toString()).join(','));
+	logger.debug('bad touch', bad_touch.map(c => Utils.logCard(c.suitIndex, c.rank)).join(','));
+	logger.debug('pre-inferences', focused_card.inferred.map(c => c.toString()).join());
 
 	if (fix || mistake) {
 		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
 		return;
 	}
 
-	const focus_possible = find_focus_possible(state, giver, target, clue, chop, focused_card.order);
-	focused_card.intersect('inferred', focus_possible);
-
+	const focus_possible = find_focus_possible(state, giver, target, clue, chop, focused_card);
 	let matched_inferences;
 
 	if (target === state.ourPlayerIndex) {
@@ -56,6 +55,8 @@ function interpret_clue(state, action) {
 
 	// Card matches an inference and not a save/stall
 	if (matched_inferences.length >= 1) {
+		focused_card.intersect('inferred', focus_possible);
+
 		for (const inference of matched_inferences) {
 			const { suitIndex, rank, save = false, stall = false, connections } = inference;
 
@@ -94,10 +95,6 @@ function interpret_clue(state, action) {
 	}
 	// Card doesn't match any inferences
 	else {
-		// First, reset inference to good touch principle (need to find bad touch again so it doesn't elim itself)
-		focused_card.inferred = Utils.objClone(focused_card.possible);
-		focused_card.subtract('inferred', find_bad_touch(state, giver, target, focused_card.order));
-
 		// Check for 8 clue stall
 		if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order)) {
 			logger.info('8 clue stall!');

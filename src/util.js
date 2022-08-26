@@ -52,6 +52,9 @@ function initConsole() {
 						console.log(logHand(state.hands[playerIndex]));
 						break;
 					}
+					case 'state': {
+						console.log(state[parts[1]]);
+					}
 				}
 				command = [];
 				break;

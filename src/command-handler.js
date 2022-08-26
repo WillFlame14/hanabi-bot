@@ -108,7 +108,7 @@ const handle = {
 		};
 
 		const HAND_SIZES = [-1, -1, 5, 5, 4, 3, 3];
-		state.cards_left = state.num_suits * 5 - state.numPlayers * HAND_SIZES[state.numPlayers];
+		state.cards_left = state.num_suits * 10 - state.numPlayers * HAND_SIZES[state.numPlayers];
 
 		for (let i = 0; i < state.numPlayers; i++) {
 			state.hands.push([]);
