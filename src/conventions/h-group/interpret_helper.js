@@ -3,7 +3,7 @@ const { CLUE } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
-function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
+function find_focus_possible(state, giver, target, clue, chop, ignoreCard) {
 	const focus_possible = [];
 	logger.info('play/hypo/max stacks in clue interpretation:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
@@ -16,12 +16,16 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
 
 		// Try looking for a connecting card (other than itself)
 		const hypo_state = Utils.objClone(state);
-		let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, ignoreOrder);
+		let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, ignoreCard.order);
 
 		while (connecting !== undefined) {
 			const { type, card } = connecting;
 
-			if (type === 'finesse') {
+			if (type === 'known' && card.newly_clued && card.possible.length > 1 && ignoreCard.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
+				// Trying to use a newly 'known' connecting card, but the focused card could be that
+				break;
+			}
+			else if (type === 'finesse') {
 				// Even if a finesse is possible, it might not be a finesse
 				focus_possible.push({ suitIndex, rank: next_playable_rank, save: false, connections: Utils.objClone(connections) });
 				card.finessed = true;
@@ -30,7 +34,7 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
 
 			next_playable_rank++;
 			connections.push(connecting);
-			connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, ignoreOrder);
+			connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, ignoreCard.order);
 		}
 
 		// Our card could be the final rank that we can't find
@@ -51,7 +55,7 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
 
 		for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
 			// Play clue
-			let stack_rank = state.hypo_stacks[suitIndex] + 1;
+			let stack_rank = state.play_stacks[suitIndex] + 1;
 			const connections = [];
 
 			if (rank === stack_rank) {
@@ -60,9 +64,14 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
 			else if (rank > stack_rank) {
 				// Try looking for all connecting cards
 				const hypo_state = Utils.objClone(state);
-				let connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, ignoreOrder);
+				let connecting;
 
-				while (connecting !== undefined && stack_rank !== rank) {
+				while (stack_rank !== rank) {
+					connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, ignoreCard.order);
+					if (connecting === undefined) {
+						break;
+					}
+
 					const { type, card } = connecting;
 					connections.push(connecting);
 
@@ -71,7 +80,6 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
 					}
 					stack_rank++;
 					hypo_state.play_stacks[suitIndex]++;
-					connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, ignoreOrder);
 				}
 
 				// Connected cards can stack up to this rank
@@ -91,7 +99,7 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
 
 				// Determine if it's a 2 save
 				if (rank === 2) {
-					const duplicates = Utils.visibleFind(state, target, suitIndex, rank).filter(c => c.clued);
+					const duplicates = Utils.visibleFind(state, target, suitIndex, rank).filter(c => c.order !== ignoreCard.order);
 
 					// No duplicates found, so can be a 2 save
 					if (duplicates.length === 0) {
@@ -113,8 +121,8 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreOrder) {
 				}
 			}
 
-			// 5 Stall
-			if (rank === 5 && state.early_game) {
+			// 5 Stall (early game or locked hand)
+			if (rank === 5 && state.early_game || state.hands[giver].every(c => c.clued)) {
 				focus_possible.push({ suitIndex, rank, stall: true, connections: [] });
 			}
 		}
@@ -176,7 +184,8 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrder) {
 			// Try looking through another player's hand (known to giver) (target?)
 			const hand = state.hands[i];
 
-			const prompt_pos = hand.findIndex(c => c.clued && !c.newly_clued && (c.suitIndex === suitIndex || c.rank === rank));
+			// Do not prompt known cards
+			const prompt_pos = hand.findIndex(c => c.clued && !c.newly_clued && (c.suitIndex === suitIndex || c.rank === rank) && c.inferred.length !== 1);
 			const finesse_pos = find_finesse_pos(hand);
 
 			if (prompt_pos !== -1 && hand[prompt_pos].matches(suitIndex, rank)) {
@@ -219,7 +228,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 			const prompted = our_hand.find(c => c.clued && !already_prompted.includes(c.order) && c.inferred.some(inf => inf.matches(suitIndex, i)));
 			if (prompted !== undefined) {
 				logger.info('found prompt in our hand');
-				connections.push({ type: 'prompt', card: prompted, self: true });
+				connections.push({ type: 'prompt', reacting: state.ourPlayerIndex, card: prompted, self: true });
 				already_prompted.push(prompted.order);
 			}
 			else {
@@ -227,7 +236,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 
 				if (finesse_pos !== -1 && our_hand[finesse_pos].possible.some(c => c.matches(suitIndex, i))) {
 					logger.info('found finesse in our hand');
-					connections.push({ type: 'finesse', card: our_hand[finesse_pos], self: true });
+					connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: our_hand[finesse_pos], self: true });
 					already_finessed++;
 				}
 				else {

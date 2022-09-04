@@ -44,8 +44,8 @@ function handle_action(state, action, tableID, catchup = false) {
 			logger.warn(`${playerName} ${action.failed ? 'bombs' : 'discards'} ${card.toString()}`);
 
 			const trash = find_known_trash(state, playerIndex);
-			// Early game and discard wasn't known trash, so end early game
-			if (state.early_game && !trash.some(c => c.matches(suitIndex, rank))) {
+			// Early game and discard wasn't known trash or misplay, so end early game
+			if (state.early_game && !trash.some(c => c.matches(suitIndex, rank)) && !action.failed) {
 				state.early_game = false;
 			}
 
@@ -105,7 +105,7 @@ function handle_action(state, action, tableID, catchup = false) {
 					if (Utils.findOrder(state.hands[reacting], card.order) !== undefined) {
 						// Didn't play into finesse
 						if (type === 'finesse' && state.play_stacks[card.suitIndex] + 1 === card.rank) {
-							logger.info(`Didn't play into finesse, removing inference ${inference.toString()}`);
+							logger.info(`Didn't play into finesse, removing inference ${Utils.logCard(inference.suitIndex, inference.rank)}`);
 							for (const connection of connections) {
 								if (connection.type === 'finesse') {
 									card.finessed = false;
@@ -151,7 +151,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
 			const matches_inference = card.inferred.some(c => c.matches(suitIndex, rank));
-			if (!card.rewinded && (card.inferred.length > 1 || !matches_inference)) {
+			if (!card.rewinded && (playerIndex === state.ourPlayerIndex && card.inferred.length > 1 || !matches_inference)) {
 				logger.info('all inferences', card.inferred.map(c => c.toString()));
 				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false, tableID);
 				return;
@@ -162,7 +162,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// Apply good touch principle on remaining possibilities
 			for (const hand of state.hands) {
-				good_touch_elim(hand, [{suitIndex, rank}]);
+				good_touch_elim(hand, [{suitIndex, rank}], { hard: true });
 			}
 
 			// Update hypo stacks

@@ -108,7 +108,7 @@ const handle = {
 		};
 
 		const HAND_SIZES = [-1, -1, 5, 5, 4, 3, 3];
-		state.cards_left = state.num_suits * 5 - state.numPlayers * HAND_SIZES[state.numPlayers];
+		state.cards_left = state.num_suits * 10 - state.numPlayers * HAND_SIZES[state.numPlayers];
 
 		for (let i = 0; i < state.numPlayers; i++) {
 			state.hands.push([]);
@@ -165,6 +165,10 @@ let rewind_depth = 0;
 function rewind(state, action_index, playerIndex, order, suitIndex, rank, bomb, tableID) {
 	if (rewind_depth > 2) {
 		throw new Error('attempted to rewind too many times!');
+	}
+	else if (action_index === undefined) {
+		logger.error('tried to rewind before any reasoning was done!');
+		return;
 	}
 	rewind_depth++;
 

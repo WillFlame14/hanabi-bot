@@ -10,7 +10,7 @@ function select_play_clue(play_clues) {
 
 	for (const clue of play_clues) {
 		const { bad_touch, touch, finesses = 0 } = clue;
-		const clue_value = 2*finesses + touch - 2.1*bad_touch;
+		const clue_value = 2*finesses + (touch - 1) - 2.1*bad_touch;
 
 		if (clue_value > best_clue_value) {
 			best_clue_value = clue_value;
@@ -35,7 +35,10 @@ function take_action(state, tableID) {
 			const trash_cards = find_known_trash(state, target);
 
 			// They require a save clue
-			// Urgency: [next, save only] [next, play/fix over save] [next, fix] (other actions) [other, save only] [other, play/fix over save] [other, fix] [early saves]
+			// Urgency: [next, save only] [next, play/fix over save] [next, fix]
+			// (play) (give play if 2+ clues)
+			// [other, save only] [other, play/fix over save] [other, fix]
+			// (give play if < 2 clues) [early saves]
 			if (save_clues[target] !== undefined) {
 				// They don't already have a playable or trash
 				if (playable_cards.length === 0 && trash_cards.length === 0) {
@@ -101,6 +104,7 @@ function take_action(state, tableID) {
 			}
 		}
 	}
+	logger.info('all urgent clues', urgent_clues);
 
 	// Then, look for playables or trash in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
@@ -118,28 +122,31 @@ function take_action(state, tableID) {
 	}
 	else {
 		if (state.clue_tokens > 0) {
-			let all_play_clues = play_clues.flat();
-
-			// In 2 player, all tempo clues become valuable
-			if (state.numPlayers === 2) {
-				const otherPlayerIndex = (state.ourPlayerIndex + 1) % 2;
-				all_play_clues = all_play_clues.concat(find_tempo_clues(state)[otherPlayerIndex]);
-			}
-
-			const { clue, value } = select_play_clue(all_play_clues, state.cards_left < 5 ? -2 : 0);
-			const minimum_clue_value = state.cards_left < 5 ? -2 : 0;
-
-			if (value > minimum_clue_value) {
-				const { type, target, value } = clue;
-				Utils.sendCmd('action', { tableID, type, target, value });
-				return;
-			}
-			else {
-				logger.debug('clue too low value', clue, value);
-			}
-
-			// Go through rest of save clues in order of priority
+			// Go through rest of urgent clues in order of priority
 			for (let i = 3; i < 7; i++) {
+				// Give play clue (at correct priority level)
+				if (i === (state.clue_tokens > 1 ? 3 : 6)) {
+					let all_play_clues = play_clues.flat();
+
+					// In 2 player, all tempo clues become valuable
+					if (state.numPlayers === 2) {
+						const otherPlayerIndex = (state.ourPlayerIndex + 1) % 2;
+						all_play_clues = all_play_clues.concat(find_tempo_clues(state)[otherPlayerIndex]);
+					}
+
+					const { clue, value } = select_play_clue(all_play_clues, state.cards_left < 5 ? -2 : 0);
+					const minimum_clue_value = state.cards_left < 5 ? -10 : 0;
+
+					if (value > minimum_clue_value) {
+						const { type, target, value } = clue;
+						Utils.sendCmd('action', { tableID, type, target, value });
+						return;
+					}
+					else {
+						logger.debug('clue too low value', clue, value);
+					}
+				}
+
 				const clues = urgent_clues[i];
 				if (clues.length > 0) {
 					const { type, target, value } = clues[0];
