@@ -8,11 +8,14 @@ function valid_play(state, target, card) {
 	const { suitIndex, rank } = card;
 	const finesses = state.hands.map(_ => 0);
 	const known_cards = state.hands.map(hand => hand.filter(card => card.possible.length === 1 || card.inferred.length === 1)).flat();
+	logger.info(`checking if ${card.toString()} is a valid play`);
 
 	for (let conn_rank = state.hypo_stacks[suitIndex] + 1; conn_rank < rank; conn_rank++) {
-		logger.debug('looking for connecting', Utils.logCard(suitIndex, conn_rank).toString());
+		logger.info('looking for connecting', Utils.logCard(suitIndex, conn_rank).toString());
 
 		if (!known_cards.some(c => c.matches(suitIndex, conn_rank))) {
+			let found = false;
+
 			// Try looking for prompt or finesse (note: cannot prompt or finesse on self)
 			for (let i = 1; i < state.numPlayers; i++) {
 				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
@@ -27,17 +30,27 @@ function valid_play(state, target, card) {
 					const finesse = hand[find_finesse_pos(hand, finesses[playerIndex])];
 
 					if (finesse === undefined || !finesse.matches(suitIndex, conn_rank)) {
-						return { valid: false };
+						continue;
 					}
 					else {
 						// Finesse found, move the player's finesse position by 1
 						finesses[playerIndex]++;
+						found = true;
+						break;
 					}
 				}
 				else if (!prompt.matches(suitIndex, conn_rank)) {
 					// Prompt doesn't match, we shouldn't look for a finesse (would be wrong prompt)
-					return { valid: false };
+					continue;
 				}
+				else {
+					found = true;
+					break;
+				}
+			}
+
+			if (!found) {
+				return { valid: false };
 			}
 		}
 	}

@@ -1,9 +1,9 @@
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
-function find_chop(hand) {
+function find_chop(hand, options = {}) {
 	for (let i = hand.length - 1; i >= 0; i--) {
-		if (hand[i].clued && !hand[i].newly_clued) {
+		if (hand[i].clued && (options.ignoreNew ? true : !hand[i].newly_clued)) {
 			continue;
 		}
 		return i;
@@ -37,7 +37,7 @@ function determine_focus(hand, list) {
 
 	// Check for leftmost newly clued
 	for (let i = 0; i < hand.length; i++) {
-		if (!hand[i].clued && list.includes(hand[i].order)) {
+		if (hand[i].newly_clued && list.includes(hand[i].order)) {
 			return { focused_card: hand[i], chop: false };
 		}
 	}

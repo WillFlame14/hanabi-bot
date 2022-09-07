@@ -24,7 +24,7 @@ function interpret_clue(state, action) {
 			}
 
 			// Lost all inferences (fix), revert to good touch principle
-			if (!card.newly_clued && card.inferred.length === 0 && !card.reset) {
+			if (list.includes(card.order) && !card.newly_clued && card.inferred.length === 0 && !card.reset) {
 				fix = true;
 				card.inferred = Utils.objClone(card.possible);
 				card.subtract('inferred', bad_touch);
@@ -44,6 +44,7 @@ function interpret_clue(state, action) {
 	}
 
 	const focus_possible = find_focus_possible(state, giver, target, clue, chop, focused_card);
+	logger.info('focus possible', focus_possible.map(p => Utils.logCard(p.suitIndex, p.rank)).join(','));
 	let matched_inferences;
 
 	if (target === state.ourPlayerIndex) {
@@ -96,7 +97,7 @@ function interpret_clue(state, action) {
 	// Card doesn't match any inferences
 	else {
 		// Check for 8 clue stall
-		if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order)) {
+		if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order) && state.turn_count !== 0) {
 			logger.info('8 clue stall!');
 		}
 		else {

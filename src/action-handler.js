@@ -120,7 +120,7 @@ function handle_action(state, action, tableID, catchup = false) {
 							}
 							to_remove.push(i);
 						}
-						else {
+						else if (type === 'finesse') {
 							logger.info(`didn't play into unplayable finesse`);
 						}
 					}
@@ -192,7 +192,5 @@ function handle_action(state, action, tableID, catchup = false) {
 			break;
 	}
 }
-
-
 
 module.exports = { handle_action };

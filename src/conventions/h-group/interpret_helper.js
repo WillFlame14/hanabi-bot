@@ -18,7 +18,7 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreCard) {
 		const hypo_state = Utils.objClone(state);
 		let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, ignoreCard.order);
 
-		while (connecting !== undefined) {
+		while (connecting !== undefined && next_playable_rank <= 5) {
 			const { type, card } = connecting;
 
 			if (type === 'known' && card.newly_clued && card.possible.length > 1 && ignoreCard.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
@@ -122,7 +122,7 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreCard) {
 			}
 
 			// 5 Stall (early game or locked hand)
-			if (rank === 5 && state.early_game || state.hands[giver].every(c => c.clued)) {
+			if (rank === 5 && (state.early_game || state.hands[giver].every(c => c.clued))) {
 				focus_possible.push({ suitIndex, rank, stall: true, connections: [] });
 			}
 		}

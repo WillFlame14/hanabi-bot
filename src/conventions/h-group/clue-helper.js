@@ -163,10 +163,10 @@ function clue_safe(state, clue) {
 		return true;
 	}
 
-	const chop = hand[find_chop(hand)];
+	const chop = hand[find_chop(hand, { ignoreNew: true })];
 
-	if (Utils.isCritical(state, chop.suitIndex, chop.rank)) {
-		logger.error(`Not giving clue ${clue}, as ${chop.toString()} is critical.`);
+	if (Utils.isCritical(hypo_state, chop.suitIndex, chop.rank)) {
+		logger.error(`Not giving clue ${JSON.stringify(clue)}, as ${chop.toString()} is critical.`);
 	}
 
 	// New chop isn't critical

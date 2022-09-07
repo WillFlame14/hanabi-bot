@@ -179,9 +179,25 @@ function update_hypo_stacks(state, suitIndex, rank) {
 						continue;
 					}
 
-					// Delayed playable if all possibilities have been eliminated by good touch or are playable
-					const delayed_playable = (c) => good_touch_elim.some(e => e.matches(c.suitIndex, c.rank)) || state.hypo_stacks[c.suitIndex] + 1 === c.rank;
-					if (card.possible.every(c => delayed_playable(c)) || card.inferred.every(c => delayed_playable(c))) {
+					// Delayed playable if all possibilities have been either eliminated by good touch or are playable (but not all eliminated)
+					const delayed_playable = (poss) => {
+						let all_trash = true;
+						for (const c of poss) {
+							if (good_touch_elim.some(e => e.matches(c.suitIndex, c.rank))) {
+								continue;
+							}
+
+							if (state.hypo_stacks[c.suitIndex] + 1 === c.rank) {
+								all_trash = false;
+							}
+							else {
+								return false;
+							}
+						}
+						return !all_trash;
+					}
+
+					if (delayed_playable(card.possible) || delayed_playable(card.inferred)) {
 						let suitIndex2, rank2;
 						if (card.suitIndex !== -1) {
 							({suitIndex: suitIndex2, rank: rank2} = card);

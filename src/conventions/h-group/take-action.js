@@ -10,7 +10,8 @@ function select_play_clue(play_clues) {
 
 	for (const clue of play_clues) {
 		const { bad_touch, touch, finesses = 0 } = clue;
-		const clue_value = 2*finesses + (touch - 1) - 2.1*bad_touch;
+		const clue_value = 3*finesses + touch - 2.1*bad_touch;
+		logger.info('clue', clue, 'value', clue_value);
 
 		if (clue_value > best_clue_value) {
 			best_clue_value = clue_value;
@@ -18,7 +19,7 @@ function select_play_clue(play_clues) {
 		}
 	}
 
-	return { clue: best_clue, value: best_clue_value };
+	return { clue: best_clue, clue_value: best_clue_value };
 }
 
 function take_action(state, tableID) {
@@ -134,16 +135,17 @@ function take_action(state, tableID) {
 						all_play_clues = all_play_clues.concat(find_tempo_clues(state)[otherPlayerIndex]);
 					}
 
-					const { clue, value } = select_play_clue(all_play_clues, state.cards_left < 5 ? -2 : 0);
+					const { clue, clue_value } = select_play_clue(all_play_clues, state.cards_left < 5 ? -2 : 0);
 					const minimum_clue_value = state.cards_left < 5 ? -10 : 0;
 
-					if (value > minimum_clue_value) {
+					if (clue_value > minimum_clue_value) {
+						logger.info('clue value', clue_value);
 						const { type, target, value } = clue;
 						Utils.sendCmd('action', { tableID, type, target, value });
 						return;
 					}
 					else {
-						logger.debug('clue too low value', clue, value);
+						logger.info('clue too low value', clue, clue_value);
 					}
 				}
 
@@ -176,6 +178,17 @@ function take_action(state, tableID) {
 			// Give stall clue if possible
 			if (state.clue_tokens > 0) {
 				const { type, value, target } = find_stall_clue(state, 3);
+				Utils.sendCmd('action', { tableID, type, target, value });
+				return;
+			}
+		}
+
+		// Early game
+		if (state.early_game && state.clue_tokens > 0) {
+			const clue = find_stall_clue(state, 1);
+
+			if (clue !== undefined) {
+				const { type, value, target } = clue;
 				Utils.sendCmd('action', { tableID, type, target, value });
 				return;
 			}
