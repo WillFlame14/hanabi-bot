@@ -61,7 +61,14 @@ function interpret_clue(state, action) {
 		for (const inference of matched_inferences) {
 			const { suitIndex, rank, save = false, stall = false, connections } = inference;
 
-			if (!save && !stall) {
+			// A play clue interpretation will be blocked by a save/stall clue interpretation
+			// if the first connection is a self-prompt/finesse
+			const blocking_interpretation = function (inf) {
+				return matched_inferences.some(p => p.suitIndex === inf.suitIndex && p.rank === inf.rank
+					&& (p.save || p.stall) && inf.connections[0].reacting === target);
+			}
+
+			if (!save && !stall && !blocking_interpretation(inference)) {
 				let next_rank = state.play_stacks[suitIndex] + 1;
 				for (const connection of connections) {
 					const { type, reacting } = connection;
