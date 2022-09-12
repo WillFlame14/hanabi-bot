@@ -90,7 +90,7 @@ function handle_action(state, action, tableID, catchup = false) {
 				// Update notes on cards
 				for (const card of state.hands[state.ourPlayerIndex]) {
 					if (card.inferred.length <= 3) {
-						Utils.writeNote(card, tableID);
+						Utils.writeNote(state.turn_count + 1, card, tableID);
 					}
 				}
 			}

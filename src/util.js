@@ -101,7 +101,7 @@ function handFindInfer(hand, suitIndex, rank) {
 
 function visibleFind(state, target, suitIndex, rank, ignore = []) {
 	let found = [];
-	for (let i = 0; i < state.hands.length; i++) {
+	for (let i = 0; i < state.numPlayers; i++) {
 		if (ignore.includes(i)) {
 			continue;
 		}
@@ -176,7 +176,7 @@ function logHand(hand) {
 	return new_hand;
 }
 
-function writeNote(card, tableID) {
+function writeNote(turn, card, tableID) {
 	let note = card.inferred.map(c => c.toString()).join(',');
 	if (card.finessed) {
 		note = `[f] [${note}]`;
@@ -191,10 +191,10 @@ function writeNote(card, tableID) {
 		card.last_note = note;
 
 		if (card.full_note === '') {
-			card.full_note = `t${card.reasoning_turn.at(-1)}: ${note}`;
+			card.full_note = `t${turn}: ${note}`;
 		}
 		else {
-			card.full_note = `${card.full_note} | t${card.reasoning_turn.at(-1)}: ${note}`;
+			card.full_note = `${card.full_note} | t${turn}: ${note}`;
 		}
 
 		setTimeout(() => sendCmd('note', { tableID, order: card.order, note: card.full_note }), Math.random() * 5000);

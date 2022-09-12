@@ -141,10 +141,18 @@ function interpret_clue(state, action) {
 				}
 			}
 
-			// No inference, but a finesse isn't possible - default to good touch principle
+			// No inference, but a finesse isn't possible
 			if (!feasible) {
-				logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
-				focused_card.reset = true;
+				// If it's in our hand, we have no way of knowing what the card is - default to good touch principle
+				if (target === state.ourPlayerIndex) {
+					logger.info('no inference on card, defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
+					focused_card.reset = true;
+				}
+				// If it's not in our hand, we should adjust our interpretation to their interpretation (to know if we need to fix)
+				else {
+					focused_card.intersect('inferred', focus_possible);
+					logger.info('inferences', focused_card.inferred.map(c => c.toString()).join(','));
+				}
 			}
 			else {
 				logger.info('playable!');

@@ -42,10 +42,10 @@ function find_bad_touch(state, giver, target, ignoreOrder) {
 	}
 
 	// Find cards clued in other hands (or inferred cards in our hand or giver's hand)
-	for (let i = 0; i < state.hands.length; i++) {
+	for (let i = 0; i < state.numPlayers; i++) {
 		const hand = state.hands[i];
 		for (const card of hand) {
-			if (!card.clued || card.rank <= state.play_stacks[card.suitIndex] || card.order === ignoreOrder) {
+			if (!card.clued || card.order === ignoreOrder) {
 				continue;
 			}
 
@@ -68,7 +68,7 @@ function find_bad_touch(state, giver, target, ignoreOrder) {
 				method = 'known';
 			}
 
-			if (state.play_stacks[suitIndex] < rank) {
+			if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
 				logger.debug(`adding ${Utils.logCard(suitIndex, rank)} to bad touch via ${method}`);
 				bad_touch.push({suitIndex, rank});
 			}

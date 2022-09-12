@@ -16,14 +16,13 @@ function onClue(state, action) {
 				card.newly_clued = true;
 				card.clued = true;
 			}
+			card.reasoning.push(state.actionList.length - 1);
+			card.reasoning_turn.push(state.turn_count + 1);
 		}
 		else {
 			card.subtract('possible', new_possible);
 			card.subtract('inferred', new_possible);
 		}
-
-		card.reasoning.push(state.actionList.length - 1);
-		card.reasoning_turn.push(state.turn_count + 1);
 	}
 
 	state.clue_tokens--;
