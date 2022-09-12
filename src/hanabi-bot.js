@@ -1,41 +1,56 @@
+require('dotenv').config();
 const https = require('https');
 const WebSocket = require('ws');
 
 const { handle } = require('./command-handler.js');
 const Utils = require('./util.js');
 
-require('dotenv').config()
+/**
+ *	Parses the command-line arguments into an object.
+ */
+function parse_args() {
+	const args = {}, arg_lines = process.argv.slice(2);
 
-const data = `username=${process.env.HANABI_USERNAME}&password=${process.env.HANABI_PASSWORD}&version=bot`;
-const options = {
-	hostname: 'hanab.live',
-	port: 443,
-	path: '/login',
-	method: 'POST',
-	headers: {
-		'Content-Type': 'application/x-www-form-urlencoded',
-		'Content-Length': data.length
+	for (const arg_line of arg_lines) {
+		const parts = arg_line.split('=');
+		if (parts.length === 2 && arg_line.length >= 3) {
+			args[parts[0]] = parts[1];
+		}
 	}
-};
+	return args;
+}
 
 /**
  * Logs in to hanab.live and returns the session cookie to authenticate future requests.
  */
-function connect() {
-	return new Promise((resolve, reject) => {
-		if (process.env.HANABI_USERNAME === undefined || process.env.HANABI_PASSWORD === undefined) {
-			console.log('Missing HANABI_USERNAME and HANABI_PASSWORD environment variables.');
-			reject();
-		}
+function connect(bot_index = '') {
+	const u_field = `HANABI_USERNAME${bot_index}`, p_field = `HANABI_PASSWORD${bot_index}`;
 
+	if (process.env[u_field] === undefined || process.env[p_field] === undefined) {
+		throw new Error(`Missing ${u_field} and ${p_field} environment variables.`)
+	}
+
+	const data = `username=${process.env[u_field]}&password=${process.env[p_field]}&version=bot`;
+	const options = {
+		hostname: 'hanab.live',
+		port: 443,
+		path: '/login',
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+			'Content-Length': data.length
+		}
+	};
+
+	return new Promise((resolve, reject) => {
 		// Send login request to hanab.live
 		const req = https.request(options, (res) => {
 			console.log(`Request status code: ${res.statusCode}`);
 
 			const cookie = res.headers['set-cookie'][0];
 			if (cookie == null) {
-				console.log('Failed to parse cookie from auth headers.');
-				reject();
+				reject('Failed to parse cookie from auth headers.');
+				return;
 			}
 
 			res.on('data', (data) => process.stdout.write(data));
@@ -45,6 +60,7 @@ function connect() {
 		req.on('error', (error) => {
 			console.log('Request error:', error);
 			reject();
+			return;
 		});
 
 		// Write data body to POST request
@@ -54,7 +70,19 @@ function connect() {
 }
 
 async function main() {
-	const cookie = await connect();
+	const args = parse_args();
+	let cookie;
+
+	// Connect to server using credentials
+	try {
+		cookie = await connect(args.index);
+	}
+	catch (error) {
+		console.error(error);
+		return;
+	}
+
+	// Establish websocket
 	const ws = new WebSocket('wss://hanab.live/ws', { headers: { Cookie: cookie } });
 
 	// Pass the websocket to utils

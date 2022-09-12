@@ -9,10 +9,11 @@ Currently, it plays around level 3 of H-Group. The goal of the bot is to play wi
 - Navigate to the cloned repository in a terminal and run `npm install` to install required dependencies.
 - Export the environment variables `HANABI_USERNAME` and `HANABI_PASSWORD` for the bot to log in.
     - You'll need to create its account on hanab.live first.
-- Run `node src/hanabi-bot.js` to start the bot.
+- Run `npm start` to start the bot.
+    - If you want to run multiple bot accounts using one env file, export environment variables with a number at the end (like `HANABI_USERNAME2`) and use `npm start -- index=2`.
 
 ## Supported commands
-Send a PM to the bot on hanab.live to get it to respond.
+Send a PM to the bot on hanab.live to interact with it.
 - `/join [password]` to join your current lobby.
 - `/rejoin <tableID> [password]` to rejoin a game that has already started.
 - `/leave <tableID>` to kick the bot from a table.
