@@ -4,6 +4,8 @@ const WebSocket = require('ws');
 const { handle } = require('./command-handler.js');
 const Utils = require('./util.js');
 
+require('dotenv').config()
+
 const data = `username=${process.env.HANABI_USERNAME}&password=${process.env.HANABI_PASSWORD}&version=bot`;
 const options = {
 	hostname: 'hanab.live',
