@@ -98,21 +98,11 @@ function card_elim(state, suitIndex, rank) {
 		// Everyone other than the ones holding the cards can elim
 		for (let i = 0; i < state.numPlayers; i++) {
 			const hand = state.hands[i];
-			const matching_cards = hand.filter(c => {
-				if (i === state.ourPlayerIndex) {
-					return (c.possible.length === 1 && c.possible[0].matches(suitIndex, rank)) ||
-					(c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank));
-				}
-				else {
-					return c.matches(suitIndex, rank);
-				}
-			});
+			const matching_cards = hand.filter(c => c.matches(suitIndex, rank, { infer: i === state.ourPlayerIndex }));
 
 			if (matching_cards.length > 0) {
 				// The matching cards (possibly only 1 in hand) are known
-				if (matching_cards.every(c => c.possible.length === 1 ||
-					(c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank)))
-				) {
+				if (matching_cards.every(c => c.matches(suitIndex, rank, { symmetric: true, infer: true }))) {
 					// Elim on all the other cards in hand
 					for (const card of hand) {
 						if (matching_cards.some(c => c.order === card.order)) {

@@ -43,9 +43,8 @@ function find_urgent_clues(state, tableID, play_clues, save_clues, fix_clues) {
 
 					if (one_away) {
 						// See if we have the connecting card (should be certain)
-						const our_connecting = state.hands[state.ourPlayerIndex].find(c => {
-							return c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank - 1);
-						});
+						const our_connecting =
+							state.hands[state.ourPlayerIndex].find(c => c.matches(suitIndex, rank - 1, { infer: true }));
 
 						if (our_connecting !== undefined) {
 							// The card must become playable

@@ -118,8 +118,7 @@ function find_clues(state) {
 
 					const save2 = state.play_stacks[suitIndex] === 0 &&									// play stack at 0
 						Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&	// other copy isn't visible
-						!state.hands[state.ourPlayerIndex].some(c =>
-							c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank)) &&		// not in our hand
+						!state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true })) &&   // not in our hand
 						clue_safe(state, clue);															// doesn't put crit on chop
 					
 					if (save2) {
@@ -133,7 +132,7 @@ function find_clues(state) {
 		}
 	}
 
-	const fix_clues = find_fix_clues(state);
+	const fix_clues = find_fix_clues(state, play_clues, save_clues);
 
 	logger.debug('found play clues', play_clues);
 	logger.info('found save clues', save_clues);
@@ -224,7 +223,7 @@ function find_stall_clue(state, severity) {
 	}
 }
 
-function find_fix_clues(state) {
+function find_fix_clues(state, play_clues, save_clues) {
 	const fix_clues = [];
 	for (let target = 0; target < state.numPlayers; target++) {
 		fix_clues[target] = [];
@@ -252,11 +251,50 @@ function find_fix_clues(state) {
 					const our_hand = state.hands[state.ourPlayerIndex];
 
 					// Possibility is immediately playable or 1-away and we have the connecting card
-					return playableAway === 0 || (playableAway === 1 && our_hand.some(c => c.matches(p.suitIndex, p.rank - 1)));
+					return playableAway === 0 || (playableAway === 1 && our_hand.some(c => c.matches(p.suitIndex, p.rank - 1, { infer: true })));
 				});
+
+				const card_fixed = function (target_card) {
+					return target_card.inferred.every(p => Utils.playableAway(state, p.suitIndex, p.rank) !== 0);
+				};
+				const card_trash = function (target_card) {
+					return target_card.inferred.every(p =>
+						Utils.isBasicTrash(state, p.suitIndex, p.rank) ||
+						Utils.visibleFind(state, target, p.suitIndex, p.rank).some(c => c.clued && p.order !== c.order)
+					);
+				}
 
 				// Card doesn't match any inferences and seems playable but isn't (need to fix)
 				if (!matches_inferences && seems_playable && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
+					let found_clue = false;
+
+					let other_clues = play_clues[target];
+					other_clues.push(save_clues[target]);
+					other_clues = other_clues.filter(clue => clue !== undefined);
+
+					// Go through all other clues to see if one fixes
+					for (const clue of other_clues) {
+						// The clue cannot touch the fixed card or it will look like just a fix
+						if ((clue.type === CLUE.COLOUR && clue.value === card.suitIndex) ||
+							(clue.type === CLUE.RANK && clue.value === card.rank)) {
+							continue;
+						}
+
+						const copy = card.clone();
+						copy.intersect('inferred', find_possibilities(clue, state.num_suits));
+
+						if (card_fixed(copy)) {
+							// TODO: Find the highest value play clue
+							fix_clues[target].push(Object.assign(clue, { trash: card_trash(copy) }));
+							found_clue = true;
+							break;
+						}
+					}
+
+					if (found_clue) {
+						continue;
+					}
+
 					const colour_clue = { type: CLUE.COLOUR, value: card.suitIndex };
 					const rank_clue = { type: CLUE.RANK, value: card.rank };
 					const [colour_fix, rank_fix] = [colour_clue, rank_clue].map(clue => {
@@ -265,12 +303,8 @@ function find_fix_clues(state) {
 
 						// Fixed if every inference is now unplayable
 						return {
-							fixed: copy.inferred.every(p => Utils.playableAway(state, p.suitIndex, p.rank) !== 0),
-							trash: copy.inferred.every(p =>
-								p.rank <= state.play_stacks[p.suitIndex] ||
-								p.rank > state.max_ranks[p.suitIndex] ||
-								Utils.visibleFind(state, target, p.suitIndex, p.rank).some(c => c.clued)
-						)};
+							fixed: card_fixed(copy),
+							trash: card_trash(copy)};
 					});
 
 					if (colour_fix.fixed && !rank_fix.fixed) {

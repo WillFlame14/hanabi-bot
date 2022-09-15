@@ -18,7 +18,7 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreCard) {
 		const hypo_state = Utils.objClone(state);
 		let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, ignoreCard.order);
 
-		while (connecting !== undefined && next_playable_rank <= 5) {
+		while (connecting !== undefined && next_playable_rank < 5) {
 			const { type, card } = connecting;
 
 			if (type === 'known' && card.newly_clued && card.possible.length > 1 && ignoreCard.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
@@ -142,8 +142,7 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrder) {
 		const hand = state.hands[i];
 
 		const known_connecting = hand.find(card =>
-			((card.possible.length === 1 && card.possible[0].matches(suitIndex, rank)) ||
-			(card.inferred.length === 1 && card.inferred[0].matches(suitIndex, rank))) && // && i === state.ourPlayerIndex) ?
+			card.matches(suitIndex, rank, { symmetric: true, infer: true }) &&
 			card.order !== ignoreOrder
 		);
 
@@ -188,7 +187,7 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrder) {
 			const prompt_pos = hand.findIndex(c => c.clued && !c.newly_clued && (c.suitIndex === suitIndex || c.rank === rank) && c.inferred.length !== 1);
 			const finesse_pos = find_finesse_pos(hand);
 
-			if (prompt_pos !== -1 && hand[prompt_pos].matches(suitIndex, rank)) {
+			if (prompt_pos !== -1 && hand[prompt_pos].matches(suitIndex, rank) && hand[prompt_pos].order !== ignoreOrder) {
 				logger.info(`found prompt ${hand[prompt_pos].toString()} in ${state.playerNames[i]}'s hand`);
 				return { type: 'prompt', reacting: i, card: hand[prompt_pos], self: false };
 			}
@@ -196,6 +195,14 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrder) {
 			else if (finesse_pos !== -1 && hand[finesse_pos].matches(suitIndex, rank)) {
 				logger.info(`found finesse ${hand[finesse_pos].toString()} in ${state.playerNames[i]}'s hand`);
 				return { type: 'finesse', reacting: i, card: hand[finesse_pos], self: false };
+			}
+			// EXPERIMENTAL: finesse with fix component that is guaranteed not in our hand
+			else {
+				const card_in_hand = Utils.handFind(hand, suitIndex, rank);
+				if (card_in_hand && Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 2) {
+					logger.info(`found finesse ${hand[finesse_pos].toString()} with fix component in ${state.playerNames[i]}'s hand`);
+					return { type: 'finesse', reacting: i, card: card_in_hand, self: false };
+				}
 			}
 		}
 	}

@@ -87,14 +87,7 @@ function interpret_clue(state, action) {
 				if (matched_inferences.length === 1) {
 					logger.debug('updating hypo stack (inference)');
 					update_hypo_stacks(state, suitIndex, rank);
-
-					// FIX: Everyone should elim
-
-					// Inference is known
-					if (focused_card.inferred.length === 1) {
-						// Don't elim on the focused card
-						good_touch_elim(state.hands[target], [{ suitIndex, rank }], {ignore: [focused_card.order], hard: true});
-					}
+					team_elim(state, focused_card, target, suitIndex, rank);
 				}
 				// Multiple inferences, we need to wait for connections
 				else if (connections.length > 0 && !connections[0].self) {
@@ -105,54 +98,69 @@ function interpret_clue(state, action) {
 	}
 	// Card doesn't match any inferences
 	else {
-		// Check for 8 clue stall
-		if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order) && state.turn_count !== 0) {
+		// Check for 8 clue stall (TODO: check that direct play is not available)
+		if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order) && state.turn_count !== 0 &&
+			!state.hands[target].some(c => c.rank === 5 && !c.clued)		// 5 Stall not available
+		) {
 			logger.info('8 clue stall!');
 		}
 		else {
 			logger.info(`card ${focused_card.toString()} order ${focused_card.order} doesn't match any inferences!`);
-			let feasible = false, connections, conn_suit;
-
-			const trash = (suitIndex, rank) => rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
+			let all_connections = [];
 
 			// Only look for finesses if the card isn't trash
-			if (focused_card.inferred.some(c => !trash(c.suitIndex, c.rank))) {
+			if (focused_card.inferred.some(c => !Utils.isBasicTrash(state, c.suitIndex, c.rank))) {
+				// We are the clue target, so we need to consider all the possibilities of the card
 				if (target === state.ourPlayerIndex) {
 					let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
+					let self = true;
 
 					for (const card of focused_card.inferred) {
-						({ feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank));
+						const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank);
 						const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 						logger.info('feasible?', feasible, 'blind plays', blind_plays);
 
-						// FIX: If there are multiple feasible, need to wait for connections (similar to multiple inferences)
-						// Only assume min blind plays if all inferences involve starting with self
-						if (feasible && blind_plays < min_blind_plays) {
-							conn_save = connections;
-							conn_suit = card.suitIndex;
-							min_blind_plays = blind_plays;
+						if (feasible) {
+							// Starts with self-finesse or self-prompt
+							if (connections[0].self) {
+								// TODO: This interpretation should always exist, but must wait for all players to ignore first
+								if (self && blind_plays < min_blind_plays) {
+									conn_save = { connections, conn_suit: card.suitIndex };
+									min_blind_plays = blind_plays;
+								}
+							}
+							// Doesn't start with self
+							else {
+								// Temp: if a connection with no self-component exists, don't consider any connection with a self-component
+								self = false;
+								all_connections.push({ connections, conn_suit: card.suitIndex });
+							}
 						}
 					}
 
-					if (conn_save !== undefined) {
-						connections = conn_save;
-						feasible = true;
+					if (self && conn_save !== undefined) {
+						all_connections.push(conn_save);
 					}
 				}
+				// Someone else is the clue target, so we know exactly what card it is
 				else {
-					({ feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank));
-					conn_suit = focused_card.suitIndex;
+					const { feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank);
+					if (feasible) {
+						all_connections.push({ connections, conn_suit: focused_card.suitIndex });
+						conn_suit = focused_card.suitIndex;
+					}
 				}
 			}
 
 			// No inference, but a finesse isn't possible
-			if (!feasible) {
+			if (all_connections.length === 0) {
 				// If it's in our hand, we have no way of knowing what the card is - default to good touch principle
 				if (target === state.ourPlayerIndex) {
 					logger.info('no inference on card (self), defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
 					focused_card.reset = true;
 				}
 				// If it's not in our hand, we should adjust our interpretation to their interpretation (to know if we need to fix)
+				// We must force a finesse?
 				else {
 					focused_card.intersect('inferred', focus_possible);
 					logger.info('no inference on card (other), looks like', focused_card.inferred.map(c => c.toString()).join(','));
@@ -160,32 +168,55 @@ function interpret_clue(state, action) {
 			}
 			else {
 				logger.info('playable!');
-				let next_rank = state.play_stacks[conn_suit] + 1;
-				for (const connection of connections) {
-					const { type, reacting } = connection;
-					// The connections can be cloned, so need to modify the card directly
-					const card = Utils.findOrder(state.hands[reacting], connection.card.order);
+				focused_card.inferred = [];
 
-					card.inferred = [new Card(conn_suit, next_rank)];
-					card.finessed = (type === 'finesse');
-					next_rank++;
+				for (const { connections, conn_suit } of all_connections) {
+					let next_rank = state.play_stacks[conn_suit] + 1;
+					for (const connection of connections) {
+						const { type, reacting } = connection;
+						// The connections can be cloned, so need to modify the card directly
+						const card = Utils.findOrder(state.hands[reacting], connection.card.order);
 
-					// Updating notes not on our turn
-					if (target !== state.ourPlayerIndex && connection.self) {
-						card.reasoning.push(state.actionList.length - 1);
-						card.reasoning_turn.push(state.turn_count + 1);
+						card.inferred = [new Card(conn_suit, next_rank)];
+						card.finessed = (type === 'finesse');
+						next_rank++;
+
+						// Updating notes not on our turn
+						if (target !== state.ourPlayerIndex && connection.self) {
+							card.reasoning.push(state.actionList.length - 1);
+							card.reasoning_turn.push(state.turn_count + 1);
+						}
+					}
+
+					// Add inference to focused card
+					focused_card.union('inferred', [new Card(conn_suit, next_rank)]);
+
+					// Only one set of connections, so can elim safely
+					if (all_connections.length === 1) {
+						team_elim(state, focused_card, target, conn_suit, next_rank);
+					}
+					// Multiple possible sets, we need to wait for connections
+					else {
+						state.waiting_connections.push({ connections, focused_card, inference });
 					}
 				}
-				// Set correct inference on focused card
-				focused_card.inferred = [new Card(conn_suit, next_rank)];
-
-				// Don't elim on the focused card
-				good_touch_elim(state.hands[target], [{ conn_suit, next_rank }], {ignore: [focused_card.order], hard: true});
 			}
 		}
 	}
 	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','));
 	logger.debug('hand state after clue', Utils.logHand(state.hands[target]));
+}
+
+function team_elim(state, focused_card, target, suitIndex, rank) {
+	for (let i = 0; i < state.numPlayers; i++) {
+		const hand = state.hands[i];
+
+		// Target can elim only if inference is known, everyone else can elim
+		if (i !== target || focused_card.inferred.length === 1) {
+			// Don't elim on the focused card
+			good_touch_elim(hand, [{ suitIndex, rank }], {ignore: [focused_card.order], hard: true});
+		}
+	}
 }
 
 module.exports = { interpret_clue };

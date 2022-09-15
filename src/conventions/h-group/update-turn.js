@@ -60,16 +60,19 @@ function update_turn(state, action) {
 						to_remove.push(i);
 					}
 
-					const prev_card = demonstrated.find(pair => pair[0].order === focused_card.order);
-					if (prev_card === undefined) {
-						demonstrated.push([focused_card, [Utils.objPick(inference, ['suitIndex', 'rank'])]]);
-					}
-					else {
-						prev_card[1].push(Utils.objPick(inference, ['suitIndex', 'rank']));
+					// Finesses demonstrate that a card must be playable and not save
+					if (type === 'finesse') {
+						const prev_card = demonstrated.find(pair => pair[0].order === focused_card.order);
+						if (prev_card === undefined) {
+							demonstrated.push([focused_card, [Utils.objPick(inference, ['suitIndex', 'rank'])]]);
+						}
+						else {
+							prev_card[1].push(Utils.objPick(inference, ['suitIndex', 'rank']));
+						}
 					}
 				}
 				// The card was discarded and its copy is not visible
-				else if (Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 0) {
+				else if (Utils.visibleFind(state, state.ourPlayerIndex, card.suitIndex, card.rank).length === 0) {
 					logger.info(`waiting card ${card.toString()} discarded?? removing finesse`);
 					remove_finesse(state, i);
 

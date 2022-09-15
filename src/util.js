@@ -123,6 +123,10 @@ function isCritical(state, suitIndex, rank) {
 	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1);
 }
 
+function isBasicTrash(state, suitIndex, rank) {
+	return rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
+}
+
 function playableAway(state, suitIndex, rank) {
 	return rank - (state.play_stacks[suitIndex] + 1);
 }
@@ -215,7 +219,7 @@ module.exports = {
 	sendChat, sendCmd,
 	findOrder,
 	handFind, handFindInfer, visibleFind,
-	isCritical, playableAway,
+	isCritical, isBasicTrash, playableAway,
 	objClone, objPick,
 	logCard, logHand, writeNote
 };

@@ -115,7 +115,6 @@ function find_known_trash(state, playerIndex) {
 	const hand = state.hands[playerIndex];
 	const trash = [];
 
-	const not_trash = (suitIndex, rank) => rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex];
 	const visible_elsewhere = (suitIndex, rank, order) => {
 		// Visible in someone else's hand or visible in the same hand (but only one is trash)
 		return Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank, [playerIndex]).some(c => c.clued && c.order !== order) ||
@@ -126,8 +125,8 @@ function find_known_trash(state, playerIndex) {
 		const possibilities = (card.inferred.length === 0 || playerIndex !== state.ourPlayerIndex) ? card.possible : card.inferred;
 
 		// Every possibility is trash or known duplicated somewhere
-		if (possibilities.every(c => !not_trash(c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
-			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => c.toString()).join()}, results ${possibilities.map(c => !not_trash(c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
+		if (possibilities.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
+			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => c.toString()).join()}, results ${possibilities.map(c => Utils.isBasicTrash(state, c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
 			trash.push(card);
 		}
 	}

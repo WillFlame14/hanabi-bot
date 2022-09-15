@@ -68,8 +68,22 @@ class Card {
 		return colours[suitIndex] + rank + append;
 	}
 
-	matches(suitIndex, rank) {
-		return this.suitIndex === suitIndex && this.rank === rank;
+	matches(suitIndex, rank, options = {}) {
+		let identity;
+		if (!options.symmetric && this.suitIndex !== -1) {
+			identity = this;
+		}
+		else if (this.possible.length === 1) {
+			identity = this.possible[0];
+		}
+		else if (options.infer && this.inferred.length === 1) {
+			identity = this.inferred[0];
+		}
+		else {
+			return false;
+		}
+
+		return identity.suitIndex === suitIndex && identity.rank === rank;
 	}
 
 	intersect(type, cards) {
