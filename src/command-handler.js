@@ -107,7 +107,6 @@ const handle = {
 			early_game: true
 		};
 
-		const HAND_SIZES = [-1, -1, 5, 5, 4, 4, 3];
 		state.cards_left = state.num_suits * 10;
 
 		for (let i = 0; i < state.numPlayers; i++) {

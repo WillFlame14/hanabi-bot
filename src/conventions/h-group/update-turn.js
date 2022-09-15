@@ -1,0 +1,93 @@
+const { update_hypo_stacks } = require('../../basics/helper.js');
+const { logger } = require('../../logger.js');
+const Utils = require('../../util.js');
+
+function remove_finesse(state, waiting_index) {
+	const { connections, focused_card, inference } = state.waiting_connections[waiting_index];
+
+	// Remove remaining finesses
+	for (const { type, reacting, card } of connections) {
+		if (type === 'finesse') {
+			Utils.findOrder(state.hands[reacting], card.order).finessed = false;
+		}
+	}
+
+	// Remove inference
+	focused_card.subtract('inferred', [inference]);
+
+	// Update hypo stacks if the card is now playable
+	if (focused_card.inferred.length === 1) {
+		const { suitIndex, rank } = focused_card.inferred[0];
+		if (state.hypo_stacks[suitIndex] + 1 === rank) {
+			update_hypo_stacks(state, suitIndex, rank);
+		}
+	}
+}
+
+function update_turn(state, action) {
+	const { currentPlayerIndex } = action;
+	const lastPlayerIndex = (currentPlayerIndex + state.numPlayers - 1) % state.numPlayers;
+
+	const to_remove = [];
+	const demonstrated = [];
+
+	for (let i = 0; i < state.waiting_connections.length; i++) {
+		const { connections, focused_card, inference } = state.waiting_connections[i];
+		logger.info(`next conn ${connections[0].card.toString()} for inference ${Utils.logCard(inference.suitIndex, inference.rank)}`);
+		const { type, reacting, card } = connections[0];
+		// After the turn we were waiting for
+		if (reacting === lastPlayerIndex) {
+			// They still have the card
+			if (Utils.findOrder(state.hands[reacting], card.order) !== undefined) {
+				// Didn't play into finesse
+				if (type === 'finesse' && state.play_stacks[card.suitIndex] + 1 === card.rank) {
+					logger.info(`Didn't play into finesse, removing inference ${Utils.logCard(inference.suitIndex, inference.rank)}`);
+					remove_finesse(state, i);
+
+					// Flag it to be removed
+					to_remove.push(i);
+				}
+				else if (type === 'finesse') {
+					logger.info(`didn't play into unplayable finesse`);
+				}
+			}
+			else {
+				// The card was played
+				if (state.play_stacks[card.suitIndex] >= card.rank) {
+					logger.info(`waiting card ${card.toString()} played`);
+					connections.shift();
+					if (connections.length === 0) {
+						to_remove.push(i);
+					}
+
+					const prev_card = demonstrated.find(pair => pair[0].order === focused_card.order);
+					if (prev_card === undefined) {
+						demonstrated.push([focused_card, [Utils.objPick(inference, ['suitIndex', 'rank'])]]);
+					}
+					else {
+						prev_card[1].push(Utils.objPick(inference, ['suitIndex', 'rank']));
+					}
+				}
+				// The card was discarded and its copy is not visible
+				else if (Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 0) {
+					logger.info(`waiting card ${card.toString()} discarded?? removing finesse`);
+					remove_finesse(state, i);
+
+					// Flag it to be removed
+					to_remove.push(i);
+				}
+			}
+		}
+	}
+
+	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
+	for (const [card, inferences] of demonstrated) {
+		logger.info(`intersecting card ${card.toString()} with inferences ${inferences.map(c => Utils.logCard(c.suitIndex, c.rank)).join(',')}`);
+		card.intersect('inferred', inferences);
+	}
+
+	// Filter out connections that have been removed
+	state.waiting_connections = state.waiting_connections.filter((_, i) => !to_remove.includes(i));
+}
+
+module.exports = { update_turn };

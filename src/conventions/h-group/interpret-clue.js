@@ -1,5 +1,5 @@
 const { determine_focus } = require('./hanabi-logic.js');
-const { find_focus_possible, find_own_finesses } = require('./interpret_helper.js');
+const { find_focus_possible, find_own_finesses } = require('./interpret-helper.js');
 const { Card } = require('../../basics/Card.js');
 const { find_bad_touch, update_hypo_stacks, good_touch_elim } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
@@ -88,6 +88,8 @@ function interpret_clue(state, action) {
 					logger.debug('updating hypo stack (inference)');
 					update_hypo_stacks(state, suitIndex, rank);
 
+					// FIX: Everyone should elim
+
 					// Inference is known
 					if (focused_card.inferred.length === 1) {
 						// Don't elim on the focused card
@@ -123,6 +125,8 @@ function interpret_clue(state, action) {
 						const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 						logger.info('feasible?', feasible, 'blind plays', blind_plays);
 
+						// FIX: If there are multiple feasible, need to wait for connections (similar to multiple inferences)
+						// Only assume min blind plays if all inferences involve starting with self
 						if (feasible && blind_plays < min_blind_plays) {
 							conn_save = connections;
 							conn_suit = card.suitIndex;
@@ -156,7 +160,7 @@ function interpret_clue(state, action) {
 			}
 			else {
 				logger.info('playable!');
-				let next_rank = state.hypo_stacks[conn_suit] + 1;
+				let next_rank = state.play_stacks[conn_suit] + 1;
 				for (const connection of connections) {
 					const { type, reacting } = connection;
 					// The connections can be cloned, so need to modify the card directly

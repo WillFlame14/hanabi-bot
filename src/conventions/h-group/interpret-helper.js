@@ -214,7 +214,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 	const already_prompted = [];
 	let already_finessed = 0;
 
-	for (let i = state.hypo_stacks[suitIndex] + 1; i < rank; i++) {
+	for (let i = state.play_stacks[suitIndex] + 1; i < rank; i++) {
 		if (state.discard_stacks[suitIndex][i - 1] === Utils.CARD_COUNT[i - 1]) {
 			logger.info(`impossible to find ${Utils.logCard(suitIndex, i)}, both cards in trash`);
 			break;
@@ -245,7 +245,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 			}
 		}
 	}
-	return { feasible: connections.length === rank - state.hypo_stacks[suitIndex] - 1, connections };
+	return { feasible: connections.length === rank - state.play_stacks[suitIndex] - 1, connections };
 }
 
 module.exports = { find_focus_possible, find_connecting, find_own_finesses };

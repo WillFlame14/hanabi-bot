@@ -1,4 +1,4 @@
-const { select_play_clue, find_urgent_clues, determine_playable_card } = require('./action_helper.js');
+const { select_play_clue, find_urgent_clues, determine_playable_card } = require('./action-helper.js');
 const { find_clues, find_tempo_clues, find_stall_clue } = require('./clue-finder.js');
 const { find_chop } = require('./hanabi-logic.js');
 const { ACTION, find_playables, find_known_trash } = require('../../basics/helper.js');

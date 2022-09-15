@@ -79,6 +79,14 @@ class Card {
 	subtract(type, cards) {
 		this[type] = this[type].filter(c1 => !cards.some(c2 => c1.matches(c2.suitIndex, c2.rank)));
 	}
+
+	union(type, cards) {
+		for (const card of cards) {
+			if (!this[type].some(c => c.matches(card.suitIndex, card.rank))) {
+				this[type].push(card);
+			}
+		}
+	}
 }
 
 module.exports = { Card };

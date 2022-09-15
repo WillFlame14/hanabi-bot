@@ -61,9 +61,9 @@ function find_urgent_clues(state, tableID, play_clues, save_clues, fix_clues) {
 				}
 
 				// Giving save clues to the player directly after us is more urgent
-				const { clue, value } = select_play_clue(play_clues[target]);
+				const { clue, clue_value } = select_play_clue(play_clues[target]);
 				const trash_fix = fix_clues[target].find(clue => clue.trash);
-				if (value > 0 && state.clue_tokens >= 2) {
+				if (clue_value > 0 && state.clue_tokens >= 2) {
 					// Can give them a play clue, so less urgent (need at least 2 clue tokens)
 					urgent_clues[1 + (i !== 1 ? 3 : 0)].push(clue);
 				}
@@ -91,7 +91,7 @@ function find_urgent_clues(state, tableID, play_clues, save_clues, fix_clues) {
 }
 
 function determine_playable_card(state, playable_cards) {
-	const priorities = [[], [], [], [], []];
+	const priorities = [[], [], [], [], [], []];
 
 	let min_rank = 5;
 	for (const card of playable_cards) {
@@ -103,23 +103,36 @@ function determine_playable_card(state, playable_cards) {
 			continue;
 		}
 
+		const connecting_in_hand = function (hand, suitIndex, rank) {
+			return Utils.handFind(hand, suitIndex, rank).length > 0;
+		}
+
+		let priority = 1;
 		for (const inference of possibilities) {
 			const { suitIndex, rank } = inference;
 
-			const connecting_in_hand = function (hand, suitIndex, rank) {
-				return Utils.handFind(hand, suitIndex, rank).length > 0;
+			// Start at next player so that connecting in our hand has lowest priority
+			for (let i = 1; i < state.numPlayers + 1; i++) {
+				const target = (state.ourPlayerIndex + i) % state.numPlayers;
+				if (connecting_in_hand(state.hands[i], suitIndex, rank + 1)) {
+					// Connecting in own hand, demote priority to 2
+					if (target === state.ourPlayerIndex) {
+						priority = 2;
+					}
+					break;
+				}
+				// Not connecting to anyone's hand, priority 3 or below
+				else {
+					priority = 3;
+					break;
+				}
 			}
+		}
 
-			// Connecting in someone else's hand
-			if (state.hands.some((hand, index) => index !== state.ourPlayerIndex && connecting_in_hand(hand, suitIndex, rank + 1))) {
-				priorities[1].push(card);
-				logger.info('connecting in other hand!')
-			}
-			// Connecting in our own hand
-			else if (connecting_in_hand(state.hands[state.ourPlayerIndex], suitIndex, rank + 1)) {
-				priorities[2].push(card);
-				logger.info('connecting in own hand!');
-			}
+		if (priority < 3) {
+			priorities[priority].push(card);
+			logger.info(`connecting in ${priority === 1 ? 'other' : 'own'} hand!`);
+			continue;
 		}
 
 		// Find the lowest possible rank for the card
@@ -131,9 +144,15 @@ function determine_playable_card(state, playable_cards) {
 			continue;
 		}
 
+		// Unknown card
+		if (possibilities.length > 1) {
+			priorities[4].push(card);
+			continue;
+		}
+
 		// Other
 		if (rank <= min_rank) {
-			priorities[4].unshift(card);
+			priorities[5].unshift(card);
 			min_rank = rank;
 		}
 	}

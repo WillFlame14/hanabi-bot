@@ -148,6 +148,14 @@ function objClone(obj) {
 	}
 }
 
+function objPick(obj, attributes) {
+	const new_obj = {};
+	for (const attr of attributes) {
+		new_obj[attr] = obj[attr];
+	}
+	return new_obj;
+}
+
 function logCard(suitIndex, rank) {
 	const colours = ['r', 'y', 'g', 'b', 'p'];
 	return colours[suitIndex] + rank;
@@ -206,8 +214,8 @@ module.exports = {
 	globalModify, initConsole,
 	sendChat, sendCmd,
 	findOrder,
-	handFind, visibleFind,
+	handFind, handFindInfer, visibleFind,
 	isCritical, playableAway,
-	objClone,
+	objClone, objPick,
 	logCard, logHand, writeNote
 };

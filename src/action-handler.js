@@ -1,5 +1,5 @@
 const { Card } = require('./basics/Card.js');
-const { CLUE, good_touch_elim, find_known_trash, remove_card_from_hand, update_hypo_stacks } = require('./basics/helper.js');
+const { CLUE, good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics/helper.js');
 const { logger } = require('./logger.js');
 const Basics = require('./basics.js');
 const Utils = require('./util.js');
@@ -11,7 +11,6 @@ function handle_action(state, action, tableID, catchup = false) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
 			const { giver, target, list, clue } = action;
-
 			const [playerName, targetName] = [giver, target].map(index => state.playerNames[index]);
 			let clue_value;
 
@@ -43,32 +42,8 @@ function handle_action(state, action, tableID, catchup = false) {
 			Object.assign(card, {suitIndex, rank});
 			logger.warn(`${playerName} ${action.failed ? 'bombs' : 'discards'} ${card.toString()}`);
 
-			const trash = find_known_trash(state, playerIndex);
-			// Early game and discard wasn't known trash or misplay, so end early game
-			if (state.early_game && !trash.some(c => c.matches(suitIndex, rank)) && !action.failed) {
-				state.early_game = false;
-			}
-
 			Basics.onDiscard(state, action);
-
-			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-			const matches_inference = card.inferred.length === 0 || card.inferred.some(c => c.matches(suitIndex, rank));
-			if (!card.rewinded && !matches_inference) {
-				logger.info('all inferences', card.inferred.map(c => c.toString()));
-				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, true, tableID);
-				return;
-			}
-
-			// Discarding a useful card (for whatever reason)
-			if (state.hypo_stacks[suitIndex] >= rank && state.play_stacks[suitIndex] < rank) {
-				const duplicates = Utils.visibleFind(state, playerIndex, suitIndex, rank);
-
-				// Mistake discard or sarcastic discard (but unknown transfer location)
-				if (duplicates.length === 0 || duplicates[0].inferred.length > 1) {
-					logger.info(`${state.playerNames[playerIndex]} discarded useful card ${card.toString()}, setting hypo stack ${rank - 1}`);
-					state.hypo_stacks[suitIndex] = rank - 1;
-				}
-			}
+			state.interpret_discard(state, action, card, tableID);
 			break;
 		}
 		case 'draw': {
@@ -83,7 +58,6 @@ function handle_action(state, action, tableID, catchup = false) {
 		case 'turn': {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
 			const { currentPlayerIndex } = action;
-			const lastPlayerIndex = (currentPlayerIndex + state.numPlayers - 1) % state.numPlayers;
 			if (currentPlayerIndex === state.ourPlayerIndex && !catchup) {
 				setTimeout(() => state.take_action(state, tableID), 2000);
 
@@ -95,48 +69,7 @@ function handle_action(state, action, tableID, catchup = false) {
 				}
 			}
 
-			const to_remove = [];
-			for (let i = 0; i < state.waiting_connections.length; i++) {
-				const { connections, focused_card, inference } = state.waiting_connections[i];
-				const { type, reacting, card } = connections[0];
-				// After the turn we were waiting for
-				if (reacting === lastPlayerIndex) {
-					// They still have the card
-					if (Utils.findOrder(state.hands[reacting], card.order) !== undefined) {
-						// Didn't play into finesse
-						if (type === 'finesse' && state.play_stacks[card.suitIndex] + 1 === card.rank) {
-							logger.info(`Didn't play into finesse, removing inference ${Utils.logCard(inference.suitIndex, inference.rank)}`);
-							for (const connection of connections) {
-								if (connection.type === 'finesse') {
-									card.finessed = false;
-								}
-							}
-							focused_card.subtract('inferred', [inference]);
-							if (focused_card.inferred.length === 1) {
-								const { suitIndex, rank } = focused_card.inferred[0];
-								if (state.hypo_stacks[suitIndex] + 1 === rank) {
-									update_hypo_stacks(state, suitIndex, rank);
-								}
-							}
-							to_remove.push(i);
-						}
-						else if (type === 'finesse') {
-							logger.info(`didn't play into unplayable finesse`);
-						}
-					}
-					else {
-						// The card was played or discarded
-						logger.info(`waiting card ${card.toString()} gone`);
-						connections.shift();
-						if (connections.length === 0) {
-							to_remove.push(i);
-						}
-					}
-				}
-			}
-
-			// Filter out connections that have been removed
-			state.waiting_connections = state.waiting_connections.filter((_, i) => !to_remove.includes(i));
+			state.update_turn(state, action);
 			state.turn_count++;
 			break;
 		}
