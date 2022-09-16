@@ -3,6 +3,8 @@ A deterministic NodeJS bot that plays on the [hanab.live](https://hanab.live/) i
 
 Currently, it plays around level 3 of H-Group. The goal of the bot is to play with humans, so it should be able to handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning".
 
+https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-92d0-e1d01291986e.mp4
+
 ## Running locally
 - You'll need to have NodeJS v16 or above. You can download it [here](https://nodejs.org/en/download/).
 - Clone the repository to your own computer. There are lots of tutorials online on using Git if you don't know how that works.
