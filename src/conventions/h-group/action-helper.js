@@ -59,6 +59,8 @@ function find_urgent_clues(state, tableID, play_clues, save_clues, fix_clues) {
 					}
 				}
 
+				// TODO: Try to see if we can give a finesse involving them
+
 				// Giving save clues to the player directly after us is more urgent
 				const { clue, clue_value } = select_play_clue(play_clues[target]);
 				const trash_fix = fix_clues[target].find(clue => clue.trash);
@@ -95,6 +97,7 @@ function determine_playable_card(state, playable_cards) {
 	let min_rank = 5;
 	for (const card of playable_cards) {
 		const possibilities = card.inferred.length > 0 ? card.inferred : card.possible;
+		logger.info(`examining card with possibilities ${possibilities.map(p => p.toString()).join(',')}`);
 
 		// Blind play
 		if (card.finessed) {
@@ -110,21 +113,33 @@ function determine_playable_card(state, playable_cards) {
 		for (const inference of possibilities) {
 			const { suitIndex, rank } = inference;
 
+			let connected = false;
+
 			// Start at next player so that connecting in our hand has lowest priority
 			for (let i = 1; i < state.numPlayers + 1; i++) {
 				const target = (state.ourPlayerIndex + i) % state.numPlayers;
-				if (connecting_in_hand(state.hands[i], suitIndex, rank + 1)) {
+				if (connecting_in_hand(state.hands[target], suitIndex, rank + 1)) {
+					connected = true;
+
 					// Connecting in own hand, demote priority to 2
 					if (target === state.ourPlayerIndex) {
+						logger.info(`inference ${Utils.logCard(suitIndex, rank)} connects to own hand`);
 						priority = 2;
+					}
+					else {
+						logger.info(`inference ${Utils.logCard(suitIndex, rank)} connects to other hand`);
 					}
 					break;
 				}
-				// Not connecting to anyone's hand, priority 3 or below
 				else {
-					priority = 3;
-					break;
+					logger.info(`inference ${Utils.logCard(suitIndex, rank)} doesn't connect to ${state.playerNames[target]}`);
 				}
+			}
+
+			if (!connected) {
+				logger.info(`inference ${Utils.logCard(suitIndex, rank)} doesn't connect`);
+				priority = 3;
+				break;
 			}
 		}
 

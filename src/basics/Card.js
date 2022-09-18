@@ -25,6 +25,7 @@ class Card {
 		this.possible = [];
 		this.inferred = [];
 
+		this.clues = [];
 		this.clued = false;
 		this.newly_clued = false;
 		this.prompted = false;

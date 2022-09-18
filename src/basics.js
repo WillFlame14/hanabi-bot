@@ -16,6 +16,7 @@ function onClue(state, action) {
 				card.newly_clued = true;
 				card.clued = true;
 			}
+			card.clues.push(clue);
 			card.reasoning.push(state.actionList.length - 1);
 			card.reasoning_turn.push(state.turn_count + 1);
 		}

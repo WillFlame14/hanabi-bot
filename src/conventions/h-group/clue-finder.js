@@ -1,12 +1,12 @@
 const { determine_clue, clue_safe } = require('./clue-helper.js');
-const { find_chop, find_finesse_pos } = require('./hanabi-logic.js');
+const { find_chop, find_prompt, find_finesse } = require('./hanabi-logic.js');
 const { ACTION, CLUE, find_possibilities } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function valid_play(state, target, card) {
 	const { suitIndex, rank } = card;
-	const finesses = state.hands.map(_ => 0);
+	const finesses = state.hands.map(_ => []);
 	const known_cards = state.hands.map(hand => hand.filter(card => card.possible.length === 1 || card.inferred.length === 1)).flat();
 	logger.info(`checking if ${card.toString()} is a valid play`);
 
@@ -21,29 +21,27 @@ function valid_play(state, target, card) {
 				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
 				const hand = state.hands[playerIndex];
 
-				const prompt = hand.find(c => c.clued &&
-					known_cards.every(c1 => c1.order !== c.order) &&		// ignore known cards when prompting
-					(c.suitIndex === suitIndex || c.rank === rank));
+				const prompt = find_prompt(hand, suitIndex, rank);
 
 				// No prompt available, look for finesse
 				if (prompt === undefined) {
-					const finesse = hand[find_finesse_pos(hand, finesses[playerIndex])];
+					const finesse = find_finesse(hand, suitIndex, conn_rank, finesses[playerIndex]);
 
-					if (finesse === undefined || !finesse.matches(suitIndex, conn_rank)) {
-						continue;
-					}
-					else {
+					if (finesse?.matches(suitIndex, conn_rank)) {
 						// Finesse found, move the player's finesse position by 1
-						finesses[playerIndex]++;
+						logger.info('found finesse');
+						finesses[playerIndex].push(finesse.order);
 						found = true;
 						break;
 					}
 				}
 				else if (!prompt.matches(suitIndex, conn_rank)) {
 					// Prompt doesn't match, we shouldn't look for a finesse (would be wrong prompt)
+					logger.info(`would be wrong prompt on ${prompt.toString()}`);
 					continue;
 				}
 				else {
+					logger.info('found prompt');
 					found = true;
 					break;
 				}
@@ -55,7 +53,7 @@ function valid_play(state, target, card) {
 		}
 	}
 	logger.debug(card.toString(),'is a valid play clue!');
-	return { valid: true, finesses: finesses.reduce((sum, curr) => sum + curr, 0), self: finesses[target] > 0 };
+	return { valid: true, finesses: finesses.reduce((sum, curr) => sum + curr.length, 0), self: finesses[target].length > 0 };
 }
 
 function find_clues(state) {

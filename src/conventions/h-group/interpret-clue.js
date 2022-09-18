@@ -122,7 +122,7 @@ function interpret_clue(state, action) {
 
 						if (feasible) {
 							// Starts with self-finesse or self-prompt
-							if (connections[0].self) {
+							if (connections[0]?.self) {
 								// TODO: This interpretation should always exist, but must wait for all players to ignore first
 								if (self && blind_plays < min_blind_plays) {
 									conn_save = { connections, conn_suit: card.suitIndex };
@@ -197,6 +197,7 @@ function interpret_clue(state, action) {
 					}
 					// Multiple possible sets, we need to wait for connections
 					else {
+						const inference = { suitIndex: conn_suit, rank: next_rank };
 						state.waiting_connections.push({ connections, focused_card, inference });
 					}
 				}

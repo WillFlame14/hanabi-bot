@@ -13,7 +13,9 @@ function determine_clue(state, target, card) {
 	const rank_touch = hand.filter(c => c.rank === rank);
 	// Ignore cards that are already clued when determining bad touch
 	const [colour_bad_touch, rank_bad_touch] = [colour_touch, rank_touch].map(cards => bad_touch_num(state, target, cards.filter(c => !c.clued)));
-	const [colour_focused, rank_focused] = [colour_touch, rank_touch].map(cards => determine_focus(hand, cards.map(c => c.order)).focused_card.order === card.order);
+	const [colour_focused, rank_focused] = [colour_touch, rank_touch].map(cards => {
+		return determine_focus(hand, cards.map(c => c.order), { beforeClue: true }).focused_card.order === card.order;
+	});
 
 	let colour_interpret, rank_interpret, colour_correct, rank_correct, colour_elim, rank_elim;
 
@@ -55,11 +57,13 @@ function determine_clue(state, target, card) {
 			colour_interpret = inferred_after_cluing;
 			colour_correct = colour_focused && !reset && matches_interpretation(colour_interpret, card);
 			colour_elim = elim_sum;
+			logger.info(`colour_focused ${colour_focused} reset ${reset} matches ${matches_interpretation(colour_interpret, card)}`);
 		}
 		else {
 			rank_interpret = inferred_after_cluing;
 			rank_correct = rank_focused && !reset && matches_interpretation(rank_interpret, card);
 			rank_elim = elim_sum;
+			logger.info(`rank_focused ${rank_focused} reset ${reset} matches ${matches_interpretation(rank_interpret, card)}`);
 		}
 	});
 
@@ -121,9 +125,11 @@ function determine_clue(state, target, card) {
 	}
 
 	if (clue_type === ACTION.COLOUR) {
+		logger.info(`selecting colour clue`);
 		return { type: ACTION.COLOUR, value: suitIndex, target, bad_touch: colour_bad_touch, touch: colour_elim };
 	}
 	else if (clue_type === ACTION.RANK) {
+		logger.info(`selecting rank clue`);
 		return { type: ACTION.RANK, value: rank, target, bad_touch: rank_bad_touch, touch: rank_elim };
 	}
 	// Else, can't focus this card
@@ -163,14 +169,24 @@ function clue_safe(state, clue) {
 		return true;
 	}
 
+	// Note that chop will be undefined if the entire hand is clued
 	const chop = hand[find_chop(hand, { ignoreNew: true })];
 
-	if (Utils.isCritical(hypo_state, chop.suitIndex, chop.rank)) {
+	let give_clue = true;
+
+	// New chop is critical
+	if (chop !== undefined && Utils.isCritical(hypo_state, chop.suitIndex, chop.rank)) {
 		logger.error(`Not giving clue ${JSON.stringify(clue)}, as ${chop.toString()} is critical.`);
+		give_clue = false;
 	}
 
-	// New chop isn't critical
-	return !Utils.isCritical(state, chop.suitIndex, chop.rank);
+	// Locked hand and no clues
+	if (chop === undefined && hypo_state.clue_tokens === 0) {
+		logger.error(`Not giving clue ${JSON.stringify(clue)}, as hand would be locked with no clues.`);
+		give_clue = false;
+	}
+
+	return give_clue;
 }
 
 module.exports = { determine_clue, clue_safe };

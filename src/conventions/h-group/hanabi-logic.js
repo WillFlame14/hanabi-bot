@@ -1,3 +1,4 @@
+const { CLUE } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -11,22 +12,47 @@ function find_chop(hand, options = {}) {
 	return -1;
 }
 
-function find_finesse_pos(hand, already_finessed = 0) {
-	for (let i = 0; i < hand.length; i++) {
-		const card = hand[i];
-		if (!(card.clued || card.finessed)) {
-			if (already_finessed === 0) {
-				return i;
-			}
-			else {
-				already_finessed--;
-			}
+function find_prompt(hand, suitIndex, rank, ignoreOrders = []) {
+	for (const card of hand) {
+		const { clued, newly_clued, order, inferred, possible, clues } = card;
+		// Ignore unclued, newly clued, and known cards (also intentionally ignored cards)
+		if (!clued || newly_clued || possible.length === 1 || ignoreOrders.includes(order)) {
+			continue;
+		}
+
+		// Ignore cards that don't match the inference
+		if (!inferred.some(p => p.matches(suitIndex, rank))) {
+			continue;
+		}
+
+		// A clue must match the card
+		if (clues.some(clue =>
+			(clue.type === CLUE.COLOUR && clue.value === suitIndex) || (clue.type === CLUE.RANK && clue.value === rank))
+		) {
+			return card;
 		}
 	}
-	return -1;
+	return;
 }
 
-function determine_focus(hand, list) {
+function find_finesse(hand, suitIndex, rank, ignoreOrders = []) {
+	for (const card of hand) {
+		// Ignore clued and finessed cards (also intentionally ignored cards)
+		if (card.clued || card.finessed || ignoreOrders.includes(card.order)) {
+			continue;
+		}
+
+		// Ignore cards that don't match the inference
+		if (!card.inferred.some(p => p.matches(suitIndex, rank))) {
+			continue;
+		}
+
+		return card;
+	}
+	return;
+}
+
+function determine_focus(hand, list, options = {}) {
 	const chopIndex = find_chop(hand);
 	logger.debug('determining focus with chopIndex', chopIndex, 'list', list, 'hand', Utils.logHand(hand));
 
@@ -36,16 +62,16 @@ function determine_focus(hand, list) {
 	}
 
 	// Check for leftmost newly clued
-	for (let i = 0; i < hand.length; i++) {
-		if (hand[i].newly_clued && list.includes(hand[i].order)) {
-			return { focused_card: hand[i], chop: false };
+	for (const card of hand) {
+		if ((options.beforeClue ? !card.clued : card.newly_clued) && list.includes(card.order)) {
+			return { focused_card: card, chop: false };
 		}
 	}
 
 	// Check for leftmost re-clued
-	for (let i = 0; i < hand.length; i++) {
-		if (list.includes(hand[i].order)) {
-			return { focused_card: hand[i], chop: false };
+	for (const card of hand) {
+		if (list.includes(card.order)) {
+			return { focused_card: card, chop: false };
 		}
 	}
 }
@@ -87,4 +113,4 @@ function bad_touch_num(state, target, cards) {
 	return count;
 }
 
-module.exports = { find_chop, find_finesse_pos, determine_focus, bad_touch_num };
+module.exports = { find_chop, find_prompt, find_finesse, determine_focus, bad_touch_num };
