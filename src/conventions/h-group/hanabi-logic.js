@@ -86,8 +86,8 @@ function bad_touch_num(state, target, cards) {
 		if (state.play_stacks[suitIndex] >= rank) {
 			bad_touch = true;
 		}
-		// Someone else has the card clued already
-		else if (Utils.visibleFind(state, target, suitIndex, rank).some(c => c.clued)) {
+		// Someone has the card clued already
+		else if (Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued)) {
 			bad_touch = true;
 		}
 		// Cluing both copies of a card (only include < so we don't double count)

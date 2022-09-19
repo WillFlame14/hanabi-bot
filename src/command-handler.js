@@ -109,10 +109,7 @@ const handle = {
 
 		state.cards_left = state.num_suits * 10;
 
-		for (let i = 0; i < state.numPlayers; i++) {
-			state.hands.push([]);
-		}
-
+		const all_possible = [];
 		for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
 			state.play_stacks.push(0);
 			state.hypo_stacks.push(0);
@@ -120,8 +117,13 @@ const handle = {
 			state.max_ranks.push(5);
 
 			for (let rank = 1; rank <= 5; rank++) {
-				state.all_possible.push(new Card(suitIndex, rank));
+				all_possible.push(new Card(suitIndex, rank));
 			}
+		}
+
+		for (let i = 0; i < state.numPlayers; i++) {
+			state.hands.push([]);
+			state.all_possible.push(Utils.objClone(all_possible));
 		}
 
 		// Initialize convention set

@@ -85,20 +85,17 @@ function take_action(state, tableID) {
 			return;
 		}
 
-		// Locked hand and no good clues to give
-		if (state.hands[state.ourPlayerIndex].every(c => c.clued)) {
-			// Discard if possible
-			if (trash_cards.length > 0) {
-				Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: trash_cards[0].order });
-				return;
-			}
+		// Discard known trash
+		if (trash_cards.length > 0) {
+			Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: trash_cards[0].order });
+			return;
+		}
 
-			// Give stall clue if possible
-			if (state.clue_tokens > 0) {
-				const { type, value, target } = find_stall_clue(state, 3);
-				Utils.sendCmd('action', { tableID, type, target, value });
-				return;
-			}
+		// Locked hand and no good clues to give
+		if (state.hands[state.ourPlayerIndex].every(c => c.clued) && state.clue_tokens > 0) {
+			const { type, value, target } = find_stall_clue(state, 3);
+			Utils.sendCmd('action', { tableID, type, target, value });
+			return;
 		}
 
 		// Early game
@@ -112,15 +109,12 @@ function take_action(state, tableID) {
 			}
 		}
 
-		// Nothing else to do, so discard
+		// Nothing else to do, so discard chop
 		const chopIndex = find_chop(hand);
 		logger.debug('discarding chop index', chopIndex);
 		let discard;
 
-		if (trash_cards.length > 0) {
-			discard = trash_cards[0];
-		}
-		else if (chopIndex !== -1) {
+		if (chopIndex !== -1) {
 			discard = hand[chopIndex];
 		}
 		else {

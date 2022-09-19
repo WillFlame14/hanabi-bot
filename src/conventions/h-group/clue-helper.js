@@ -17,7 +17,7 @@ function determine_clue(state, target, card) {
 		return determine_focus(hand, cards.map(c => c.order), { beforeClue: true }).focused_card.order === card.order;
 	});
 
-	let colour_interpret, rank_interpret, colour_correct, rank_correct, colour_elim, rank_elim;
+	let colour_interpret, rank_interpret, colour_correct, rank_correct, colour_elim, rank_elim, colour_new_touched, rank_new_touched;
 
 	const colour_clue = {type: CLUE.COLOUR, value: suitIndex};
 	const rank_clue = {type: CLUE.RANK, value: rank};
@@ -40,6 +40,7 @@ function determine_clue(state, target, card) {
 		const card_after_cluing = hypo_state.hands[target].find(c => c.order === card.order);
 		const { inferred: inferred_after_cluing, reset } = card_after_cluing;
 		let elim_sum = 0;
+		let new_touched = 0;
 
 		// Count the number of cards that have increased elimination (i.e. cards that were "filled in")
 		for (let i = 0; i < state.hands[target].length; i++) {
@@ -47,6 +48,9 @@ function determine_clue(state, target, card) {
 			const hypo_card = hypo_state.hands[target][i];
 
 			if (hypo_card.clued && hypo_card.inferred.length < old_card.inferred.length) {
+				if (hypo_card.newly_clued) {
+					new_touched++;
+				}
 				elim_sum++;
 			}
 		}
@@ -57,13 +61,15 @@ function determine_clue(state, target, card) {
 			colour_interpret = inferred_after_cluing;
 			colour_correct = colour_focused && !reset && matches_interpretation(colour_interpret, card);
 			colour_elim = elim_sum;
-			logger.info(`colour_focused ${colour_focused} reset ${reset} matches ${matches_interpretation(colour_interpret, card)}`);
+			colour_new_touched = new_touched;
+			logger.info(`colour_focused: ${colour_focused}, reset: ${reset}, matches: ${matches_interpretation(colour_interpret, card)}`);
 		}
 		else {
 			rank_interpret = inferred_after_cluing;
 			rank_correct = rank_focused && !reset && matches_interpretation(rank_interpret, card);
 			rank_elim = elim_sum;
-			logger.info(`rank_focused ${rank_focused} reset ${reset} matches ${matches_interpretation(rank_interpret, card)}`);
+			rank_new_touched = new_touched;
+			logger.info(`rank_focused: ${rank_focused}, reset: ${reset}, matches: ${matches_interpretation(rank_interpret, card)}`);
 		}
 	});
 
@@ -81,7 +87,7 @@ function determine_clue(state, target, card) {
 	}
 	// Both clues work, determine more
 	else if (colour_correct && rank_correct) {
-		logger.debug(`colour_bad_touch ${colour_bad_touch} rank_bad_touch ${rank_bad_touch}`);
+		logger.info(`colour_bad_touch ${colour_bad_touch} rank_bad_touch ${rank_bad_touch}`);
 		// Figure out which clue has less bad touch
 		if (colour_bad_touch < rank_bad_touch) {
 			clue_type = ACTION.COLOUR;
@@ -103,21 +109,31 @@ function determine_clue(state, target, card) {
 				clue_type = ACTION.RANK;
 			}
 			else {
-				logger.info(`colour_touch ${colour_elim} rank_touch ${rank_elim}`);
-				// Figure out which clue "fills in" more cards
-				if (colour_elim > rank_elim) {
+				logger.info(`colour_new_touched ${colour_new_touched} rank_new_touched ${rank_new_touched}`);
+				// Figure out which clue touches more new cards
+				if (colour_new_touched > rank_new_touched) {
 					clue_type = ACTION.COLOUR;
 				}
-				else if (colour_elim < rank_elim) {
+				else if (rank_new_touched > colour_new_touched) {
 					clue_type = ACTION.RANK;
 				}
 				else {
-					// Figure out which clue has less interpretations
-					if (colour_interpret.length <= rank_interpret.length) {
+					logger.info(`colour_elim ${colour_elim} rank_elim ${rank_elim}`);
+					// Figure out which clue "fills in" more cards
+					if (colour_elim > rank_elim) {
 						clue_type = ACTION.COLOUR;
 					}
-					else {
+					else if (colour_elim < rank_elim) {
 						clue_type = ACTION.RANK;
+					}
+					else {
+						// Figure out which clue has less interpretations
+						if (colour_interpret.length <= rank_interpret.length) {
+							clue_type = ACTION.COLOUR;
+						}
+						else {
+							clue_type = ACTION.RANK;
+						}
 					}
 				}
 			}

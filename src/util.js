@@ -87,28 +87,28 @@ function handFind(hand, suitIndex, rank) {
 	return hand.filter(c => c.matches(suitIndex, rank));
 }
 
-function handFindInfer(hand, suitIndex, rank) {
+function handFindInfer(hand, suitIndex, rank, options = {}) {
 	return hand.filter(c => {
 		if (c.possible.length === 1) {
 			return c.possible[0].matches(suitIndex, rank);
 		}
-		else if (c.inferred.length === 1) {
+		else if (!options.noInfer && c.inferred.length === 1) {
 			return c.inferred[0].matches(suitIndex, rank);
 		}
 		return false;
 	});
 }
 
-function visibleFind(state, target, suitIndex, rank, ignore = []) {
+function visibleFind(state, target, suitIndex, rank, options = {}) {
 	let found = [];
 	for (let i = 0; i < state.numPlayers; i++) {
-		if (ignore.includes(i)) {
+		if (options.ignore?.includes(i)) {
 			continue;
 		}
 
 		const hand = state.hands[i];
 		if (i === target || i === state.ourPlayerIndex) {
-			found = found.concat(handFindInfer(hand, suitIndex, rank));
+			found = found.concat(handFindInfer(hand, suitIndex, rank, options));
 		}
 		else {
 			found = found.concat(handFind(hand, suitIndex, rank));

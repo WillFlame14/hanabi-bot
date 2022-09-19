@@ -9,6 +9,7 @@ function onClue(state, action) {
 
 	for (const card of state.hands[target]) {
 		if (list.includes(card.order)) {
+			const inferences_before = card.inferred.length;
 			card.intersect('possible', new_possible);
 			card.intersect('inferred', new_possible);
 
@@ -17,8 +18,10 @@ function onClue(state, action) {
 				card.clued = true;
 			}
 			card.clues.push(clue);
-			card.reasoning.push(state.actionList.length - 1);
-			card.reasoning_turn.push(state.turn_count + 1);
+			if (card.inferred.length < inferences_before) {
+				card.reasoning.push(state.actionList.length - 1);
+				card.reasoning_turn.push(state.turn_count + 1);
+			}
 		}
 		else {
 			card.subtract('possible', new_possible);
@@ -34,34 +37,14 @@ function onDiscard(state, action) {
 	remove_card_from_hand(state.hands[playerIndex], order);
 
 	state.discard_stacks[suitIndex][rank - 1]++;
+	card_elim(state, suitIndex, rank);
 
 	// Discarded all copies of a card
-	if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
-		// This card previously wasn't known to be all visible
-		if (state.all_possible.some(c => c.matches(suitIndex, rank))) {
-			logger.info('Discarded all copies of', Utils.logCard(suitIndex, rank), 'which was previously unknown.');
-
-			// Remove it from the list of future possibilities
-			state.all_possible = state.all_possible.filter(c => !c.matches(suitIndex, rank));
-
-			// Remove it from everyone's hands
-			for (const hand of state.hands) {
-				for (const card of hand) {
-					card.subtract('possible', [{suitIndex, rank}]);
-					card.subtract('inferred', [{suitIndex, rank}]);
-				}
-			}
-		}
-		if (state.max_ranks[suitIndex] > rank - 1) {
-			state.max_ranks[suitIndex] = rank - 1;
-		}
+	if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1] && state.max_ranks[suitIndex] > rank - 1) {
+		state.max_ranks[suitIndex] = rank - 1;
 	}
 
-	if (playerIndex === state.ourPlayerIndex) {
-		card_elim(state, suitIndex, rank);
-	}
-
-	// bombs count as discards, but they don't give a clue token
+	// Bombs count as discards, but they don't give a clue token
 	if (!failed && state.clue_tokens < 8) {
 		state.clue_tokens++;
 	}
@@ -71,14 +54,14 @@ function onDraw(state, action) {
 	const { order, playerIndex, suitIndex, rank } = action;
 	const card = new Card(suitIndex, rank, {
 		order,
-		possible: Utils.objClone(state.all_possible),
-		inferred: Utils.objClone(state.all_possible)
+		possible: Utils.objClone(state.all_possible[playerIndex]),
+		inferred: Utils.objClone(state.all_possible[playerIndex])
 	});
 	state.hands[playerIndex].unshift(card);
 
-	// We can't see our own cards, but we can see others' at least
+	// Don't eliminate if we drew the card (since we don't know what it is)
 	if (playerIndex !== state.ourPlayerIndex) {
-		card_elim(state, suitIndex, rank);
+		card_elim(state, suitIndex, rank, playerIndex);
 	}
 
 	state.cards_left--;
@@ -87,46 +70,45 @@ function onDraw(state, action) {
 }
 
 function card_elim(state, suitIndex, rank) {
-	const full_count = state.discard_stacks[suitIndex][rank - 1] +
-		Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length +
-		(state.play_stacks[suitIndex] >= rank ? 1 : 0);
+	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
+		// Skip if already eliminated
+		if (!state.all_possible[playerIndex].some(c => c.matches(suitIndex, rank))) {
+			continue;
+		}
 
-	// If all copies of a card are already visible (or we have too many copies)
-	if (full_count >= Utils.CARD_COUNT[rank - 1] && state.all_possible.some(c => c.matches(suitIndex, rank))) {
-		// Remove it from the list of future possibilities
-		state.all_possible = state.all_possible.filter(c => !c.matches(suitIndex, rank));
+		const base_count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0);
+		const certain_count = base_count + Utils.visibleFind(state, playerIndex, suitIndex, rank, { noInfer: true }).length;
+		const inferred_count = base_count + Utils.visibleFind(state, playerIndex, suitIndex, rank).length;
 
-		// Everyone other than the ones holding the cards can elim
-		for (let i = 0; i < state.numPlayers; i++) {
-			const hand = state.hands[i];
-			const matching_cards = hand.filter(c => c.matches(suitIndex, rank, { infer: i === state.ourPlayerIndex }));
+		// Note that inferred_count >= certain_count.
+		// If all copies of a card are already visible (or there exist too many copies)
+		if (inferred_count >= Utils.CARD_COUNT[rank - 1]) {
+			// Remove it from the list of future possibilities
+			state.all_possible[playerIndex] = state.all_possible[playerIndex].filter(c => !c.matches(suitIndex, rank));
 
-			if (matching_cards.length > 0) {
-				// The matching cards (possibly only 1 in hand) are known
-				if (matching_cards.every(c => c.matches(suitIndex, rank, { symmetric: true, infer: true }))) {
-					// Elim on all the other cards in hand
-					for (const card of hand) {
-						if (matching_cards.some(c => c.order === card.order)) {
-							continue;
-						}
-
-						// Only elim from possible if 100% sure
-						if (matching_cards.every(c => c.possible.length === 1)) {
-							card.subtract('possible', [{suitIndex, rank}]);
-						}
+			for (const card of state.hands[playerIndex]) {
+				// All cards are known accounted for, so eliminate on all cards that are not known
+				if (certain_count === Utils.CARD_COUNT[rank - 1]) {
+					if (!card.matches(suitIndex, rank, { symmetric: true })) {
+						card.subtract('possible', [{suitIndex, rank}]);
 						card.subtract('inferred', [{suitIndex, rank}]);
 					}
 				}
-				continue;
+				// All cards are inferred accounted for, so eliminate on all cards that are not inferred
+				else if (inferred_count === Utils.CARD_COUNT[rank - 1]) {
+					if (!card.matches(suitIndex, rank, { symmetric: true, infer: true })) {
+						card.subtract('inferred', [{suitIndex, rank}]);
+					}
+				}
+				// There is an extra inference somewhere, and not enough known cards
+				else if (inferred_count > Utils.CARD_COUNT[rank - 1]) {
+					logger.error(`inferred ${inferred_count} copies of ${Utils.logCard(suitIndex, rank)}`);
+					// TODO: There was a lie somewhere, waiting for fix? Or can deduce from focus?
+					break;
+				}
 			}
-
-			for (const card of hand) {
-				card.subtract('possible', [{suitIndex, rank}]);
-				card.subtract('inferred', [{suitIndex, rank}]);
-			}
+			logger.debug(`removing ${Utils.logCard(suitIndex, rank)} from hand and future possibilities`);
 		}
-
-		logger.debug(`removing ${Utils.logCard(suitIndex, rank)} from hand and future possibilities`);
 	}
 }
 

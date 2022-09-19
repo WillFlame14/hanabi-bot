@@ -20,7 +20,7 @@ function undo_hypo_stacks(state, playerIndex, suitIndex, rank) {
 	}
 }
 
-function apply_unknown_sarcastic(sarcastic, playerIndex, suitIndex, rank) {
+function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank) {
 	// Need to add the inference back if it was previously eliminated due to good touch
 	for (const s of sarcastic) {
 		s.union('inferred', [new Card(suitIndex, rank)]);
@@ -70,7 +70,7 @@ function interpret_discard(state, action, card, tableID) {
 					sarcastic[0].inferred = [new Card(suitIndex, rank)];
 				}
 				else {
-					apply_unknown_sarcastic(sarcastic, playerIndex, suitIndex, rank);
+					apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);
 				}
 			}
 			// Sarcastic discard to other
@@ -85,7 +85,7 @@ function interpret_discard(state, action, card, tableID) {
 							sarcastic[0].inferred = [new Card(suitIndex, rank)];
 						}
 						else {
-							apply_unknown_sarcastic(sarcastic, playerIndex, suitIndex, rank);
+							apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);
 						}
 					}
 				}
