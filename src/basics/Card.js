@@ -87,6 +87,10 @@ class Card {
 		return identity.suitIndex === suitIndex && identity.rank === rank;
 	}
 
+	matches_inferences() {
+		return this.suitIndex === -1 || this.inferred.some(c => c.matches(this.suitIndex, this.rank));
+	}
+
 	intersect(type, cards) {
 		this[type] = this[type].filter(c1 => cards.some(c2 => c1.matches(c2.suitIndex, c2.rank)));
 	}

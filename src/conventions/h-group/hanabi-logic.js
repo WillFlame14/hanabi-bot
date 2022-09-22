@@ -1,10 +1,10 @@
-const { CLUE } = require('../../basics/helper.js');
+const { CLUE } = require('../../constants.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
 function find_chop(hand, options = {}) {
 	for (let i = hand.length - 1; i >= 0; i--) {
-		if (hand[i].clued && (options.ignoreNew ? true : !hand[i].newly_clued)) {
+		if (hand[i].clued && (options.includeNew ? true : !hand[i].newly_clued)) {
 			continue;
 		}
 		return i;
@@ -76,14 +76,14 @@ function determine_focus(hand, list, options = {}) {
 	}
 }
 
-function bad_touch_num(state, target, cards) {
-	let count = 0;
+function find_bad_touch(state, cards) {
+	let bad_touch_cards = [];
 	for (const card of cards) {
 		let bad_touch = false;
 
 		const { suitIndex, rank } = card;
-		// Play stack is already at that rank or higher
-		if (state.play_stacks[suitIndex] >= rank) {
+		// Card is either already played or can never be played
+		if (Utils.isBasicTrash(state, suitIndex, rank)) {
 			bad_touch = true;
 		}
 		// Someone has the card clued already
@@ -107,10 +107,10 @@ function bad_touch_num(state, target, cards) {
 		}
 
 		if (bad_touch) {
-			count++;
+			bad_touch_cards.push(card);
 		}
 	}
-	return count;
+	return bad_touch_cards;
 }
 
-module.exports = { find_chop, find_prompt, find_finesse, determine_focus, bad_touch_num };
+module.exports = { find_chop, find_prompt, find_finesse, determine_focus, find_bad_touch };

@@ -1,5 +1,5 @@
+const { CLUE } = require('../../constants.js');
 const { find_prompt, find_finesse } = require('./hanabi-logic.js');
-const { CLUE } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -153,6 +153,7 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = [
 
 		const known_connecting = hand.find(card =>
 			card.matches(suitIndex, rank, { symmetric: true, infer: true }) &&
+			(i !== state.ourPlayerIndex ? card.matches(suitIndex, rank) : true) &&		// The card should actually match
 			!ignoreOrders.includes(card.order)
 		);
 
@@ -201,7 +202,7 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = [
 					logger.info(`found prompt ${prompt.toString()} in ${state.playerNames[i]}'s hand`);
 					return { type: 'prompt', reacting: i, card: prompt, self: false };
 				}
-				logger.info(`couldn't prompt ${Utils.logCard(suitIndex, rank)}, ignoreOrders ${ignoreOrders}`);
+				logger.debug(`couldn't prompt ${Utils.logCard(suitIndex, rank)}, ignoreOrders ${ignoreOrders}`);
 			}
 			else if (finesse?.matches(suitIndex, rank)) {
 				logger.info(`found finesse ${finesse.toString()} in ${state.playerNames[i]}'s hand`);

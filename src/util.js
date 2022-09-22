@@ -1,6 +1,7 @@
 const readline = require('readline');
 const { Card } = require('./basics/Card.js');
 const { logger } = require('./logger.js');
+const { CARD_COUNT } = require('./constants.js')
 
 const globals = {};
 
@@ -117,7 +118,15 @@ function visibleFind(state, target, suitIndex, rank, options = {}) {
 	return found;
 }
 
-const CARD_COUNT = [3, 2, 2, 2, 1];
+function clueTouched(hand, clue) {
+	const { type, value } = clue;
+	if (type === CLUE.COLOUR) {
+		return hand.filter(c => c.suitIndex === value);
+	}
+	else if (type === CLUE.RANK) {
+		return hand.filter(c => c.rank === rank);
+	}
+}
 
 function isCritical(state, suitIndex, rank) {
 	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1);
@@ -188,6 +197,20 @@ function logHand(hand) {
 	return new_hand;
 }
 
+function logClue(clue) {
+	// console.log(clue);
+	if (clue === undefined) {
+		return;
+	}
+
+	const new_clue = {};
+	const value = clue.type === 2 ? ['red', 'yellow', 'green', 'blue', 'purple'][clue.value] : clue.value;
+
+	new_clue.info = `(${value} to playerIndex ${clue.target})`;
+	// Object.assign(new_clue, objPick(clue.result, ['bad_touch', 'elim', 'new_touched', 'playables', 'finesses']));
+	return new_clue.info;
+}
+
 function writeNote(turn, card, tableID) {
 	let note = card.inferred.map(c => c.toString()).join(',');
 	if (card.finessed) {
@@ -219,7 +242,8 @@ module.exports = {
 	sendChat, sendCmd,
 	findOrder,
 	handFind, handFindInfer, visibleFind,
+	clueTouched,
 	isCritical, isBasicTrash, playableAway,
 	objClone, objPick,
-	logCard, logHand, writeNote
+	logCard, logHand, logClue, writeNote
 };

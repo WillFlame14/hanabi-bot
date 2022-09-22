@@ -35,6 +35,7 @@ function update_turn(state, action) {
 		const { connections, focused_card, inference } = state.waiting_connections[i];
 		logger.info(`next conn ${connections[0].card.toString()} for inference ${Utils.logCard(inference.suitIndex, inference.rank)}`);
 		const { type, reacting, card } = connections[0];
+
 		// After the turn we were waiting for
 		if (reacting === lastPlayerIndex) {
 			// They still have the card
@@ -53,7 +54,7 @@ function update_turn(state, action) {
 			}
 			else {
 				// The card was played
-				if (state.play_stacks[card.suitIndex] >= card.rank) {
+				if (state.last_actions[reacting].type === 'play') {
 					logger.info(`waiting card ${card.toString()} played`);
 					connections.shift();
 					if (connections.length === 0) {
@@ -72,7 +73,7 @@ function update_turn(state, action) {
 					}
 				}
 				// The card was discarded and its copy is not visible
-				else if (Utils.visibleFind(state, state.ourPlayerIndex, card.suitIndex, card.rank).length === 0) {
+				else if (state.last_actions[reacting].type === 'discard' && Utils.visibleFind(state, state.ourPlayerIndex, card.suitIndex, card.rank).length === 0) {
 					logger.info(`waiting card ${card.toString()} discarded?? removing finesse`);
 					remove_finesse(state, i);
 

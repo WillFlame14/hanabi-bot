@@ -46,8 +46,7 @@ function interpret_discard(state, action, card, tableID) {
 	}
 
 	// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-	const matches_inference = card.inferred.length === 0 || card.inferred.some(c => c.matches(suitIndex, rank));
-	if (!card.rewinded && !matches_inference) {
+	if (!card.rewinded && !card.matches_inferences()) {
 		logger.info('all inferences', card.inferred.map(c => c.toString()));
 		state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, true, tableID);
 		return;

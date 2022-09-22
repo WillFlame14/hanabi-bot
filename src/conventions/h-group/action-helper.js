@@ -1,4 +1,5 @@
-const { ACTION, find_playables, find_known_trash } = require('../../basics/helper.js');
+const { ACTION } = require('../../constants.js');
+const { find_playables, find_known_trash } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -7,9 +8,9 @@ function select_play_clue(play_clues) {
 	let best_clue;
 
 	for (const clue of play_clues) {
-		const { bad_touch, touch, finesses = 0 } = clue;
-		const clue_value = 3*finesses + touch - 2.1*bad_touch;
-		logger.info('clue', clue, 'value', clue_value);
+		const { finesses, new_touched, playables, bad_touch } = clue.result;
+		const clue_value = 2*finesses + 0.5*(new_touched + playables) - 2*bad_touch;
+		logger.info('clue', Utils.logClue(clue), 'value', clue_value);
 
 		if (clue_value > best_clue_value) {
 			best_clue_value = clue_value;
@@ -97,10 +98,11 @@ function determine_playable_card(state, playable_cards) {
 	let min_rank = 5;
 	for (const card of playable_cards) {
 		const possibilities = card.inferred.length > 0 ? card.inferred : card.possible;
-		logger.info(`examining card with possibilities ${possibilities.map(p => p.toString()).join(',')}`);
+		logger.debug(`examining card with possibilities ${possibilities.map(p => p.toString()).join(',')}`);
 
 		// Blind play
 		if (card.finessed) {
+			logger.debug(`adding ${Utils.logCard(card.suitIndex, card.rank)} to blind play priority`);
 			priorities[0].push(card);
 			continue;
 		}
@@ -123,21 +125,21 @@ function determine_playable_card(state, playable_cards) {
 
 					// Connecting in own hand, demote priority to 2
 					if (target === state.ourPlayerIndex) {
-						logger.info(`inference ${Utils.logCard(suitIndex, rank)} connects to own hand`);
+						logger.debug(`inference ${Utils.logCard(suitIndex, rank)} connects to own hand`);
 						priority = 2;
 					}
 					else {
-						logger.info(`inference ${Utils.logCard(suitIndex, rank)} connects to other hand`);
+						logger.debug(`inference ${Utils.logCard(suitIndex, rank)} connects to other hand`);
 					}
 					break;
 				}
 				else {
-					logger.info(`inference ${Utils.logCard(suitIndex, rank)} doesn't connect to ${state.playerNames[target]}`);
+					logger.debug(`inference ${Utils.logCard(suitIndex, rank)} doesn't connect to ${state.playerNames[target]}`);
 				}
 			}
 
 			if (!connected) {
-				logger.info(`inference ${Utils.logCard(suitIndex, rank)} doesn't connect`);
+				logger.debug(`inference ${Utils.logCard(suitIndex, rank)} doesn't connect`);
 				priority = 3;
 				break;
 			}
@@ -145,7 +147,7 @@ function determine_playable_card(state, playable_cards) {
 
 		if (priority < 3) {
 			priorities[priority].push(card);
-			logger.info(`connecting in ${priority === 1 ? 'other' : 'own'} hand!`);
+			logger.debug(`connecting in ${priority === 1 ? 'other' : 'own'} hand!`);
 			continue;
 		}
 

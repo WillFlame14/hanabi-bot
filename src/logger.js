@@ -7,34 +7,59 @@ class Logger {
 			ERROR: 3
 		};
 		this.level = this.LEVELS.INFO;
+		this.accumulate = false;
+		this.buffer = [];
 	}
 
 	setLevel(level) {
 		this.level = level;
 	}
 
+	log (...args) {
+		if (this.accumulate) {
+			this.buffer.push(args);
+		}
+		else {
+			console.log(...args);
+		}
+	}
+
 	debug(...args) {
 		if (this.level <= this.LEVELS.DEBUG) {
-			console.log('\x1b[36m%s', ...args, '\x1b[0m');
+			this.log('\x1b[36m%s', ...args, '\x1b[0m');
 		}
 	}
 
 	info(...args) {
 		if (this.level <= this.LEVELS.INFO) {
-			console.log(...args);
+			this.log(...args);
 		}
 	}
 
 	warn(...args) {
 		if (this.level <= this.LEVELS.WARN) {
-			console.log('\x1b[33m%s', ...args, '\x1b[0m');
+			this.log('\x1b[33m%s', ...args, '\x1b[0m');
 		}
 	}
 
 	error(...args) {
 		if (this.level <= this.LEVELS.ERROR) {
-			console.log('\x1b[35m%s', ...args, '\x1b[0m');
+			this.log('\x1b[35m%s', ...args, '\x1b[0m');
 		}
+	}
+
+	collect() {
+		this.accumulate = true;
+	}
+
+	flush(print = true) {
+		if (print) {
+			for (const args of this.buffer) {
+				console.log(...args);
+			}
+		}
+		this.accumulate = false;
+		this.buffer = [];
 	}
 }
 

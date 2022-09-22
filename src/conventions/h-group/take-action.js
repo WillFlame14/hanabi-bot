@@ -1,7 +1,8 @@
+const { ACTION } = require('../../constants.js');
 const { select_play_clue, find_urgent_clues, determine_playable_card } = require('./action-helper.js');
 const { find_clues, find_tempo_clues, find_stall_clue } = require('./clue-finder.js');
 const { find_chop } = require('./hanabi-logic.js');
-const { ACTION, find_playables, find_known_trash } = require('../../basics/helper.js');
+const { find_playables, find_known_trash } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -9,6 +10,8 @@ function take_action(state, tableID) {
 	const hand = state.hands[state.ourPlayerIndex];
 	const { play_clues, save_clues, fix_clues } = find_clues(state);
 	const urgent_clues = find_urgent_clues(state, tableID, play_clues, save_clues, fix_clues);
+
+	logger.info('all urgent clues', urgent_clues);
 
 	// First, check if anyone needs an urgent save
 	// TODO: scream discard?
@@ -22,7 +25,6 @@ function take_action(state, tableID) {
 			}
 		}
 	}
-	logger.info('all urgent clues', urgent_clues);
 
 	// Then, look for playables or trash in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
@@ -54,16 +56,15 @@ function take_action(state, tableID) {
 					}
 
 					const { clue, clue_value } = select_play_clue(all_play_clues);
-					const minimum_clue_value = state.cards_left < 5 ? -10 : 0;
+					const minimum_clue_value = state.cards_left < 5 ? -10 : 0.9;
 
 					if (clue_value > minimum_clue_value) {
-						logger.info('clue value', clue_value);
 						const { type, target, value } = clue;
 						Utils.sendCmd('action', { tableID, type, target, value });
 						return;
 					}
 					else {
-						logger.info('clue too low value', clue, clue_value);
+						logger.info('clue too low value', Utils.logClue(clue), clue_value);
 					}
 				}
 

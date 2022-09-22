@@ -104,6 +104,7 @@ const handle = {
 			max_ranks: [],
 			actionList: [],
 			waiting_connections: [],
+			last_actions: [],
 			early_game: true
 		};
 
@@ -173,7 +174,7 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, bomb, 
 	}
 	rewind_depth++;
 
-	logger.info(`expected ${Utils.logCard(suitIndex, rank)}, rewinding to action_index ${action_index}`);
+	logger.info(`card actually ${Utils.logCard(suitIndex, rank)}, rewinding to action_index ${action_index}`);
 	const new_state = Utils.objClone(state.blank);
 	new_state.blank = Utils.objClone(new_state);
 	const history = state.actionList.slice(0, action_index);

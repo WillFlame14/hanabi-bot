@@ -1,14 +1,6 @@
+const { CLUE } = require('../constants.js');
 const { logger } = require('../logger.js');
 const Utils = require('../util.js');
-
-const ACTION = {
-	PLAY: 0,
-	DISCARD: 1,
-	COLOUR: 2,
-	RANK: 3
-};
-
-const CLUE = { COLOUR: 0, RANK: 1 };
 
 function find_possibilities(clue, num_suits) {
 	const new_possible = [];
@@ -25,27 +17,27 @@ function find_possibilities(clue, num_suits) {
 	return new_possible;
 }
 
-function find_bad_touch(state, giver, target, ignoreOrder) {
-	const bad_touch = [];
+function bad_touch_possiblities(state, giver, target, prev_found = []) {
+	const bad_touch = prev_found;
 
-	// Find useless cards
-	for (let suitIndex = 0; suitIndex <= state.num_suits; suitIndex++) {
-		// Cards that have already been played on the stack
-		for (let rank = 1; rank <= state.play_stacks[suitIndex]; rank++) {
-			bad_touch.push({suitIndex, rank});
-		}
-
-		// Cards that can never be played on the stack
-		for (let rank = state.max_ranks[suitIndex] + 1; rank <= 5; rank++) {
-			bad_touch.push({suitIndex, rank});
+	if (prev_found.length === 0) {
+		// Find useless cards
+		for (let suitIndex = 0; suitIndex <= state.num_suits; suitIndex++) {
+			for (let rank = 1; rank <= 5; rank++) {
+				// Cards that have already been played on the stack or can never be played
+				if (Utils.isBasicTrash(state, suitIndex, rank)) {
+					bad_touch.push({suitIndex, rank});
+				}
+			}
 		}
 	}
 
 	// Find cards clued in other hands (or inferred cards in our hand or giver's hand)
 	for (let i = 0; i < state.numPlayers; i++) {
 		const hand = state.hands[i];
-		for (const card of hand) {
-			if (!card.clued || card.order === ignoreOrder) {
+		for (let j = 0; j < hand.length; j++) {
+			const card = hand[j];
+			if (!card.clued || bad_touch.some(c => card.matches(c.suitIndex, c.rank, { infer: true }))) {
 				continue;
 			}
 
@@ -69,7 +61,7 @@ function find_bad_touch(state, giver, target, ignoreOrder) {
 			}
 
 			if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
-				logger.debug(`adding ${Utils.logCard(suitIndex, rank)} to bad touch via ${method}`);
+				logger.debug(`adding ${Utils.logCard(suitIndex, rank)} to bad touch via ${method} (slot ${j + 1} in ${state.playerNames[i]}'s hand)`);
 				bad_touch.push({suitIndex, rank});
 			}
 		}
@@ -223,7 +215,7 @@ function update_hypo_stacks(state, suitIndex, rank) {
 
 						good_touch_elim.push(card);
 						found_new_playable = true;
-						logger.info(`found new playable ${card.toString()}`);
+						logger.debug(`found new playable ${card.toString()}`);
 					}
 				}
 			}
@@ -232,8 +224,7 @@ function update_hypo_stacks(state, suitIndex, rank) {
 }
 
 module.exports = {
-	ACTION, CLUE,
-	find_possibilities, find_bad_touch,
+	find_possibilities, bad_touch_possiblities,
 	find_playables, find_known_trash,
 	good_touch_elim,
 	remove_card_from_hand,

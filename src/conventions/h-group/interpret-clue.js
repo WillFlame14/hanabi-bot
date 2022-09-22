@@ -1,7 +1,7 @@
 const { determine_focus } = require('./hanabi-logic.js');
 const { find_focus_possible, find_own_finesses } = require('./interpret-helper.js');
 const { Card } = require('../../basics/Card.js');
-const { find_bad_touch, update_hypo_stacks, good_touch_elim } = require('../../basics/helper.js');
+const { bad_touch_possiblities, update_hypo_stacks, good_touch_elim } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -12,7 +12,7 @@ function interpret_clue(state, action) {
 	let fix = false;
 
 	// Touched cards should also obey good touch principle
-	let bad_touch = find_bad_touch(state, giver, target);
+	let bad_touch = bad_touch_possiblities(state, giver, target);
 	let bad_touch_len;
 
 	// Recursively deduce information until no new information is learned
@@ -31,7 +31,7 @@ function interpret_clue(state, action) {
 				card.reset = true;
 			}
 		}
-		bad_touch = find_bad_touch(state, giver, target);
+		bad_touch = bad_touch_possiblities(state, giver, target, Utils.objClone(bad_touch));
 	}
 	while (bad_touch_len !== bad_touch.length);
 
@@ -40,6 +40,12 @@ function interpret_clue(state, action) {
 
 	if (fix || mistake) {
 		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
+		// FIX: Rewind to when the earliest card was clued so that we don't perform false eliminations
+		if (focused_card.inferred.length === 1) {
+			const { suitIndex, rank } = focused_card.inferred[0];
+			update_hypo_stacks(state, suitIndex, rank);
+			team_elim(state, focused_card, giver, target, suitIndex, rank);
+		}
 		return;
 	}
 
@@ -163,7 +169,12 @@ function interpret_clue(state, action) {
 				// If it's not in our hand, we should adjust our interpretation to their interpretation (to know if we need to fix)
 				// We must force a finesse?
 				else {
+					const saved_inferences = focused_card.inferred;
 					focused_card.intersect('inferred', focus_possible);
+
+					if (focused_card.inferred.length === 0) {
+						focused_card.inferred = saved_inferences;
+					}
 					logger.info('no inference on card (other), looks like', focused_card.inferred.map(c => c.toString()).join(','));
 				}
 			}

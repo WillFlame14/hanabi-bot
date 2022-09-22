@@ -1,5 +1,6 @@
+const { CLUE } = require('./constants.js');
 const { Card } = require('./basics/Card.js');
-const { CLUE, good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics/helper.js');
+const { good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics/helper.js');
 const { logger } = require('./logger.js');
 const Basics = require('./basics.js');
 const Utils = require('./util.js');
@@ -24,6 +25,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			Basics.onClue(state, action);
 			state.interpret_clue(state, action);
+			state.last_actions[giver] = action;
 
 			// Remove the newly_clued flag
 			for (const order of list) {
@@ -44,6 +46,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			Basics.onDiscard(state, action);
 			state.interpret_discard(state, action, card, tableID);
+			state.last_actions[playerIndex] = action;
 			break;
 		}
 		case 'draw': {
@@ -83,8 +86,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			logger.warn(`${playerName} plays ${card.toString()}`);
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-			const matches_inference = card.inferred.some(c => c.matches(suitIndex, rank));
-			if (!card.rewinded && (playerIndex === state.ourPlayerIndex && card.inferred.length > 1 || !matches_inference)) {
+			if (!card.rewinded && ((playerIndex === state.ourPlayerIndex && card.inferred.length > 1) || !card.matches_inferences())) {
 				logger.info('all inferences', card.inferred.map(c => c.toString()));
 				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false, tableID);
 				return;
@@ -101,6 +103,8 @@ function handle_action(state, action, tableID, catchup = false) {
 			// Update hypo stacks
 			logger.debug('updating hypo stack (play)');
 			update_hypo_stacks(state, suitIndex, rank);
+
+			state.last_actions[playerIndex] = action;
 
 			// Get a clue token back for playing a 5
 			if (rank === 5 && state.clue_tokens < 8) {

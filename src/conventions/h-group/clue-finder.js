@@ -1,60 +1,9 @@
+const { ACTION, CLUE } = require('../../constants.js');
 const { determine_clue, clue_safe } = require('./clue-helper.js');
-const { find_chop, find_prompt, find_finesse } = require('./hanabi-logic.js');
-const { ACTION, CLUE, find_possibilities } = require('../../basics/helper.js');
+const { find_chop } = require('./hanabi-logic.js');
+const { find_possibilities } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
-
-function valid_play(state, target, card) {
-	const { suitIndex, rank } = card;
-	const finesses = state.hands.map(_ => []);
-	const known_cards = state.hands.map(hand => hand.filter(card => card.possible.length === 1 || card.inferred.length === 1)).flat();
-	logger.info(`checking if ${card.toString()} is a valid play`);
-
-	for (let conn_rank = state.hypo_stacks[suitIndex] + 1; conn_rank < rank; conn_rank++) {
-		logger.info('looking for connecting', Utils.logCard(suitIndex, conn_rank).toString());
-
-		if (!known_cards.some(c => c.matches(suitIndex, conn_rank))) {
-			let found = false;
-
-			// Try looking for prompt or finesse (note: cannot prompt or finesse on self)
-			for (let i = 1; i < state.numPlayers; i++) {
-				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
-				const hand = state.hands[playerIndex];
-
-				const prompt = find_prompt(hand, suitIndex, rank);
-
-				// No prompt available, look for finesse
-				if (prompt === undefined) {
-					const finesse = find_finesse(hand, suitIndex, conn_rank, finesses[playerIndex]);
-
-					if (finesse?.matches(suitIndex, conn_rank)) {
-						// Finesse found, move the player's finesse position by 1
-						logger.info('found finesse');
-						finesses[playerIndex].push(finesse.order);
-						found = true;
-						break;
-					}
-				}
-				else if (!prompt.matches(suitIndex, conn_rank)) {
-					// Prompt doesn't match, we shouldn't look for a finesse (would be wrong prompt)
-					logger.info(`would be wrong prompt on ${prompt.toString()}`);
-					continue;
-				}
-				else {
-					logger.info('found prompt');
-					found = true;
-					break;
-				}
-			}
-
-			if (!found) {
-				return { valid: false };
-			}
-		}
-	}
-	logger.debug(card.toString(),'is a valid play clue!');
-	return { valid: true, finesses: finesses.reduce((sum, curr) => sum + curr.length, 0), self: finesses[target].length > 0 };
-}
 
 function find_clues(state) {
 	const play_clues = [], save_clues = [];
@@ -73,58 +22,58 @@ function find_clues(state) {
 		const hand = state.hands[target];
 		const chopIndex = find_chop(hand);
 
-		for (let cardIndex = chopIndex; cardIndex >= 0; cardIndex--) {
+		for (let cardIndex = hand.length - 1; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
-			const { suitIndex, rank, clued, finessed } = card;
+			const { suitIndex, rank, finessed } = card;
 
-			// Clued, finessed, trash, visible elsewhere or possibly part of a finesse
-			if (clued || finessed || rank <= state.hypo_stacks[suitIndex] || rank > state.max_ranks[suitIndex] ||
-				Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued || c.finessed) ||
+			// Ignore finessed cards, trash cards, cards visible elsewhere, or cards possibly part of a finesse
+			if (finessed || rank <= state.hypo_stacks[suitIndex] || rank > state.max_ranks[suitIndex] ||
+				Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => (c.clued || c.finessed) && (c.order !== card.order)) ||
 				state.waiting_connections.some(c => suitIndex === c.inference.suitIndex && rank <= c.inference.rank)) {
 				continue;
 			}
 
-			const { valid, finesses, self } = valid_play(state, target, card);
+			// const { valid, finesses, self } = valid_play(state, target, card);
 
-			if (valid) {
-				// Play clue
-				const clue = determine_clue(state, target, card, self ? ACTION.RANK: undefined);
-				if (clue !== undefined && clue_safe(state, clue)) {
-					play_clues[target].push(Object.assign(clue, {finesses}));
+			// Play clue
+			const clue = determine_clue(state, target, card);
+			if (clue !== undefined) {
+				// Not a play clue
+				if (clue.result.playables === 0) {	// && clue.result.new_touched > 0)
+					if (cardIndex === chopIndex) {
+						// Save clue
+						// TODO: See if someone else can save
+						if (Utils.isCritical(state, suitIndex, rank)) {
+							logger.warn('saving critical card', card.toString());
+							if (rank === 5) {
+								save_clues[target] = { type: ACTION.RANK, value: 5, target };
+							}
+							else {
+								// The card is on chop, so it can always be focused
+								save_clues[target] = determine_clue(state, target, card);
+							}
+						}
+						else if (rank === 2) {
+							const clue = { type: ACTION.RANK, value: 2, target };
 
-					// Save a playable card if it's on chop and its duplicate is not visible somewhere
-					if (cardIndex === chopIndex && Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
-						save_clues[target] = clue;
-					}
-				}
-			}
-			else if (cardIndex === chopIndex && !card.finessed) {
-				// Save clue
-				// TODO: See if someone else can save
-				if (Utils.isCritical(state, suitIndex, rank)) {
-					logger.warn('saving critical card', card.toString());
-					if (rank === 5) {
-						save_clues[target] = { type: ACTION.RANK, value: 5, target };
-					}
-					else {
-						// The card is on chop, so it can always be focused
-						save_clues[target] = determine_clue(state, target, card);
-					}
-				}
-				else if (rank === 2) {
-					const clue = { type: ACTION.RANK, value: 2, target };
+							const save2 = state.play_stacks[suitIndex] === 0 &&									// play stack at 0
+								Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&	// other copy isn't visible
+								!state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true })) &&   // not in our hand
+								clue_safe(state, clue);															// doesn't put crit on chop
 
-					const save2 = state.play_stacks[suitIndex] === 0 &&									// play stack at 0
-						Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&	// other copy isn't visible
-						!state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true })) &&   // not in our hand
-						clue_safe(state, clue);															// doesn't put crit on chop
-					
-					if (save2) {
-						save_clues[target] = clue;
+							if (save2) {
+								save_clues[target] = clue;
+							}
+						}
 					}
+					continue;
 				}
-				else {
-					logger.debug('not saving card', card.toString(), 'on chop');
+
+				play_clues[target].push(clue);
+
+				// Save a playable card if it's on chop and its duplicate is not visible somewhere
+				if (cardIndex === chopIndex && Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
+					save_clues[target] = clue;
 				}
 			}
 		}
@@ -132,9 +81,9 @@ function find_clues(state) {
 
 	const fix_clues = find_fix_clues(state, play_clues, save_clues);
 
-	logger.debug('found play clues', play_clues);
-	logger.info('found save clues', save_clues);
-	logger.debug('found fix clues', fix_clues);
+	logger.info('found play clues', play_clues.map(clues => clues.map(clue => Utils.logClue(clue))));
+	logger.info('found save clues', save_clues.map(clue => Utils.logClue(clue)));
+	logger.debug('found fix clues', fix_clues.map(clue => Utils.logClue(clue)));
 	return { play_clues, save_clues, fix_clues };
 }
 
@@ -243,7 +192,6 @@ function find_fix_clues(state, play_clues, save_clues) {
 				logger.error(`card ${card.toString()} order ${card.order} need fix??`);
 			}
 			else {
-				const matches_inferences = card.inferred.length > 0 && card.inferred.some(p => card.matches(p.suitIndex, p.rank));
 				const seems_playable = card.inferred.every(p => {
 					const playableAway = Utils.playableAway(state, p.suitIndex, p.rank);
 					const our_hand = state.hands[state.ourPlayerIndex];
@@ -263,27 +211,43 @@ function find_fix_clues(state, play_clues, save_clues) {
 				}
 
 				// Card doesn't match any inferences and seems playable but isn't (need to fix)
-				if (!matches_inferences && seems_playable && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
+				if (!card.matches_inferences() && seems_playable && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
 					let found_clue = false;
 
-					let other_clues = play_clues[target];
-					other_clues.push(save_clues[target]);
-					other_clues = other_clues.filter(clue => clue !== undefined);
+					const other_clues = Utils.objClone(play_clues[target]);
+
+					// Try the save clue as well if it exists
+					if (save_clues[target] !== undefined) {
+						other_clues.push(save_clues[target]);
+					}
 
 					// Go through all other clues to see if one fixes
 					for (const clue of other_clues) {
+						const touch = Utils.clueTouched(hand, clue);
+
 						// The clue cannot touch the fixed card or it will look like just a fix
-						if ((clue.type === CLUE.COLOUR && clue.value === card.suitIndex) ||
-							(clue.type === CLUE.RANK && clue.value === card.rank)) {
+						if (touch.some(c => c.order === card.order)) {
 							continue;
 						}
 
-						const copy = card.clone();
-						copy.intersect('inferred', find_possibilities(clue, state.num_suits));
+						const hypo_state = Utils.objClone(state);
+						const action = { giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue, mistake: false };
 
-						if (card_fixed(copy)) {
+						// Prevent outputting logs until we know that the result is correct
+						logger.collect();
+
+						logger.setLevel(logger.LEVELS.ERROR);
+						hypo_state.ourPlayerIndex = target;
+						Basics.onClue(hypo_state, action);
+						hypo_state.interpret_clue(hypo_state, action);
+						logger.setLevel(logger.LEVELS.INFO);
+
+						const card_after_cluing = hypo_state.hands[target].find(c => c.order === card.order);
+
+						if (card_fixed(card_after_cluing)) {
 							// TODO: Find the highest value play clue
-							fix_clues[target].push(Object.assign(clue, { trash: card_trash(copy) }));
+							logger.info(`found fix ${Utils.logClue(clue)} for card ${card.toString()} to inferences [${card_after_cluing.inferred.map(c => c.toString()).join(',')}]`)
+							fix_clues[target].push(Object.assign(clue, { trash: card_trash(card_after_cluing) }));
 							found_clue = true;
 							break;
 						}
