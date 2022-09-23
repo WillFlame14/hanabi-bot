@@ -88,6 +88,7 @@ function update_turn(state, action) {
 	for (const [card, inferences] of demonstrated) {
 		logger.info(`intersecting card ${card.toString()} with inferences ${inferences.map(c => Utils.logCard(c.suitIndex, c.rank)).join(',')}`);
 		card.intersect('inferred', inferences);
+		// TODO: update hypo stacks?
 	}
 
 	// Filter out connections that have been removed

@@ -7,7 +7,7 @@ function find_sarcastic(hand, suitIndex, rank) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
 	const known_sarcastic = Utils.handFindInfer(hand, suitIndex, rank);
 	if (known_sarcastic.length > 0) {
-		return known_sarcastic[0];
+		return known_sarcastic;
 	}
 	// Otherwise, find all cards that could match that identity
 	return hand.filter(c => c.clued && c.possible.some(p => p.matches(suitIndex, rank)));
@@ -78,14 +78,17 @@ function interpret_discard(state, action, card, tableID) {
 					const receiver = (state.ourPlayerIndex + i) % state.numPlayers;
 					const sarcastic = find_sarcastic(state.hands[receiver], suitIndex, rank);
 
-					// The matching card must be the only possible option in the hand to be known sarcastic
-					if (sarcastic[0]?.matches(suitIndex, rank)) {
+					if (sarcastic.some(c => c.matches(suitIndex, rank))) {
+						// The matching card must be the only possible option in the hand to be known sarcastic
 						if (sarcastic.length === 1) {
 							sarcastic[0].inferred = [new Card(suitIndex, rank)];
+							logger.info(`writing ${Utils.logCard(suitIndex, rank)} from sarcastic discard`);
 						}
 						else {
 							apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);
+							logger.info('unknown sarcastic');
 						}
+						break;
 					}
 				}
 			}

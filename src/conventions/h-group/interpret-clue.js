@@ -104,9 +104,10 @@ function interpret_clue(state, action) {
 	}
 	// Card doesn't match any inferences
 	else {
-		// Check for 8 clue stall (TODO: check that direct play is not available)
-		if (state.clue_tokens === 7 && !list.includes(state.hands[target][0].order) && state.turn_count !== 0 &&
-			!state.hands[target].some(c => c.rank === 5 && !c.clued)		// 5 Stall not available
+		// Check for 8 clue stall/locked hand stall (TODO: check that direct play is not available)
+		if ((state.clue_tokens === 7 || state.hands[giver].every(c => c.clued)) &&
+			!list.includes(state.hands[target][0].order) && state.turn_count !== 0 &&	// Doesn't include slot 1 and not turn 1
+			!state.hands[target].some(c => c.rank === 5 && !c.clued)					// 5 Stall not available
 		) {
 			logger.info('8 clue stall!');
 		}
@@ -205,6 +206,7 @@ function interpret_clue(state, action) {
 
 					// Only one set of connections, so can elim safely
 					if (all_connections.length === 1) {
+						update_hypo_stacks(state, conn_suit, next_rank);
 						team_elim(state, focused_card, giver, target, conn_suit, next_rank);
 					}
 					// Multiple possible sets, we need to wait for connections

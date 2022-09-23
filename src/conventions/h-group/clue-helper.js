@@ -98,6 +98,9 @@ function determine_clue(state, target, target_card) {
 		if (!result.correct) {
 			logger.info(`${name} clue has incorrect interpretation, ignoring`);
 			logger.info(hypo_state.hands[target].map(card => {
+				if (card.reset || !card.matches_inferences()) {
+					logger.info(`card ${card.toString()} has inferences [${card.inferred.map(c => c.toString()).join(',')}] reset? ${card.reset}`);
+				}
 				return bad_touch_cards.some(c => c.order === card.order) ||							// Card is bad touched
 					card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank)) || 	// Card is known trash
 					(!card.reset && card.matches_inferences());										// Card matches interpretation

@@ -3,6 +3,7 @@ const { determine_clue, clue_safe } = require('./clue-helper.js');
 const { find_chop } = require('./hanabi-logic.js');
 const { find_possibilities } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
+const Basics = require('../../basics.js');
 const Utils = require('../../util.js');
 
 function find_clues(state) {
@@ -87,40 +88,15 @@ function find_clues(state) {
 	return { play_clues, save_clues, fix_clues };
 }
 
-function find_tempo_clues(state) {
-	const tempo_clues = [];
-
-	for (let target = 0; target < state.numPlayers; target++) {
-		tempo_clues[target] = [];
-
-		if (target === state.ourPlayerIndex) {
-			continue;
-		}
-
-		const hand = state.hands[target];
-		for (const card of hand) {
-			// Card must be clued and playable
-			if (card.clued && state.hypo_stacks[card.suitIndex] + 1 === card.rank) {
-				// Card is known playable
-				if (card.inferred.every(c => Utils.playableAway(state, c.suitIndex, c.rank) === 0)) {
-					continue;
-				}
-				const clue = determine_clue(state, target, card);
-				if (clue !== undefined) {
-					tempo_clues[target].push(clue);
-				}
-			}
-		}
-	}
-	return tempo_clues;
-}
-
 /**
  * Finds a stall clue to give. Always finds a clue if severity is greater than 1 (hard burn).
  */
-function find_stall_clue(state, severity) {
+function find_stall_clue(state, severity, tempo_clue) {
 	const stall_clues = [[], [], [], []];
-	stall_clues[1] = find_tempo_clues(state).flat();
+
+	if (tempo_clue !== undefined) {
+		stall_clues[1] = [tempo_clue];
+	}
 
 	for (let target = 0; target < state.numPlayers; target++) {
 		if (target === state.ourPlayerIndex) {
@@ -201,10 +177,13 @@ function find_fix_clues(state, play_clues, save_clues) {
 				});
 
 				const card_fixed = function (target_card) {
-					return target_card.inferred.every(p => Utils.playableAway(state, p.suitIndex, p.rank) !== 0);
+					return target_card.possible.every(p =>
+						Utils.playableAway(state, p.suitIndex, p.rank) !== 0 ||
+						Utils.visibleFind(state, target, p.suitIndex, p.rank).some(c => c.clued && p.order !== c.order)
+					);
 				};
 				const card_trash = function (target_card) {
-					return target_card.inferred.every(p =>
+					return target_card.possible.every(p =>
 						Utils.isBasicTrash(state, p.suitIndex, p.rank) ||
 						Utils.visibleFind(state, target, p.suitIndex, p.rank).some(c => c.clued && p.order !== c.order)
 					);
@@ -244,6 +223,8 @@ function find_fix_clues(state, play_clues, save_clues) {
 
 						const card_after_cluing = hypo_state.hands[target].find(c => c.order === card.order);
 
+						logger.flush(card_fixed(card_after_cluing));
+
 						if (card_fixed(card_after_cluing)) {
 							// TODO: Find the highest value play clue
 							logger.info(`found fix ${Utils.logClue(clue)} for card ${card.toString()} to inferences [${card_after_cluing.inferred.map(c => c.toString()).join(',')}]`)
@@ -261,9 +242,9 @@ function find_fix_clues(state, play_clues, save_clues) {
 					const rank_clue = { type: CLUE.RANK, value: card.rank };
 					const [colour_fix, rank_fix] = [colour_clue, rank_clue].map(clue => {
 						const copy = card.clone();
-						copy.intersect('inferred', find_possibilities(clue, state.num_suits));
+						copy.intersect('possible', find_possibilities(clue, state.num_suits));
 
-						// Fixed if every inference is now unplayable
+						// Fixed if every possibility is now unplayable
 						return {
 							fixed: card_fixed(copy),
 							trash: card_trash(copy)};
@@ -283,4 +264,4 @@ function find_fix_clues(state, play_clues, save_clues) {
 	return fix_clues;
 }
 
-module.exports = { find_clues, find_tempo_clues, find_stall_clue, find_fix_clues };
+module.exports = { find_clues, find_stall_clue, find_fix_clues };

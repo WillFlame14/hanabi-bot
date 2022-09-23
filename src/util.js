@@ -1,7 +1,7 @@
 const readline = require('readline');
 const { Card } = require('./basics/Card.js');
 const { logger } = require('./logger.js');
-const { CARD_COUNT } = require('./constants.js')
+const { ACTION, CARD_COUNT } = require('./constants.js')
 
 const globals = {};
 
@@ -120,11 +120,11 @@ function visibleFind(state, target, suitIndex, rank, options = {}) {
 
 function clueTouched(hand, clue) {
 	const { type, value } = clue;
-	if (type === CLUE.COLOUR) {
+	if (type === ACTION.COLOUR) {
 		return hand.filter(c => c.suitIndex === value);
 	}
-	else if (type === CLUE.RANK) {
-		return hand.filter(c => c.rank === rank);
+	else if (type === ACTION.RANK) {
+		return hand.filter(c => c.rank === value);
 	}
 }
 

@@ -1,6 +1,6 @@
 const { ACTION } = require('../../constants.js');
 const { select_play_clue, find_urgent_clues, determine_playable_card } = require('./action-helper.js');
-const { find_clues, find_tempo_clues, find_stall_clue } = require('./clue-finder.js');
+const { find_clues, find_stall_clue } = require('./clue-finder.js');
 const { find_chop } = require('./hanabi-logic.js');
 const { find_playables, find_known_trash } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
@@ -42,29 +42,27 @@ function take_action(state, tableID) {
 		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: card.order });
 	}
 	else {
+		let tempo_clue;
 		if (state.clue_tokens > 0) {
 			// Go through rest of urgent clues in order of priority
 			for (let i = 3; i < 7; i++) {
 				// Give play clue (at correct priority level)
 				if (i === (state.clue_tokens > 1 ? 3 : 6)) {
 					let all_play_clues = play_clues.flat();
-
-					// In 2 player, all tempo clues become valuable
-					if (state.numPlayers === 2) {
-						const otherPlayerIndex = (state.ourPlayerIndex + 1) % 2;
-						all_play_clues = all_play_clues.concat(find_tempo_clues(state)[otherPlayerIndex]);
-					}
-
 					const { clue, clue_value } = select_play_clue(all_play_clues);
-					const minimum_clue_value = state.cards_left < 5 ? -10 : 0.9;
 
-					if (clue_value > minimum_clue_value) {
+					// -0.5 if 2 players (allows stall clues to be given)
+					// -10 if endgame
+					const minimum_clue_value = 1 - (state.numPlayers === 2 ? 0.5 : 0) - (state.cards_left < 5 ? 10 : 0);
+
+					if (clue_value >= minimum_clue_value) {
 						const { type, target, value } = clue;
 						Utils.sendCmd('action', { tableID, type, target, value });
 						return;
 					}
 					else {
 						logger.info('clue too low value', Utils.logClue(clue), clue_value);
+						tempo_clue = clue;
 					}
 				}
 
@@ -77,9 +75,11 @@ function take_action(state, tableID) {
 			}
 		}
 
+		// Either there are no clue tokens or the best play clue doesn't meet MCVP
+
 		// 8 clues
 		if (state.clue_tokens === 8) {
-			const { type, value, target } = find_stall_clue(state, 4);
+			const { type, value, target } = find_stall_clue(state, 4, tempo_clue);
 
 			// Should always be able to find a clue, even if it's a hard burn
 			Utils.sendCmd('action', { tableID, type, target, value });
@@ -94,14 +94,14 @@ function take_action(state, tableID) {
 
 		// Locked hand and no good clues to give
 		if (state.hands[state.ourPlayerIndex].every(c => c.clued) && state.clue_tokens > 0) {
-			const { type, value, target } = find_stall_clue(state, 3);
+			const { type, value, target } = find_stall_clue(state, 3, tempo_clue);
 			Utils.sendCmd('action', { tableID, type, target, value });
 			return;
 		}
 
 		// Early game
 		if (state.early_game && state.clue_tokens > 0) {
-			const clue = find_stall_clue(state, 1);
+			const clue = find_stall_clue(state, 1, tempo_clue);
 
 			if (clue !== undefined) {
 				const { type, value, target } = clue;

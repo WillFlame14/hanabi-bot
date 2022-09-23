@@ -8,8 +8,8 @@ function select_play_clue(play_clues) {
 	let best_clue;
 
 	for (const clue of play_clues) {
-		const { finesses, new_touched, playables, bad_touch } = clue.result;
-		const clue_value = 2*finesses + 0.5*(new_touched + playables) - 2*bad_touch;
+		const { finesses, new_touched, playables, bad_touch, elim } = clue.result;
+		const clue_value = 2*finesses + 0.5*(new_touched + playables) + 0.1*elim - 2*bad_touch;
 		logger.info('clue', Utils.logClue(clue), 'value', clue_value);
 
 		if (clue_value > best_clue_value) {
