@@ -17,7 +17,9 @@ function globalModify(obj) {
  */
 function initConsole() {
 	readline.emitKeypressEvents(process.stdin);
-	process.stdin.setRawMode(true);
+	if (process.stdin.isTTY) {
+		process.stdin.setRawMode(true);
+	}
 
 	let command = [];
 

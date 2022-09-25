@@ -37,7 +37,7 @@ function bad_touch_possiblities(state, giver, target, prev_found = []) {
 		const hand = state.hands[i];
 		for (let j = 0; j < hand.length; j++) {
 			const card = hand[j];
-			if (!card.clued || bad_touch.some(c => card.matches(c.suitIndex, c.rank, { infer: true }))) {
+			if (!card.clued) {
 				continue;
 			}
 
@@ -61,8 +61,10 @@ function bad_touch_possiblities(state, giver, target, prev_found = []) {
 			}
 
 			if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
-				logger.debug(`adding ${Utils.logCard(suitIndex, rank)} to bad touch via ${method} (slot ${j + 1} in ${state.playerNames[i]}'s hand)`);
-				bad_touch.push({suitIndex, rank});
+				if (!bad_touch.some(c => c.suitIndex === suitIndex && c.rank === rank)) {
+					logger.debug(`adding ${Utils.logCard(suitIndex, rank)} to bad touch via ${method} (slot ${j + 1} in ${state.playerNames[i]}'s hand)`);
+					bad_touch.push({suitIndex, rank});
+				}
 			}
 		}
 	}

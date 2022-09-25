@@ -31,7 +31,7 @@ function interpret_clue(state, action) {
 				card.reset = true;
 			}
 		}
-		bad_touch = bad_touch_possiblities(state, giver, target, Utils.objClone(bad_touch));
+		bad_touch = bad_touch_possiblities(state, giver, target, bad_touch);
 	}
 	while (bad_touch_len !== bad_touch.length);
 
