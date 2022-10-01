@@ -1,9 +1,9 @@
-const { ACTION, CLUE } = require('../../constants.js');
-const { find_chop, determine_focus, find_bad_touch } = require('./hanabi-logic.js');
-const { find_playables, find_known_trash } = require('../../basics/helper.js');
-const { logger } = require('../../logger.js');
-const Basics = require('../../basics.js');
-const Utils = require('../../util.js');
+const { ACTION, CLUE } = require('../../../constants.js');
+const { clue_safe } = require('./clue-safe.js');
+const { determine_focus, find_bad_touch } = require('./../hanabi-logic.js');
+const { logger } = require('../../../logger.js');
+const Basics = require('../../../basics.js');
+const Utils = require('../../../util.js');
 
 function determine_clue(state, target, target_card) {
 	logger.info('--------');
@@ -47,7 +47,7 @@ function determine_clue(state, target, target_card) {
 
 		hypo_state.ourPlayerIndex = target;
 		Basics.onClue(hypo_state, action);
-		hypo_state.interpret_clue(hypo_state, action);
+		hypo_state.interpret_clue(hypo_state, action, { ignoreStall: true });
 
 		logger.info('------- EXITING HYPO --------');
 
@@ -97,14 +97,14 @@ function determine_clue(state, target, target_card) {
 
 		if (!result.correct) {
 			logger.info(`${name} clue has incorrect interpretation, ignoring`);
-			logger.info(hypo_state.hands[target].map(card => {
+			/*logger.info(hypo_state.hands[target].map(card => {
 				if (card.reset || !card.matches_inferences()) {
 					logger.info(`card ${card.toString()} has inferences [${card.inferred.map(c => c.toString()).join(',')}] reset? ${card.reset}`);
 				}
 				return bad_touch_cards.some(c => c.order === card.order) ||							// Card is bad touched
 					card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank)) || 	// Card is known trash
 					(!card.reset && card.matches_inferences());										// Card matches interpretation
-			}));
+			}));*/
 			return { correct: false };
 		}
 
@@ -113,7 +113,7 @@ function determine_clue(state, target, target_card) {
 
 		logger.setLevel(logger.LEVELS.ERROR);
 		Basics.onClue(hypo_state, action);
-		hypo_state.interpret_clue(hypo_state, action);
+		hypo_state.interpret_clue(hypo_state, action, { ignoreStall: true });
 		logger.setLevel(logger.LEVELS.INFO);
 
 		// Count the number of finesses made
@@ -167,7 +167,7 @@ function determine_clue(state, target, target_card) {
 		compare_result('num', colour_result.playables, rank_result.playables) ||
 		compare_result('num', colour_result.new_touched, rank_result.new_touched) ||
 		compare_result('num', colour_result.elim, rank_result.elim) ||
-		compare_result('num', colour_result.interpret.length, rank_result.interpret.length) || 1;
+		compare_result('num', rank_result.interpret.length, colour_result.interpret.length) || 1;
 
 	if (clue_type === 1) {
 		logger.info(`selecting colour clue`);
@@ -208,56 +208,6 @@ function compare_result(type, arg1, arg2, fail = false) {
 		}
 	}
 	return;
-}
-
-// Determines if the clue is safe to give (i.e. doesn't put a critical on chop with nothing to do)
-function clue_safe(state, clue) {
-	const { type, value, target } = clue;
-	const hypo_state = Utils.objClone(state);
-
-	let list;
-	if (type === CLUE.COLOUR) {
-		list = hypo_state.hands[target].filter(c => c.suitIndex === value).map(c => c.order);
-	}
-	else {
-		list = hypo_state.hands[target].filter(c => c.rank === value).map(c => c.order);
-	}
-	const action = { giver: state.ourPlayerIndex, target, list, clue, mistake: false };
-
-	logger.setLevel(logger.LEVELS.ERROR);
-	hypo_state.ourPlayerIndex = target;
-	Basics.onClue(hypo_state, action);
-	hypo_state.interpret_clue(hypo_state, action);
-	logger.setLevel(logger.LEVELS.INFO);
-
-	const hand = hypo_state.hands[target];
-	const playable_cards = find_playables(hypo_state.play_stacks, hand);
-	const trash_cards = find_known_trash(hypo_state, target);
-
-	// They won't discard next turn
-	if (playable_cards.length + trash_cards.length > 0) {
-		return true;
-	}
-
-	// Note that chop will be undefined if the entire hand is clued
-	const chop = hand[find_chop(hand, { includeNew: true })];
-	logger.info(`chop after clue is ${chop?.toString()}`);
-
-	let give_clue = true;
-
-	// New chop is critical
-	if (chop !== undefined && Utils.isCritical(hypo_state, chop.suitIndex, chop.rank)) {
-		logger.error(`Not giving clue ${Utils.logClue(clue)}, as ${chop.toString()} is critical.`);
-		give_clue = false;
-	}
-
-	// Locked hand and no clues
-	if (chop === undefined && hypo_state.clue_tokens === 0) {
-		logger.error(`Not giving clue ${Utils.logClue(clue)}, as hand would be locked with no clues.`);
-		give_clue = false;
-	}
-
-	return give_clue;
 }
 
 module.exports = { determine_clue, clue_safe };

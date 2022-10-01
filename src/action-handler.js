@@ -86,7 +86,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			logger.warn(`${playerName} plays ${card.toString()}`);
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-			if (!card.rewinded && ((playerIndex === state.ourPlayerIndex && card.inferred.length > 1) || !card.matches_inferences())) {
+			if (!card.rewinded && playerIndex === state.ourPlayerIndex && card.inferred.length > 1) {
 				logger.info('all inferences', card.inferred.map(c => c.toString()));
 				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false, tableID);
 				return;

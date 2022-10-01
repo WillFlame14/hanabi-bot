@@ -4,7 +4,8 @@ const Utils = require('../../util.js');
 
 function find_chop(hand, options = {}) {
 	for (let i = hand.length - 1; i >= 0; i--) {
-		if (hand[i].clued && (options.includeNew ? true : !hand[i].newly_clued)) {
+		const { clued, newly_clued, chop_moved } = hand[i];
+		if (chop_moved || (clued && (options.includeNew ? true : !newly_clued))) {
 			continue;
 		}
 		return i;
@@ -68,6 +69,13 @@ function determine_focus(hand, list, options = {}) {
 		}
 	}
 
+	// Check for leftmost chop moved
+	for (const card of hand) {
+		if (card.chop_moved && list.includes(card.order)) {
+			return { focused_card: card, chop: false };
+		}
+	}
+
 	// Check for leftmost re-clued
 	for (const card of hand) {
 		if (list.includes(card.order)) {
@@ -86,8 +94,8 @@ function find_bad_touch(state, cards) {
 		if (Utils.isBasicTrash(state, suitIndex, rank)) {
 			bad_touch = true;
 		}
-		// Someone has the card clued already
-		else if (Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued)) {
+		// Someone has the card clued or chop moved already
+		else if (Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued || c.chop_moved)) {
 			bad_touch = true;
 		}
 		// Cluing both copies of a card (only include < so we don't double count)

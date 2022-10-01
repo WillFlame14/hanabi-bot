@@ -7,7 +7,7 @@
  *  possible: [Card]	all possibilities of the card (from positive/negative information)
  *  inferred: [Card]	all inferences of the card (from conventions)
  *
- *  clued, newly_clued, prompted, finessed, reset are boolean flags
+ *  clued, newly_clued, prompted, finessed, chop_moved, reset are boolean flags
  *
  *  reasoning: [number]			the action indexes of when a card's possibiltiies/inferences were updated
  *  reasoning_turn: [number]	the game turns of when a card's possibiltiies/inferences were updated
@@ -30,6 +30,7 @@ class Card {
 		this.newly_clued = false;
 		this.prompted = false;
 		this.finessed = false;
+		this.chop_moved = false;
 		this.reset = false;
 
 		this.reasoning = [];
@@ -43,7 +44,22 @@ class Card {
 	}
 
 	clone() {
-		return new Card(this.suitIndex, this.rank, this);
+		const new_card = new Card(this.suitIndex, this.rank, this);
+
+		for (const field of ['possible', 'inferred']) {
+			new_card[field] = [];
+			for (const card of this[field]) {
+				new_card[field].push(new Card(card.suitIndex, card.rank));
+			}
+		}
+
+		for (const field of ['clues', 'reasoning', 'reasoning_turn']) {
+			new_card[field] = [];
+			for (const obj of this[field]) {
+				new_card[field].push(JSON.parse(JSON.stringify(obj)));
+			}
+		}
+		return new_card;
 	}
 
 	toString() {

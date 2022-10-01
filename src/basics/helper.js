@@ -156,7 +156,7 @@ function remove_card_from_hand(hand, order) {
 }
 
 function update_hypo_stacks(state, suitIndex, rank) {
-	if (state.hypo_stacks[suitIndex] < rank) {
+	if (state.hypo_stacks[suitIndex] <= rank) {
 		state.hypo_stacks[suitIndex] = rank;
 
 		let found_new_playable = true;

@@ -185,7 +185,7 @@ function logHand(hand) {
 		new_card.order = card.order;
 
 		new_card.flags = [];
-		for (const flag of ['clued', 'newly_clued', 'prompted', 'finessed', 'rewinded']) {
+		for (const flag of ['clued', 'newly_clued', 'prompted', 'finessed', 'chop_moved', 'rewinded']) {
 			if (card[flag]) {
 				new_card.flags.push(flag);
 			}
@@ -200,7 +200,6 @@ function logHand(hand) {
 }
 
 function logClue(clue) {
-	// console.log(clue);
 	if (clue === undefined) {
 		return;
 	}
@@ -209,18 +208,22 @@ function logClue(clue) {
 	const value = clue.type === 2 ? ['red', 'yellow', 'green', 'blue', 'purple'][clue.value] : clue.value;
 
 	new_clue.info = `(${value} to playerIndex ${clue.target})`;
-	// Object.assign(new_clue, objPick(clue.result, ['bad_touch', 'elim', 'new_touched', 'playables', 'finesses']));
 	return new_clue.info;
 }
 
 function writeNote(turn, card, tableID) {
 	let note = card.inferred.map(c => c.toString()).join(',');
+
+	if (note === '') {
+		note = '??';
+	}
+
 	if (card.finessed) {
 		note = `[f] [${note}]`;
 	}
 
-	if (note === '') {
-		note = '??';
+	if (card.chop_moved) {
+		note = `[cm] [${note}]`;
 	}
 
 	// Only write a new note if it's different from the last note
@@ -234,7 +237,7 @@ function writeNote(turn, card, tableID) {
 			card.full_note = `${card.full_note} | t${turn}: ${note}`;
 		}
 
-		setTimeout(() => sendCmd('note', { tableID, order: card.order, note: card.full_note }), Math.random() * 5000);
+		setTimeout(() => sendCmd('note', { tableID, order: card.order, note: card.full_note }), Math.random() * 3000);
 	}
 }
 

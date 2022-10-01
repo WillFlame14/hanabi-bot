@@ -45,8 +45,8 @@ function interpret_discard(state, action, card, tableID) {
 		state.early_game = false;
 	}
 
-	// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-	if (!card.rewinded && !card.matches_inferences()) {
+	// If the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
+	if (!card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank)) && !card.rewinded && !card.matches_inferences()) {
 		logger.info('all inferences', card.inferred.map(c => c.toString()));
 		state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, true, tableID);
 		return;

@@ -47,8 +47,8 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreCard) {
 		// Save clue on chop (5 save cannot be done with number)
 		if (chop) {
 			for (let rank = next_playable_rank + 1; rank < 5; rank++) {
-				// Check if card is critical or locked hand save
-				if (Utils.isCritical(state, suitIndex, rank) || state.hands[giver].every(c => c.clued)) {
+				// Check if card is critical
+				if (Utils.isCritical(state, suitIndex, rank)) {
 					focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				}
 			}
@@ -121,23 +121,15 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreCard) {
 					}
 				}
 
-				// Critical save, 2 save or locked hand save
-				if (Utils.isCritical(state, suitIndex, rank) || save2 || state.hands[giver].every(c => c.clued)) {
+				// Critical save or 2 save
+				if (Utils.isCritical(state, suitIndex, rank) || save2) {
 					focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				}
-			}
-
-			// 5 Stall (early game or locked hand)
-			if (rank === 5 && (state.early_game || state.hands[giver].every(c => c.clued))) {
-				focus_possible.push({ suitIndex, rank, stall: true, connections: [] });
 			}
 		}
 	}
 
-	// Remove earlier duplicates (since save overrides play)
-	return focus_possible.filter((p1, index1) => {
-		return !focus_possible.some((p2, index2) => p1.suitIndex === p2.suitIndex && p1.rank === p2.rank && index1 < index2);
-	});;
+	return focus_possible;
 }
 
 function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = []) {
