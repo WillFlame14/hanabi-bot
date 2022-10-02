@@ -57,7 +57,7 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreCard) {
 	else {
 		const rank = clue.value;
 
-		for (let suitIndex = 0; suitIndex < state.num_suits; suitIndex++) {
+		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 			// Play clue
 			let stack_rank = state.play_stacks[suitIndex] + 1;
 			const connections = [];

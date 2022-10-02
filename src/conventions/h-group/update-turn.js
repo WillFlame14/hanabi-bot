@@ -19,7 +19,7 @@ function remove_finesse(state, waiting_index) {
 	if (focused_card.inferred.length === 1) {
 		const { suitIndex, rank } = focused_card.inferred[0];
 		if (state.hypo_stacks[suitIndex] + 1 === rank) {
-			update_hypo_stacks(state, suitIndex, rank);
+			update_hypo_stacks(state);
 		}
 	}
 }

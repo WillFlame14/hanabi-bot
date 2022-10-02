@@ -5,7 +5,7 @@ const { logger } = require('./logger.js');
 const Basics = require('./basics.js');
 const Utils = require('./util.js');
 
-function handle_action(state, action, tableID, catchup = false) {
+function handle_action(state, action, catchup = false) {
 	state.actionList.push(action);
 
 	switch(action.type) {
@@ -16,7 +16,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			let clue_value;
 
 			if (clue.type === CLUE.COLOUR) {
-				clue_value = ['red', 'yellow', 'green', 'blue', 'purple'][clue.value];
+				clue_value = ['red', 'yellow', 'green', 'blue', 'purple', 'teal'][clue.value];
 			}
 			else {
 				clue_value = clue.value;
@@ -45,7 +45,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			logger.warn(`${playerName} ${action.failed ? 'bombs' : 'discards'} ${card.toString()}`);
 
 			Basics.onDiscard(state, action);
-			state.interpret_discard(state, action, card, tableID);
+			state.interpret_discard(state, action, card);
 			state.last_actions[playerIndex] = action;
 			break;
 		}
@@ -56,18 +56,17 @@ function handle_action(state, action, tableID, catchup = false) {
 		}
 		case 'gameOver':
 			logger.info('gameOver', action);
-			Utils.sendCmd('tableUnattend', { tableID });
 			break;
 		case 'turn': {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
 			const { currentPlayerIndex } = action;
 			if (currentPlayerIndex === state.ourPlayerIndex && !catchup) {
-				setTimeout(() => state.take_action(state, tableID), 2000);
+				setTimeout(() => state.take_action(state), 2000);
 
 				// Update notes on cards
 				for (const card of state.hands[state.ourPlayerIndex]) {
 					if (card.inferred.length <= 3) {
-						Utils.writeNote(state.turn_count + 1, card, tableID);
+						Utils.writeNote(state.turn_count + 1, card, state.tableID);
 					}
 				}
 			}
@@ -88,7 +87,7 @@ function handle_action(state, action, tableID, catchup = false) {
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
 			if (!card.rewinded && playerIndex === state.ourPlayerIndex && card.inferred.length > 1) {
 				logger.info('all inferences', card.inferred.map(c => c.toString()));
-				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false, tableID);
+				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false);
 				return;
 			}
 			remove_card_from_hand(state.hands[playerIndex], order);
@@ -102,7 +101,7 @@ function handle_action(state, action, tableID, catchup = false) {
 
 			// Update hypo stacks
 			logger.debug('updating hypo stack (play)');
-			update_hypo_stacks(state, suitIndex, rank);
+			update_hypo_stacks(state);
 
 			state.last_actions[playerIndex] = action;
 

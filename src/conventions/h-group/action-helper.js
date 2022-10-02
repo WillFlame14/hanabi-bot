@@ -21,7 +21,7 @@ function select_play_clue(play_clues) {
 	return { clue: best_clue, clue_value: best_clue_value };
 }
 
-function find_urgent_clues(state, tableID, play_clues, save_clues, fix_clues) {
+function find_urgent_clues(state, play_clues, save_clues, fix_clues) {
 	const urgent_clues = [[], [], [], [], [], [], []];
 
 	for (let i = 1; i < state.numPlayers; i++) {
@@ -54,7 +54,7 @@ function find_urgent_clues(state, tableID, play_clues, save_clues, fix_clues) {
 							});
 
 							if (known) {
-								Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: our_connecting.order });
+								Utils.sendCmd('action', { tableID: state.tableID, type: ACTION.PLAY, target: our_connecting.order });
 							}
 						}
 					}

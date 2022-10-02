@@ -132,7 +132,9 @@ function determine_clue(state, target, target_card) {
 
 		// Count the number of newly known playable cards
 		result.playables = 0;
-		for (let i = 0; i < state.num_suits; i++) {
+		logger.info(hypo_state.hypo_stacks);
+		logger.info(state.hypo_stacks);
+		for (let i = 0; i < state.suits.length; i++) {
 			result.playables += hypo_state.hypo_stacks[i] - state.hypo_stacks[i];
 		}
 

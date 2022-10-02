@@ -35,10 +35,7 @@ function find_fix_clues(state, play_clues, save_clues) {
 				});
 
 				const card_fixed = function (target_card) {
-					return target_card.possible.every(p =>
-						Utils.playableAway(state, p.suitIndex, p.rank) !== 0 ||
-						Utils.visibleFind(state, target, p.suitIndex, p.rank).some(c => c.clued && p.order !== c.order)
-					);
+					return target_card.possible.every(p => Utils.playableAway(state, p.suitIndex, p.rank) !== 0);
 				};
 				const card_trash = function (target_card) {
 					return target_card.possible.every(p =>
@@ -100,7 +97,7 @@ function find_fix_clues(state, play_clues, save_clues) {
 					const rank_clue = { type: CLUE.RANK, value: card.rank };
 					const [colour_fix, rank_fix] = [colour_clue, rank_clue].map(clue => {
 						const copy = card.clone();
-						copy.intersect('possible', find_possibilities(clue, state.num_suits));
+						copy.intersect('possible', find_possibilities(clue, state.suits.length));
 
 						// Fixed if every possibility is now unplayable
 						return {

@@ -81,7 +81,7 @@ class Card {
 			return '(unknown)';
 		}
 
-		const colours = ['r', 'y', 'g', 'b', 'p'];
+		const colours = ['r', 'y', 'g', 'b', 'p', 't'];
 		return colours[suitIndex] + rank + append;
 	}
 

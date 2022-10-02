@@ -9,6 +9,10 @@ const Utils = require('../../../util.js');
 function find_save(state, target, card) {
 	const { suitIndex, rank } = card;
 
+	if (Utils.isBasicTrash(state, suitIndex, rank)) {
+		return;
+	}
+
 	if (Utils.isCritical(state, suitIndex, rank)) {
 		logger.warn('saving critical card', card.toString());
 		if (rank === 5) {
@@ -50,9 +54,8 @@ function find_tcm(state, target, saved_cards, trash_card) {
 	// At most 1 trash card should be saved
 	for (const card of saved_cards) {
 		const { suitIndex, rank, order } = card;
-		const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank);
 
-		if (Utils.isBasicTrash(state, suitIndex, rank) || duplicates.some(c => (c.clued || c.finessed || c.chop_moved) && c.order !== order)) {
+		if (Utils.isTrash(state, suitIndex, rank, order)) {
 			saved_trash++;
 			logger.info(`would save trash ${card.toString()}`);
 		}
@@ -73,7 +76,7 @@ function find_tcm(state, target, saved_cards, trash_card) {
 		const rank_correct = function() {
 			const touch = state.hands[target].filter(c => c.rank === rank);
 			// Return false if not certain trash
-			for (let i = 0; i < state.num_suits; i++) {
+			for (let i = 0; i < state.suits.length; i++) {
 				// Could be a useful card
 				if (state.play_stacks[i] < rank && state.max_ranks[i] >= rank) {
 					return false;
@@ -98,12 +101,9 @@ function find_tcm(state, target, saved_cards, trash_card) {
 
 function find_5cm(state, target, chop) {
 	const { suitIndex, rank, order } = chop;
-	const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank);
 
 	// The card to be chop moved is useful and not clued/finessed/chop moved elsewhere
-	if (rank > state.hypo_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] &&
-		!duplicates.some(c => (c.clued || c.finessed || c.chop_moved) && (c.order !== order))
-	) {
+	if (rank > state.hypo_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !Utils.isSaved(state, suitIndex, rank, order)) {
 		return { type: ACTION.RANK, value: 5, target };
 	}
 	return;
@@ -126,14 +126,14 @@ function find_clues(state, options = {}) {
 		const hand = state.hands[target];
 		const chopIndex = find_chop(hand);
 
-		let found_tcm = false, tried_5cm = false;;
+		let found_tcm = false, tried_5cm = false;
 
 		for (let cardIndex = hand.length - 1; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
 			const { suitIndex, rank, finessed } = card;
 			const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank);
 
-			// Ignore finessed cards, cards visible elsewhere, or cards possibly part of a finesse
+			// Ignore finessed cards (do not ignore cm'd cards), cards visible elsewhere, or cards possibly part of a finesse
 			if (finessed || duplicates.some(c => (c.clued || c.finessed) && (c.order !== card.order)) ||
 				state.waiting_connections.some(c => suitIndex === c.inference.suitIndex && rank <= c.inference.rank)) {
 				continue;

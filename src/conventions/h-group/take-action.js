@@ -7,10 +7,11 @@ const { find_playables, find_known_trash } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
-function take_action(state, tableID) {
+function take_action(state) {
+	const { tableID } = state;
 	const hand = state.hands[state.ourPlayerIndex];
 	const { play_clues, save_clues, fix_clues } = find_clues(state);
-	const urgent_clues = find_urgent_clues(state, tableID, play_clues, save_clues, fix_clues);
+	const urgent_clues = find_urgent_clues(state, play_clues, save_clues, fix_clues);
 
 	logger.info('all urgent clues', urgent_clues);
 

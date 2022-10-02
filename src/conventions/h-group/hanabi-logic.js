@@ -94,8 +94,8 @@ function find_bad_touch(state, cards) {
 		if (Utils.isBasicTrash(state, suitIndex, rank)) {
 			bad_touch = true;
 		}
-		// Someone has the card clued or chop moved already
-		else if (Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued || c.chop_moved)) {
+		// Someone else has the card finessed, clued or chop moved already
+		else if (Utils.isSaved(state, suitIndex, rank, card.order)) {
 			bad_touch = true;
 		}
 		// Cluing both copies of a card (only include < so we don't double count)

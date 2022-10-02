@@ -36,7 +36,7 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
 	}
 }
 
-function interpret_discard(state, action, card, tableID) {
+function interpret_discard(state, action, card) {
 	const { order, playerIndex, rank, suitIndex } = action;
 
 	const trash = find_known_trash(state, playerIndex);
@@ -46,9 +46,9 @@ function interpret_discard(state, action, card, tableID) {
 	}
 
 	// If the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank)) && !card.rewinded && !card.matches_inferences()) {
+	if (!Utils.isTrash(state, card.suitIndex, card.rank, card.order) && !card.rewinded && !card.matches_inferences()) {
 		logger.info('all inferences', card.inferred.map(c => c.toString()));
-		state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, true, tableID);
+		state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, true);
 		return;
 	}
 

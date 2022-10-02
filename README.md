@@ -1,7 +1,7 @@
 # hanabi-bot
 A deterministic NodeJS bot that plays on the [hanab.live](https://hanab.live/) interface. Basic structure and ideas were taken from [Zamiell's example bot](https://github.com/Zamiell/hanabi-live-bot) (Python).
 
-Currently, it plays around level 3 of H-Group. The goal of the bot is to play with humans, so it should be able to handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning".
+Currently, it plays around level 4 of [H-Group](https://hanabi.github.io/). The goal of the bot is to play with humans, so it should be able to handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning".
 
 https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-92d0-e1d01291986e.mp4
 
@@ -16,9 +16,9 @@ https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-
 
 ## Supported commands
 Send a PM to the bot on hanab.live to interact with it.
-- `/join [password]` to join your current lobby.
-- `/rejoin <tableID> [password]` to rejoin a game that has already started.
-- `/leave <tableID>` to kick the bot from a table.
+- `/join [password]` to join your current lobby. The bot will remain in your table until it is kicked with `/leave`.
+- `/rejoin` to rejoin a game that has already started (e.g. if it crashed).
+- `/leave` to kick the bot from your table.
 - `/create <name> <maxPlayers> <password>` to have the bot create a table. The name can't have spaces.
 - `/start <tableId>` to have the bot start the game (only works if it created the table).
 

@@ -22,7 +22,7 @@ function bad_touch_possiblities(state, giver, target, prev_found = []) {
 
 	if (prev_found.length === 0) {
 		// Find useless cards
-		for (let suitIndex = 0; suitIndex <= state.num_suits; suitIndex++) {
+		for (let suitIndex = 0; suitIndex <= state.suits.length; suitIndex++) {
 			for (let rank = 1; rank <= 5; rank++) {
 				// Cards that have already been played on the stack or can never be played
 				if (Utils.isBasicTrash(state, suitIndex, rank)) {
@@ -155,70 +155,73 @@ function remove_card_from_hand(hand, order) {
 	hand.splice(card_index, 1);
 }
 
-function update_hypo_stacks(state, suitIndex, rank) {
-	if (state.hypo_stacks[suitIndex] <= rank) {
-		state.hypo_stacks[suitIndex] = rank;
+function update_hypo_stacks(state) {
+	// Fix hypo stacks if below play stacks
+	for (let i = 0; i < state.suits.length; i++) {
+		if (state.hypo_stacks[i] < state.play_stacks[i]) {
+			state.hypo_stacks[i] = state.play_stacks[i];
+		}
+	}
 
-		let found_new_playable = true;
-		const good_touch_elim = [];
+	let found_new_playable = true;
+	const good_touch_elim = [];
 
-		// Attempt to play all playable cards
-		while (found_new_playable) {
-			found_new_playable = false;
+	// Attempt to play all playable cards
+	while (found_new_playable) {
+		found_new_playable = false;
 
-			for (const hand of state.hands) {
-				for (const card of hand) {
-					if (!card.clued || good_touch_elim.some(e => e.matches(card.suitIndex, card.rank))) {
+		for (const hand of state.hands) {
+			for (const card of hand) {
+				if (!card.clued || good_touch_elim.some(e => e.matches(card.suitIndex, card.rank))) {
+					continue;
+				}
+
+				// Delayed playable if all possibilities have been either eliminated by good touch or are playable (but not all eliminated)
+				const delayed_playable = (poss) => {
+					let all_trash = true;
+					for (const c of poss) {
+						if (good_touch_elim.some(e => e.matches(c.suitIndex, c.rank))) {
+							continue;
+						}
+
+						if (state.hypo_stacks[c.suitIndex] + 1 === c.rank) {
+							all_trash = false;
+						}
+						else {
+							return false;
+						}
+					}
+					return !all_trash;
+				}
+
+				if (delayed_playable(card.possible) || delayed_playable(card.inferred)) {
+					let suitIndex2, rank2;
+					if (card.suitIndex !== -1) {
+						({suitIndex: suitIndex2, rank: rank2} = card);
+					}
+					else if (card.possible.length === 1) {
+						({suitIndex: suitIndex2, rank: rank2} = card.possible[0]);
+					}
+					else if (card.inferred.length === 1) {
+						({suitIndex: suitIndex2, rank: rank2} = card.inferred[0]);
+					}
+					else {
+						// Playable, but we don't know what card it is so we can't update hypo stacks
 						continue;
 					}
 
-					// Delayed playable if all possibilities have been either eliminated by good touch or are playable (but not all eliminated)
-					const delayed_playable = (poss) => {
-						let all_trash = true;
-						for (const c of poss) {
-							if (good_touch_elim.some(e => e.matches(c.suitIndex, c.rank))) {
-								continue;
-							}
-
-							if (state.hypo_stacks[c.suitIndex] + 1 === c.rank) {
-								all_trash = false;
-							}
-							else {
-								return false;
-							}
-						}
-						return !all_trash;
+					// Extra check just to be sure
+					if (rank2 === state.hypo_stacks[suitIndex2] + 1) {
+						state.hypo_stacks[suitIndex2] = rank2;
+					}
+					else {
+						logger.error(`tried to add new playable card ${card.toString()} but didn't match hypo stacks`);
+						continue;
 					}
 
-					if (delayed_playable(card.possible) || delayed_playable(card.inferred)) {
-						let suitIndex2, rank2;
-						if (card.suitIndex !== -1) {
-							({suitIndex: suitIndex2, rank: rank2} = card);
-						}
-						else if (card.possible.length === 1) {
-							({suitIndex: suitIndex2, rank: rank2} = card.possible[0]);
-						}
-						else if (card.inferred.length === 1) {
-							({suitIndex: suitIndex2, rank: rank2} = card.inferred[0]);
-						}
-						else {
-							// Playable, but we don't know what card it is so we can't update hypo stacks
-							continue;
-						}
-
-						// Extra check just to be sure
-						if (rank2 === state.hypo_stacks[suitIndex2] + 1) {
-							state.hypo_stacks[suitIndex2] = rank2;
-						}
-						else {
-							logger.error(`tried to add new playable card ${card.toString()} but didn't match hypo stacks`);
-							continue;
-						}
-
-						good_touch_elim.push(card);
-						found_new_playable = true;
-						logger.debug(`found new playable ${card.toString()}`);
-					}
+					good_touch_elim.push(card);
+					found_new_playable = true;
+					logger.info(`found new playable ${card.toString()}`);
 				}
 			}
 		}

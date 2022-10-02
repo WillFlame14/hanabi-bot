@@ -5,7 +5,7 @@ const Utils = require('./util.js');
 
 function onClue(state, action) {
 	const { target, clue, list } = action;
-	const new_possible = find_possibilities(clue, state.num_suits);
+	const new_possible = find_possibilities(clue, state.suits.length);
 
 	for (const card of state.hands[target]) {
 		if (list.includes(card.order)) {

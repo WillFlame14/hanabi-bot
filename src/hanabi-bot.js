@@ -3,6 +3,7 @@ const https = require('https');
 const WebSocket = require('ws');
 
 const { handle } = require('./command-handler.js');
+const { fetchVariants } = require('./variants.js');
 const Utils = require('./util.js');
 
 /**
@@ -71,11 +72,13 @@ function connect(bot_index = '') {
 
 async function main() {
 	const args = parse_args();
-	let cookie;
+
+	let cookie = connect(args.index);
+	fetchVariants();
 
 	// Connect to server using credentials
 	try {
-		cookie = await connect(args.index);
+		cookie = await cookie;
 	}
 	catch (error) {
 		console.error(error);

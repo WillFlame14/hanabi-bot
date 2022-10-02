@@ -138,6 +138,19 @@ function isBasicTrash(state, suitIndex, rank) {
 	return rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
 }
 
+function isSaved(state, suitIndex, rank, order = -1) {
+	return visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => {
+		if (order !== -1 && c.order === order) {
+			return false;
+		}
+		return c.finessed || c.clued || c.chop_moved;
+	});
+}
+
+function isTrash(state, suitIndex, rank, order) {
+	return isBasicTrash(state, suitIndex, rank) || isSaved(state, suitIndex, rank, order);
+}
+
 function playableAway(state, suitIndex, rank) {
 	return rank - (state.play_stacks[suitIndex] + 1);
 }
@@ -172,7 +185,7 @@ function objPick(obj, attributes) {
 }
 
 function logCard(suitIndex, rank) {
-	const colours = ['r', 'y', 'g', 'b', 'p'];
+	const colours = ['r', 'y', 'g', 'b', 'p', 't'];
 	return colours[suitIndex] + rank;
 }
 
@@ -205,7 +218,7 @@ function logClue(clue) {
 	}
 
 	const new_clue = {};
-	const value = clue.type === 2 ? ['red', 'yellow', 'green', 'blue', 'purple'][clue.value] : clue.value;
+	const value = clue.type === 2 ? ['red', 'yellow', 'green', 'blue', 'purple', 'teal'][clue.value] : clue.value;
 
 	new_clue.info = `(${value} to playerIndex ${clue.target})`;
 	return new_clue.info;
@@ -248,7 +261,7 @@ module.exports = {
 	findOrder,
 	handFind, handFindInfer, visibleFind,
 	clueTouched,
-	isCritical, isBasicTrash, playableAway,
+	isCritical, isBasicTrash, isSaved, isTrash, playableAway,
 	objClone, objPick,
 	logCard, logHand, logClue, writeNote
 };

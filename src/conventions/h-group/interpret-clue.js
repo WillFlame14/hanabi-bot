@@ -136,7 +136,7 @@ function interpret_clue(state, action, options = {}) {
 		// FIX: Rewind to when the earliest card was clued so that we don't perform false eliminations
 		if (focused_card.inferred.length === 1) {
 			const { suitIndex, rank } = focused_card.inferred[0];
-			update_hypo_stacks(state, suitIndex, rank);
+			update_hypo_stacks(state);
 			team_elim(state, focused_card, giver, target, suitIndex, rank);
 		}
 		return;
@@ -190,17 +190,11 @@ function interpret_clue(state, action, options = {}) {
 
 			// First unclued or newly clued card is chop
 			if (!found_chop) {
+				const { suitIndex, rank, order } = card;
 				// If we aren't the target, we can see the card being chop moved
-				if (target !== state.ourPlayerIndex) {
-					const duplicates = Utils.visibleFind(state, giver, card.suitIndex, card.rank).filter(c => c.order !== card.order);
-
-					// Chop shouldn't be trash or clued/finessed/chop moved in someone else's hand
-					if (Utils.isBasicTrash(state, card.suitIndex, card.rank) ||
-						duplicates.some(c => c.finessed || c.clued || c.chop_moved)
-					) {
-						logger.info(`chop ${card.toString()} is trash, not interpreting 5cm`);
-						break;
-					}
+				if (target !== state.ourPlayerIndex && Utils.isTrash(state, suitIndex, rank, order)) {
+					logger.info(`chop ${card.toString()} is trash, not interpreting 5cm`);
+					break;
 				}
 				found_chop = true;
 				chop_card = card;
@@ -263,7 +257,7 @@ function interpret_clue(state, action, options = {}) {
 				// Only one inference, we can update hypo stacks
 				if (matched_inferences.length === 1) {
 					logger.debug('updating hypo stack (inference)');
-					update_hypo_stacks(state, suitIndex, rank);
+					update_hypo_stacks(state);
 					team_elim(state, focused_card, giver, target, suitIndex, rank);
 				}
 				// Multiple inferences, we need to wait for connections
@@ -372,7 +366,7 @@ function interpret_clue(state, action, options = {}) {
 
 				// Only one set of connections, so can elim safely
 				if (all_connections.length === 1) {
-					update_hypo_stacks(state, conn_suit, next_rank);
+					update_hypo_stacks(state);
 					team_elim(state, focused_card, giver, target, conn_suit, next_rank);
 				}
 				// Multiple possible sets, we need to wait for connections
