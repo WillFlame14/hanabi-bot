@@ -192,7 +192,7 @@ function update_hypo_stacks(state) {
 						}
 					}
 					return !all_trash;
-				}
+				};
 
 				if (delayed_playable(card.possible) || delayed_playable(card.inferred)) {
 					let suitIndex2, rank2;

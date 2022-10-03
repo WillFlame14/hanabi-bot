@@ -42,7 +42,7 @@ function find_fix_clues(state, play_clues, save_clues) {
 						Utils.isBasicTrash(state, p.suitIndex, p.rank) ||
 						Utils.visibleFind(state, target, p.suitIndex, p.rank).some(c => c.clued && p.order !== c.order)
 					);
-				}
+				};
 
 				// Card doesn't match any inferences and seems playable but isn't (need to fix)
 				if (!card.matches_inferences() && seems_playable && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
@@ -82,7 +82,7 @@ function find_fix_clues(state, play_clues, save_clues) {
 
 						if (card_fixed(card_after_cluing)) {
 							// TODO: Find the highest value play clue
-							logger.info(`found fix ${Utils.logClue(clue)} for card ${card.toString()} to inferences [${card_after_cluing.inferred.map(c => c.toString()).join(',')}]`)
+							logger.info(`found fix ${Utils.logClue(clue)} for card ${card.toString()} to inferences [${card_after_cluing.inferred.map(c => c.toString()).join(',')}]`);
 							fix_clues[target].push(Object.assign(clue, { trash: card_trash(card_after_cluing) }));
 							found_clue = true;
 							break;

@@ -13,4 +13,4 @@ module.exports = {
 	ACTION,
 	CLUE,
 	CARD_COUNT,
-}
+};

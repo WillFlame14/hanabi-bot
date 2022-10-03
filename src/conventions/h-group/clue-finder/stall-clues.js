@@ -7,7 +7,7 @@ const { logger } = require('../../../logger.js');
 function find_stall_clue(state, severity, tempo_clue) {
 	const stall_clues = [[], [], [], []];
 
-	if (tempo_clue !== undefined) {
+	if (tempo_clue !== undefined && severity > 1) {
 		stall_clues[1] = [tempo_clue];
 	}
 

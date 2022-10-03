@@ -28,7 +28,7 @@ function connect(bot_index = '') {
 	const u_field = `HANABI_USERNAME${bot_index}`, p_field = `HANABI_PASSWORD${bot_index}`;
 
 	if (process.env[u_field] === undefined || process.env[p_field] === undefined) {
-		throw new Error(`Missing ${u_field} and ${p_field} environment variables.`)
+		throw new Error(`Missing ${u_field} and ${p_field} environment variables.`);
 	}
 
 	const data = `username=${process.env[u_field]}&password=${process.env[p_field]}&version=bot`;

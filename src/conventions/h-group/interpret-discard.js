@@ -28,7 +28,7 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
 
 	const playable = (card) => {
 		return card.inferred.every(c => Utils.playableAway(state, c.suitIndex, c.rank) === 0);
-	}
+	};
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
 	if (sarcastic.length === 0 || sarcastic.some(s => !playable(s))) {

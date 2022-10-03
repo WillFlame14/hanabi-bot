@@ -1,7 +1,7 @@
 const readline = require('readline');
 const { Card } = require('./basics/Card.js');
 const { logger } = require('./logger.js');
-const { ACTION, CARD_COUNT } = require('./constants.js')
+const { ACTION, CARD_COUNT } = require('./constants.js');
 
 const globals = {};
 

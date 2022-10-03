@@ -237,7 +237,7 @@ function interpret_clue(state, action, options = {}) {
 			const blocking_interpretation = function (inf) {
 				return matched_inferences.some(p => p.suitIndex === inf.suitIndex && p.rank === inf.rank
 					&& (p.save || p.stall) && inf.connections[0].reacting === target);
-			}
+			};
 
 			if (!save && !stall && !blocking_interpretation(inference)) {
 				let next_rank = state.play_stacks[suitIndex] + 1;
@@ -313,7 +313,6 @@ function interpret_clue(state, action, options = {}) {
 			const { feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank);
 			if (feasible) {
 				all_connections.push({ connections, conn_suit: focused_card.suitIndex });
-				conn_suit = focused_card.suitIndex;
 			}
 		}
 

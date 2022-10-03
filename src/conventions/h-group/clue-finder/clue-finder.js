@@ -55,7 +55,8 @@ function find_tcm(state, target, saved_cards, trash_card) {
 	for (const card of saved_cards) {
 		const { suitIndex, rank, order } = card;
 
-		if (Utils.isTrash(state, suitIndex, rank, order)) {
+		// Saving a trash card or two of the same card
+		if (Utils.isTrash(state, suitIndex, rank, order) || saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order)) {
 			saved_trash++;
 			logger.info(`would save trash ${card.toString()}`);
 		}
@@ -71,7 +72,7 @@ function find_tcm(state, target, saved_cards, trash_card) {
 			const trash = state.play_stacks[suitIndex] === state.max_ranks[suitIndex];
 
 			return trash && focused_card.order === trash_card.order;
-		}
+		};
 
 		const rank_correct = function() {
 			const touch = state.hands[target].filter(c => c.rank === rank);
@@ -85,12 +86,12 @@ function find_tcm(state, target, saved_cards, trash_card) {
 
 			const { focused_card } = determine_focus(state.hands[target], touch.map(c => c.order), { beforeClue: true });
 			return focused_card === trash_card.order;
-		}
+		};
 
 		logger.info(`colour correct ${colour_correct()}, rank correct ${rank_correct()}`);
 
 		if (colour_correct() && !rank_correct()) {
-			return { type: ACTION.COLOUR, value: suitIndex, target }
+			return { type: ACTION.COLOUR, value: suitIndex, target };
 		}
 		else if (rank_correct()) {
 			return { type: ACTION.RANK, value: rank, target };
@@ -191,7 +192,7 @@ function find_clues(state, options = {}) {
 			const clue = determine_clue(state, target, card);
 			if (clue !== undefined) {
 				// Not a play clue
-				if (clue.result.playables === 0) {
+				if (clue.result.playables.length === 0) {
 					if (cardIndex !== chopIndex) {
 						logger.info(`found clue ${Utils.logClue(clue)} that wasn't a save/tcm/5cm/play.`);
 					}
