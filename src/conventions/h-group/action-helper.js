@@ -123,7 +123,7 @@ function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 		// (play) (give play if 2+ clues)
 		// [other, save only] [other, play/fix over save] [other, fix]
 		// (give play if < 2 clues) [early saves]
-		if (save_clues[target] !== undefined || state.hands[target].every(c => c.clued)) {
+		if (save_clues[target] !== undefined || Utils.handLocked(state.hands[target])) {
 			// They already have a playable or trash (i.e. early save)
 			if (playable_cards.length !== 0 || trash_cards.length !== 0) {
 				const { type, value } = save_clues[target];
@@ -141,7 +141,7 @@ function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 
 			// Try to give a play clue involving them
 			if (state.clue_tokens > 1) {
-				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].every(c => c.clued));
+				const play_over_save = find_play_over_save(state, target, play_clues.flat(), Utils.handLocked(state.hands[target]));
 				if (play_over_save !== undefined) {
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
 					continue;

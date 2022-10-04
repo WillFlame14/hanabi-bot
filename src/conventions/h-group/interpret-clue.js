@@ -16,7 +16,7 @@ function stalling_situation(state, action) {
 	if (state.clue_tokens === 7) {
 		severity = 4;
 	}
-	else if (state.hands[giver].every(c => c.clued || c.chop_moved)) {
+	else if (Utils.handLocked(state.hands[giver])) {
 		severity = 3;
 	}
 	else if (state.early_game) {
@@ -112,12 +112,14 @@ function interpret_clue(state, action, options = {}) {
 	do {
 		bad_touch_len = bad_touch.length;
 		for (const card of state.hands[target]) {
+			const known_trash = card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank));
+
 			if (card.inferred.length > 1 && (card.clued || list.includes(card.order))) {
 				card.subtract('inferred', bad_touch);
 			}
 
-			// Lost all inferences (fix), revert to good touch principle
-			if (list.includes(card.order) && !card.newly_clued && card.inferred.length === 0 && !card.reset) {
+			// Lost all inferences (fix), revert to good touch principle (must not have been known trash)
+			if (!known_trash && list.includes(card.order) && !card.newly_clued && card.inferred.length === 0 && !card.reset) {
 				fix = true;
 				card.inferred = Utils.objClone(card.possible);
 				card.subtract('inferred', bad_touch);

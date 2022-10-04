@@ -102,6 +102,10 @@ function handFindInfer(hand, suitIndex, rank, options = {}) {
 	});
 }
 
+function handLocked(hand) {
+	return hand.every(c => c.clued || c.chop_moved);
+}
+
 function visibleFind(state, target, suitIndex, rank, options = {}) {
 	let found = [];
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -259,7 +263,7 @@ module.exports = {
 	globalModify, initConsole,
 	sendChat, sendCmd,
 	findOrder,
-	handFind, handFindInfer, visibleFind,
+	handFind, handFindInfer, handLocked, visibleFind,
 	clueTouched,
 	isCritical, isBasicTrash, isSaved, isTrash, playableAway,
 	objClone, objPick,

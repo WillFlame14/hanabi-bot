@@ -42,8 +42,11 @@ function clue_safe(state, clue) {
 
 	// New chop is critical
 	if (chop !== undefined && Utils.isCritical(hypo_state, chop.suitIndex, chop.rank)) {
-		logger.error(`Not giving clue ${Utils.logClue(clue)}, as ${chop.toString()} is critical.`);
-		give_clue = false;
+		// No time to give second save
+		if (state.clue_tokens === 1 || (state.ourPlayerIndex + 1) % state.numPlayers === target) {
+			logger.error(`Not giving clue ${Utils.logClue(clue)}, as ${chop.toString()} is critical.`);
+			give_clue = false;
+		}
 	}
 
 	// Locked hand and no clues
