@@ -129,7 +129,10 @@ function find_focus_possible(state, giver, target, clue, chop, ignoreCard) {
 		}
 	}
 
-	return focus_possible;
+	// Remove earlier duplicates (since save overrides play)
+	return focus_possible.filter((p1, index1) => {
+		return !focus_possible.some((p2, index2) => p1.suitIndex === p2.suitIndex && p1.rank === p2.rank && index1 < index2);
+	});
 }
 
 function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = []) {

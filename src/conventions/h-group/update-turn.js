@@ -8,7 +8,12 @@ function remove_finesse(state, waiting_index) {
 	// Remove remaining finesses
 	for (const { type, reacting, card } of connections) {
 		if (type === 'finesse') {
-			Utils.findOrder(state.hands[reacting], card.order).finessed = false;
+			const finessed_card = Utils.findOrder(state.hands[reacting], card.order);
+			finessed_card.finessed = false;
+
+			// Restore old inferences
+			finessed_card.inferred = finessed_card.old_inferred;
+			finessed_card.old_inferred = undefined;
 		}
 	}
 

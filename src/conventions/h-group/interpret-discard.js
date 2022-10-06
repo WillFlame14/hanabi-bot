@@ -37,7 +37,7 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
 }
 
 function interpret_discard(state, action, card) {
-	const { order, playerIndex, rank, suitIndex } = action;
+	const { order, playerIndex, rank, suitIndex, failed } = action;
 
 	const trash = find_known_trash(state, playerIndex);
 	// Early game and discard wasn't known trash or misplay, so end early game
@@ -45,8 +45,8 @@ function interpret_discard(state, action, card) {
 		state.early_game = false;
 	}
 
-	// If the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!Utils.isTrash(state, card.suitIndex, card.rank, card.order) && !card.rewinded && !card.matches_inferences()) {
+	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
+	if (!card.rewinded && (failed || (!card.matches_inferences() && !Utils.isTrash(state, card.suitIndex, card.rank, card.order)))) {
 		logger.info('all inferences', card.inferred.map(c => c.toString()));
 		state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, true);
 		return;
@@ -57,7 +57,7 @@ function interpret_discard(state, action, card) {
 		const duplicates = Utils.visibleFind(state, playerIndex, suitIndex, rank);
 
 		// Card was bombed
-		if (action.failed) {
+		if (failed) {
 			undo_hypo_stacks(state, playerIndex, suitIndex, rank);
 		}
 		else {

@@ -102,11 +102,15 @@ function find_tcm(state, target, saved_cards, trash_card) {
 
 function find_5cm(state, target, chop) {
 	const { suitIndex, rank, order } = chop;
+	const clue = { type: ACTION.RANK, value: 5, target };
 
 	// The card to be chop moved is useful and not clued/finessed/chop moved elsewhere
-	if (rank > state.hypo_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !Utils.isSaved(state, suitIndex, rank, order)) {
-		return { type: ACTION.RANK, value: 5, target };
+	if (rank > state.hypo_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] &&
+		!Utils.isSaved(state, suitIndex, rank, order) && clue_safe(state, clue)
+	) {
+		return clue;
 	}
+
 	return;
 }
 

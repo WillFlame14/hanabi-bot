@@ -16,8 +16,8 @@ function find_fix_clues(state, play_clues, save_clues) {
 		const hand = state.hands[target];
 
 		for (const card of hand) {
-			// Card known, doesn't need fix
-			if (card.possible.length === 1) {
+			// Card known (or known trash), doesn't need fix
+			if (card.possible.length === 1 || card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank))) {
 				continue;
 			}
 

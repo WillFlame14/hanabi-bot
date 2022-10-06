@@ -13,7 +13,7 @@ function stalling_situation(state, action) {
 
 	let severity = 0;
 
-	if (state.clue_tokens === 7) {
+	if (state.clue_tokens === 7 && state.turn_count !== 0) {
 		severity = 4;
 	}
 	else if (Utils.handLocked(state.hands[giver])) {
@@ -102,6 +102,10 @@ function interpret_clue(state, action, options = {}) {
 	const { clue, giver, list, target, mistake = false } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
+	if (focused_card.inferred.length === 0) {
+		focused_card.inferred = Utils.objClone(focused_card.possible);
+	}
+
 	let fix = false;
 
 	// Touched cards should also obey good touch principle
@@ -144,7 +148,7 @@ function interpret_clue(state, action, options = {}) {
 		return;
 	}
 
-	if (!options.ignoreStall && state.turn_count !== 0 && stalling_situation(state, action)) {
+	if (!options.ignoreStall && stalling_situation(state, action)) {
 		return;
 	}
 
@@ -251,6 +255,8 @@ function interpret_clue(state, action, options = {}) {
 					logger.info(`connecting on ${card.toString()} order ${card.order} type ${type}`);
 					if (type === 'finesse') {
 						card.finessed = true;
+						// Save the old inferences in case this is not actually a finesse
+						card.old_inferred = Utils.objClone(card.inferred);
 						card.inferred = [new Card(suitIndex, next_rank)];
 					}
 					next_rank++;

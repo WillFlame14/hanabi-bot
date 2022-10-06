@@ -27,7 +27,6 @@ function determine_clue(state, target, target_card) {
 		const result = Object.assign({}, base);
 
 		const bad_touch_cards = find_bad_touch(state, touch.filter(c => !c.clued));		// Ignore cards that were already clued
-		result.bad_touch = bad_touch_cards.length;
 		result.focused = determine_focus(hand, touch.map(c => c.order), { beforeClue: true }).focused_card.order === target_card.order;
 
 		if (!result.focused) {
@@ -77,9 +76,9 @@ function determine_clue(state, target, target_card) {
 
 			// Other touched cards can be bad touched/trash or match inference
 			if (card.newly_clued) {
-				return bad_touch_cards.some(c => c.order === card.order) ||							// Card is bad touched
-					card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank)) || 	// Card is known trash
-					(!card.reset && card.matches_inferences());										// Card matches interpretation
+				return bad_touch_cards.some(c => c.order === card.order) ||								// Card is bad touched
+					card.possible.every(c => Utils.isTrash(hypo_state, c.suitIndex, c.rank, card.order)) || 	// Card is known trash
+					(!card.reset && card.matches_inferences());											// Card matches interpretation
 			}
 
 			if (card.finessed) {
@@ -99,12 +98,33 @@ function determine_clue(state, target, target_card) {
 			/*logger.info(hypo_state.hands[target].map(card => {
 				if (card.reset || !card.matches_inferences()) {
 					logger.info(`card ${card.toString()} has inferences [${card.inferred.map(c => c.toString()).join(',')}] reset? ${card.reset}`);
+					logger.info(Utils.logHand(hypo_state.hands[target]));
+				}
+				if (!card.possible.every(c => Utils.isTrash(hypo_state, c.suitIndex, c.rank, card.order))) {
+					logger.info(`${card.possible.find(c => !Utils.isTrash(hypo_state, c.suitIndex, c.rank, card.order))} possibility is not trash`);
 				}
 				return bad_touch_cards.some(c => c.order === card.order) ||							// Card is bad touched
-					card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank)) || 	// Card is known trash
+					card.possible.every(c => Utils.isTrash(hypo_state, c.suitIndex, c.rank, card.order)) || 	// Card is known trash
 					(!card.reset && card.matches_inferences());										// Card matches interpretation
 			}));*/
 			return { correct: false };
+		}
+
+		result.bad_touch = 0;
+		result.trash = 0;
+		for (const card of hypo_state.hands[target]) {
+			if (bad_touch_cards.some(c => c.order === card.order)) {
+				// Known trash
+				if (card.possible.every(p => Utils.isTrash(hypo_state, p.suitIndex, p.rank, card.order))) {
+					result.trash++;
+				}
+				else {
+					logger.info(`${card.toString()} is bad touch`);
+					logger.info(card.possible.map(c => c.toString()));
+					logger.info(card.possible.find(p => !Utils.isTrash(hypo_state, p.suitIndex, p.rank, card.order)).toString());
+					result.bad_touch++;
+				}
+			}
 		}
 
 		// Re-simulate clue, but from our perspective so we can count the playable cards and finesses correctly
@@ -119,8 +139,8 @@ function determine_clue(state, target, target_card) {
 		result.playables = [];
 
 		// Count the number of finesses and newly known playable cards
-		logger.info(hypo_state.hypo_stacks);
-		logger.info(state.hypo_stacks);
+		logger.debug(`hypo stacks before clue: ${hypo_state.hypo_stacks}`);
+		logger.debug(`hypo stacks after clue: ${state.hypo_stacks}`);
 		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 			for (let rank = state.hypo_stacks[suitIndex] + 1; rank <= hypo_state.hypo_stacks[suitIndex]; rank++) {
 				// Find the card
@@ -156,10 +176,11 @@ function determine_clue(state, target, target_card) {
 	});
 
 	const logResult = (result) => {
-		const { clue, bad_touch, interpret, elim, new_touched, finesses, playables } = result;
+		const { clue, bad_touch, trash, interpret, elim, new_touched, finesses, playables } = result;
 		return {
 			clue,
 			bad_touch,
+			trash,
 			interpret: interpret?.map(c => c.toString()),
 			elim,
 			new_touched,

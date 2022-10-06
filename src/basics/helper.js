@@ -51,6 +51,10 @@ function bad_touch_possiblities(state, giver, target, prev_found = []) {
 				else if (card.inferred.length === 1) {
 					({suitIndex, rank} = card.inferred[0]);
 					method = 'inference';
+					if (!card.matches(suitIndex, rank, { infer: true })) {
+						logger.warn(`tried to identify ${card.inferred[0].toString()} as bad touch when card's identity is ${card.toString()}`);
+						continue;
+					}
 				}
 				else {
 					continue;

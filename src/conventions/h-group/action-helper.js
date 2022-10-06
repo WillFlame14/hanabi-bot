@@ -126,9 +126,11 @@ function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 		if (save_clues[target] !== undefined || Utils.handLocked(state.hands[target])) {
 			// They already have a playable or trash (i.e. early save)
 			if (playable_cards.length !== 0 || trash_cards.length !== 0) {
-				const { type, value } = save_clues[target];
-				urgent_actions[8].push({ tableID: state.tableID, type, target, value });
-				continue;
+				if (save_clues[target] !== undefined) {
+					const { type, value } = save_clues[target];
+					urgent_actions[8].push({ tableID: state.tableID, type, target, value });
+					continue;
+				}
 			}
 
 			// Try to see if they have a playable card that connects directly through our hand
