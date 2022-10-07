@@ -2,7 +2,7 @@ const { ACTION } = require('../../../constants.js');
 const { clue_safe } = require('./clue-safe.js');
 const { find_fix_clues } = require('./fix-clues.js');
 const { determine_clue } = require('./determine-clue.js');
-const { find_chop, determine_focus } = require('./../hanabi-logic.js');
+const { find_chop, determine_focus, stall_severity } = require('../hanabi-logic.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
 
@@ -11,6 +11,11 @@ function find_save(state, target, card) {
 
 	if (Utils.isBasicTrash(state, suitIndex, rank)) {
 		return;
+	}
+
+	// Save a delayed playable card
+	if (state.hypo_stacks[suitIndex] + 1 === rank) {
+		return determine_clue(state, target, card);
 	}
 
 	if (Utils.isCritical(state, suitIndex, rank)) {
@@ -164,7 +169,9 @@ function find_clues(state, options = {}) {
 			}
 
 			// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
-			if (!options.ignoreCM && cardIndex !== chopIndex && !tried_5cm && !(card.clued || card.chop_moved) && rank === 5 && !state.early_game) {
+			if (rank === 5 && cardIndex !== chopIndex && !tried_5cm && !options.ignoreCM &&
+				!(card.clued || card.chop_moved) && stall_severity(state, state.ourPlayerIndex) === 0
+			) {
 				logger.info('trying 5cm');
 				tried_5cm = true;
 				let valid_5cm = false;

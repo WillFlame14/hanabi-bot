@@ -85,7 +85,7 @@ function handle_action(state, action, catchup = false) {
 			logger.warn(`${playerName} plays ${card.toString()}`);
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-			if (!card.rewinded && playerIndex === state.ourPlayerIndex && card.inferred.length > 1) {
+			if (!card.rewinded && playerIndex === state.ourPlayerIndex && (card.inferred.length > 1 || !card.matches_inferences())) {
 				logger.info('all inferences', card.inferred.map(c => c.toString()));
 				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false);
 				return;
@@ -100,7 +100,6 @@ function handle_action(state, action, catchup = false) {
 			}
 
 			// Update hypo stacks
-			logger.debug('updating hypo stack (play)');
 			update_hypo_stacks(state);
 
 			state.last_actions[playerIndex] = action;

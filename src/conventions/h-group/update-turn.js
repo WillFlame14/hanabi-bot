@@ -6,14 +6,21 @@ function remove_finesse(state, waiting_index) {
 	const { connections, focused_card, inference } = state.waiting_connections[waiting_index];
 
 	// Remove remaining finesses
-	for (const { type, reacting, card } of connections) {
-		if (type === 'finesse') {
-			const finessed_card = Utils.findOrder(state.hands[reacting], card.order);
-			finessed_card.finessed = false;
+	for (const connection of connections) {
+		const { type, reacting } = connection;
+		const card = Utils.findOrder(state.hands[reacting], connection.card.order);
 
+		if (type === 'finesse') {
+			card.finessed = false;
+		}
+
+		if (card.old_inferred !== undefined) {
 			// Restore old inferences
-			finessed_card.inferred = finessed_card.old_inferred;
-			finessed_card.old_inferred = undefined;
+			card.inferred = card.old_inferred;
+			card.old_inferred = undefined;
+		}
+		else {
+			logger.error(`no old inferences on card ${card.toString()}! current inferences ${card.inferred.map(c => c.toString())}`);
 		}
 	}
 

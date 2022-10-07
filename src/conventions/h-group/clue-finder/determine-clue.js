@@ -1,6 +1,6 @@
 const { ACTION, CLUE } = require('../../../constants.js');
 const { clue_safe } = require('./clue-safe.js');
-const { determine_focus, find_bad_touch } = require('./../hanabi-logic.js');
+const { determine_focus, find_bad_touch } = require('../hanabi-logic.js');
 const { logger } = require('../../../logger.js');
 const Basics = require('../../../basics.js');
 const Utils = require('../../../util.js');
@@ -139,8 +139,8 @@ function determine_clue(state, target, target_card) {
 		result.playables = [];
 
 		// Count the number of finesses and newly known playable cards
-		logger.debug(`hypo stacks before clue: ${hypo_state.hypo_stacks}`);
-		logger.debug(`hypo stacks after clue: ${state.hypo_stacks}`);
+		logger.info(`hypo stacks before clue: ${state.hypo_stacks}`);
+		logger.info(`hypo stacks after clue:  ${hypo_state.hypo_stacks}`);
 		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 			for (let rank = state.hypo_stacks[suitIndex] + 1; rank <= hypo_state.hypo_stacks[suitIndex]; rank++) {
 				// Find the card

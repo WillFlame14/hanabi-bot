@@ -176,7 +176,7 @@ function update_hypo_stacks(state) {
 
 		for (const hand of state.hands) {
 			for (const card of hand) {
-				if (!card.clued || good_touch_elim.some(e => e.matches(card.suitIndex, card.rank))) {
+				if (!(card.clued || card.finessed || card.chop_moved) || good_touch_elim.some(e => e.matches(card.suitIndex, card.rank))) {
 					continue;
 				}
 

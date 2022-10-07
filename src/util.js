@@ -106,7 +106,7 @@ function handLocked(hand) {
 	return hand.every(c => c.clued || c.chop_moved);
 }
 
-function visibleFind(state, target, suitIndex, rank, options = {}) {
+function visibleFind(state, inferringPlayerIndex, suitIndex, rank, options = {}) {
 	let found = [];
 	for (let i = 0; i < state.numPlayers; i++) {
 		if (options.ignore?.includes(i)) {
@@ -114,7 +114,7 @@ function visibleFind(state, target, suitIndex, rank, options = {}) {
 		}
 
 		const hand = state.hands[i];
-		if (i === target || i === state.ourPlayerIndex) {
+		if (i === inferringPlayerIndex || i === state.ourPlayerIndex) {
 			found = found.concat(handFindInfer(hand, suitIndex, rank, options));
 		}
 		else {

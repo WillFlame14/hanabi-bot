@@ -121,4 +121,17 @@ function find_bad_touch(state, cards) {
 	return bad_touch_cards;
 }
 
-module.exports = { find_chop, find_prompt, find_finesse, determine_focus, find_bad_touch };
+function stall_severity(state, giver) {
+	if (state.clue_tokens === 7 && state.turn_count !== 0) {
+		return 4;
+	}
+	if (Utils.handLocked(state.hands[giver])) {
+		return 3;
+	}
+	if (state.early_game) {
+		return 1;
+	}
+	return 0;
+}
+
+module.exports = { find_chop, find_prompt, find_finesse, determine_focus, find_bad_touch, stall_severity };

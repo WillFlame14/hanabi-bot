@@ -1,5 +1,5 @@
 const { CLUE } = require('../../../constants.js');
-const { find_chop } = require('./../hanabi-logic.js');
+const { find_chop } = require('../hanabi-logic.js');
 const { find_playables, find_known_trash } = require('../../../basics/helper.js');
 const { logger } = require('../../../logger.js');
 const Basics = require('../../../basics.js');
