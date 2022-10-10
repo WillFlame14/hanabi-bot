@@ -29,7 +29,7 @@ function clue_safe(state, clue) {
 
 	// Note that chop will be undefined if the entire hand is clued
 	const chop = hand[find_chop(hand, { includeNew: true })];
-	logger.info(`chop after clue is ${chop?.toString()}`);
+	logger.debug(`chop after clue is ${chop?.toString()}`);
 
 	let give_clue = true;
 

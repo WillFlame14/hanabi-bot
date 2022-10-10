@@ -211,11 +211,15 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, finess
 	logger.info('pivotal action', pivotal_action);
 	handle_action(new_state, pivotal_action, true);
 
+	logger.setLevel(logger.LEVELS.ERROR);
+
 	// Redo all the following actions
 	const future = state.actionList.slice(action_index + 1);
 	for (const action of future) {
 		handle_action(new_state, action, true);
 	}
+
+	logger.setLevel(logger.LEVELS.INFO);
 
 	// Overwrite state
 	Object.assign(state, new_state);

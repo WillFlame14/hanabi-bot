@@ -259,6 +259,10 @@ function writeNote(turn, card, tableID) {
 	}
 }
 
+function getPace(state) {
+	return state.play_stacks.reduce((acc, curr) => acc + curr) + state.cards_left + state.numPlayers - (state.suits.length * 5);
+}
+
 module.exports = {
 	CARD_COUNT,
 	globalModify, initConsole,
@@ -268,5 +272,6 @@ module.exports = {
 	clueTouched,
 	isCritical, isBasicTrash, isSaved, isTrash, playableAway,
 	objClone, objPick,
-	logCard, logHand, logClue, writeNote
+	logCard, logHand, logClue, writeNote,
+	getPace
 };

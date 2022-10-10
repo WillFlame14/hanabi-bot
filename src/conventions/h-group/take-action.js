@@ -2,7 +2,7 @@ const { ACTION } = require('../../constants.js');
 const { select_play_clue, find_urgent_actions, determine_playable_card } = require('./action-helper.js');
 const { find_clues } = require('./clue-finder/clue-finder.js');
 const { find_stall_clue } = require('./clue-finder/stall-clues.js');
-const { find_chop } = require('./hanabi-logic.js');
+const { find_chop, inEndgame } = require('./hanabi-logic.js');
 const { find_playables, find_known_trash } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
@@ -43,7 +43,6 @@ function take_action(state) {
 
 	// No saves needed, so play
 	if (playable_cards.length > 0) {
-		// TODO: Play order (connecting card in other hand, 5, connecting card in own hand, lowest card)
 		const card = determine_playable_card(state, playable_cards);
 		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: card.order });
 		return;
@@ -65,7 +64,7 @@ function take_action(state) {
 
 				// -0.5 if 2 players (allows tempo clues to be given)
 				// -10 if endgame
-				const minimum_clue_value = 1 - (state.numPlayers === 2 ? 0.5 : 0) - (state.cards_left < 5 ? 10 : 0);
+				const minimum_clue_value = 1 - (state.numPlayers === 2 ? 0.5 : 0) - (inEndgame(state) ? 10 : 0);
 
 				if (clue_value >= minimum_clue_value) {
 					const { type, target, value } = clue;
@@ -124,6 +123,20 @@ function take_action(state) {
 			const { type, value, target } = clue;
 			Utils.sendCmd('action', { tableID, type, target, value });
 			return;
+		}
+	}
+
+	// Endgame
+	if (inEndgame(state) && state.clue_tokens > 0) {
+		// If there are playables left in other hands (act like 8 clue stall)
+		if (state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index])) {
+			const clue = find_stall_clue(state, 4, tempo_clue);
+
+			if (clue !== undefined) {
+				const { type, value, target } = clue;
+				Utils.sendCmd('action', { tableID, type, target, value });
+				return;
+			}
 		}
 	}
 

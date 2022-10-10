@@ -32,7 +32,7 @@ function apply_good_touch(state, action) {
 	do {
 		bad_touch_len = bad_touch.length;
 		for (const card of state.hands[target]) {
-			if (card.inferred.length > 1 && card.clued) {
+			if (card.inferred.length > 1 && (card.clued || card.chop_moved)) {
 				card.subtract('inferred', bad_touch);
 			}
 

@@ -15,14 +15,14 @@ function find_chop(hand, options = {}) {
 
 function find_prompt(hand, suitIndex, rank, ignoreOrders = []) {
 	for (const card of hand) {
-		const { clued, newly_clued, order, inferred, possible, clues } = card;
+		const { clued, newly_clued, order, possible, clues } = card;
 		// Ignore unclued, newly clued, and known cards (also intentionally ignored cards)
 		if (!clued || newly_clued || possible.length === 1 || ignoreOrders.includes(order)) {
 			continue;
 		}
 
 		// Ignore cards that don't match the inference
-		if (!inferred.some(p => p.matches(suitIndex, rank))) {
+		if (!possible.some(p => p.matches(suitIndex, rank))) {
 			continue;
 		}
 
@@ -134,4 +134,8 @@ function stall_severity(state, giver) {
 	return 0;
 }
 
-module.exports = { find_chop, find_prompt, find_finesse, determine_focus, find_bad_touch, stall_severity };
+function inEndgame(state) {
+	return Utils.getPace(state) < state.numPlayers;
+}
+
+module.exports = { find_chop, find_prompt, find_finesse, determine_focus, find_bad_touch, stall_severity, inEndgame };

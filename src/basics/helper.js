@@ -226,7 +226,7 @@ function update_hypo_stacks(state) {
 
 					good_touch_elim.push(card);
 					found_new_playable = true;
-					logger.info(`found new playable ${card.toString()}`);
+					logger.debug(`found new playable ${card.toString()}`);
 				}
 			}
 		}
