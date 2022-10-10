@@ -162,9 +162,10 @@ function remove_card_from_hand(hand, order) {
 function update_hypo_stacks(state) {
 	// Fix hypo stacks if below play stacks
 	for (let i = 0; i < state.suits.length; i++) {
-		if (state.hypo_stacks[i] < state.play_stacks[i]) {
+		// TODO: Eventually, this should be added back. Need to maintain a better idea of the connections being made/broken.
+		// if (state.hypo_stacks[i] < state.play_stacks[i]) {
 			state.hypo_stacks[i] = state.play_stacks[i];
-		}
+		// }
 	}
 
 	let found_new_playable = true;

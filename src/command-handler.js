@@ -144,6 +144,7 @@ const handle = {
 		Object.assign(state, conventions[convention]);
 
 		state.rewind = rewind;
+		state.simulate_clue = simulate_clue;
 
 		// Save blank state
 		state.blank = Utils.objClone(state);
@@ -219,6 +220,23 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, finess
 	// Overwrite state
 	Object.assign(state, new_state);
 	rewind_depth = 0;
+}
+
+function simulate_clue(state, action, options = {}) {
+	const hypo_state = Utils.objClone(state);
+
+	if (options.simulatePlayerIndex !== undefined) {
+		hypo_state.ourPlayerIndex = options.simulatePlayerIndex;
+	}
+
+	if (!options.enableLogs) {
+		logger.setLevel(logger.LEVELS.ERROR);
+	}
+
+	hypo_state.interpret_clue(hypo_state, action);
+	logger.setLevel(logger.LEVELS.INFO);
+
+	return hypo_state;
 }
 
 module.exports = { handle };

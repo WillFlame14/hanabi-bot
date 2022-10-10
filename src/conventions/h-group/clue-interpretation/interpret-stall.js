@@ -2,7 +2,6 @@ const { CLUE } = require('../../../constants.js');
 const { find_clues } = require('../clue-finder/clue-finder.js');
 const { determine_focus, stall_severity } = require('../hanabi-logic.js');
 const { logger } = require('../../../logger.js');
-const Utils = require('../../../util.js');
 
 function isStall(state, action, severity) {
 	const { clue, list, target } = action;

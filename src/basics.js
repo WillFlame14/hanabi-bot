@@ -28,15 +28,9 @@ function onClue(state, action) {
 			card.subtract('inferred', new_possible);
 		}
 
-		// Eliminate in own hand (ignore everyone except us)
+		// Eliminate in own hand (no one has eliminated this card yet since we just learned about it)
 		if (card.possible.length === 1) {
-			const ignorePlayerIndexes = [];
-			for (let i = 0; i < state.numPlayers; i++) {
-				if (i !== state.ourPlayerIndex) {
-					ignorePlayerIndexes.push(i);
-				}
-			}
-			card_elim(state, card.possible[0].suitIndex, card.possible[0].rank, ignorePlayerIndexes);
+			card_elim(state, card.possible[0].suitIndex, card.possible[0].rank);
 		}
 	}
 

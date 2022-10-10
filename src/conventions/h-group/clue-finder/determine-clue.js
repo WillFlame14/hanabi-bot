@@ -2,7 +2,6 @@ const { ACTION, CLUE } = require('../../../constants.js');
 const { clue_safe } = require('./clue-safe.js');
 const { determine_focus, find_bad_touch } = require('../hanabi-logic.js');
 const { logger } = require('../../../logger.js');
-const Basics = require('../../../basics.js');
 const Utils = require('../../../util.js');
 
 function determine_clue(state, target, target_card) {
@@ -35,17 +34,14 @@ function determine_clue(state, target, target_card) {
 		}
 
 		// Simulate clue from receiver's POV to see if they have the right interpretation
-		let hypo_state = Utils.objClone(state);
-		const action = { giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue, mistake: false };
+		const action = { giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue, ignoreStall: true };
 
 		// Prevent outputting logs until we know that the result is correct
 		logger.collect();
 
 		logger.info('------- ENTERING HYPO --------');
 
-		hypo_state.ourPlayerIndex = target;
-		Basics.onClue(hypo_state, action);
-		hypo_state.interpret_clue(hypo_state, action, { ignoreStall: true });
+		let hypo_state = state.simulate_clue(state, action, { simulatePlayerIndex: target, enableLogs: true });
 
 		logger.info('------- EXITING HYPO --------');
 
@@ -128,12 +124,7 @@ function determine_clue(state, target, target_card) {
 		}
 
 		// Re-simulate clue, but from our perspective so we can count the playable cards and finesses correctly
-		hypo_state = Utils.objClone(state);
-
-		logger.setLevel(logger.LEVELS.ERROR);
-		Basics.onClue(hypo_state, action);
-		hypo_state.interpret_clue(hypo_state, action, { ignoreStall: true });
-		logger.setLevel(logger.LEVELS.INFO);
+		hypo_state = state.simulate_clue(state, action);
 
 		result.finesses = 0;
 		result.playables = [];

@@ -23,7 +23,6 @@ function handle_action(state, action, catchup = false) {
 			}
 			logger.warn(`${playerName} clues ${clue_value} to ${targetName}`);
 
-			Basics.onClue(state, action);
 			state.interpret_clue(state, action);
 			state.last_actions[giver] = action;
 

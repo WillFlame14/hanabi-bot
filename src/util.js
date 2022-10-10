@@ -124,6 +124,7 @@ function visibleFind(state, inferringPlayerIndex, suitIndex, rank, options = {})
 	return found;
 }
 
+// NOTE: This function uses ACTION instead of CLUE, which is not typical.
 function clueTouched(hand, clue) {
 	const { type, value } = clue;
 	if (type === ACTION.COLOUR) {
@@ -142,8 +143,8 @@ function isBasicTrash(state, suitIndex, rank) {
 	return rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
 }
 
-function isSaved(state, suitIndex, rank, order = -1) {
-	return visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => {
+function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, options) {
+	return visibleFind(state, inferringPlayerIndex, suitIndex, rank, options).some(c => {
 		if (order !== -1 && c.order === order) {
 			return false;
 		}
@@ -152,7 +153,7 @@ function isSaved(state, suitIndex, rank, order = -1) {
 }
 
 function isTrash(state, suitIndex, rank, order) {
-	return isBasicTrash(state, suitIndex, rank) || isSaved(state, suitIndex, rank, order);
+	return isBasicTrash(state, suitIndex, rank) || isSaved(state, state.ourPlayerIndex, suitIndex, rank, order);
 }
 
 function playableAway(state, suitIndex, rank) {

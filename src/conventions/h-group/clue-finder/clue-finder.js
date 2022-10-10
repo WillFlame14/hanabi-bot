@@ -1,10 +1,25 @@
-const { ACTION } = require('../../../constants.js');
+const { CLUE, ACTION } = require('../../../constants.js');
 const { clue_safe } = require('./clue-safe.js');
 const { find_fix_clues } = require('./fix-clues.js');
 const { determine_clue } = require('./determine-clue.js');
 const { find_chop, determine_focus, stall_severity } = require('../hanabi-logic.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
+
+function save2(state, target, card) {
+	const { suitIndex, rank } = card;
+
+	if (rank !== 2) {
+		return false;
+	}
+
+	const clue = { type: CLUE.RANK, value: 2, target };
+
+	return state.play_stacks[suitIndex] === 0 &&									// play stack at 0
+		Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&	// other copy isn't visible
+		!state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true })) &&   // not in our hand
+		clue_safe(state, clue);
+}
 
 function find_save(state, target, card) {
 	const { suitIndex, rank } = card;
@@ -28,17 +43,8 @@ function find_save(state, target, card) {
 			return determine_clue(state, target, card);
 		}
 	}
-	else if (rank === 2) {
-		const clue = { type: ACTION.RANK, value: 2, target };
-
-		const save2 = state.play_stacks[suitIndex] === 0 &&									// play stack at 0
-			Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&	// other copy isn't visible
-			!state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true })) &&   // not in our hand
-			clue_safe(state, clue);															// doesn't put crit on chop
-
-		if (save2) {
-			return clue;
-		}
+	else if (save2(state, target, card)) {
+		return { type: ACTION.RANK, value: 2, target };
 	}
 	return;
 }
@@ -52,6 +58,10 @@ function find_tcm(state, target, saved_cards, trash_card) {
 		(saved_cards.every(c => c.suitIndex === chop.suitIndex) || saved_cards.every(c => c.rank === chop.rank))
 	) {
 		logger.info('prefer direct save');
+		return;
+	}
+	else if (save2(state, target, chop) && saved_cards.every(c => c.rank === 2)) {
+		logger.info('prefer direct 2 save');
 		return;
 	}
 
@@ -107,13 +117,13 @@ function find_tcm(state, target, saved_cards, trash_card) {
 
 function find_5cm(state, target, chop) {
 	const { suitIndex, rank, order } = chop;
-	const clue = { type: ACTION.RANK, value: 5, target };
+	const clue = { type: CLUE.RANK, value: 5, target };
 
 	// The card to be chop moved is useful and not clued/finessed/chop moved elsewhere
 	if (rank > state.hypo_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] &&
-		!Utils.isSaved(state, suitIndex, rank, order) && clue_safe(state, clue)
+		!Utils.isSaved(state, state.ourPlayerIndex, suitIndex, rank, order) && clue_safe(state, clue)
 	) {
-		return clue;
+		return { type: ACTION.RANK, value: 5, target };
 	}
 
 	return;
@@ -224,7 +234,7 @@ function find_clues(state, options = {}) {
 
 	logger.info('found play clues', play_clues.map(clues => clues.map(clue => Utils.logClue(clue))));
 	logger.info('found save clues', save_clues.map(clue => Utils.logClue(clue)));
-	logger.debug('found fix clues', fix_clues.map(clue => Utils.logClue(clue)));
+	logger.info('found fix clues', fix_clues.map(clues => clues.map(clue => Utils.logClue(clue))));
 	return { play_clues, save_clues, fix_clues };
 }
 

@@ -7,11 +7,22 @@ const { find_own_finesses } = require('./connecting-cards.js');
 const { Card } = require('../../../basics/Card.js');
 const { bad_touch_possiblities, update_hypo_stacks, good_touch_elim } = require('../../../basics/helper.js');
 const { logger } = require('../../../logger.js');
+const Basics = require('../../../basics.js');
 const Utils = require('../../../util.js');
 
 function apply_good_touch(state, action) {
 	const { giver, list, target } = action;
 	let fix = false;
+
+	const had_inferences = [];
+
+	for (const card of state.hands[target]) {
+		if (card.inferred.length > 0) {
+			had_inferences.push(card.order);
+		}
+	}
+
+	Basics.onClue(state, action);
 
 	// Touched cards should also obey good touch principle
 	let bad_touch = bad_touch_possiblities(state, giver, target);
@@ -21,38 +32,58 @@ function apply_good_touch(state, action) {
 	do {
 		bad_touch_len = bad_touch.length;
 		for (const card of state.hands[target]) {
-			const known_trash = card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank));
-
-			if (card.inferred.length > 1 && (card.clued || list.includes(card.order))) {
+			if (card.inferred.length > 1 && card.clued) {
 				card.subtract('inferred', bad_touch);
 			}
 
 			// Lost all inferences (fix), revert to good touch principle (must not have been known trash)
-			if (!known_trash && list.includes(card.order) && !card.newly_clued && card.inferred.length === 0 && !card.reset) {
+			if (card.inferred.length === 0 && had_inferences.includes(card.order) && list.includes(card.order) &&
+				!card.newly_clued && !card.reset
+			) {
 				fix = true;
 				card.inferred = Utils.objClone(card.possible);
 				card.subtract('inferred', bad_touch);
 				card.reset = true;
+			}
+
+			// Directly fixing duplicates (if we're using an inference, the card must match the inference, unless it's unknown)
+			// (card.inferred.length === 1 && (target === state.ourPlayerIndex || card.matches_inferences()))
+			if (!fix && list.includes(card.order) && card.possible.length === 1) {
+				const { suitIndex, rank } = card.possible[0];
+
+				// The fix can be in anyone's hand
+				for (const hand of state.hands) {
+					for (const c of hand) {
+						if ((c.clued || c.finessed) && c.matches(suitIndex, rank, { infer: true }) && c.order !== card.order) {
+							fix = true;
+							break;
+						}
+					}
+					if (fix) {
+						break;
+					}
+				}
 			}
 		}
 		bad_touch = bad_touch_possiblities(state, giver, target, bad_touch);
 	}
 	while (bad_touch_len !== bad_touch.length);
 
-	return { bad_touch, fix };
+	logger.debug('bad touch', bad_touch.map(c => Utils.logCard(c.suitIndex, c.rank)).join(','));
+	return fix;
 }
 
-function interpret_clue(state, action, options = {}) {
-	const { clue, giver, list, target, mistake = false } = action;
+function interpret_clue(state, action) {
+	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
+	const fix = apply_good_touch(state, action);
+
 	const { focused_card } = determine_focus(state.hands[target], list);
 
 	if (focused_card.inferred.length === 0) {
 		focused_card.inferred = Utils.objClone(focused_card.possible);
+		logger.error('focused card had no inferences after applying good touch');
 	}
 
-	const { bad_touch, fix } = apply_good_touch(state, action);
-
-	logger.debug('bad touch', bad_touch.map(c => Utils.logCard(c.suitIndex, c.rank)).join(','));
 	logger.debug('pre-inferences', focused_card.inferred.map(c => c.toString()).join());
 
 	if (fix || mistake) {
@@ -67,7 +98,7 @@ function interpret_clue(state, action, options = {}) {
 	}
 
 	// Check if the giver was in a stalling situation
-	if (!options.ignoreStall && stalling_situation(state, action)) {
+	if (!ignoreStall && stalling_situation(state, action)) {
 		return;
 	}
 
@@ -77,7 +108,7 @@ function interpret_clue(state, action, options = {}) {
 		return;
 	}
 	// 5's chop move
-	else if (clue.type === CLUE.RANK && clue.value === 5 && !state.early_game) {
+	else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued) {
 		if (interpret_5cm(state, target)) {
 			return;
 		}
@@ -244,7 +275,7 @@ function assign_connections(state, connections, suitIndex) {
 		if (type === 'finesse') {
 			card.finessed = true;
 		}
-		
+
 		next_rank++;
 
 		// Updating notes not on our turn

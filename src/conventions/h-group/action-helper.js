@@ -119,9 +119,9 @@ function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 		const trash_cards = find_known_trash(state, target);
 
 		// They require a save clue or are locked
-		// Urgency: [next, unlock] [next, save only] [next, play/fix over save] [next, fix] [other, unlock]
+		// Urgency: [next, unlock] [next, save only] [next, play/fix over save] [next, urgent fix] [other, unlock]
 		// (play) (give play if 2+ clues)
-		// [other, save only] [other, play/fix over save] [other, fix]
+		// [other, save only] [other, play/fix over save] [all other fixes]
 		// (give play if < 2 clues) [early saves]
 		if (save_clues[target] !== undefined || Utils.handLocked(state.hands[target])) {
 			// They already have a playable or trash (i.e. early save)
@@ -167,8 +167,19 @@ function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 
 		// They require a fix clue
 		if (fix_clues[target].length > 0) {
+			const urgent_fix = fix_clues[target].find(clue => clue.urgent);
+
+			if (urgent_fix !== undefined) {
+				const { type, value } = urgent_fix;
+
+				// Urgent fix on the next player is particularly urgent, but should prioritize urgent fixes for others too
+				urgent_actions[i === 1 ? 3 : 7].push({ tableID: state.tableID, type, target, value });
+				continue;
+			}
+
+			// No urgent fixes required
 			const { type, value } = fix_clues[target][0];
-			urgent_actions[i === 1 ? 3 : 7].push({ tableID: state.tableID, type, target, value });
+			urgent_actions[7].push({ tableID: state.tableID, type, target, value });
 		}
 	}
 	return urgent_actions;

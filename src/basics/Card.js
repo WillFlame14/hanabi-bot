@@ -105,7 +105,7 @@ class Card {
 	}
 
 	matches_inferences() {
-		return this.suitIndex === -1 || this.inferred.some(c => c.matches(this.suitIndex, this.rank));
+		return this.suitIndex === -1 || this.possible.length === 1 || this.inferred.some(c => c.matches(this.suitIndex, this.rank));
 	}
 
 	intersect(type, cards) {

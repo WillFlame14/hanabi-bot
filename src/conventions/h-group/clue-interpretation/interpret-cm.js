@@ -31,8 +31,7 @@ function interpret_5cm(state, target) {
 	logger.info('interpreting potential 5cm');
 
 	// Find the oldest 5 clued and its distance from chop
-	let found_chop = false;
-	let chop_card;
+	let chopIndex = -1;
 
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
 		const card = state.hands[target][i];
@@ -44,22 +43,25 @@ function interpret_5cm(state, target) {
 		}
 
 		// First unclued or newly clued card is chop
-		if (!found_chop) {
+		if (chopIndex === -1) {
 			const { suitIndex, rank, order } = card;
 			// If we aren't the target, we can see the card being chop moved
 			if (target !== state.ourPlayerIndex && Utils.isTrash(state, suitIndex, rank, order)) {
 				logger.info(`chop ${card.toString()} is trash, not interpreting 5cm`);
 				break;
 			}
-			found_chop = true;
-			chop_card = card;
+			chopIndex = i;
 			continue;
 		}
 
 		// Check the next card that meets the requirements (must be 5 and newly clued to be 5cm)
 		if (card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5)) {
-			logger.info(`5cm, saving ${chop_card.toString()}`);
-			chop_card.chop_moved = true;
+			if (chopIndex === -1) {
+				logger.info('rightmost 5 was clued on chop, not interpreting 5cm');
+				break;
+			}
+			logger.info(`5cm, saving ${state.hands[target][chopIndex].toString()}`);
+			state.hands[target][chopIndex].chop_moved = true;
 			return true;
 		}
 
