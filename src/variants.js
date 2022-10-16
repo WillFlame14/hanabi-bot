@@ -37,4 +37,21 @@ async function getVariant(name) {
 	return variants.find(variant => variant.name === name);
 }
 
-module.exports = { fetchVariants, getVariant };
+const shortForms = {
+	'Red': 'r',
+	'Yellow': 'y',
+	'Green': 'g',
+	'Blue': 'b',
+	'Purple': 'p',
+	'Teal': 't',
+	'Black': 'k',
+	'Rainbow': 'm',
+	'White': 'w',
+	'Pink': 'i',
+	'Brown': 'n',
+	'Omni': 'o',
+	'Null': 'u',
+	'Prism': 'i'
+};
+
+module.exports = { fetchVariants, getVariant, shortForms };

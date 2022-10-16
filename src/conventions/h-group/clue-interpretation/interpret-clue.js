@@ -6,6 +6,7 @@ const { find_focus_possible } = require('./focus-possible.js');
 const { find_own_finesses } = require('./connecting-cards.js');
 const { Card } = require('../../../basics/Card.js');
 const { bad_touch_possiblities, update_hypo_stacks, good_touch_elim } = require('../../../basics/helper.js');
+const { isBasicTrash } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Basics = require('../../../basics.js');
 const Utils = require('../../../util.js');
@@ -69,7 +70,7 @@ function apply_good_touch(state, action) {
 	}
 	while (bad_touch_len !== bad_touch.length);
 
-	logger.debug('bad touch', bad_touch.map(c => Utils.logCard(c.suitIndex, c.rank)).join(','));
+	logger.debug('bad touch', bad_touch.map(c => Utils.logCard(c)).join(','));
 	return fix;
 }
 
@@ -84,7 +85,7 @@ function interpret_clue(state, action) {
 		logger.error('focused card had no inferences after applying good touch');
 	}
 
-	logger.debug('pre-inferences', focused_card.inferred.map(c => c.toString()).join());
+	logger.debug('pre-inferences', focused_card.inferred.map(c => Utils.logCard(c)).join());
 
 	if (fix || mistake) {
 		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
@@ -103,7 +104,7 @@ function interpret_clue(state, action) {
 	}
 
 	// Trash chop move
-	if (focused_card.newly_clued && focused_card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank))) {
+	if (focused_card.newly_clued && focused_card.possible.every(c => isBasicTrash(state, c.suitIndex, c.rank))) {
 		interpret_tcm(state, target);
 		return;
 	}
@@ -115,7 +116,7 @@ function interpret_clue(state, action) {
 	}
 
 	const focus_possible = find_focus_possible(state, action);
-	logger.info('focus possible', focus_possible.map(p => Utils.logCard(p.suitIndex, p.rank)).join(','));
+	logger.info('focus possible', focus_possible.map(p => Utils.logCard(p)).join(','));
 	const matched_inferences = focus_possible.filter(p => {
 		if (target === state.ourPlayerIndex) {
 			return focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank));
@@ -148,13 +149,13 @@ function interpret_clue(state, action) {
 	}
 	// Card doesn't match any inferences
 	else {
-		logger.info(`card ${focused_card.toString()} order ${focused_card.order} doesn't match any inferences!`);
+		logger.info(`card ${Utils.logCard(focused_card)} order ${focused_card.order} doesn't match any inferences!`);
 		let all_connections = [];
-		logger.info(`inferences ${focused_card.inferred.map(c => c.toString()).join(',')}`);
+		logger.info(`inferences ${focused_card.inferred.map(c => Utils.logCard(c)).join(',')}`);
 
 		if (target === state.ourPlayerIndex) {
 			// Only look for finesses if the card isn't trash
-			if (focused_card.inferred.some(c => !Utils.isBasicTrash(state, c.suitIndex, c.rank))) {
+			if (focused_card.inferred.some(c => !isBasicTrash(state, c.suitIndex, c.rank))) {
 				// We are the clue target, so we need to consider all the possibilities of the card
 				let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
 				let self = true;
@@ -188,7 +189,7 @@ function interpret_clue(state, action) {
 			}
 		}
 		// Someone else is the clue target, so we know exactly what card it is
-		else if (!Utils.isBasicTrash(state, focused_card.suitIndex, focused_card.rank)) {
+		else if (!isBasicTrash(state, focused_card.suitIndex, focused_card.rank)) {
 			const { feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank);
 			if (feasible) {
 				all_connections.push({ connections, conn_suit: focused_card.suitIndex });
@@ -199,7 +200,7 @@ function interpret_clue(state, action) {
 		if (all_connections.length === 0) {
 			// If it's in our hand, we have no way of knowing what the card is - default to good touch principle
 			if (target === state.ourPlayerIndex) {
-				logger.info('no inference on card (self), defaulting to gtp - ', focused_card.inferred.map(c => c.toString()));
+				logger.info('no inference on card (self), defaulting to gtp - ', focused_card.inferred.map(c => Utils.logCard(c)));
 				focused_card.reset = true;
 			}
 			// If it's not in our hand, we should adjust our interpretation to their interpretation (to know if we need to fix)
@@ -211,7 +212,7 @@ function interpret_clue(state, action) {
 				if (focused_card.inferred.length === 0) {
 					focused_card.inferred = saved_inferences;
 				}
-				logger.info('no inference on card (other), looks like', focused_card.inferred.map(c => c.toString()).join(','));
+				logger.info('no inference on card (other), looks like', focused_card.inferred.map(c => Utils.logCard(c)).join(','));
 			}
 		}
 		else {
@@ -237,7 +238,7 @@ function interpret_clue(state, action) {
 			}
 		}
 	}
-	logger.info('final inference on focused card', focused_card.inferred.map(c => c.toString()).join(','));
+	logger.info('final inference on focused card', focused_card.inferred.map(c => Utils.logCard(c)).join(','));
 	logger.debug('hand state after clue', Utils.logHand(state.hands[target]));
 	update_hypo_stacks(state);
 }
@@ -264,9 +265,9 @@ function assign_connections(state, connections, suitIndex) {
 	for (const connection of connections) {
 		const { type, reacting, self } = connection;
 		// The connections can be cloned, so need to modify the card directly
-		const card = Utils.findOrder(state.hands[reacting], connection.card.order);
+		const card = state.hands[reacting].findOrder(connection.card.order);
 
-		logger.info(`connecting on ${card.toString()} order ${card.order} type ${type}`);
+		logger.info(`connecting on ${Utils.logCard(card)} order ${card.order} type ${type}`);
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		card.old_inferred = Utils.objClone(card.inferred);

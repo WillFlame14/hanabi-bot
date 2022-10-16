@@ -109,7 +109,7 @@ function take_action(state) {
 	}
 
 	// Locked hand and no good clues to give
-	if (Utils.handLocked(state.hands[state.ourPlayerIndex]) && state.clue_tokens > 0) {
+	if (state.hands[state.ourPlayerIndex].isLocked() && state.clue_tokens > 0) {
 		const { type, value, target } = find_stall_clue(state, 3, tempo_clue);
 		Utils.sendCmd('action', { tableID, type, target, value });
 		return;

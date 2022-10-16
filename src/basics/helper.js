@@ -1,5 +1,6 @@
 const { CLUE } = require('../constants.js');
 const { logger } = require('../logger.js');
+const { isBasicTrash, visibleFind } = require('./hanabi-util.js');
 const Utils = require('../util.js');
 
 function find_possibilities(clue, num_suits) {
@@ -25,7 +26,7 @@ function bad_touch_possiblities(state, giver, target, prev_found = []) {
 		for (let suitIndex = 0; suitIndex <= state.suits.length; suitIndex++) {
 			for (let rank = 1; rank <= 5; rank++) {
 				// Cards that have already been played on the stack or can never be played
-				if (Utils.isBasicTrash(state, suitIndex, rank)) {
+				if (isBasicTrash(state, suitIndex, rank)) {
 					bad_touch.push({suitIndex, rank});
 				}
 			}
@@ -52,7 +53,7 @@ function bad_touch_possiblities(state, giver, target, prev_found = []) {
 					({suitIndex, rank} = card.inferred[0]);
 					method = 'inference';
 					if (!card.matches(suitIndex, rank, { infer: true })) {
-						logger.warn(`tried to identify ${card.inferred[0].toString()} as bad touch when card's identity is ${card.toString()}`);
+						logger.warn(`tried to identify ${Utils.logCard(card.inferred[0])} as bad touch when card's identity is ${Utils.logCard(card)}`);
 						continue;
 					}
 				}
@@ -66,7 +67,7 @@ function bad_touch_possiblities(state, giver, target, prev_found = []) {
 
 			if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
 				if (!bad_touch.some(c => c.suitIndex === suitIndex && c.rank === rank)) {
-					logger.debug(`adding ${Utils.logCard(suitIndex, rank)} to bad touch via ${method} (slot ${j + 1} in ${state.playerNames[i]}'s hand)`);
+					logger.debug(`adding ${Utils.logCard({suitIndex, rank})} to bad touch via ${method} (slot ${j + 1} in ${state.playerNames[i]}'s hand)`);
 					bad_touch.push({suitIndex, rank});
 				}
 			}
@@ -115,16 +116,16 @@ function find_known_trash(state, playerIndex) {
 
 	const visible_elsewhere = (suitIndex, rank, order) => {
 		// Visible in someone else's hand or visible in the same hand (but only one is trash)
-		return Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank, { ignore: [playerIndex] }).some(c => c.clued && c.order !== order) ||
-			Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued && c.order > order);
+		return visibleFind(state, state.ourPlayerIndex, suitIndex, rank, { ignore: [playerIndex] }).some(c => c.clued && c.order !== order) ||
+			visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c => c.clued && c.order > order);
 	};
 
 	for (const card of hand) {
 		const possibilities = (card.inferred.length === 0 || playerIndex !== state.ourPlayerIndex) ? card.possible : card.inferred;
 
 		// Every possibility is trash or known duplicated somewhere
-		if (possibilities.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
-			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => c.toString()).join()}, results ${possibilities.map(c => Utils.isBasicTrash(state, c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
+		if (possibilities.every(c => isBasicTrash(state, c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
+			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => Utils.logCard(c)).join()}, results ${possibilities.map(c => isBasicTrash(state, c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
 			trash.push(card);
 		}
 	}
@@ -145,18 +146,6 @@ function good_touch_elim(hand, cards, options = {}) {
 			}
 		}
 	}
-}
-
-function remove_card_from_hand(hand, order) {
-	const card_index = hand.findIndex((card) => card.order === order);
-
-	if (card_index === undefined) {
-		logger.error('could not find such card index!');
-		return;
-	}
-
-	// Remove the card from their hand
-	hand.splice(card_index, 1);
 }
 
 function update_hypo_stacks(state) {
@@ -220,13 +209,13 @@ function update_hypo_stacks(state) {
 						state.hypo_stacks[suitIndex2] = rank2;
 					}
 					else {
-						logger.error(`tried to add new playable card ${card.toString()} but didn't match hypo stacks`);
+						logger.error(`tried to add new playable card ${Utils.logCard(card)} but didn't match hypo stacks`);
 						continue;
 					}
 
 					good_touch_elim.push(card);
 					found_new_playable = true;
-					logger.debug(`found new playable ${card.toString()}`);
+					logger.debug(`found new playable ${Utils.logCard(card)}`);
 				}
 			}
 		}
@@ -237,6 +226,5 @@ module.exports = {
 	find_possibilities, bad_touch_possiblities,
 	find_playables, find_known_trash,
 	good_touch_elim,
-	remove_card_from_hand,
 	update_hypo_stacks
 };

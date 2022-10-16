@@ -1,6 +1,7 @@
 const { ACTION } = require('../../constants.js');
 const { find_playables, find_known_trash } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
+const { playableAway } = require('../../basics/hanabi-util.js');
 const Utils = require('../../util.js');
 
 function find_clue_value(clue_result) {
@@ -29,14 +30,14 @@ function find_unlock(state, target) {
 	for (const card of state.hands[target]) {
 		const { suitIndex, rank } = card;
 
-		if (Utils.playableAway(state, suitIndex, rank) === 1) {
+		if (playableAway(state, suitIndex, rank) === 1) {
 			// See if we have the connecting card (should be certain)
 			const our_connecting = state.hands[state.ourPlayerIndex].find(c => c.matches(suitIndex, rank - 1, { infer: true }));
 
 			if (our_connecting !== undefined) {
 				// The card must become playable
 				const known = card.inferred.every(c => {
-					return Utils.playableAway(state, c.suitIndex, c.rank) === 0 || c.matches(suitIndex, rank);
+					return playableAway(state, c.suitIndex, c.rank) === 0 || c.matches(suitIndex, rank);
 				});
 
 				if (known) {
@@ -57,7 +58,7 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
 
 		const { playables } = clue.result;
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target);
-		const immediately_playable = target_cards.find(({ card }) => Utils.playableAway(state, card.suitIndex, card.rank) === 0);
+		const immediately_playable = target_cards.find(({ card }) => playableAway(state, card.suitIndex, card.rank) === 0);
 
 		// The card can be played without any additional help
 		if (immediately_playable !== undefined) {
@@ -123,7 +124,7 @@ function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 		// (play) (give play if 2+ clues)
 		// [other, save only] [other, play/fix over save] [all other fixes]
 		// (give play if < 2 clues) [early saves]
-		if (save_clues[target] !== undefined || Utils.handLocked(state.hands[target])) {
+		if (save_clues[target] !== undefined || state.hands[target].isLocked()) {
 			// They already have a playable or trash (i.e. early save)
 			if (playable_cards.length !== 0 || trash_cards.length !== 0) {
 				if (save_clues[target] !== undefined) {
@@ -143,7 +144,7 @@ function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 
 			// Try to give a play clue involving them
 			if (state.clue_tokens > 1) {
-				const play_over_save = find_play_over_save(state, target, play_clues.flat(), Utils.handLocked(state.hands[target]));
+				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked());
 				if (play_over_save !== undefined) {
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
 					continue;
@@ -191,17 +192,17 @@ function determine_playable_card(state, playable_cards) {
 	let min_rank = 5;
 	for (const card of playable_cards) {
 		const possibilities = card.inferred.length > 0 ? card.inferred : card.possible;
-		logger.debug(`examining card with possibilities ${possibilities.map(p => p.toString()).join(',')}`);
+		logger.debug(`examining card with possibilities ${possibilities.map(p => Utils.logCard(p)).join(',')}`);
 
 		// Blind play
 		if (card.finessed) {
-			logger.debug(`adding ${Utils.logCard(card.suitIndex, card.rank)} to blind play priority`);
+			logger.debug(`adding ${Utils.logCard(card)} to blind play priority`);
 			priorities[0].push(card);
 			continue;
 		}
 
 		const connecting_in_hand = function (hand, suitIndex, rank) {
-			return Utils.handFind(hand, suitIndex, rank).length > 0;
+			return hand.findCards(suitIndex, rank).length > 0;
 		};
 
 		let priority = 1;
@@ -218,21 +219,21 @@ function determine_playable_card(state, playable_cards) {
 
 					// Connecting in own hand, demote priority to 2
 					if (target === state.ourPlayerIndex) {
-						logger.debug(`inference ${Utils.logCard(suitIndex, rank)} connects to own hand`);
+						logger.debug(`inference ${Utils.logCard(inference)} connects to own hand`);
 						priority = 2;
 					}
 					else {
-						logger.debug(`inference ${Utils.logCard(suitIndex, rank)} connects to other hand`);
+						logger.debug(`inference ${Utils.logCard(inference)} connects to other hand`);
 					}
 					break;
 				}
 				else {
-					logger.debug(`inference ${Utils.logCard(suitIndex, rank)} doesn't connect to ${state.playerNames[target]}`);
+					logger.debug(`inference ${Utils.logCard(inference)} doesn't connect to ${state.playerNames[target]}`);
 				}
 			}
 
 			if (!connected) {
-				logger.debug(`inference ${Utils.logCard(suitIndex, rank)} doesn't connect`);
+				logger.debug(`inference ${Utils.logCard(inference)} doesn't connect`);
 				priority = 3;
 				break;
 			}

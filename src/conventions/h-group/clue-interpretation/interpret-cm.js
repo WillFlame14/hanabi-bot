@@ -1,4 +1,5 @@
 const { CLUE } = require('../../../constants.js');
+const { isBasicTrash, isTrash } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
 
@@ -8,13 +9,13 @@ function interpret_tcm(state, target) {
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
 		const card = state.hands[target][i];
 
-		if (card.newly_clued && card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank))) {
+		if (card.newly_clued && card.possible.every(c => isBasicTrash(state, c.suitIndex, c.rank))) {
 			oldest_trash_index = i;
 			break;
 		}
 	}
 
-	logger.info(`oldest trash card is ${state.hands[target][oldest_trash_index].toString()}`);
+	logger.info(`oldest trash card is ${Utils.logCard(state.hands[target][oldest_trash_index])}`);
 
 	// Chop move every unclued card to the right of this
 	for (let i = oldest_trash_index + 1; i < state.hands[target].length; i++) {
@@ -22,7 +23,7 @@ function interpret_tcm(state, target) {
 
 		if (!card.clued) {
 			card.chop_moved = true;
-			logger.info(`trash chop move on ${card.toString()}`);
+			logger.info(`trash chop move on ${Utils.logCard(card)}`);
 		}
 	}
 }
@@ -36,9 +37,9 @@ function interpret_5cm(state, target) {
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
 		const card = state.hands[target][i];
 
-		// Skip finessed and previously clued cards
-		if (card.finessed || (card.clued && !card.newly_clued)) {
-			logger.info('skipping card', card.toString());
+		// Skip finessed, chop moved and previously clued cards
+		if (card.finessed || card.chop_moved || (card.clued && !card.newly_clued)) {
+			logger.info('skipping card', Utils.logCard(card));
 			continue;
 		}
 
@@ -46,8 +47,8 @@ function interpret_5cm(state, target) {
 		if (chopIndex === -1) {
 			const { suitIndex, rank, order } = card;
 			// If we aren't the target, we can see the card being chop moved
-			if (target !== state.ourPlayerIndex && Utils.isTrash(state, suitIndex, rank, order)) {
-				logger.info(`chop ${card.toString()} is trash, not interpreting 5cm`);
+			if (target !== state.ourPlayerIndex && isTrash(state, suitIndex, rank, order)) {
+				logger.info(`chop ${Utils.logCard(card)} is trash, not interpreting 5cm`);
 				break;
 			}
 			chopIndex = i;
@@ -60,7 +61,7 @@ function interpret_5cm(state, target) {
 				logger.info('rightmost 5 was clued on chop, not interpreting 5cm');
 				break;
 			}
-			logger.info(`5cm, saving ${state.hands[target][chopIndex].toString()}`);
+			logger.info(`5cm, saving ${Utils.logCard(state.hands[target][chopIndex])}`);
 			state.hands[target][chopIndex].chop_moved = true;
 			return true;
 		}

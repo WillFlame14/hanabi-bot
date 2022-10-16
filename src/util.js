@@ -1,7 +1,8 @@
 const readline = require('readline');
 const { Card } = require('./basics/Card.js');
+const { ACTION } = require('./constants.js');
 const { logger } = require('./logger.js');
-const { ACTION, CARD_COUNT } = require('./constants.js');
+const { shortForms } = require('./variants.js');
 
 const globals = {};
 
@@ -82,84 +83,6 @@ function sendCmd(command, arg) {
 	globals.ws.send(cmd);
 }
 
-function findOrder(hand, order) {
-	return hand.find(c => c.order === order);
-}
-
-function handFind(hand, suitIndex, rank) {
-	return hand.filter(c => c.matches(suitIndex, rank));
-}
-
-function handFindInfer(hand, suitIndex, rank, options = {}) {
-	return hand.filter(c => {
-		if (c.possible.length === 1) {
-			return c.possible[0].matches(suitIndex, rank);
-		}
-		else if (!options.noInfer && c.inferred.length === 1) {
-			return c.inferred[0].matches(suitIndex, rank);
-		}
-		return false;
-	});
-}
-
-function handLocked(hand) {
-	return hand.every(c => c.clued || c.chop_moved);
-}
-
-function visibleFind(state, inferringPlayerIndex, suitIndex, rank, options = {}) {
-	let found = [];
-	for (let i = 0; i < state.numPlayers; i++) {
-		if (options.ignore?.includes(i)) {
-			continue;
-		}
-
-		const hand = state.hands[i];
-		if (i === inferringPlayerIndex || i === state.ourPlayerIndex) {
-			found = found.concat(handFindInfer(hand, suitIndex, rank, options));
-		}
-		else {
-			found = found.concat(handFind(hand, suitIndex, rank));
-		}
-	}
-	return found;
-}
-
-// NOTE: This function uses ACTION instead of CLUE, which is not typical.
-function clueTouched(hand, clue) {
-	const { type, value } = clue;
-	if (type === ACTION.COLOUR) {
-		return hand.filter(c => c.suitIndex === value);
-	}
-	else if (type === ACTION.RANK) {
-		return hand.filter(c => c.rank === value);
-	}
-}
-
-function isCritical(state, suitIndex, rank) {
-	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1);
-}
-
-function isBasicTrash(state, suitIndex, rank) {
-	return rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
-}
-
-function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, options) {
-	return visibleFind(state, inferringPlayerIndex, suitIndex, rank, options).some(c => {
-		if (order !== -1 && c.order === order) {
-			return false;
-		}
-		return c.finessed || c.clued || c.chop_moved;
-	});
-}
-
-function isTrash(state, suitIndex, rank, order) {
-	return isBasicTrash(state, suitIndex, rank) || isSaved(state, state.ourPlayerIndex, suitIndex, rank, order);
-}
-
-function playableAway(state, suitIndex, rank) {
-	return rank - (state.play_stacks[suitIndex] + 1);
-}
-
 function objClone(obj) {
 	if (typeof obj === 'object') {
 		if (obj instanceof Card) {
@@ -189,9 +112,24 @@ function objPick(obj, attributes) {
 	return new_obj;
 }
 
-function logCard(suitIndex, rank) {
-	const colours = ['r', 'y', 'g', 'b', 'p', 't'];
-	return colours[suitIndex] + rank;
+function logCard(card) {
+	let suitIndex, rank, append;
+
+	if (card.suitIndex !== -1) {
+		({ suitIndex, rank } = card);
+	}
+	else if (card?.possible.length === 1) {
+		({ suitIndex, rank } = card.possible[0]);
+		append = '(known)';
+	}
+	else if (card?.inferred.length === 1) {
+		({ suitIndex, rank } = card.inferred[0]);
+		append = '(inferred)';
+	}
+	else {
+		return '(unknown)';
+	}
+	return shortForms[globals.state.suits[suitIndex]] + rank + (append !== undefined ? ' ' + append : '');
 }
 
 function logHand(hand) {
@@ -199,7 +137,7 @@ function logHand(hand) {
 
 	for (const card of hand) {
 		const new_card = {};
-		new_card.visible = (card.suitIndex === -1 ? 'unknown' : card.toString());
+		new_card.visible = (card.suitIndex === -1 ? 'unknown' : logCard(card));
 		new_card.order = card.order;
 
 		new_card.flags = [];
@@ -209,8 +147,8 @@ function logHand(hand) {
 			}
 		}
 
-		new_card.possible = card.possible.map(c => c.toString());
-		new_card.inferred = card.inferred.map(c => c.toString());
+		new_card.possible = card.possible.map(c => logCard(c));
+		new_card.inferred = card.inferred.map(c => logCard(c));
 		new_card.reasoning = card.reasoning_turn;
 		new_hand.push(new_card);
 	}
@@ -221,16 +159,13 @@ function logClue(clue) {
 	if (clue === undefined) {
 		return;
 	}
+	const value = clue.type === ACTION.COLOUR ? globals.state.suits[clue.value].toLowerCase() : clue.value;
 
-	const new_clue = {};
-	const value = clue.type === 2 ? ['red', 'yellow', 'green', 'blue', 'purple', 'teal'][clue.value] : clue.value;
-
-	new_clue.info = `(${value} to playerIndex ${clue.target})`;
-	return new_clue.info;
+	return `(${value} to ${globals.state.playerNames[clue.target]})`;
 }
 
 function writeNote(turn, card, tableID) {
-	let note = card.inferred.map(c => c.toString()).join(',');
+	let note = card.inferred.map(c => logCard(c)).join(',');
 
 	if (note === '') {
 		note = '??';
@@ -259,19 +194,9 @@ function writeNote(turn, card, tableID) {
 	}
 }
 
-function getPace(state) {
-	return state.play_stacks.reduce((acc, curr) => acc + curr) + state.cards_left + state.numPlayers - (state.suits.length * 5);
-}
-
 module.exports = {
-	CARD_COUNT,
 	globalModify, initConsole,
 	sendChat, sendCmd,
-	findOrder,
-	handFind, handFindInfer, handLocked, visibleFind,
-	clueTouched,
-	isCritical, isBasicTrash, isSaved, isTrash, playableAway,
 	objClone, objPick,
-	logCard, logHand, logClue, writeNote,
-	getPace
+	logCard, logHand, logClue, writeNote
 };

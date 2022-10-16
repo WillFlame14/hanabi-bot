@@ -1,12 +1,13 @@
 const { ACTION, CLUE } = require('../../../constants.js');
 const { clue_safe } = require('./clue-safe.js');
 const { determine_focus, find_bad_touch } = require('../hanabi-logic.js');
+const { isTrash } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
 
 function determine_clue(state, target, target_card) {
 	logger.info('--------');
-	logger.info('determining clue to target card', target_card.toString());
+	logger.info('determining clue to target card', Utils.logCard(target_card));
 	const hand = state.hands[target];
 
 	const colour_base = {
@@ -73,7 +74,7 @@ function determine_clue(state, target, target_card) {
 			// Other touched cards can be bad touched/trash or match inference
 			if (card.newly_clued) {
 				return bad_touch_cards.some(c => c.order === card.order) ||								// Card is bad touched
-					card.possible.every(c => Utils.isTrash(hypo_state, c.suitIndex, c.rank, card.order)) || 	// Card is known trash
+					card.possible.every(c => isTrash(hypo_state, c.suitIndex, c.rank, card.order)) || 	// Card is known trash
 					(!card.reset && card.matches_inferences());											// Card matches interpretation
 			}
 
@@ -93,14 +94,14 @@ function determine_clue(state, target, target_card) {
 			logger.info(`${name} clue has incorrect interpretation, ignoring`);
 			/*logger.info(hypo_state.hands[target].map(card => {
 				if (card.reset || !card.matches_inferences()) {
-					logger.info(`card ${card.toString()} has inferences [${card.inferred.map(c => c.toString()).join(',')}] reset? ${card.reset}`);
+					logger.info(`card ${Utils.logCard(card)} has inferences [${card.inferred.map(c => Utils.logCard(c)).join(',')}] reset? ${card.reset}`);
 					logger.info(Utils.logHand(hypo_state.hands[target]));
 				}
-				if (!card.possible.every(c => Utils.isTrash(hypo_state, c.suitIndex, c.rank, card.order))) {
-					logger.info(`${card.possible.find(c => !Utils.isTrash(hypo_state, c.suitIndex, c.rank, card.order))} possibility is not trash`);
+				if (!card.possible.every(c => isTrash(hypo_state, c.suitIndex, c.rank, card.order))) {
+					logger.info(`${Utils.logCard(card.possible.find(c => !isTrash(hypo_state, c.suitIndex, c.rank, card.order)))} possibility is not trash`);
 				}
 				return bad_touch_cards.some(c => c.order === card.order) ||							// Card is bad touched
-					card.possible.every(c => Utils.isTrash(hypo_state, c.suitIndex, c.rank, card.order)) || 	// Card is known trash
+					card.possible.every(c => isTrash(hypo_state, c.suitIndex, c.rank, card.order)) || 	// Card is known trash
 					(!card.reset && card.matches_inferences());										// Card matches interpretation
 			}));*/
 			return { correct: false };
@@ -111,13 +112,13 @@ function determine_clue(state, target, target_card) {
 		for (const card of hypo_state.hands[target]) {
 			if (bad_touch_cards.some(c => c.order === card.order)) {
 				// Known trash
-				if (card.possible.every(p => Utils.isTrash(hypo_state, p.suitIndex, p.rank, card.order))) {
+				if (card.possible.every(p => isTrash(hypo_state, p.suitIndex, p.rank, card.order))) {
 					result.trash++;
 				}
 				else {
-					logger.info(`${card.toString()} is bad touch`);
-					logger.info(card.possible.map(c => c.toString()));
-					logger.info(card.possible.find(p => !Utils.isTrash(hypo_state, p.suitIndex, p.rank, card.order)).toString());
+					logger.info(`${Utils.logCard(card)} is bad touch`);
+					logger.info(card.possible.map(c => Utils.logCard(c)));
+					logger.info(card.possible.find(p => !isTrash(hypo_state, p.suitIndex, p.rank, Utils.logCard(card.order))));
 					result.bad_touch++;
 				}
 			}
@@ -172,12 +173,12 @@ function determine_clue(state, target, target_card) {
 			clue,
 			bad_touch,
 			trash,
-			interpret: interpret?.map(c => c.toString()),
+			interpret: interpret?.map(c => Utils.logCard(c)),
 			elim,
 			new_touched,
 			finesses,
 			playables: playables.map(({ playerIndex, card }) => {
-				return { player: state.playerNames[playerIndex], card: card.toString() };
+				return { player: state.playerNames[playerIndex], card: Utils.logCard(card) };
 			})
 		};
 	};

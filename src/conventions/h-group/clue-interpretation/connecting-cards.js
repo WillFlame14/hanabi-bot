@@ -1,11 +1,12 @@
+const { CARD_COUNT } = require('../../../constants.js');
 const { find_prompt, find_finesse } = require('../hanabi-logic.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
 
 function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = []) {
-	logger.info('looking for connecting', Utils.logCard(suitIndex, rank));
+	logger.info('looking for connecting', Utils.logCard({suitIndex, rank}));
 
-	if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1]) {
+	if (state.discard_stacks[suitIndex][rank - 1] === CARD_COUNT[rank - 1]) {
 		logger.info('all cards in trash');
 		return;
 	}
@@ -20,7 +21,7 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = [
 		);
 
 		if (known_connecting !== undefined) {
-			logger.info(`found known ${Utils.logCard(suitIndex, rank)} in ${state.playerNames[i]}'s hand`);
+			logger.info(`found known ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[i]}'s hand`);
 			return { type: 'known', reacting: i, card: known_connecting };
 		}
 
@@ -42,8 +43,8 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = [
 
 		// There's a connecting card that is known playable (but not in the giver's hand!)
 		if (playable_connecting !== undefined && i !== giver) {
-			logger.info(`found playable ${Utils.logCard(suitIndex, rank)} in ${state.playerNames[i]}'s hand`);
-			logger.info('card inferred', playable_connecting.inferred.map(c => c.toString()).join());
+			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[i]}'s hand`);
+			logger.info('card inferred', playable_connecting.inferred.map(c => Utils.logCard(c)).join());
 			return { type: 'playable', reacting: i, card: playable_connecting };
 		}
 	}
@@ -61,13 +62,13 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = [
 			// Prompt takes priority over finesse
 			if (prompt !== undefined) {
 				if (prompt.matches(suitIndex, rank)) {
-					logger.info(`found prompt ${prompt.toString()} in ${state.playerNames[i]}'s hand`);
+					logger.info(`found prompt ${Utils.logCard(prompt)} in ${state.playerNames[i]}'s hand`);
 					return { type: 'prompt', reacting: i, card: prompt, self: false };
 				}
-				logger.debug(`couldn't prompt ${Utils.logCard(suitIndex, rank)}, ignoreOrders ${ignoreOrders}`);
+				logger.debug(`couldn't prompt ${Utils.logCard({suitIndex, rank})}, ignoreOrders ${ignoreOrders}`);
 			}
 			else if (finesse?.matches(suitIndex, rank)) {
-				logger.info(`found finesse ${finesse.toString()} in ${state.playerNames[i]}'s hand`);
+				logger.info(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand`);
 				return { type: 'finesse', reacting: i, card: finesse, self: false };
 			}
 		}
@@ -80,7 +81,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 		return { feasible: false, connections: [] };
 	}
 
-	logger.info('finding finesse for (potentially) clued card', Utils.logCard(suitIndex, rank));
+	logger.info('finding finesse for (potentially) clued card', Utils.logCard({suitIndex, rank}));
 	const our_hand = state.hands[state.ourPlayerIndex];
 	const connections = [];
 
@@ -88,8 +89,8 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 	const already_prompted = [], already_finessed = [];
 
 	for (let next_rank = state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
-		if (state.discard_stacks[suitIndex][next_rank - 1] === Utils.CARD_COUNT[next_rank - 1]) {
-			logger.info(`impossible to find ${Utils.logCard(suitIndex, next_rank)}, both cards in trash`);
+		if (state.discard_stacks[suitIndex][next_rank - 1] === CARD_COUNT[next_rank - 1]) {
+			logger.info(`impossible to find ${Utils.logCard({suitIndex, next_rank})}, both cards in trash`);
 			feasible = false;
 			break;
 		}

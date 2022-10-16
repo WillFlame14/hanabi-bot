@@ -3,6 +3,7 @@ const { clue_safe } = require('./clue-safe.js');
 const { find_fix_clues } = require('./fix-clues.js');
 const { determine_clue } = require('./determine-clue.js');
 const { find_chop, determine_focus, stall_severity } = require('../hanabi-logic.js');
+const { isBasicTrash, isCritical, isSaved, isTrash, visibleFind } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
 
@@ -16,7 +17,7 @@ function save2(state, target, card) {
 	const clue = { type: CLUE.RANK, value: 2, target };
 
 	return state.play_stacks[suitIndex] === 0 &&									// play stack at 0
-		Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&	// other copy isn't visible
+		visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&	// other copy isn't visible
 		!state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true })) &&   // not in our hand
 		clue_safe(state, clue);
 }
@@ -24,7 +25,7 @@ function save2(state, target, card) {
 function find_save(state, target, card) {
 	const { suitIndex, rank } = card;
 
-	if (Utils.isBasicTrash(state, suitIndex, rank)) {
+	if (isBasicTrash(state, suitIndex, rank)) {
 		return;
 	}
 
@@ -33,8 +34,8 @@ function find_save(state, target, card) {
 		return determine_clue(state, target, card);
 	}
 
-	if (Utils.isCritical(state, suitIndex, rank)) {
-		logger.warn('saving critical card', card.toString());
+	if (isCritical(state, suitIndex, rank)) {
+		logger.warn('saving critical card', Utils.logCard(card));
 		if (rank === 5) {
 			return { type: ACTION.RANK, value: 5, target };
 		}
@@ -50,11 +51,11 @@ function find_save(state, target, card) {
 }
 
 function find_tcm(state, target, saved_cards, trash_card) {
-	logger.info(`saved cards ${saved_cards.map(c => c.toString()).join(',')}, trash card ${trash_card.toString()}`);
+	logger.info(`saved cards ${saved_cards.map(c => Utils.logCard(c)).join(',')}, trash card ${Utils.logCard(trash_card)}`);
 	const chop = saved_cards.at(-1);
 
 	// Colour or rank save (if possible) is preferred over trash chop move
-	if (Utils.isCritical(state, chop.suitIndex, chop.rank) &&
+	if (isCritical(state, chop.suitIndex, chop.rank) &&
 		(saved_cards.every(c => c.suitIndex === chop.suitIndex) || saved_cards.every(c => c.rank === chop.rank))
 	) {
 		logger.info('prefer direct save');
@@ -71,9 +72,9 @@ function find_tcm(state, target, saved_cards, trash_card) {
 		const { suitIndex, rank, order } = card;
 
 		// Saving a trash card or two of the same card
-		if (Utils.isTrash(state, suitIndex, rank, order) || saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order)) {
+		if (isTrash(state, suitIndex, rank, order) || saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order)) {
 			saved_trash++;
-			logger.info(`would save trash ${card.toString()}`);
+			logger.info(`would save trash ${Utils.logCard(card)}`);
 		}
 	}
 
@@ -121,7 +122,7 @@ function find_5cm(state, target, chop) {
 
 	// The card to be chop moved is useful and not clued/finessed/chop moved elsewhere
 	if (rank > state.hypo_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] &&
-		!Utils.isSaved(state, state.ourPlayerIndex, suitIndex, rank, order) && clue_safe(state, clue)
+		!isSaved(state, state.ourPlayerIndex, suitIndex, rank, order) && clue_safe(state, clue)
 	) {
 		return { type: ACTION.RANK, value: 5, target };
 	}
@@ -151,7 +152,7 @@ function find_clues(state, options = {}) {
 		for (let cardIndex = hand.length - 1; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
 			const { suitIndex, rank, finessed } = card;
-			const duplicates = Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank);
+			const duplicates = visibleFind(state, state.ourPlayerIndex, suitIndex, rank);
 
 			// Ignore finessed cards (do not ignore cm'd cards), cards visible elsewhere, or cards possibly part of a finesse
 			if (finessed || duplicates.some(c => (c.clued || c.finessed) && (c.order !== card.order)) ||
@@ -165,10 +166,10 @@ function find_clues(state, options = {}) {
 			}
 
 			// Trash card (not conventionally play)
-			if (!options.ignoreCM && Utils.isBasicTrash(state, suitIndex, rank)) {
+			if (!options.ignoreCM && isBasicTrash(state, suitIndex, rank)) {
 				// Trash chop move (we only want to find the rightmost tcm)
 				if (!(card.clued || card.chop_moved) && cardIndex !== chopIndex && !found_tcm) {
-					logger.info('looking for tcm on', card.toString());
+					logger.info('looking for tcm on', Utils.logCard(card));
 					const saved_cards = hand.slice(cardIndex + 1).filter(c => !(c.clued || c.chop_moved));
 					// Use original save clue if tcm not found
 					save_clues[target] = find_tcm(state, target, saved_cards, card) || save_clues[target];
@@ -223,7 +224,7 @@ function find_clues(state, options = {}) {
 				play_clues[target].push(clue);
 
 				// Save a playable card if it's on chop and its duplicate is not visible somewhere
-				if (cardIndex === chopIndex && Utils.visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
+				if (cardIndex === chopIndex && visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
 					save_clues[target] = clue;
 				}
 			}

@@ -1,6 +1,7 @@
 const { CLUE } = require('../../../constants.js');
 const { determine_focus } = require('../hanabi-logic.js');
 const { find_connecting } = require('./connecting-cards.js');
+const { isCritical, playableAway, visibleFind } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
 
@@ -22,7 +23,7 @@ function find_colour_focus(state, suitIndex, giver, target, chop, ignoreCard) {
 		if (type === 'known' && card.newly_clued && card.possible.length > 1 && ignoreCard.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
 			// e.g. If 2 reds are clued with only r5 remaining, the focus should not connect to the other card as r6
-			logger.warn(`blocked connection - focused card could be ${Utils.logCard(suitIndex, next_playable_rank)}`);
+			logger.warn(`blocked connection - focused card could be ${Utils.logCard({suitIndex, next_playable_rank})}`);
 			break;
 		}
 		else if (type === 'finesse') {
@@ -45,7 +46,7 @@ function find_colour_focus(state, suitIndex, giver, target, chop, ignoreCard) {
 	if (chop) {
 		for (let rank = next_playable_rank + 1; rank < 5; rank++) {
 			// Check if card is critical
-			if (Utils.isCritical(state, suitIndex, rank)) {
+			if (isCritical(state, suitIndex, rank)) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 			}
 		}
@@ -95,15 +96,15 @@ function find_rank_focus(state, rank, giver, target, chop, ignoreCard) {
 		// Save clue on chop
 		if (chop) {
 			// Don't need to consider save on playable cards
-			if (Utils.playableAway(state, suitIndex, rank) === 0) {
+			if (playableAway(state, suitIndex, rank) === 0) {
 				continue;
 			}
 
 			const save2 = rank === 2 &&
-				Utils.visibleFind(state, giver, suitIndex, 2).filter(c => c.order !== ignoreCard.order).length === 0;
+				visibleFind(state, giver, suitIndex, 2).filter(c => c.order !== ignoreCard.order).length === 0;
 
 			// Critical save or 2 save
-			if (Utils.isCritical(state, suitIndex, rank) || save2) {
+			if (isCritical(state, suitIndex, rank) || save2) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 			}
 		}

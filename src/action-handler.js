@@ -1,6 +1,6 @@
 const { CLUE } = require('./constants.js');
 const { Card } = require('./basics/Card.js');
-const { good_touch_elim, remove_card_from_hand, update_hypo_stacks } = require('./basics/helper.js');
+const { good_touch_elim, update_hypo_stacks } = require('./basics/helper.js');
 const { logger } = require('./logger.js');
 const Basics = require('./basics.js');
 const Utils = require('./util.js');
@@ -16,7 +16,7 @@ function handle_action(state, action, catchup = false) {
 			let clue_value;
 
 			if (clue.type === CLUE.COLOUR) {
-				clue_value = ['red', 'yellow', 'green', 'blue', 'purple', 'teal'][clue.value];
+				clue_value = state.suits[clue.value].toLowerCase();
 			}
 			else {
 				clue_value = clue.value;
@@ -28,7 +28,7 @@ function handle_action(state, action, catchup = false) {
 
 			// Remove the newly_clued flag
 			for (const order of list) {
-				const card = Utils.findOrder(state.hands[target], order);
+				const card = state.hands[target].findOrder(order);
 				card.newly_clued = false;
 			}
 			break;
@@ -36,12 +36,12 @@ function handle_action(state, action, catchup = false) {
 		case 'discard': {
 			// {type: 'discard', playerIndex: 2, order: 12, suitIndex: 0, rank: 3, failed: true}
 			const { order, playerIndex, rank, suitIndex } = action;
-			const card = Utils.findOrder(state.hands[playerIndex], order);
+			const card = state.hands[playerIndex].findOrder(order);
 			const playerName = state.playerNames[action.playerIndex];
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			logger.warn(`${playerName} ${action.failed ? 'bombs' : 'discards'} ${card.toString()}`);
+			logger.warn(`${playerName} ${action.failed ? 'bombs' : 'discards'} ${Utils.logCard(card)}`);
 
 			Basics.onDiscard(state, action);
 			state.interpret_discard(state, action, card);
@@ -76,20 +76,20 @@ function handle_action(state, action, catchup = false) {
 		}
 		case 'play': {
 			const { order, playerIndex, rank, suitIndex } = action;
-			const card = Utils.findOrder(state.hands[playerIndex], order);
+			const card = state.hands[playerIndex].findOrder(order);
 			const playerName = state.playerNames[playerIndex];
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			logger.warn(`${playerName} plays ${card.toString()}`);
+			logger.warn(`${playerName} plays ${Utils.logCard(card)}`);
 
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
 			if (!card.rewinded && playerIndex === state.ourPlayerIndex && (card.inferred.length > 1 || !card.matches_inferences())) {
-				logger.info('all inferences', card.inferred.map(c => c.toString()));
+				logger.info('all inferences', card.inferred.map(c => Utils.logCard(c)));
 				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false);
 				return;
 			}
-			remove_card_from_hand(state.hands[playerIndex], order);
+			state.hands[playerIndex].removeOrder(order);
 
 			state.play_stacks[suitIndex] = rank;
 
@@ -112,7 +112,7 @@ function handle_action(state, action, catchup = false) {
 		case 'rewind': {
 			const { order, playerIndex, suitIndex, rank } = action;
 
-			const card = Utils.findOrder(state.hands[playerIndex], order);
+			const card = state.hands[playerIndex].findOrder(order);
 			if (card === undefined) {
 				throw new Error('Could not find card to rewrite!');
 			}

@@ -1,4 +1,5 @@
 const { CLUE } = require('../../constants.js');
+const { getPace, isBasicTrash, isSaved } = require('../../basics/hanabi-util.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -91,11 +92,11 @@ function find_bad_touch(state, cards) {
 
 		const { suitIndex, rank } = card;
 		// Card is either already played or can never be played
-		if (Utils.isBasicTrash(state, suitIndex, rank)) {
+		if (isBasicTrash(state, suitIndex, rank)) {
 			bad_touch = true;
 		}
 		// Someone else has the card finessed, clued or chop moved already
-		else if (Utils.isSaved(state, state.ourPlayerIndex, suitIndex, rank, card.order)) {
+		else if (isSaved(state, state.ourPlayerIndex, suitIndex, rank, card.order)) {
 			bad_touch = true;
 		}
 		// Cluing both copies of a card (only include < so we don't double count)
@@ -125,7 +126,7 @@ function stall_severity(state, giver) {
 	if (state.clue_tokens === 7 && state.turn_count !== 0) {
 		return 4;
 	}
-	if (Utils.handLocked(state.hands[giver])) {
+	if (state.hands[giver].isLocked()) {
 		return 3;
 	}
 	if (state.early_game) {
@@ -135,7 +136,7 @@ function stall_severity(state, giver) {
 }
 
 function inEndgame(state) {
-	return Utils.getPace(state) < state.numPlayers;
+	return getPace(state) < state.numPlayers;
 }
 
 module.exports = { find_chop, find_prompt, find_finesse, determine_focus, find_bad_touch, stall_severity, inEndgame };

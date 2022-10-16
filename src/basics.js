@@ -1,6 +1,8 @@
+const { CARD_COUNT } = require('./constants.js');
 const { Card } = require('./basics/Card.js');
-const { find_possibilities, remove_card_from_hand } = require('./basics/helper.js');
+const { find_possibilities } = require('./basics/helper.js');
 const { logger } = require('./logger.js');
+const { visibleFind } = require('./basics/hanabi-util.js');
 const Utils = require('./util.js');
 
 function onClue(state, action) {
@@ -39,13 +41,13 @@ function onClue(state, action) {
 
 function onDiscard(state, action) {
 	const { failed, order, playerIndex, rank, suitIndex } = action;
-	remove_card_from_hand(state.hands[playerIndex], order);
+	state.hands[playerIndex].removeOrder(order);
 
 	state.discard_stacks[suitIndex][rank - 1]++;
 	card_elim(state, suitIndex, rank);
 
 	// Discarded all copies of a card
-	if (state.discard_stacks[suitIndex][rank - 1] === Utils.CARD_COUNT[rank - 1] && state.max_ranks[suitIndex] > rank - 1) {
+	if (state.discard_stacks[suitIndex][rank - 1] === CARD_COUNT[rank - 1] && state.max_ranks[suitIndex] > rank - 1) {
 		state.max_ranks[suitIndex] = rank - 1;
 	}
 
@@ -86,37 +88,37 @@ function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
 		}
 
 		const base_count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0);
-		const certain_count = base_count + Utils.visibleFind(state, playerIndex, suitIndex, rank, { noInfer: true }).length;
-		const inferred_count = base_count + Utils.visibleFind(state, playerIndex, suitIndex, rank).length;
+		const certain_count = base_count + visibleFind(state, playerIndex, suitIndex, rank, { infer: false }).length;
+		const inferred_count = base_count + visibleFind(state, playerIndex, suitIndex, rank).length;
 
 		// Note that inferred_count >= certain_count.
 		// If all copies of a card are already visible (or there exist too many copies)
-		if (inferred_count >= Utils.CARD_COUNT[rank - 1]) {
+		if (inferred_count >= CARD_COUNT[rank - 1]) {
 			// Remove it from the list of future possibilities
 			state.all_possible[playerIndex] = state.all_possible[playerIndex].filter(c => !c.matches(suitIndex, rank));
 
 			for (const card of state.hands[playerIndex]) {
 				// All cards are known accounted for, so eliminate on all cards that are not known
-				if (certain_count === Utils.CARD_COUNT[rank - 1]) {
+				if (certain_count === CARD_COUNT[rank - 1]) {
 					if (!card.matches(suitIndex, rank, { symmetric: true })) {
 						card.subtract('possible', [{suitIndex, rank}]);
 						card.subtract('inferred', [{suitIndex, rank}]);
 					}
 				}
 				// All cards are inferred accounted for, so eliminate on all cards that are not inferred
-				else if (inferred_count === Utils.CARD_COUNT[rank - 1]) {
+				else if (inferred_count === CARD_COUNT[rank - 1]) {
 					if (!card.matches(suitIndex, rank, { symmetric: true, infer: true })) {
 						card.subtract('inferred', [{suitIndex, rank}]);
 					}
 				}
 				// There is an extra inference somewhere, and not enough known cards
-				else if (inferred_count > Utils.CARD_COUNT[rank - 1]) {
-					logger.error(`inferred ${inferred_count} copies of ${Utils.logCard(suitIndex, rank)}`);
+				else if (inferred_count > CARD_COUNT[rank - 1]) {
+					logger.error(`inferred ${inferred_count} copies of ${Utils.logCard({suitIndex, rank})}`);
 					// TODO: There was a lie somewhere, waiting for fix? Or can deduce from focus?
 					break;
 				}
 			}
-			logger.debug(`removing ${Utils.logCard(suitIndex, rank)} from hand and future possibilities`);
+			logger.debug(`removing ${Utils.logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future possibilities`);
 		}
 	}
 }

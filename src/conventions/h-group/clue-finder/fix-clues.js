@@ -1,4 +1,5 @@
 const { ACTION } = require('../../../constants.js');
+const { isBasicTrash, isSaved, playableAway } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
 
@@ -15,28 +16,28 @@ function find_fix_clues(state, play_clues, save_clues) {
 
 		for (const card of hand) {
 			// Card known (or known trash), doesn't need fix
-			if (card.possible.length === 1 || card.possible.every(c => Utils.isBasicTrash(state, c.suitIndex, c.rank))) {
+			if (card.possible.length === 1 || card.possible.every(c => isBasicTrash(state, c.suitIndex, c.rank))) {
 				continue;
 			}
 
 			if (card.inferred.length === 0) {
 				// TODO
-				logger.error(`card ${card.toString()} order ${card.order} need fix??`);
+				logger.error(`card ${Utils.logCard(card)} order ${card.order} need fix??`);
 			}
 			else {
 				const seems_playable = card.inferred.every(p => {
-					const playableAway = Utils.playableAway(state, p.suitIndex, p.rank);
+					const away = playableAway(state, p.suitIndex, p.rank);
 					const our_hand = state.hands[state.ourPlayerIndex];
 
 					// Possibility is immediately playable or 1-away and we have the connecting card
-					return playableAway === 0 || (playableAway === 1 && our_hand.some(c => c.matches(p.suitIndex, p.rank - 1, { infer: true })));
+					return away === 0 || (away === 1 && our_hand.some(c => c.matches(p.suitIndex, p.rank - 1, { infer: true })));
 				});
 
-				const wrong_inference = !card.matches_inferences() && Utils.playableAway(state, card.suitIndex, card.rank) !== 0;
+				const wrong_inference = !card.matches_inferences() && playableAway(state, card.suitIndex, card.rank) !== 0;
 
 				// We don't need to fix duplicated cards where we hold one copy, since we can just sarcastic discard
 				const unknown_duplicated = card.clued && card.inferred.length > 1 &&
-					Utils.isSaved(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order, { ignore: [state.ourPlayerIndex] });
+					isSaved(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order, { ignore: [state.ourPlayerIndex] });
 
 				let fix_criteria;
 				if (wrong_inference) {
@@ -60,7 +61,7 @@ function find_fix_clues(state, play_clues, save_clues) {
 					// Go through all other clues to see if one fixes
 					for (const clue of other_clues) {
 						// The clue cannot touch the fixed card or it will look like just a fix
-						if (Utils.clueTouched(hand, clue).some(c => c.order === card.order)) {
+						if (hand.clueTouched(clue).some(c => c.order === card.order)) {
 							continue;
 						}
 
@@ -68,7 +69,7 @@ function find_fix_clues(state, play_clues, save_clues) {
 
 						if (fixed) {
 							// TODO: Find the highest value play clue
-							// logger.info(`found fix ${Utils.logClue(clue)} for card ${card.toString()} to inferences [${card_after_cluing.inferred.map(c => c.toString()).join(',')}]`);
+							// logger.info(`found fix ${Utils.logClue(clue)} for card ${Utils.logCard(card)} to inferences [${card_after_cluing.inferred.map(c => Utils.logCard(c)).join(',')}]`);
 							fix_clues[target].push(Object.assign(clue, { trash, urgent: seems_playable }));
 							found_clue = true;
 							break;
@@ -100,24 +101,24 @@ function find_fix_clues(state, play_clues, save_clues) {
 }
 
 function inference_corrected(_state, card, _target) {
-	return card.matches_inferences(); //card.possible.every(p => Utils.playableAway(state, p.suitIndex, p.rank) !== 0);
+	return card.matches_inferences(); //card.possible.every(p => playableAway(state, p.suitIndex, p.rank) !== 0);
 }
 
 function duplication_known(state, card, target) {
-	return card.possible.length === 1 && Utils.isSaved(state, target, card.suitIndex, card.rank, card.order);
+	return card.possible.length === 1 && isSaved(state, target, card.suitIndex, card.rank, card.order);
 }
 
 // Every possibility is trash or duplicated
 function card_trash(state, target, card) {
 	return card.possible.every(p =>
-		Utils.isBasicTrash(state, p.suitIndex, p.rank) ||
-		Utils.isSaved(state, target, p.suitIndex, p.rank, card.order)
+		isBasicTrash(state, p.suitIndex, p.rank) ||
+		isSaved(state, target, p.suitIndex, p.rank, card.order)
 	);
 }
 
 function check_fixed(state, target, card, clue, fix_criteria) {
 	const hand = state.hands[target];
-	const touch = Utils.clueTouched(hand, clue);
+	const touch = hand.clueTouched(clue);
 
 	// Convert clue type from ACTION to CLUE
 	const clue_copy = Utils.objClone(clue);

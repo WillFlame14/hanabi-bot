@@ -1,5 +1,6 @@
 const { handle_action } = require('./action-handler.js');
 const { Card } = require('./basics/Card.js');
+const { Hand } = require('./basics/Hand.js');
 const { getVariant } = require('./variants.js');
 const { logger } = require('./logger.js');
 const Utils = require('./util.js');
@@ -135,7 +136,7 @@ const handle = {
 		}
 
 		for (let i = 0; i < state.numPlayers; i++) {
-			state.hands.push([]);
+			state.hands.push(new Hand());
 			state.all_possible.push(Utils.objClone(all_possible));
 		}
 
@@ -187,7 +188,7 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, finess
 	}
 	rewind_depth++;
 
-	logger.info(`card actually ${Utils.logCard(suitIndex, rank)}, rewinding to action_index ${action_index}`);
+	logger.info(`card actually ${Utils.logCard({suitIndex, rank})}, rewinding to action_index ${action_index}`);
 	const new_state = Utils.objClone(state.blank);
 	new_state.blank = Utils.objClone(new_state);
 	const history = state.actionList.slice(0, action_index);
@@ -204,7 +205,7 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, finess
 	// Rewrite and save as a rewind action
 	const known_action = { type: 'rewind', order, playerIndex, suitIndex, rank };
 	handle_action(new_state, known_action, true);
-	logger.warn('Rewriting order', order, 'to', Utils.logCard(suitIndex, rank));
+	logger.warn('Rewriting order', order, 'to', Utils.logCard({suitIndex, rank}));
 
 	const pivotal_action = state.actionList[action_index];
 	pivotal_action.mistake = finessed || rewind_depth > 1;
