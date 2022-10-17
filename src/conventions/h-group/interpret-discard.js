@@ -47,10 +47,11 @@ function interpret_discard(state, action, card) {
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, card.suitIndex, card.rank, card.order)))) {
+	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order)))) {
 		logger.info('all inferences', card.inferred.map(c => Utils.logCard(c)));
-		state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, card.finessed);
-		return;
+		if (state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, card.finessed)) {
+			return;
+		}
 	}
 
 	// Discarding a useful card

@@ -100,6 +100,8 @@ function interpret_clue(state, action) {
 
 	// Check if the giver was in a stalling situation
 	if (!ignoreStall && stalling_situation(state, action)) {
+		logger.info('stalling situation');
+		update_hypo_stacks(state);
 		return;
 	}
 
@@ -110,7 +112,7 @@ function interpret_clue(state, action) {
 	}
 	// 5's chop move
 	else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued) {
-		if (interpret_5cm(state, target)) {
+		if (interpret_5cm(state, giver, target)) {
 			return;
 		}
 	}

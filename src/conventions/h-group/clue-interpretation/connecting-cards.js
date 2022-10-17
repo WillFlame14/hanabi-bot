@@ -56,7 +56,7 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = [
 		else {
 			// Try looking through another player's hand (known to giver) (target?)
 			const hand = state.hands[i];
-			const prompt = find_prompt(hand, suitIndex, rank, ignoreOrders);
+			const prompt = find_prompt(hand, suitIndex, rank, state.suits, ignoreOrders);
 			const finesse = find_finesse(hand, suitIndex, rank, ignoreOrders);
 
 			// Prompt takes priority over finesse
@@ -102,7 +102,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 		}
 		else {
 			// Otherwise, try to find prompt in our hand
-			const prompt = find_prompt(our_hand, suitIndex, next_rank, already_prompted);
+			const prompt = find_prompt(our_hand, suitIndex, next_rank, state.suits, already_prompted);
 			if (prompt !== undefined) {
 				logger.info('found prompt in our hand');
 				connections.push({ type: 'prompt', reacting: state.ourPlayerIndex, card: prompt, self: true });

@@ -16,7 +16,7 @@ function visibleFind(state, inferringPlayerIndex, suitIndex, rank, options = {})
 }
 
 function isCritical(state, suitIndex, rank) {
-	return state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1);
+	return state.suits[suitIndex] === 'Black' || state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1);
 }
 
 function isBasicTrash(state, suitIndex, rank) {
@@ -32,8 +32,8 @@ function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, optio
 	});
 }
 
-function isTrash(state, suitIndex, rank, order) {
-	return isBasicTrash(state, suitIndex, rank) || isSaved(state, state.ourPlayerIndex, suitIndex, rank, order);
+function isTrash(state, inferringPlayerIndex, suitIndex, rank, order) {
+	return isBasicTrash(state, suitIndex, rank) || isSaved(state, inferringPlayerIndex, suitIndex, rank, order);
 }
 
 function playableAway(state, suitIndex, rank) {

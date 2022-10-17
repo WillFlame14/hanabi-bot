@@ -30,8 +30,8 @@ function isStall(state, action, severity) {
 				return false;
 			}*/
 
-			// Locked hand stall given
-			if (chop) {
+			// Locked hand stall given, not touching slot 1
+			if (chop && state.hands[target].findIndex(c => c.order === focused_card.order) !== 0) {
 				logger.info('locked hand stall!');
 				return true;
 			}
@@ -68,8 +68,9 @@ function stalling_situation(state, action) {
 	logger.info('severity', severity);
 
 	// Check at the very end - only if the conditions are right for a stall, then see if a play/save could have been given
+	// TODO: Add this back in. For now, it's causing a large number of infinite loops and isn't even correct most of the time.
 	if (isStall(state, action, severity)) {
-		const { play_clues, save_clues } = find_clues(state, { ignorePlayerIndex: giver, ignoreCM: true });
+		/*const { play_clues, save_clues } = find_clues(state, { ignorePlayerIndex: giver, ignoreCM: true });
 
 		// There was a play (no bad touch, not tempo) or save available
 		if (play_clues.some(clues => clues.some(clue => clue.bad_touch === 0 && clue.result.new_touched > 0)) ||
@@ -80,7 +81,8 @@ function stalling_situation(state, action) {
 		}
 		else {
 			return true;
-		}
+		}*/
+		return true;
 	}
 	return false;
 }

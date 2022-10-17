@@ -118,13 +118,21 @@ function find_focus_possible(state, action) {
 
 	logger.info('play/hypo/max stacks in clue interpretation:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
-	let focus_possible;
+	let focus_possible = [];
 
 	if (clue.type === CLUE.COLOUR) {
-		focus_possible = find_colour_focus(state, clue.value, giver, target, chop, focused_card);
+		if (state.suits.includes('Rainbow')) {
+			focus_possible = focus_possible.concat(find_colour_focus(state, state.suits.indexOf('Rainbow'), giver, target, chop, focused_card));
+		}
+		focus_possible = focus_possible.concat(find_colour_focus(state, clue.value, giver, target, chop, focused_card));
 	}
 	else {
-		focus_possible = find_rank_focus(state, clue.value, giver, target, chop, focused_card);
+		// Pink promise assumed
+		focus_possible = focus_possible.concat(find_rank_focus(state, clue.value, giver, target, chop, focused_card));
+	}
+
+	if (state.suits.includes('Omni')) {
+		focus_possible = focus_possible.concat(find_colour_focus(state, state.suits.indexOf('Omni'), giver, target, chop, focused_card));
 	}
 
 	// Remove earlier duplicates (since save overrides play)

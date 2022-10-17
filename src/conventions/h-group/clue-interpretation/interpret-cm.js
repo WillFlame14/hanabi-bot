@@ -28,7 +28,7 @@ function interpret_tcm(state, target) {
 	}
 }
 
-function interpret_5cm(state, target) {
+function interpret_5cm(state, giver, target) {
 	logger.info('interpreting potential 5cm');
 
 	// Find the oldest 5 clued and its distance from chop
@@ -47,7 +47,7 @@ function interpret_5cm(state, target) {
 		if (chopIndex === -1) {
 			const { suitIndex, rank, order } = card;
 			// If we aren't the target, we can see the card being chop moved
-			if (target !== state.ourPlayerIndex && isTrash(state, suitIndex, rank, order)) {
+			if (target !== state.ourPlayerIndex && isTrash(state, giver, suitIndex, rank, order)) {
 				logger.info(`chop ${Utils.logCard(card)} is trash, not interpreting 5cm`);
 				break;
 			}

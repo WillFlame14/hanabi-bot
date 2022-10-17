@@ -128,6 +128,7 @@ function take_action(state) {
 
 	// Endgame
 	if (inEndgame(state) && state.clue_tokens > 0) {
+		logger.info('endgame');
 		// If there are playables left in other hands (act like 8 clue stall)
 		if (state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index])) {
 			const clue = find_stall_clue(state, 4, tempo_clue);

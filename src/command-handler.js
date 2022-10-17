@@ -184,7 +184,7 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, finess
 	}
 	else if (action_index === undefined) {
 		logger.error('tried to rewind before any reasoning was done!');
-		return;
+		return false;
 	}
 	rewind_depth++;
 
@@ -225,6 +225,7 @@ function rewind(state, action_index, playerIndex, order, suitIndex, rank, finess
 	// Overwrite state
 	Object.assign(state, new_state);
 	rewind_depth = 0;
+	return true;
 }
 
 function simulate_clue(state, action, options = {}) {

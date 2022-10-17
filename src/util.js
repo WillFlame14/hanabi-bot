@@ -1,6 +1,6 @@
 const readline = require('readline');
 const { Card } = require('./basics/Card.js');
-const { ACTION } = require('./constants.js');
+const { ACTION, CLUE } = require('./constants.js');
 const { logger } = require('./logger.js');
 const { shortForms } = require('./variants.js');
 
@@ -56,9 +56,9 @@ function initConsole() {
 						console.log(logHand(state.hands[playerIndex]));
 						break;
 					}
-					case 'state': {
+					case 'state':
 						console.log(state[parts[1]]);
-					}
+						break;
 				}
 				command = [];
 				break;
@@ -159,7 +159,7 @@ function logClue(clue) {
 	if (clue === undefined) {
 		return;
 	}
-	const value = clue.type === ACTION.COLOUR ? globals.state.suits[clue.value].toLowerCase() : clue.value;
+	const value = [CLUE.COLOUR, ACTION.COLOUR].includes(clue.type) ? globals.state.suits[clue.value].toLowerCase() : clue.value;
 
 	return `(${value} to ${globals.state.playerNames[clue.target]})`;
 }

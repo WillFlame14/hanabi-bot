@@ -11,6 +11,11 @@ function remove_finesse(state, waiting_index) {
 		const { type, reacting } = connection;
 		const card = state.hands[reacting].findOrder(connection.card.order);
 
+		if (card === undefined) {
+			logger.warn(`card ${Utils.logCard(connection.card)} with order ${connection.card.order} no longer exists in hand to cancel connection`);
+			continue;
+		}
+
 		if (type === 'finesse') {
 			card.finessed = false;
 		}
@@ -63,6 +68,11 @@ function update_turn(state, action) {
 				}
 				else if (type === 'finesse') {
 					logger.info(`didn't play into unplayable finesse`);
+				}
+				else if (state.last_actions[reacting].type === 'discard') {
+					logger.info(`Discarded with a waiting connection, removing inference ${Utils.logCard(inference)}`);
+					remove_finesse(state, i);
+					to_remove.push(i);
 				}
 			}
 			else {

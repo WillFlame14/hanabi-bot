@@ -1,4 +1,5 @@
 const https = require('https');
+const { CLUE } = require('./constants.js');
 
 const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/data/src/json/variants.json';
 let variants_promise;
@@ -54,4 +55,50 @@ const shortForms = {
 	'Prism': 'i'
 };
 
-module.exports = { fetchVariants, getVariant, shortForms };
+function cardTouched(card, suits, clue) {
+	const { type, value } = clue;
+	const { suitIndex, rank } = card;
+	const suit = suits[suitIndex];
+
+	if (suit === 'Null') {
+		return false;
+	}
+	else if (suit === 'Omni') {
+		return true;
+	}
+
+	if (type === CLUE.COLOUR) {
+		if (suit === 'White') {
+			return false;
+		}
+		else if (suit === 'Rainbow') {
+			return true;
+		}
+		else if (suit === 'Prism') {
+			return (rank % suits.length - 1) === (value + 1);
+		}
+
+		return suitIndex === value;
+	}
+	else if (type === CLUE.RANK) {
+		if (suit === 'Brown') {
+			return false;
+		}
+		else if (suit === 'Pink') {
+			return true;
+		}
+
+		return rank === value;
+	}
+}
+
+function isCluable(suits, clue) {
+	const { type, value } = clue;
+
+	if (type === CLUE.COLOUR && ['Null', 'Omni', 'White', 'Rainbow', 'Prism'].includes(suits[value])) {
+		return false;
+	}
+	return true;
+}
+
+module.exports = { cardTouched, fetchVariants, getVariant, isCluable, shortForms };

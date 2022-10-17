@@ -86,8 +86,9 @@ function handle_action(state, action, catchup = false) {
 			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
 			if (!card.rewinded && playerIndex === state.ourPlayerIndex && (card.inferred.length > 1 || !card.matches_inferences())) {
 				logger.info('all inferences', card.inferred.map(c => Utils.logCard(c)));
-				state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false);
-				return;
+				if (state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, false)) {
+					return;
+				}
 			}
 			state.hands[playerIndex].removeOrder(order);
 

@@ -1,4 +1,5 @@
 const { ACTION } = require('../../../constants.js');
+const { direct_clues } = require('./determine-clue.js');
 const { isBasicTrash, isSaved, playableAway } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
@@ -60,12 +61,16 @@ function find_fix_clues(state, play_clues, save_clues) {
 
 					// Go through all other clues to see if one fixes
 					for (const clue of other_clues) {
+						// Convert clue type from ACTION to CLUE
+						const clue_copy = Utils.objClone(clue);
+						clue_copy.type -= 2;
+
 						// The clue cannot touch the fixed card or it will look like just a fix
-						if (hand.clueTouched(clue).some(c => c.order === card.order)) {
+						if (hand.clueTouched(state.suits, clue_copy).some(c => c.order === card.order)) {
 							continue;
 						}
 
-						const { fixed, trash } = check_fixed(state, target, card, clue, fix_criteria);
+						const { fixed, trash } = check_fixed(state, target, card, clue_copy, fix_criteria);
 
 						if (fixed) {
 							// TODO: Find the highest value play clue
@@ -80,18 +85,13 @@ function find_fix_clues(state, play_clues, save_clues) {
 						continue;
 					}
 
-					// NOTE: We are using clues with ACTION instead of CLUE here to match the play/save clues from the finder
-					// This is not normal - typically simulated clues use CLUE, which is why we need to convert in check_fixed()
-					const colour_clue = { type: ACTION.COLOUR, target, value: card.suitIndex };
-					const rank_clue = { type: ACTION.RANK, target, value: card.rank };
-					const [colour_fix, rank_fix] = [colour_clue, rank_clue].map(clue => check_fixed(state, target, card, clue, fix_criteria));
+					const possible_clues = direct_clues(state, target, card);
+					const fix_clue = possible_clues.find(clue => check_fixed(state, target, card, clue, fix_criteria).fixed);
 
-					if (colour_fix.fixed && !rank_fix.fixed) {
-						fix_clues[target].push(Object.assign(colour_clue, { trash: colour_fix.trash, urgent: seems_playable }));
-					}
-					// Always prefer rank fix if it works
-					else if (rank_fix.fixed) {
-						fix_clues[target].push(Object.assign(rank_clue, { trash: rank_fix.trash, urgent: seems_playable }));
+					if (fix_clue !== undefined) {
+						// Change type from CLUE to ACTION
+						fix_clue.type += 2;
+						fix_clues[target].push(Object.assign(fix_clue, { trash: fix_clue.trash, urgent: seems_playable }));
 					}
 				}
 			}
@@ -118,13 +118,9 @@ function card_trash(state, target, card) {
 
 function check_fixed(state, target, card, clue, fix_criteria) {
 	const hand = state.hands[target];
-	const touch = hand.clueTouched(clue);
+	const touch = hand.clueTouched(state.suits, clue);
 
-	// Convert clue type from ACTION to CLUE
-	const clue_copy = Utils.objClone(clue);
-	clue_copy.type -= 2;
-
-	const action = { giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue: clue_copy };
+	const action = { giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue };
 
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();

@@ -1,4 +1,5 @@
-const { ACTION } = require('../constants.js');
+const { CLUE } = require('../constants.js');
+const { cardTouched } = require('../variants.js');
 const { logger } = require('../logger.js');
 
 class Hand extends Array {
@@ -26,15 +27,8 @@ class Hand extends Array {
 		return this.filter(c => c.matches(suitIndex, rank, options));
 	}
 
-	// NOTE: This function uses ACTION instead of CLUE, which is not typical.
-	clueTouched(clue) {
-		const { type, value } = clue;
-		if (type === ACTION.COLOUR) {
-			return this.filter(c => c.suitIndex === value);
-		}
-		else if (type === ACTION.RANK) {
-			return this.filter(c => c.rank === value);
-		}
+	clueTouched(suits, clue) {
+		return this.filter(card => cardTouched(card, suits, clue));
 	}
 }
 

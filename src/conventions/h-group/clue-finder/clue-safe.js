@@ -7,17 +7,11 @@ const Utils = require('../../../util.js');
 
 // Determines if the clue is safe to give (i.e. doesn't put a critical on chop with nothing to do)
 function clue_safe(state, clue) {
-	const { type, value, target } = clue;
+	const { target } = clue;
 
-	let list;
-	if (type === CLUE.COLOUR) {
-		list = state.hands[target].filter(c => c.suitIndex === value).map(c => c.order);
-	}
-	else {
-		list = state.hands[target].filter(c => c.rank === value).map(c => c.order);
-	}
+	const list = state.hands[target].clueTouched(state.suits, clue).map(c => c.order);
 	const action = { giver: state.ourPlayerIndex, target, list, clue };
-	const hypo_state = state.simulate_clue(state, action, { simulatePlayerIndex: target });
+	const hypo_state = state.simulate_clue(state, action);//, { simulatePlayerIndex: target });
 
 	const hand = hypo_state.hands[target];
 	const playable_cards = find_playables(hypo_state.play_stacks, hand);

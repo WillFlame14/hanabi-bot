@@ -1,4 +1,5 @@
 const { CLUE } = require('../../constants.js');
+const { find_playables, find_known_trash } = require('../../basics/helper.js');
 const { getPace, isBasicTrash, isSaved } = require('../../basics/hanabi-util.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
@@ -14,7 +15,7 @@ function find_chop(hand, options = {}) {
 	return -1;
 }
 
-function find_prompt(hand, suitIndex, rank, ignoreOrders = []) {
+function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
 	for (const card of hand) {
 		const { clued, newly_clued, order, possible, clues } = card;
 		// Ignore unclued, newly clued, and known cards (also intentionally ignored cards)
@@ -27,9 +28,11 @@ function find_prompt(hand, suitIndex, rank, ignoreOrders = []) {
 			continue;
 		}
 
-		// A clue must match the card
+
+		// A clue must match the card (or rainbow/omni connect)
 		if (clues.some(clue =>
-			(clue.type === CLUE.COLOUR && clue.value === suitIndex) || (clue.type === CLUE.RANK && clue.value === rank))
+			(clue.type === CLUE.COLOUR && (clue.value === suitIndex || ['Rainbow', 'Omni'].includes(suits[suitIndex]))) ||
+			(clue.type === CLUE.RANK && clue.value === rank))
 		) {
 			return card;
 		}
@@ -127,6 +130,10 @@ function stall_severity(state, giver) {
 		return 4;
 	}
 	if (state.hands[giver].isLocked()) {
+		if (find_playables(state.play_stacks, state.hands[giver]).length > 0 ||
+			find_known_trash(state, giver).length > 0) {
+			return 0;
+		}
 		return 3;
 	}
 	if (state.early_game) {

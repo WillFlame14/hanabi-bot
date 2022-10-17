@@ -1,18 +1,18 @@
-const { CLUE } = require('../constants.js');
-const { logger } = require('../logger.js');
+const { cardTouched } = require('../variants.js');
 const { isBasicTrash, visibleFind } = require('./hanabi-util.js');
+const { logger } = require('../logger.js');
+
 const Utils = require('../util.js');
 
-function find_possibilities(clue, num_suits) {
+function find_possibilities(clue, suits) {
 	const new_possible = [];
-	if (clue.type === CLUE.COLOUR) {
+
+	for (let suitIndex = 0; suitIndex < suits.length; suitIndex++) {
 		for (let rank = 1; rank <= 5; rank++) {
-			new_possible.push({ suitIndex: clue.value, rank });
-		}
-	}
-	else {
-		for (let suitIndex = 0; suitIndex < num_suits; suitIndex++) {
-			new_possible.push({ suitIndex, rank: clue.value });
+			const card = {suitIndex, rank};
+			if (cardTouched(card, suits, clue)) {
+				new_possible.push(card);
+			}
 		}
 	}
 	return new_possible;
@@ -188,7 +188,7 @@ function update_hypo_stacks(state) {
 					return !all_trash;
 				};
 
-				if (delayed_playable(card.possible) || delayed_playable(card.inferred)) {
+				if (card.matches_inferences() && (delayed_playable(card.possible) || delayed_playable(card.inferred))) {
 					let suitIndex2, rank2;
 					if (card.suitIndex !== -1) {
 						({suitIndex: suitIndex2, rank: rank2} = card);
