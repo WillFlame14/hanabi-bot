@@ -1,4 +1,4 @@
-const { CARD_COUNT } = require('../constants.js');
+const { cardCount } = require('../variants.js');
 
 function visibleFind(state, inferringPlayerIndex, suitIndex, rank, options = {}) {
 	let found = [];
@@ -16,7 +16,7 @@ function visibleFind(state, inferringPlayerIndex, suitIndex, rank, options = {})
 }
 
 function isCritical(state, suitIndex, rank) {
-	return state.suits[suitIndex] === 'Black' || state.discard_stacks[suitIndex][rank - 1] === (CARD_COUNT[rank - 1] - 1);
+	return state.discard_stacks[suitIndex][rank - 1] === (cardCount(state.suits[suitIndex], rank) - 1);
 }
 
 function isBasicTrash(state, suitIndex, rank) {
@@ -41,7 +41,9 @@ function playableAway(state, suitIndex, rank) {
 }
 
 function getPace(state) {
-	return state.play_stacks.reduce((acc, curr) => acc + curr) + state.cards_left + state.numPlayers - (state.suits.length * 5);
+	const currScore = state.play_stacks.reduce((acc, curr) => acc + curr);
+	const maxScore = state.max_ranks.reduce((acc, curr) => acc + curr);
+	return currScore + state.cards_left + state.numPlayers - maxScore;
 }
 
 module.exports = {

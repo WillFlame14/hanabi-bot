@@ -58,7 +58,7 @@ function determine_clue(state, target, target_card) {
 
 		logger.info('------- ENTERING HYPO --------');
 
-		let hypo_state = state.simulate_clue(state, action, { simulatePlayerIndex: target, enableLogs: true });
+		let hypo_state = state.simulate_clue(state, action, { enableLogs: true });
 
 		logger.info('------- EXITING HYPO --------');
 
@@ -81,26 +81,19 @@ function determine_clue(state, target, target_card) {
 		}
 
 		result.interpret = inferred_after_cluing;
-		result.correct = hypo_state.hands[target].every(card => {
-			// Focused card must match inference
-			if (card.order === target_card.order) {
-				return !card.reset && card.matches_inferences();
+		result.correct = hypo_state.hands[target].every((card, index) => {
+			if (!card.reset && card.matches_inferences()) {
+				if (card.order === target_card.order) {
+					// Focused card must also not be reset
+					return !card.reset;
+				}
+				return true;
 			}
 
-			/*
-			// Other touched cards can be bad touched/trash or match inference
-			if (card.newly_clued) {
-				return bad_touch_cards.some(c => c.order === card.order) ||								// Card is bad touched
-					card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)) || 	// Card is known trash
-					(!card.reset && card.matches_inferences());											// Card matches interpretation
-			}*/
-
-			// TODO: Card can be playable, but the inferred card must exist and also be finessed (for layered finesse)
-			if (card.finessed) {
-				return card.matches_inferences();
-			}
-
-			return true;
+			// Card doesn't match inference, but can still be correct if:
+			return !state.hands[target][index].matches_inferences() ||		// Didn't match inference even before clue
+				bad_touch_cards.some(c => c.order === card.order) ||		// Bad touched
+				card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order))	// Known trash
 		});
 		result.elim = elim_sum;
 		result.new_touched = new_touched;
@@ -134,9 +127,13 @@ function determine_clue(state, target, target_card) {
 					result.trash++;
 				}
 				else {
-					logger.info(`${Utils.logCard(card)} is bad touch`);
-					logger.info(card.possible.map(c => Utils.logCard(c)));
-					logger.info(card.possible.find(p => !isTrash(hypo_state, p.suitIndex, p.rank, Utils.logCard(card.order))));
+					// Don't double count bad touch when cluing two of the same card
+					if (bad_touch_cards.some(c => c.matches(card.suitIndex, card.rank) && c.order > card.order)) {
+						continue;
+					}
+					logger.debug(`${Utils.logCard(card)} is bad touch`);
+					logger.debug(card.possible.map(c => Utils.logCard(c)));
+					logger.debug(card.possible.find(p => !isTrash(hypo_state, p.suitIndex, p.rank, Utils.logCard(card.order))));
 					result.bad_touch++;
 				}
 			}

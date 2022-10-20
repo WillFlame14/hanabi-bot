@@ -1,7 +1,7 @@
 const { handle_action } = require('./action-handler.js');
 const { Card } = require('./basics/Card.js');
 const { Hand } = require('./basics/Hand.js');
-const { getVariant } = require('./variants.js');
+const { cardCount, getVariant } = require('./variants.js');
 const { logger } = require('./logger.js');
 const Utils = require('./util.js');
 
@@ -121,7 +121,13 @@ const handle = {
 			early_game: true
 		};
 
-		state.cards_left = state.suits.length * 10;
+		state.cards_left = state.suits.reduce((acc, suit) => {
+			let cards = 0;
+			for (let rank = 1; rank <= 5; rank++) {
+				cards += cardCount(suit, rank);
+			}
+			return acc + cards;
+		}, 0);
 
 		const all_possible = [];
 		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {

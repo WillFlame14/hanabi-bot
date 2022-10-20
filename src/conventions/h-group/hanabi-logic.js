@@ -102,8 +102,8 @@ function find_bad_touch(state, cards) {
 		else if (isSaved(state, state.ourPlayerIndex, suitIndex, rank, card.order)) {
 			bad_touch = true;
 		}
-		// Cluing both copies of a card (only include < so we don't double count)
-		else if (cards.some(c => c.matches(suitIndex, rank) && c.order < card.order)) {
+		// Cluing both copies of a card (will return both as bad touch)
+		else if (cards.some(c => c.matches(suitIndex, rank) && c.order !== card.order)) {
 			bad_touch = true;
 		}
 		else {

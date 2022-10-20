@@ -112,7 +112,8 @@ function find_tcm(state, target, saved_cards, trash_card) {
 		});
 
 		if (tcm !== undefined) {
-			return { type: ACTION.COLOUR, value: tcm.value, target };
+			// Convert CLUE to ACTION
+			return { type: tcm.type + 2, value: tcm.value, target };
 		}
 	}
 	return;

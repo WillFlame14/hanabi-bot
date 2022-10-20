@@ -1,6 +1,6 @@
-const { CARD_COUNT } = require('./constants.js');
 const { Card } = require('./basics/Card.js');
 const { find_possibilities } = require('./basics/helper.js');
+const { cardCount } = require('./variants.js');
 const { logger } = require('./logger.js');
 const { visibleFind } = require('./basics/hanabi-util.js');
 const Utils = require('./util.js');
@@ -46,8 +46,8 @@ function onDiscard(state, action) {
 	state.discard_stacks[suitIndex][rank - 1]++;
 	card_elim(state, suitIndex, rank);
 
-	// Discarded all copies of a card
-	if (state.discard_stacks[suitIndex][rank - 1] === CARD_COUNT[rank - 1] && state.max_ranks[suitIndex] > rank - 1) {
+	// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
+	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits[suitIndex], rank) && state.max_ranks[suitIndex] > rank - 1) {
 		state.max_ranks[suitIndex] = rank - 1;
 	}
 
@@ -90,29 +90,33 @@ function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
 		const base_count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0);
 		const certain_count = base_count + visibleFind(state, playerIndex, suitIndex, rank, { infer: false }).length;
 		const inferred_count = base_count + visibleFind(state, playerIndex, suitIndex, rank).length;
+		const total_count = cardCount(state.suits[suitIndex], rank);
+
+		logger.debug('checking count for card', Utils.logCard({suitIndex, rank}));
+		logger.debug(`base ${base_count} certain ${certain_count} inferred ${inferred_count} total ${total_count}`);
 
 		// Note that inferred_count >= certain_count.
 		// If all copies of a card are already visible (or there exist too many copies)
-		if (inferred_count >= CARD_COUNT[rank - 1]) {
+		if (inferred_count >= total_count) {
 			// Remove it from the list of future possibilities
 			state.all_possible[playerIndex] = state.all_possible[playerIndex].filter(c => !c.matches(suitIndex, rank));
 
 			for (const card of state.hands[playerIndex]) {
 				// All cards are known accounted for, so eliminate on all cards that are not known
-				if (certain_count === CARD_COUNT[rank - 1]) {
+				if (certain_count === total_count) {
 					if (!card.matches(suitIndex, rank, { symmetric: true })) {
 						card.subtract('possible', [{suitIndex, rank}]);
 						card.subtract('inferred', [{suitIndex, rank}]);
 					}
 				}
 				// All cards are inferred accounted for, so eliminate on all cards that are not inferred
-				else if (inferred_count === CARD_COUNT[rank - 1]) {
+				else if (inferred_count === total_count) {
 					if (!card.matches(suitIndex, rank, { symmetric: true, infer: true })) {
 						card.subtract('inferred', [{suitIndex, rank}]);
 					}
 				}
 				// There is an extra inference somewhere, and not enough known cards
-				else if (inferred_count > CARD_COUNT[rank - 1]) {
+				else if (inferred_count > total_count) {
 					logger.error(`inferred ${inferred_count} copies of ${Utils.logCard({suitIndex, rank})}`);
 					// TODO: There was a lie somewhere, waiting for fix? Or can deduce from focus?
 					break;
@@ -124,6 +128,7 @@ function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
 }
 
 module.exports = {
+	card_elim,
 	onClue,
 	onDiscard,
 	onDraw

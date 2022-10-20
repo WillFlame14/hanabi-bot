@@ -101,4 +101,12 @@ function isCluable(suits, clue) {
 	return true;
 }
 
-module.exports = { cardTouched, fetchVariants, getVariant, isCluable, shortForms };
+function cardCount(suit, rank) {
+	if (suit === 'Black') {
+		return 1;
+	}
+
+	return [3, 2, 2, 2, 1][rank - 1];
+}
+
+module.exports = { cardCount, cardTouched, fetchVariants, getVariant, isCluable, shortForms };

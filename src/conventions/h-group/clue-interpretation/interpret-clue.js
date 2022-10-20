@@ -6,7 +6,7 @@ const { find_focus_possible } = require('./focus-possible.js');
 const { find_own_finesses } = require('./connecting-cards.js');
 const { Card } = require('../../../basics/Card.js');
 const { bad_touch_possiblities, update_hypo_stacks, good_touch_elim } = require('../../../basics/helper.js');
-const { isBasicTrash } = require('../../../basics/hanabi-util.js');
+const { isBasicTrash, isTrash } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Basics = require('../../../basics.js');
 const Utils = require('../../../util.js');
@@ -106,7 +106,7 @@ function interpret_clue(state, action) {
 	}
 
 	// Trash chop move
-	if (focused_card.newly_clued && focused_card.possible.every(c => isBasicTrash(state, c.suitIndex, c.rank))) {
+	if (focused_card.newly_clued && focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank))) {
 		interpret_tcm(state, target);
 		return;
 	}
@@ -200,10 +200,10 @@ function interpret_clue(state, action) {
 
 		// No inference, but a finesse isn't possible
 		if (all_connections.length === 0) {
+			focused_card.reset = true;
 			// If it's in our hand, we have no way of knowing what the card is - default to good touch principle
 			if (target === state.ourPlayerIndex) {
 				logger.info('no inference on card (self), defaulting to gtp - ', focused_card.inferred.map(c => Utils.logCard(c)));
-				focused_card.reset = true;
 			}
 			// If it's not in our hand, we should adjust our interpretation to their interpretation (to know if we need to fix)
 			// We must force a finesse?

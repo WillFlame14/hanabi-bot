@@ -35,11 +35,17 @@ function take_action(state) {
 	// Then, look for playables or trash in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
 	const trash_cards = find_known_trash(state, state.ourPlayerIndex);
+	const sarcastic_discards = playable_cards.filter(pc => trash_cards.some(tc => tc.order === pc.order));
 
 	// Remove sarcastic discards from playables
-	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order));
+	playable_cards = playable_cards.filter(pc => !sarcastic_discards.some(sc => sc.order === pc.order));
 	logger.debug('playable cards', Utils.logHand(playable_cards));
 	logger.info('trash cards', Utils.logHand(trash_cards));
+
+	if (sarcastic_discards.length > 0) {
+		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: sarcastic_discards[0].order });
+		return;
+	}
 
 	// No saves needed, so play
 	if (playable_cards.length > 0) {

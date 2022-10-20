@@ -9,7 +9,7 @@ function interpret_tcm(state, target) {
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
 		const card = state.hands[target][i];
 
-		if (card.newly_clued && card.possible.every(c => isBasicTrash(state, c.suitIndex, c.rank))) {
+		if (card.newly_clued && card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank))) {
 			oldest_trash_index = i;
 			break;
 		}

@@ -7,10 +7,7 @@ const ACTION = {
 
 const CLUE = { COLOUR: 0, RANK: 1 };
 
-const CARD_COUNT = [3, 2, 2, 2, 1];
-
 module.exports = {
 	ACTION,
-	CLUE,
-	CARD_COUNT,
+	CLUE
 };

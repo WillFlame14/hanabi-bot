@@ -112,6 +112,36 @@ function objPick(obj, attributes) {
 	return new_obj;
 }
 
+function objEquals(obj1, obj2) {
+	const keys1 = Object.keys(obj1);
+
+	// Different number of keys
+	if (keys1.length !== Object.keys(obj2).length) {
+		return false;
+	}
+
+	for (const key of keys1) {
+		const val1 = obj1[key];
+		const val2 = obj2[key];
+
+		// Values have different types
+		if (typeof val1 !== typeof obj2[key]) {
+			return false;
+		}
+
+		if (typeof val1 === 'object') {
+			// Nested objects aren't the same
+			if (!objEquals(val1, val2)) {
+				return false;
+			}
+		}
+		else {
+			return val1 === val2;
+		}
+	}
+	return true;
+}
+
 function logCard(card) {
 	let suitIndex, rank, append;
 
@@ -197,6 +227,6 @@ function writeNote(turn, card, tableID) {
 module.exports = {
 	globalModify, initConsole,
 	sendChat, sendCmd,
-	objClone, objPick,
+	objClone, objPick, objEquals,
 	logCard, logHand, logClue, writeNote
 };
