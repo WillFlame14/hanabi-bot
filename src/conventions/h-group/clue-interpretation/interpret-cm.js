@@ -9,7 +9,7 @@ function interpret_tcm(state, target) {
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
 		const card = state.hands[target][i];
 
-		if (card.newly_clued && card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank))) {
+		if (card.newly_clued && card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, card.order))) {
 			oldest_trash_index = i;
 			break;
 		}
@@ -46,29 +46,28 @@ function interpret_5cm(state, giver, target) {
 		// First unclued or newly clued card is chop
 		if (chopIndex === -1) {
 			const { suitIndex, rank, order } = card;
-			// If we aren't the target, we can see the card being chop moved
-			if (target !== state.ourPlayerIndex && isTrash(state, giver, suitIndex, rank, order)) {
+			// TODO: Asymmetric 5cm - If we aren't the target, we can see the card being chop moved
+			// However, this requires that there is some kind of finesse/prompt to prove it is not 5cm
+			// target !== state.ourPlayerIndex && isTrash(state, giver, suitIndex, rank, order)
+			if (isTrash(state, target, suitIndex, rank, order)) {
 				logger.info(`chop ${Utils.logCard(card)} is trash, not interpreting 5cm`);
-				break;
+				return false;
 			}
 			chopIndex = i;
-			continue;
 		}
 
 		// Check the next card that meets the requirements (must be 5 and newly clued to be 5cm)
 		if (card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5)) {
-			if (chopIndex === -1) {
-				logger.info('rightmost 5 was clued on chop, not interpreting 5cm');
-				break;
+			if (chopIndex - i === 1) {
+				logger.info(`5cm, saving ${Utils.logCard(state.hands[target][chopIndex])}`);
+				state.hands[target][chopIndex].chop_moved = true;
+				return true;
 			}
-			logger.info(`5cm, saving ${Utils.logCard(state.hands[target][chopIndex])}`);
-			state.hands[target][chopIndex].chop_moved = true;
-			return true;
+			else {
+				logger.info(`rightmost 5 was clued ${chopIndex - i} away from chop, not interpreting 5cm`);
+				return false;
+			}
 		}
-
-		// We found a 5 that doesn't meet 5cm requirements, so it might be a play
-		logger.info(`not 5cm`);
-		break;
 	}
 	return false;
 }

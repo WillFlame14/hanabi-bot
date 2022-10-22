@@ -3,7 +3,8 @@ const { select_play_clue, find_urgent_actions, determine_playable_card } = requi
 const { find_clues } = require('./clue-finder/clue-finder.js');
 const { find_stall_clue } = require('./clue-finder/stall-clues.js');
 const { find_chop, inEndgame } = require('./hanabi-logic.js');
-const { find_playables, find_known_trash } = require('../../basics/helper.js');
+const { find_playables, find_known_trash, handLoaded } = require('../../basics/helper.js');
+const { getPace } = require('../../basics/hanabi-util.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
 
@@ -39,19 +40,29 @@ function take_action(state) {
 
 	// Remove sarcastic discards from playables
 	playable_cards = playable_cards.filter(pc => !sarcastic_discards.some(sc => sc.order === pc.order));
-	logger.debug('playable cards', Utils.logHand(playable_cards));
+	logger.info('playable cards', Utils.logHand(playable_cards));
 	logger.info('trash cards', Utils.logHand(trash_cards));
 
+	// Give a sarcastic/certain discard to someone else (if it's to us, we should play first)
 	if (sarcastic_discards.length > 0) {
-		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: sarcastic_discards[0].order });
-		return;
+		const other_sarcastic = sarcastic_discards.find(sc => !playable_cards.some(pc => pc.matches(sc.suitIndex, sc.rank, { infer: true })));
+		if (other_sarcastic !== undefined) {
+			Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: other_sarcastic.order });
+			return;
+		}
 	}
 
-	// No saves needed, so play
-	if (playable_cards.length > 0) {
-		const card = determine_playable_card(state, playable_cards);
-		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: card.order });
-		return;
+	// Get a high value play clue
+	let best_play_clue, clue_value;
+	if (state.clue_tokens > 0) {
+		let all_play_clues = play_clues.flat();
+		({ clue: best_play_clue, clue_value } = select_play_clue(all_play_clues));
+
+		if (best_play_clue?.result.finesses > 0) {
+			const { type, target, value } = best_play_clue;
+			Utils.sendCmd('action', { tableID, type, target, value });
+			return;
+		}
 	}
 
 	// Unlock other player than next
@@ -60,26 +71,52 @@ function take_action(state) {
 		return;
 	}
 
-	let tempo_clue;
+	// Forced discard if next player is locked without a playable or trash card
+	// TODO: Anxiety play
+	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
+	if (state.clue_tokens === 0 && state.hands[nextPlayerIndex].isLocked() && !handLoaded(state, nextPlayerIndex)) {
+		discard_chop(hand, tableID);
+		return;
+	}
+
+	// Playable card with high priority
+	let best_playable_card, priority;
+	if (playable_cards.length > 0) {
+		({ card: best_playable_card, priority } = determine_playable_card(state, playable_cards));
+
+		if (priority <= 3) {
+			Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
+			return;
+		}
+	}
+
+	// Discard known trash at high pace
+	if (trash_cards.length > 0 && getPace(state) > state.numPlayers * 2) {
+		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: trash_cards[0].order });
+		return;
+	}
+
+	// Playable card with any priority
+	if (playable_cards.length > 0) {
+		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
+		return;
+	}
+
 	if (state.clue_tokens > 0) {
 		for (let i = 5; i < 9; i++) {
 			// Give play clue (at correct priority level)
 			if (i === (state.clue_tokens > 1 ? 5 : 8)) {
-				let all_play_clues = play_clues.flat();
-				const { clue, clue_value } = select_play_clue(all_play_clues);
-
 				// -0.5 if 2 players (allows tempo clues to be given)
 				// -10 if endgame
 				const minimum_clue_value = 1 - (state.numPlayers === 2 ? 0.5 : 0) - (inEndgame(state) ? 10 : 0);
 
 				if (clue_value >= minimum_clue_value) {
-					const { type, target, value } = clue;
+					const { type, target, value } = best_play_clue;
 					Utils.sendCmd('action', { tableID, type, target, value });
 					return;
 				}
 				else {
-					logger.info('clue too low value', Utils.logClue(clue), clue_value);
-					tempo_clue = clue;
+					logger.info('clue too low value', Utils.logClue(best_play_clue), clue_value);
 				}
 			}
 
@@ -93,16 +130,19 @@ function take_action(state) {
 
 	// Either there are no clue tokens or the best play clue doesn't meet MCVP
 
-	// 8 clues
-	if (state.clue_tokens === 8) {
-		const { type, value, target } = find_stall_clue(state, 4, tempo_clue);
+	const endgame_stall = inEndgame(state) && state.clue_tokens > 0 &&
+		state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index]);
+
+	// 8 clues or endgame
+	if (state.clue_tokens === 8 || endgame_stall) {
+		const { type, value, target } = find_stall_clue(state, 4, best_play_clue);
 
 		// Should always be able to find a clue, even if it's a hard burn
 		Utils.sendCmd('action', { tableID, type, target, value });
 		return;
 	}
 
-	// Discard known trash
+	// Discard known trash (no pace requirement)
 	if (trash_cards.length > 0) {
 		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: trash_cards[0].order });
 		return;
@@ -116,14 +156,14 @@ function take_action(state) {
 
 	// Locked hand and no good clues to give
 	if (state.hands[state.ourPlayerIndex].isLocked() && state.clue_tokens > 0) {
-		const { type, value, target } = find_stall_clue(state, 3, tempo_clue);
+		const { type, value, target } = find_stall_clue(state, 3, best_play_clue);
 		Utils.sendCmd('action', { tableID, type, target, value });
 		return;
 	}
 
 	// Early game
 	if (state.early_game && state.clue_tokens > 0) {
-		const clue = find_stall_clue(state, 1, tempo_clue);
+		const clue = find_stall_clue(state, 1, best_play_clue);
 
 		if (clue !== undefined) {
 			const { type, value, target } = clue;
@@ -132,21 +172,10 @@ function take_action(state) {
 		}
 	}
 
-	// Endgame
-	if (inEndgame(state) && state.clue_tokens > 0) {
-		logger.info('endgame');
-		// If there are playables left in other hands (act like 8 clue stall)
-		if (state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index])) {
-			const clue = find_stall_clue(state, 4, tempo_clue);
+	discard_chop(hand, tableID);
+}
 
-			if (clue !== undefined) {
-				const { type, value, target } = clue;
-				Utils.sendCmd('action', { tableID, type, target, value });
-				return;
-			}
-		}
-	}
-
+function discard_chop(hand, tableID) {
 	// Nothing else to do, so discard chop
 	const chopIndex = find_chop(hand);
 	logger.debug('discarding chop index', chopIndex);

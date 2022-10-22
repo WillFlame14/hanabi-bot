@@ -64,7 +64,7 @@ function handle_action(state, action, catchup = false) {
 
 				// Update notes on cards
 				for (const card of state.hands[state.ourPlayerIndex]) {
-					if (card.inferred.length <= 3) {
+					if (card.clued || card.finessed || card.chop_moved) {
 						Utils.writeNote(state.turn_count + 1, card, state.tableID);
 					}
 				}

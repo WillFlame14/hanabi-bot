@@ -6,12 +6,14 @@ const Utils = require('../../util.js');
 
 function find_sarcastic(hand, suitIndex, rank) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
-	const known_sarcastic = hand.findCards(suitIndex, rank, { infer: true });
+	const known_sarcastic = hand.findCards(suitIndex, rank, { symmetric: true, infer: true });
 	if (known_sarcastic.length > 0) {
 		return known_sarcastic;
 	}
 	// Otherwise, find all cards that could match that identity
-	return hand.filter(c => c.clued && c.possible.some(p => p.matches(suitIndex, rank)));
+	return hand.filter(c =>
+		c.clued && c.possible.some(p => p.matches(suitIndex, rank)) &&
+		!(c.inferred.length === 1 && c.inferred[0].rank < rank));		// Do not sarcastic on connecting cards
 }
 
 function undo_hypo_stacks(state, playerIndex, suitIndex, rank) {
@@ -55,7 +57,7 @@ function interpret_discard(state, action, card) {
 	}
 
 	// Discarding a useful card
-	if (state.hypo_stacks[suitIndex] >= rank && state.play_stacks[suitIndex] < rank) {
+	if ((card.clued || card.chop_moved || card.finessed) && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
 		const duplicates = visibleFind(state, playerIndex, suitIndex, rank);
 
 		// Card was bombed
@@ -80,7 +82,7 @@ function interpret_discard(state, action, card) {
 					const receiver = (state.ourPlayerIndex + i) % state.numPlayers;
 					const sarcastic = find_sarcastic(state.hands[receiver], suitIndex, rank);
 
-					if (sarcastic.some(c => c.matches(suitIndex, rank))) {
+					if (sarcastic.some(c => c.matches(suitIndex, rank) && c.clued)) {
 						// The matching card must be the only possible option in the hand to be known sarcastic
 						if (sarcastic.length === 1) {
 							sarcastic[0].inferred = [new Card(suitIndex, rank)];
@@ -90,9 +92,10 @@ function interpret_discard(state, action, card) {
 							apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);
 							logger.info('unknown sarcastic');
 						}
-						break;
+						return;
 					}
 				}
+				logger.warn(`couldn't find a valid target for sarcastic discard`);
 			}
 		}
 	}

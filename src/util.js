@@ -195,10 +195,16 @@ function logClue(clue) {
 }
 
 function writeNote(turn, card, tableID) {
-	let note = card.inferred.map(c => logCard(c)).join(',');
+	let note;
 
-	if (note === '') {
+	if (card.inferred.length === 0) {
 		note = '??';
+	}
+	else if (card.inferred.length <= 3) {
+		note = card.inferred.map(c => logCard(c)).join(',');
+	}
+	else {
+		note = '...';
 	}
 
 	if (card.finessed) {

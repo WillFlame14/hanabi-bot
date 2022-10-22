@@ -106,7 +106,7 @@ function interpret_clue(state, action) {
 	}
 
 	// Trash chop move
-	if (focused_card.newly_clued && focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank))) {
+	if (focused_card.newly_clued && focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: false }))) {
 		interpret_tcm(state, target);
 		return;
 	}

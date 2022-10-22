@@ -32,8 +32,8 @@ function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, optio
 	});
 }
 
-function isTrash(state, inferringPlayerIndex, suitIndex, rank, order) {
-	return isBasicTrash(state, suitIndex, rank) || isSaved(state, inferringPlayerIndex, suitIndex, rank, order);
+function isTrash(state, inferringPlayerIndex, suitIndex, rank, order, options) {
+	return isBasicTrash(state, suitIndex, rank) || isSaved(state, inferringPlayerIndex, suitIndex, rank, order, options);
 }
 
 function playableAway(state, suitIndex, rank) {

@@ -1,6 +1,6 @@
 const { CLUE } = require('../../../constants.js');
 const { find_chop } = require('../hanabi-logic.js');
-const { find_playables, find_known_trash } = require('../../../basics/helper.js');
+const { handLoaded } = require('../../../basics/helper.js');
 const { isCritical } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
@@ -13,12 +13,11 @@ function clue_safe(state, clue) {
 	const action = { giver: state.ourPlayerIndex, target, list, clue };
 	const hypo_state = state.simulate_clue(state, action);//, { simulatePlayerIndex: target });
 
-	const hand = hypo_state.hands[target];
-	const playable_cards = find_playables(hypo_state.play_stacks, hand);
-	const trash_cards = find_known_trash(hypo_state, target);
+	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
+	const hand = hypo_state.hands[nextPlayerIndex];
 
 	// They won't discard next turn
-	if (playable_cards.length + trash_cards.length > 0) {
+	if (handLoaded(hypo_state, nextPlayerIndex)) {
 		return true;
 	}
 
@@ -36,7 +35,7 @@ function clue_safe(state, clue) {
 	// New chop is critical
 	if (chop !== undefined && isCritical(hypo_state, chop.suitIndex, chop.rank)) {
 		// No time to give second save
-		if (state.clue_tokens === 1 || (state.ourPlayerIndex + 1) % state.numPlayers === target) {
+		if (state.clue_tokens === 1) {
 			logger.error(`Not giving clue ${Utils.logClue(clue)}, as ${Utils.logCard(chop)} is critical.`);
 			give_clue = false;
 		}

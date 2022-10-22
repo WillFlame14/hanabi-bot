@@ -1,5 +1,5 @@
 const { CLUE } = require('../../constants.js');
-const { find_playables, find_known_trash } = require('../../basics/helper.js');
+const { handLoaded } = require('../../basics/helper.js');
 const { getPace, isBasicTrash, isSaved } = require('../../basics/hanabi-util.js');
 const { logger } = require('../../logger.js');
 const Utils = require('../../util.js');
@@ -130,8 +130,7 @@ function stall_severity(state, giver) {
 		return 4;
 	}
 	if (state.hands[giver].isLocked()) {
-		if (find_playables(state.play_stacks, state.hands[giver]).length > 0 ||
-			find_known_trash(state, giver).length > 0) {
+		if (handLoaded(state, giver)) {
 			return 0;
 		}
 		return 3;

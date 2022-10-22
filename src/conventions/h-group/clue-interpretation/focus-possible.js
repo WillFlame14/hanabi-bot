@@ -26,7 +26,7 @@ function find_colour_focus(state, suitIndex, action) {
 		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
 			// e.g. If 2 reds are clued with only r5 remaining, the focus should not connect to the other card as r6
-			logger.warn(`blocked connection - focused card could be ${Utils.logCard({suitIndex, next_playable_rank})}`);
+			logger.warn(`blocked connection - focused card could be ${Utils.logCard({suitIndex, rank: next_playable_rank})}`);
 			break;
 		}
 		else if (type === 'finesse') {

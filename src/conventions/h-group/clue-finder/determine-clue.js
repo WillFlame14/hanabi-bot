@@ -1,4 +1,4 @@
-const { ACTION, CLUE } = require('../../../constants.js');
+const { CLUE } = require('../../../constants.js');
 const { clue_safe } = require('./clue-safe.js');
 const { determine_focus, find_bad_touch } = require('../hanabi-logic.js');
 const { cardTouched, isCluable } = require('../../../variants.js');
@@ -90,10 +90,12 @@ function determine_clue(state, target, target_card) {
 				return true;
 			}
 
+			const old_card = state.hands[target][index];
+
 			// Card doesn't match inference, but can still be correct if:
-			return !state.hands[target][index].matches_inferences() ||		// Didn't match inference even before clue
+			return ((old_card.reset || !old_card.matches_inferences()) ||	// Didn't match inference even before clue
 				bad_touch_cards.some(c => c.order === card.order) ||		// Bad touched
-				card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order))	// Known trash
+				card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)));	// Known trash
 		});
 		result.elim = elim_sum;
 		result.new_touched = new_touched;
@@ -131,9 +133,6 @@ function determine_clue(state, target, target_card) {
 					if (bad_touch_cards.some(c => c.matches(card.suitIndex, card.rank) && c.order > card.order)) {
 						continue;
 					}
-					logger.debug(`${Utils.logCard(card)} is bad touch`);
-					logger.debug(card.possible.map(c => Utils.logCard(c)));
-					logger.debug(card.possible.find(p => !isTrash(hypo_state, p.suitIndex, p.rank, Utils.logCard(card.order))));
 					result.bad_touch++;
 				}
 			}

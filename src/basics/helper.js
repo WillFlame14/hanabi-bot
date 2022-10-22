@@ -132,6 +132,11 @@ function find_known_trash(state, playerIndex) {
 	return trash;
 }
 
+function handLoaded(state, target) {
+	return find_playables(state.play_stacks, state.hands[target]).length > 0 ||
+		find_known_trash(state, target).length > 0;
+}
+
 function good_touch_elim(hand, cards, options = {}) {
 	for (const card of hand) {
 		if (options.ignore?.includes(card.order)) {
@@ -224,7 +229,7 @@ function update_hypo_stacks(state) {
 
 module.exports = {
 	find_possibilities, bad_touch_possiblities,
-	find_playables, find_known_trash,
+	find_playables, find_known_trash, handLoaded,
 	good_touch_elim,
 	update_hypo_stacks
 };

@@ -1,12 +1,12 @@
 const { ACTION } = require('../../constants.js');
-const { find_playables, find_known_trash } = require('../../basics/helper.js');
+const { find_playables, find_known_trash, handLoaded } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const { playableAway } = require('../../basics/hanabi-util.js');
 const Utils = require('../../util.js');
 
 function find_clue_value(clue_result) {
 	const { finesses, new_touched, playables, bad_touch, elim } = clue_result;
-	return finesses + 0.5*(new_touched + playables.length) + 0.01*elim - bad_touch;
+	return finesses + 0.5*((new_touched - bad_touch) + playables.length) + 0.01*elim - 1.5*bad_touch;
 }
 
 function select_play_clue(play_clues) {
@@ -50,6 +50,9 @@ function find_unlock(state, target) {
 }
 
 function find_play_over_save(state, target, all_play_clues, locked = false) {
+	logger.debug('looking for play over save for target', state.playerNames[target]);
+	const play_clues = [];
+
 	for (const clue of all_play_clues) {
 		const clue_value = find_clue_value(clue.result);
 		if (clue_value < (locked ? 0 : 1)) {
@@ -60,55 +63,54 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target);
 		const immediately_playable = target_cards.find(({ card }) => playableAway(state, card.suitIndex, card.rank) === 0);
 
+		logger.debug('examining clue', Utils.logClue(clue), 'with playables', playables.map(play => { return { playerIndex: play.playerIndex, card: Utils.logCard(play.card) } }));
+
 		// The card can be played without any additional help
 		if (immediately_playable !== undefined) {
-			const { type, target, value } = clue;
-			return { tableID: state.tableID, type, target, value };
+			play_clues.push(clue);
+			continue;
 		}
 
 		// Try to see if any target card can be made playable by players between us and them, including themselves
 		for (const target_card of target_cards) {
+			const { suitIndex } = target_card;
 			let found = false;
 			let additional_help = 0;
 
 			for (let i = 1; i <= state.numPlayers; i++) {
-				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
+				const nextPlayer = (state.ourPlayerIndex + i) % state.numPlayers;
+				const nextRank = state.play_stacks[suitIndex] + additional_help + 1;
 
-				let help, lowest_rank = target_card.rank;
-				for (const { playerIndex, card } of playables) {
-					if (playerIndex !== i) {
+				if (playables.find(({ playerIndex, card }) => playerIndex === nextPlayer && card.matches(suitIndex, nextRank))) {
+					if (nextPlayer === target) {
+						found = true;
+						break;
+					}
+					else {
+						additional_help++;
 						continue;
 					}
-
-					if (card.suitIndex === target_card.suitIndex && card.rank < lowest_rank) {
-						help = card;
-					}
 				}
 
-				if (help !== undefined) {
-					// Make sure the helping card can add to the play stack
-					if (state.play_stacks[target_card.suitIndex] + additional_help + 1 === help.rank) {
-						additional_help++;
-
-						if (state.play_stacks[target_card.suitIndex] + additional_help + 1 === target_card.rank) {
-							found = true;
-							break;
-						}
-					}
-				}
-
-				if (playerIndex === target) {
+				// We've reached the target's turn and weren't able to find a playable
+				if (nextPlayer === target) {
 					break;
 				}
 			}
 
 			if (found) {
-				const { type, target, value } = clue;
-				return { tableID: state.tableID, type, target, value };
+				play_clues.push(clue);
+				break;
 			}
 		}
 	}
-	return;
+
+	if (play_clues.length === 0) {
+		return;
+	}
+
+	const { clue } = select_play_clue(play_clues);
+	return { tableID: state.tableID, type: clue.type, target: clue.target, value: clue.value };
 }
 
 function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
@@ -116,17 +118,15 @@ function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 
 	for (let i = 1; i < state.numPlayers; i++) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
-		const playable_cards = find_playables(state.play_stacks, state.hands[target]);
-		const trash_cards = find_known_trash(state, target);
 
 		// They require a save clue or are locked
-		// Urgency: [next, unlock] [next, save only] [next, play/fix over save] [next, urgent fix] [other, unlock]
+		// Urgency: [next, unlock] [next, save only] [next, play/trash fix over save] [next, urgent fix] [other, unlock]
 		// (play) (give play if 2+ clues)
-		// [other, save only] [other, play/fix over save] [all other fixes]
+		// [other, save only] [other, play/trash fix over save] [all other fixes]
 		// (give play if < 2 clues) [early saves]
 		if (save_clues[target] !== undefined || state.hands[target].isLocked()) {
 			// They already have a playable or trash (i.e. early save)
-			if (playable_cards.length !== 0 || trash_cards.length !== 0) {
+			if (handLoaded(state, target)) {
 				if (save_clues[target] !== undefined) {
 					const { type, value } = save_clues[target];
 					urgent_actions[8].push({ tableID: state.tableID, type, target, value });
@@ -146,13 +146,14 @@ function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 			if (state.clue_tokens > 1) {
 				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked());
 				if (play_over_save !== undefined) {
+					logger.debug('found play over save', Utils.logClue(play_over_save));
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
 					continue;
 				}
 			}
 
-			// Give them a fix clue with known trash if possible
-			const trash_fix = fix_clues[target].find(clue => clue.trash);
+			// Give them an urgent fix clue with known trash if possible
+			const trash_fix = fix_clues[target].find(clue => clue.urgent && clue.trash);
 			if (trash_fix !== undefined) {
 				const { type, value } = trash_fix;
 				urgent_actions[i === 1 ? 2 : 6].push({ tableID: state.tableID, type, target, value });
@@ -267,9 +268,10 @@ function determine_playable_card(state, playable_cards) {
 		}
 	}
 
-	for (const cards of priorities) {
+	for (let priority = 0; priority < 6; priority++) {
+		const cards = priorities[priority];
 		if (cards.length > 0) {
-			return cards[0];
+			return { card: cards[0], priority };
 		}
 	}
 }

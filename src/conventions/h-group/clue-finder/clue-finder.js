@@ -68,6 +68,10 @@ function find_tcm(state, target, saved_cards, trash_card) {
 		logger.info('prefer direct 2 save');
 		return;
 	}
+	else if (isTrash(state, state.ourPlayerIndex, chop.suitIndex, chop.rank, chop.order)) {
+		logger.info('chop is trash, can give tcm later');
+		return;
+	}
 
 	let saved_trash = 0;
 	// At most 1 trash card should be saved
@@ -83,10 +87,8 @@ function find_tcm(state, target, saved_cards, trash_card) {
 		}
 	}
 
-	// There has to be more useful cards saved than trash cards
+	// There has to be more useful cards saved than trash cards, and a trash card should not be on chop (otherwise can wait)
 	if (saved_trash <= 1 && (saved_cards.length - saved_trash) > saved_trash) {
-		const { suitIndex, rank } = trash_card;
-
 		const possible_clues = direct_clues(state, target, trash_card);
 
 		const tcm = possible_clues.find(clue => {

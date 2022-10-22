@@ -22,7 +22,7 @@ const handle = {
 			if (data.msg.startsWith('/join')) {
 				// Find the table with the user that invited us
 				for (const table of Object.values(tables)) {
-					if (table.players.includes(data.who)) {
+					if (!table.sharedReplay && table.players.includes(data.who)) {
 						if (table.running || table.players.length === 6) {
 							continue;
 						}
@@ -43,12 +43,13 @@ const handle = {
 			else if (data.msg.startsWith('/rejoin')) {
 				// Find the table with the user that invited us
 				for (const table of Object.values(tables)) {
-					if (table.players.includes(data.who)) {
+					if (!table.sharedReplay && table.players.includes(data.who)) {
 						if (!table.players.includes(self.username)) {
 							Utils.sendChat(data.who, 'Could not join, as the bot was never a player in this room.');
 							return;
 						}
 
+						logger.info(table);
 						Utils.sendCmd('tableReattend', { tableID: table.id });
 						return;
 					}

@@ -54,6 +54,10 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = [
 		if (i === giver || i === state.ourPlayerIndex) {
 			continue;
 		}
+		else if (giver === state.ourPlayerIndex && i === target) {
+			// If we are giving the clue, the receiver will not be able to find known prompts/finesses in their hand
+			continue;
+		}
 		else {
 			// Try looking through another player's hand (known to giver) (target?)
 			const hand = state.hands[i];
@@ -94,7 +98,7 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 
 	for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
 		if (hypo_state.discard_stacks[suitIndex][next_rank - 1] === cardCount(hypo_state.suits[suitIndex], next_rank)) {
-			logger.info(`impossible to find ${Utils.logCard({suitIndex, next_rank})}, both cards in trash`);
+			logger.info(`impossible to find ${Utils.logCard({suitIndex, rank: next_rank})}, both cards in trash`);
 			feasible = false;
 			break;
 		}
