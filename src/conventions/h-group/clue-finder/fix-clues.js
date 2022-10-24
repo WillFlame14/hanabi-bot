@@ -1,4 +1,3 @@
-const { ACTION } = require('../../../constants.js');
 const { direct_clues } = require('./determine-clue.js');
 const { isBasicTrash, isSaved, playableAway } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');

@@ -29,7 +29,6 @@ function direct_clues(state, target, card) {
 }
 
 function determine_clue(state, target, target_card) {
-	logger.info('--------');
 	logger.info('determining clue to target card', Utils.logCard(target_card));
 	const hand = state.hands[target];
 
@@ -82,19 +81,17 @@ function determine_clue(state, target, target_card) {
 
 		result.interpret = inferred_after_cluing;
 		result.correct = hypo_state.hands[target].every((card, index) => {
-			if (!card.reset && card.matches_inferences()) {
-				if (card.order === target_card.order) {
-					// Focused card must also not be reset
-					return !card.reset;
-				}
-				return true;
+			// The focused card must not have been reset and must match inferences
+			if (card.order === target_card.order) {
+				return !card.reset && card.matches_inferences();
 			}
 
 			const old_card = state.hands[target][index];
 
-			// Card doesn't match inference, but can still be correct if:
-			return ((old_card.reset || !old_card.matches_inferences()) ||	// Didn't match inference even before clue
-				bad_touch_cards.some(c => c.order === card.order) ||		// Bad touched
+			// For non-focused cards:
+			return (!card.reset && card.matches_inferences()) || 		// Matches inferences
+				((old_card.reset || !old_card.matches_inferences()) ||	// Didn't match inference even before clue
+				bad_touch_cards.some(c => c.order === card.order) ||	// Bad touched
 				card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)));	// Known trash
 		});
 		result.elim = elim_sum;

@@ -1,5 +1,6 @@
 const { CLUE } = require('../../../constants.js');
-const { isBasicTrash, isTrash } = require('../../../basics/hanabi-util.js');
+const { find_chop } = require('../hanabi-logic.js');
+const { isTrash } = require('../../../basics/hanabi-util.js');
 const { logger } = require('../../../logger.js');
 const Utils = require('../../../util.js');
 
@@ -30,44 +31,35 @@ function interpret_tcm(state, target) {
 
 function interpret_5cm(state, giver, target) {
 	logger.info('interpreting potential 5cm');
+	const hand = state.hands[target];
+	const chopIndex = find_chop(hand, { includeNew: true });
 
 	// Find the oldest 5 clued and its distance from chop
-	let chopIndex = -1;
+	let distance_from_chop = 0;
+	for (let i = chopIndex; i >= 0; i--) {
+		const card = hand[i];
 
-	for (let i = state.hands[target].length - 1; i >= 0; i--) {
-		const card = state.hands[target][i];
-
-		// Skip finessed, chop moved and previously clued cards
-		if (card.finessed || card.chop_moved || (card.clued && !card.newly_clued)) {
+		// Skip previously clued cards
+		if (card.clued && !card.newly_clued) {
 			logger.info('skipping card', Utils.logCard(card));
 			continue;
 		}
 
-		// First unclued or newly clued card is chop
-		if (chopIndex === -1) {
-			const { suitIndex, rank, order } = card;
-			// TODO: Asymmetric 5cm - If we aren't the target, we can see the card being chop moved
-			// However, this requires that there is some kind of finesse/prompt to prove it is not 5cm
-			// target !== state.ourPlayerIndex && isTrash(state, giver, suitIndex, rank, order)
-			if (isTrash(state, target, suitIndex, rank, order)) {
-				logger.info(`chop ${Utils.logCard(card)} is trash, not interpreting 5cm`);
-				return false;
-			}
-			chopIndex = i;
-		}
-
 		// Check the next card that meets the requirements (must be 5 and newly clued to be 5cm)
+		// TODO: Asymmetric 5cm - If we aren't the target, we can see the card being chop moved
+		// However, this requires that there is some kind of finesse/prompt to prove it is not 5cm
 		if (card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5)) {
-			if (chopIndex - i === 1) {
+			if (distance_from_chop === 1) {
 				logger.info(`5cm, saving ${Utils.logCard(state.hands[target][chopIndex])}`);
 				state.hands[target][chopIndex].chop_moved = true;
 				return true;
 			}
 			else {
-				logger.info(`rightmost 5 was clued ${chopIndex - i} away from chop, not interpreting 5cm`);
+				logger.info(`rightmost 5 was clued ${distance_from_chop} away from chop, not interpreting 5cm`);
 				return false;
 			}
 		}
+		distance_from_chop++;
 	}
 	return false;
 }

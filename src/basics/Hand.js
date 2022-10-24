@@ -1,4 +1,3 @@
-const { CLUE } = require('../constants.js');
 const { cardTouched } = require('../variants.js');
 const { logger } = require('../logger.js');
 

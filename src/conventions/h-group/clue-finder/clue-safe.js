@@ -1,4 +1,3 @@
-const { CLUE } = require('../../../constants.js');
 const { find_chop } = require('../hanabi-logic.js');
 const { handLoaded } = require('../../../basics/helper.js');
 const { isCritical } = require('../../../basics/hanabi-util.js');

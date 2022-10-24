@@ -25,10 +25,7 @@ function isBasicTrash(state, suitIndex, rank) {
 
 function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, options) {
 	return visibleFind(state, inferringPlayerIndex, suitIndex, rank, options).some(c => {
-		if (order !== -1 && c.order === order) {
-			return false;
-		}
-		return c.finessed || c.clued || c.chop_moved;
+		return c.order !== order && (c.finessed || c.clued || c.chop_moved);
 	});
 }
 

@@ -153,6 +153,7 @@ function find_clues(state, options = {}) {
 		const chopIndex = find_chop(hand);
 
 		let found_tcm = false, tried_5cm = false;
+		const severity = stall_severity(state, state.ourPlayerIndex);
 
 		for (let cardIndex = hand.length - 1; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
@@ -164,6 +165,8 @@ function find_clues(state, options = {}) {
 				state.waiting_connections.some(c => suitIndex === c.inference.suitIndex && rank <= c.inference.rank)) {
 				continue;
 			}
+
+			logger.info('--------');
 
 			// Save clue
 			if (cardIndex === chopIndex) {
@@ -177,7 +180,7 @@ function find_clues(state, options = {}) {
 					logger.info('looking for tcm on', Utils.logCard(card));
 					const saved_cards = hand.slice(cardIndex + 1).filter(c => !(c.clued || c.chop_moved));
 					// Use original save clue if tcm not found
-					save_clues[target] = find_tcm(state, target, saved_cards, card) || save_clues[target];
+					save_clues[target] = find_tcm(state, target, saved_cards, card) ?? save_clues[target];
 					found_tcm = true;
 				}
 				// TODO: Eventually, trash bluff/finesse/push?
@@ -185,35 +188,31 @@ function find_clues(state, options = {}) {
 			}
 
 			// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
-			if (rank === 5 && cardIndex !== chopIndex && !tried_5cm && !options.ignoreCM &&
-				!(card.clued || card.chop_moved) && stall_severity(state, state.ourPlayerIndex) === 0
-			) {
-				logger.info('trying 5cm');
+			if (!options.ignoreCM && !tried_5cm && rank === 5 && !(card.clued || card.chop_moved)) {
+				logger.info('trying 5cm with 5 at index', cardIndex);
 				tried_5cm = true;
-				let valid_5cm = false;
 
-				// Find where chop is, relative to the rightmost clued 5
-				for (let j = cardIndex + 1; j <= chopIndex; j++) {
-					// Skip clued/finessed cards
-					if (hand[j].clued || hand[j].finessed) {
-						continue;
+				// Can only perform a 5cm at severity 0 (otherwise, looks like 5 stall)
+				if (severity === 0) {
+					// Find where chop is, relative to the rightmost clued 5
+					let distance_from_chop = 0;
+					for (let j = cardIndex; j < chopIndex; j++) {
+						// Skip clued/finessed cards
+						if (hand[j].clued) {
+							continue;
+						}
+						distance_from_chop++;
 					}
 
-					// Chop is 1 card away from the 5
-					if (j === chopIndex) {
-						valid_5cm = true;
-					}
-
-					// Only look 1 card away`
-					break;
-				}
-				
-				if (valid_5cm) {
-					// Use original save clue (or look for play clue) if 5cm not found
-					const cm5 = find_5cm(state, target, hand[chopIndex]);
-					if (cm5 !== undefined) {
-						save_clues[target] = cm5;
+					if (distance_from_chop === 1) {
+						// Use original save clue (or look for play clue) if 5cm not found
+						save_clues[target] = find_5cm(state, target, hand[chopIndex]) ?? save_clues[target];
+						logger.info('found 5cm');
 						continue;
+					}
+					else {
+						logger.info(`rightmost 5 is ${distance_from_chop} from chop, cannot 5cm`);
+						logger.info('--------');
 					}
 				}
 			}

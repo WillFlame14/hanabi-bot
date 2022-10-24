@@ -33,21 +33,26 @@ function take_action(state) {
 		}
 	}
 
-	// Then, look for playables or trash in own hand
+	// Then, look for playables, trash and important discards in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
 	const trash_cards = find_known_trash(state, state.ourPlayerIndex);
-	const sarcastic_discards = playable_cards.filter(pc => trash_cards.some(tc => tc.order === pc.order));
+	const discards = playable_cards.filter(pc => {
+		return trash_cards.some(tc => tc.order === pc.order) &&
+		!playable_cards.some(pc2 => pc2.matches(pc.suitIndex, pc.rank, { infer: true }));	// Not duplicated in our hand (should play first)
+	});
 
-	// Remove sarcastic discards from playables
-	playable_cards = playable_cards.filter(pc => !sarcastic_discards.some(sc => sc.order === pc.order));
+	// Remove trash cards from playables
+	playable_cards = playable_cards.filter(pc => !trash_cards.some(sc => sc.order === pc.order));
 	logger.info('playable cards', Utils.logHand(playable_cards));
 	logger.info('trash cards', Utils.logHand(trash_cards));
 
-	// Give a sarcastic/certain discard to someone else (if it's to us, we should play first)
-	if (sarcastic_discards.length > 0) {
-		const other_sarcastic = sarcastic_discards.find(sc => !playable_cards.some(pc => pc.matches(sc.suitIndex, sc.rank, { infer: true })));
-		if (other_sarcastic !== undefined) {
-			Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: other_sarcastic.order });
+	// Playing into finesse/bluff
+	let best_playable_card, priority;
+	if (playable_cards.length > 0) {
+		({ card: best_playable_card, priority } = determine_playable_card(state, playable_cards));
+
+		if (priority === 0) {
+			Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
 			return;
 		}
 	}
@@ -65,6 +70,12 @@ function take_action(state) {
 		}
 	}
 
+	// Sarcastic discard to someone else
+	if (discards.length > 0) {
+		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: discards[0].order });
+		return;
+	}
+
 	// Unlock other player than next
 	if (urgent_actions[4].length > 0) {
 		Utils.sendCmd('action', urgent_actions[4][0]);
@@ -79,15 +90,10 @@ function take_action(state) {
 		return;
 	}
 
-	// Playable card with high priority
-	let best_playable_card, priority;
-	if (playable_cards.length > 0) {
-		({ card: best_playable_card, priority } = determine_playable_card(state, playable_cards));
-
-		if (priority <= 3) {
-			Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
-			return;
-		}
+	// Playing a connecting card or playing a 5
+	if (playable_cards.length > 0 && priority <= 3) {
+		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
+		return;
 	}
 
 	// Discard known trash at high pace

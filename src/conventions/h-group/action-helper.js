@@ -1,5 +1,5 @@
 const { ACTION } = require('../../constants.js');
-const { find_playables, find_known_trash, handLoaded } = require('../../basics/helper.js');
+const { handLoaded } = require('../../basics/helper.js');
 const { logger } = require('../../logger.js');
 const { playableAway } = require('../../basics/hanabi-util.js');
 const Utils = require('../../util.js');
@@ -63,7 +63,9 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target);
 		const immediately_playable = target_cards.find(({ card }) => playableAway(state, card.suitIndex, card.rank) === 0);
 
-		logger.debug('examining clue', Utils.logClue(clue), 'with playables', playables.map(play => { return { playerIndex: play.playerIndex, card: Utils.logCard(play.card) } }));
+		logger.debug('examining clue', Utils.logClue(clue), 'with playables', playables.map(play => {
+			return { playerIndex: play.playerIndex, card: Utils.logCard(play.card) };
+		}));
 
 		// The card can be played without any additional help
 		if (immediately_playable !== undefined) {
