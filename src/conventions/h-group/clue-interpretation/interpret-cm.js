@@ -1,10 +1,19 @@
-const { CLUE } = require('../../../constants.js');
-const { find_chop } = require('../hanabi-logic.js');
-const { isTrash } = require('../../../basics/hanabi-util.js');
-const { logger } = require('../../../logger.js');
-const Utils = require('../../../util.js');
+import { CLUE } from '../../../constants.js';
+import { find_chop } from '../hanabi-logic.js';
+import { isTrash } from '../../../basics/hanabi-util.js';
+import logger from '../../../logger.js';
+import * as Utils from '../../../util.js';
 
-function interpret_tcm(state, target) {
+/**
+ * @typedef {import('../../../basics/State.js').State} State
+ */
+
+/**
+ * Executes a Trash Chop Move on the target (i.e. writing notes). The clue must have already been registered.
+ * @param {State} state
+ * @param {number} target
+ */
+export function interpret_tcm(state, target) {
 	let oldest_trash_index;
 	// Find the oldest newly clued trash
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
@@ -29,7 +38,13 @@ function interpret_tcm(state, target) {
 	}
 }
 
-function interpret_5cm(state, giver, target) {
+/**
+ * Executes a 5's Chop Move on the target (i.e. writing notes), if valid. The clue must have already been registered.
+ * @param {State} state
+ * @param {number} target
+ * @returns Whether a 5cm was performed or not.
+ */
+export function interpret_5cm(state, target) {
 	logger.info('interpreting potential 5cm');
 	const hand = state.hands[target];
 	const chopIndex = find_chop(hand, { includeNew: true });
@@ -63,5 +78,3 @@ function interpret_5cm(state, giver, target) {
 	}
 	return false;
 }
-
-module.exports = { interpret_tcm, interpret_5cm };

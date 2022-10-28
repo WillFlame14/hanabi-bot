@@ -1,8 +1,19 @@
-const { Card } = require('../../basics/Card.js');
-const { isTrash, playableAway, visibleFind } = require('../../basics/hanabi-util.js');
-const { logger } = require('../../logger.js');
-const Utils = require('../../util.js');
+import { Card } from '../../basics/Card.js';
+import { isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
+import logger from '../../logger.js';
+import * as Utils from '../../util.js';
 
+/**
+ * @typedef {import('../../basics/State.js').State} State
+ * @typedef {import('../../basics/Hand.js').Hand} Hand
+ */
+
+/**
+ * Returns the cards in hand that could be targets for a sarcastic discard.
+ * @param {Hand} hand
+ * @param {number} suitIndex
+ * @param {number} rank
+ */
 function find_sarcastic(hand, suitIndex, rank) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
 	const known_sarcastic = hand.findCards(suitIndex, rank, { symmetric: true, infer: true });
@@ -15,6 +26,13 @@ function find_sarcastic(hand, suitIndex, rank) {
 		!(c.inferred.length === 1 && c.inferred[0].rank < rank));		// Do not sarcastic on connecting cards
 }
 
+/**
+ * Reverts the hypo stacks of the given suitIndex to the given rank - 1, if it was originally above that.
+ * @param {State} state
+ * @param {number} playerIndex
+ * @param {number} suitIndex
+ * @param {number} rank
+ */
 function undo_hypo_stacks(state, playerIndex, suitIndex, rank) {
 	logger.info(`${state.playerNames[playerIndex]} discarded useful card ${Utils.logCard({suitIndex, rank})}, setting hypo stack ${rank - 1}`);
 	if (state.hypo_stacks[suitIndex] >= rank) {
@@ -22,12 +40,21 @@ function undo_hypo_stacks(state, playerIndex, suitIndex, rank) {
 	}
 }
 
+/**
+ * Adds the sarcastic discard inference to the given set of sarcastic cards.
+ * @param {State} state
+ * @param {Card[]} sarcastic
+ * @param {number} playerIndex
+ * @param {number} suitIndex
+ * @param {number} rank
+ */
 function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank) {
 	// Need to add the inference back if it was previously eliminated due to good touch
 	for (const s of sarcastic) {
 		s.union('inferred', [new Card(suitIndex, rank)]);
 	}
 
+	/** @param {Card} card */
 	const playable = (card) => {
 		return card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0);
 	};
@@ -38,7 +65,13 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
 	}
 }
 
-function interpret_discard(state, action, card) {
+/**
+ * Interprets (writes notes) for a discard of the given card.
+ * @param {State} state
+ * @param {import('../../types.js').DiscardAction} action
+ * @param {Card} card
+ */
+export function interpret_discard(state, action, card) {
 	const { order, playerIndex, rank, suitIndex, failed } = action;
 
 	// Early game and discard wasn't known trash or misplay, so end early game
@@ -50,7 +83,7 @@ function interpret_discard(state, action, card) {
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
 	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order)))) {
 		logger.info('all inferences', card.inferred.map(c => Utils.logCard(c)));
-		if (state.rewind(state, card.reasoning.pop(), playerIndex, order, suitIndex, rank, card.finessed)) {
+		if (state.rewind(card.reasoning.pop(), playerIndex, order, suitIndex, rank, card.finessed)) {
 			return;
 		}
 	}
@@ -99,5 +132,3 @@ function interpret_discard(state, action, card) {
 		}
 	}
 }
-
-module.exports = { interpret_discard };

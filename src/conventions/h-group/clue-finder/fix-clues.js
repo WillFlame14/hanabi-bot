@@ -1,14 +1,31 @@
-const { direct_clues } = require('./determine-clue.js');
-const { isBasicTrash, isSaved, playableAway } = require('../../../basics/hanabi-util.js');
-const { logger } = require('../../../logger.js');
-const Utils = require('../../../util.js');
+import { direct_clues } from './determine-clue.js';
+import { isBasicTrash, isSaved, isTrash, playableAway } from '../../../basics/hanabi-util.js';
+import logger from '../../../logger.js';
+import * as Utils from '../../../util.js';
 
-function find_fix_clues(state, play_clues, save_clues) {
+/**
+ * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../../basics/Card.js').Card} Card
+ * @typedef {import('../../../types.js').Clue} Clue
+ * @typedef {import('../../../types.js').FixClue} FixClue
+ */
+
+/**
+ * Finds fix clues for all players. All valid play clues and save clues are also needed
+ * as they might be able to elim fix at the same time.
+ * @param {State} state
+ * @param {Clue[][]} play_clues
+ * @param {Clue[]} save_clues
+ * @param {{ignorePlayerIndex?: number}} options
+ */
+export function find_fix_clues(state, play_clues, save_clues, options = {}) {
+	/** @type {FixClue[][]} */
 	const fix_clues = [];
+
 	for (let target = 0; target < state.numPlayers; target++) {
 		fix_clues[target] = [];
 		// Ignore our own hand
-		if (target === state.ourPlayerIndex) {
+		if (target === state.ourPlayerIndex || target === options.ignorePlayerIndex) {
 			continue;
 		}
 
@@ -99,42 +116,52 @@ function find_fix_clues(state, play_clues, save_clues) {
 	return fix_clues;
 }
 
+/**
+ * A fix criterion. Considered fixed when the card matches at least one of its inferences.
+ * @param {State} _state
+ * @param {Card} card
+ * @param {number} _target
+ */
 function inference_corrected(_state, card, _target) {
 	return card.matches_inferences(); //card.possible.every(p => playableAway(state, p.suitIndex, p.rank) !== 0);
 }
 
+/**
+ * A fix criterion. Considered fixed when the card becomes known duplicated as an already saved card.
+ * @param {State} state
+ * @param {Card} card
+ * @param {number} target
+ */
 function duplication_known(state, card, target) {
 	return card.possible.length === 1 && isSaved(state, target, card.suitIndex, card.rank, card.order);
 }
 
-// Every possibility is trash or duplicated
-function card_trash(state, target, card) {
-	return card.possible.every(p =>
-		isBasicTrash(state, p.suitIndex, p.rank) ||
-		isSaved(state, target, p.suitIndex, p.rank, card.order)
-	);
-}
-
+/**
+ * Checks whether the given card is fixed by the clue, according to the fix criteria.
+ * @param {State} state
+ * @param {number} target
+ * @param {Card} card
+ * @param {Clue} clue
+ * @param {(state: State, card: Card, target: number) => boolean} fix_criteria
+ */
 function check_fixed(state, target, card, clue, fix_criteria) {
 	const hand = state.hands[target];
 	const touch = hand.clueTouched(state.suits, clue);
 
-	const action = { giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue };
+	const action = { type: 'clue', giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue };
 
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();
 
-	const hypo_state = state.simulate_clue(state, action, { enableLogs: true, simulatePlayerIndex: target });
+	const hypo_state = state.simulate_clue(action, { enableLogs: true, simulatePlayerIndex: target });
 	const card_after_cluing = hypo_state.hands[target].find(c => c.order === card.order);
 
 	const result = {
 		fixed: fix_criteria(hypo_state, card_after_cluing, target),
-		trash: card_trash(hypo_state, target, card_after_cluing)
+		trash: card.possible.every(p => isTrash(hypo_state, target, p.suitIndex, p.rank, card_after_cluing.order))
 	};
 
 	logger.flush(result.fixed);
 
 	return result;
 }
-
-module.exports = { find_fix_clues };

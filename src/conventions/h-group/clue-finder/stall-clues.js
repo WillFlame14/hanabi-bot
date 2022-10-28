@@ -1,10 +1,10 @@
-const { ACTION } = require('../../../constants.js');
-const { logger } = require('../../../logger.js');
+import { ACTION } from '../../../constants.js';
+import logger from '../../../logger.js';
 
 /**
  * Finds a stall clue to give. Always finds a clue if severity is greater than 1 (hard burn).
  */
-function find_stall_clue(state, severity, tempo_clue) {
+export function find_stall_clue(state, severity, tempo_clue) {
 	const stall_clues = [[], [], [], []];
 
 	if (tempo_clue !== undefined && severity > 1) {
@@ -58,5 +58,3 @@ function find_stall_clue(state, severity, tempo_clue) {
 		}
 	}
 }
-
-module.exports = { find_stall_clue };

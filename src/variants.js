@@ -1,10 +1,29 @@
-const https = require('https');
-const { CLUE } = require('./constants.js');
+import * as https from 'https';
+import { CLUE } from './constants.js';
+
+/**
+ * @typedef {import('./types.js').Clue} Clue
+ * 
+ * @typedef Variant
+ * @property {number} id
+ * @property {string} name
+ * @property {string[]} suits
+ * @property {number} [specialRank]
+ * @property {boolean} [specialAllClueColours]
+ * @property {boolean} [specialAllClueRanks]
+ * @property {boolean} [specialNoClueColours]
+ * @property {boolean} [specialNoClueRanks]
+ */
 
 const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/data/src/json/variants.json';
+
+/** @type {Promise<Variant[]>} */
 let variants_promise;
 
-async function fetchVariants() {
+/**
+ * Sends an asynchronous request to fetch the list of variants.
+ */
+export function fetchVariants() {
 	variants_promise = new Promise((resolve, reject) => {
 		https.get(variantsURL, (res) => {
 			const { statusCode } = res;
@@ -33,12 +52,16 @@ async function fetchVariants() {
 	});
 }
 
-async function getVariant(name) {
+/**
+ * Returns a variant's properties, given its name.
+ * @param {string} name
+ */
+export async function getVariant(name) {
 	const variants = await variants_promise;
 	return variants.find(variant => variant.name === name);
 }
 
-const shortForms = {
+export const shortForms = Object.freeze({
 	'Red': 'r',
 	'Yellow': 'y',
 	'Green': 'g',
@@ -53,9 +76,15 @@ const shortForms = {
 	'Omni': 'o',
 	'Null': 'u',
 	'Prism': 'i'
-};
+});
 
-function cardTouched(card, suits, clue) {
+/**
+ * Returns whether the card would be touched by the clue.
+ * @param {{suitIndex: number, rank: number}} card
+ * @param {string[]} suits
+ * @param {Omit<Clue, 'target'>} clue
+ */
+export function cardTouched(card, suits, clue) {
 	const { type, value } = clue;
 	const { suitIndex, rank } = card;
 	const suit = suits[suitIndex];
@@ -92,7 +121,12 @@ function cardTouched(card, suits, clue) {
 	}
 }
 
-function isCluable(suits, clue) {
+/**
+ * Returns whether the clue is possible to give. For example, white cannot be clued.
+ * @param {string[]} suits
+ * @param {Omit<Clue, 'target'>} clue
+ */
+export function isCluable(suits, clue) {
 	const { type, value } = clue;
 
 	if (type === CLUE.COLOUR && ['Null', 'Omni', 'White', 'Rainbow', 'Prism'].includes(suits[value])) {
@@ -101,12 +135,15 @@ function isCluable(suits, clue) {
 	return true;
 }
 
-function cardCount(suit, rank) {
+/**
+ * Returns the total number of cards in a suit for a particular rank.
+ * @param {string} suit
+ * @param {number} rank
+ */
+export function cardCount(suit, rank) {
 	if (suit === 'Black') {
 		return 1;
 	}
 
 	return [3, 2, 2, 2, 1][rank - 1];
 }
-
-module.exports = { cardCount, cardTouched, fetchVariants, getVariant, isCluable, shortForms };

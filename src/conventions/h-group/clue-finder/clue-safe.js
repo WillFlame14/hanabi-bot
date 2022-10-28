@@ -1,16 +1,20 @@
-const { find_chop } = require('../hanabi-logic.js');
-const { handLoaded } = require('../../../basics/helper.js');
-const { isCritical } = require('../../../basics/hanabi-util.js');
-const { logger } = require('../../../logger.js');
-const Utils = require('../../../util.js');
+import { find_chop } from '../hanabi-logic.js';
+import { handLoaded } from '../../../basics/helper.js';
+import { isCritical } from '../../../basics/hanabi-util.js';
+import logger from '../../../logger.js';
+import * as Utils from '../../../util.js';
 
-// Determines if the clue is safe to give (i.e. doesn't put a critical on chop with nothing to do)
-function clue_safe(state, clue) {
+/**
+ * Determines if the clue is safe to give (i.e. doesn't put a critical on chop with nothing to do)
+ * @param {import('../../../basics/State.js').State} state
+ * @param {import('../../../types.js').Clue} clue
+ */
+export function clue_safe(state, clue) {
 	const { target } = clue;
 
 	const list = state.hands[target].clueTouched(state.suits, clue).map(c => c.order);
-	const action = { giver: state.ourPlayerIndex, target, list, clue };
-	const hypo_state = state.simulate_clue(state, action);//, { simulatePlayerIndex: target });
+	const action = { type: 'clue', giver: state.ourPlayerIndex, target, list, clue };
+	const hypo_state = state.simulate_clue(action);//, { simulatePlayerIndex: target });
 
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
 	const hand = hypo_state.hands[nextPlayerIndex];
@@ -48,5 +52,3 @@ function clue_safe(state, clue) {
 
 	return give_clue;
 }
-
-module.exports = { clue_safe };

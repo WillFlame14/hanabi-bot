@@ -1,10 +1,11 @@
-require('dotenv').config();
-const https = require('https');
-const WebSocket = require('ws');
+import * as https from 'https';
+import WebSocket from 'ws';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
-const { handle } = require('./command-handler.js');
-const { fetchVariants } = require('./variants.js');
-const Utils = require('./util.js');
+import { handle } from './command-handler.js';
+import { fetchVariants } from './variants.js';
+import * as Utils from './util.js';
 
 /**
  *	Parses the command-line arguments into an object.

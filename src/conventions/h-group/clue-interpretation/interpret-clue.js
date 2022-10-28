@@ -1,20 +1,33 @@
-const { CLUE } = require('../../../constants.js');
-const { interpret_tcm, interpret_5cm } = require('./interpret-cm.js');
-const { stalling_situation } = require('./interpret-stall.js');
-const { determine_focus } = require('../hanabi-logic.js');
-const { find_focus_possible } = require('./focus-possible.js');
-const { find_own_finesses } = require('./connecting-cards.js');
-const { Card } = require('../../../basics/Card.js');
-const { bad_touch_possiblities, update_hypo_stacks, good_touch_elim } = require('../../../basics/helper.js');
-const { isBasicTrash, isTrash } = require('../../../basics/hanabi-util.js');
-const { logger } = require('../../../logger.js');
-const Basics = require('../../../basics.js');
-const Utils = require('../../../util.js');
+import { CLUE } from '../../../constants.js';
+import { Card } from '../../../basics/Card.js';
+import { interpret_tcm, interpret_5cm } from './interpret-cm.js';
+import { stalling_situation } from './interpret-stall.js';
+import { determine_focus } from '../hanabi-logic.js';
+import { find_focus_possible } from './focus-possible.js';
+import { find_own_finesses } from './connecting-cards.js';
+import { bad_touch_possiblities, update_hypo_stacks, good_touch_elim } from '../../../basics/helper.js';
+import { isBasicTrash, isTrash, playableAway } from '../../../basics/hanabi-util.js';
+import logger from '../../../logger.js';
+import * as Basics from '../../../basics.js';
+import * as Utils from '../../../util.js';
 
+/**
+ * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../../types.js').ClueAction} ClueAction
+ * @typedef {import('../../../types.js').Connection} Connection
+ */
+
+/**
+ * Given a clue, recursively applies good touch principle to the target's hand.
+ * @param {State} state
+ * @param {ClueAction} action
+ * @returns {boolean} Whether the clue was a fix clue or not.
+ */
 function apply_good_touch(state, action) {
 	const { giver, list, target } = action;
 	let fix = false;
 
+	/** @type {number[]} */
 	const had_inferences = [];
 
 	for (const card of state.hands[target]) {
@@ -49,7 +62,7 @@ function apply_good_touch(state, action) {
 
 			// Directly fixing duplicates (if we're using an inference, the card must match the inference, unless it's unknown)
 			// (card.inferred.length === 1 && (target === state.ourPlayerIndex || card.matches_inferences()))
-			if (!fix && list.includes(card.order) && card.possible.length === 1) {
+			if (!fix && list.includes(card.order) && !card.newly_clued && card.possible.length === 1) {
 				const { suitIndex, rank } = card.possible[0];
 
 				// The fix can be in anyone's hand
@@ -74,7 +87,12 @@ function apply_good_touch(state, action) {
 	return fix;
 }
 
-function interpret_clue(state, action) {
+/**
+ * Interprets the given clue. First tries to look for inferred connecting cards, then attempts to find prompts/finesses.
+ * @param {State} state
+ * @param {ClueAction} action
+ */
+export function interpret_clue(state, action) {
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
 	const fix = apply_good_touch(state, action);
 
@@ -106,13 +124,16 @@ function interpret_clue(state, action) {
 	}
 
 	// Trash chop move
-	if (focused_card.newly_clued && focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: false }))) {
+	if (focused_card.newly_clued &&
+		focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: false })) &&
+		!(focused_card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0))
+	) {
 		interpret_tcm(state, target);
 		return;
 	}
 	// 5's chop move
 	else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued) {
-		if (interpret_5cm(state, giver, target)) {
+		if (interpret_5cm(state, target)) {
 			return;
 		}
 	}
@@ -133,9 +154,9 @@ function interpret_clue(state, action) {
 		focused_card.intersect('inferred', focus_possible);
 
 		for (const inference of matched_inferences) {
-			const { suitIndex, rank, save = false, stall = false, connections } = inference;
+			const { suitIndex, rank, connections, save = false } = inference;
 
-			if (!save && !stall) {
+			if (!save) {
 				assign_connections(state, connections, suitIndex);
 
 				// Only one inference, we can update hypo stacks
@@ -144,7 +165,7 @@ function interpret_clue(state, action) {
 				}
 				// Multiple inferences, we need to wait for connections
 				else if (connections.length > 0 && !connections[0].self) {
-					state.waiting_connections.push({ connections, focused_card, inference });
+					state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank } });
 				}
 			}
 		}
@@ -152,7 +173,9 @@ function interpret_clue(state, action) {
 	// Card doesn't match any inferences
 	else {
 		logger.info(`card ${Utils.logCard(focused_card)} order ${focused_card.order} doesn't match any inferences!`);
-		let all_connections = [];
+
+		/** @type {{connections: Connection[], conn_suit: number}[]} */
+		const all_connections = [];
 		logger.info(`inferences ${focused_card.inferred.map(c => Utils.logCard(c)).join(',')}`);
 
 		if (target === state.ourPlayerIndex) {
@@ -245,6 +268,15 @@ function interpret_clue(state, action) {
 	update_hypo_stacks(state);
 }
 
+/**
+ * Eliminates the given suitIndex and rank on clued cards from the team, following good touch principle.
+ * @param {State} state
+ * @param {Card} focused_card
+ * @param {number} giver 		The clue receiver. They can elim only if they know/infer the focused card's identity.
+ * @param {number} target 		The clue giver. They cannot elim on any of their own clued cards.
+ * @param {number} suitIndex
+ * @param {number} rank
+ */
 function team_elim(state, focused_card, giver, target, suitIndex, rank) {
 	for (let i = 0; i < state.numPlayers; i++) {
 		const hand = state.hands[i];
@@ -262,6 +294,12 @@ function team_elim(state, focused_card, giver, target, suitIndex, rank) {
 	}
 }
 
+/**
+ * Helper function that applies the given connections on the given suit to the state (e.g. writing finesses).
+ * @param {State} state
+ * @param {Connection[]} connections
+ * @param {number} suitIndex
+ */
 function assign_connections(state, connections, suitIndex) {
 	let next_rank = state.play_stacks[suitIndex] + 1;
 	for (const connection of connections) {
@@ -291,5 +329,3 @@ function assign_connections(state, connections, suitIndex) {
 		}
 	}
 }
-
-module.exports = { interpret_clue };

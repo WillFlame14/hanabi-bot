@@ -1,14 +1,23 @@
-const { ACTION } = require('../../constants.js');
-const { select_play_clue, find_urgent_actions, determine_playable_card } = require('./action-helper.js');
-const { find_clues } = require('./clue-finder/clue-finder.js');
-const { find_stall_clue } = require('./clue-finder/stall-clues.js');
-const { find_chop, inEndgame } = require('./hanabi-logic.js');
-const { find_playables, find_known_trash, handLoaded } = require('../../basics/helper.js');
-const { getPace } = require('../../basics/hanabi-util.js');
-const { logger } = require('../../logger.js');
-const Utils = require('../../util.js');
+import { ACTION } from '../../constants.js';
+import { select_play_clue, find_urgent_actions, determine_playable_card } from './action-helper.js';
+import { find_clues } from './clue-finder/clue-finder.js';
+import { find_stall_clue } from './clue-finder/stall-clues.js';
+import { find_chop, inEndgame } from './hanabi-logic.js';
+import { find_playables, find_known_trash, handLoaded } from '../../basics/helper.js';
+import { getPace } from '../../basics/hanabi-util.js';
+import logger from '../../logger.js';
+import * as Utils from '../../util.js';
 
-function take_action(state) {
+/**
+ * @typedef {import('../../basics/State.js').State} State
+ * @typedef {import('../../basics/Hand.js').Hand} Hand
+ */
+
+/**
+ * Performs the most appropriate action given the current state.
+ * @param {State} state
+ */
+export function take_action(state) {
 	const { tableID } = state;
 	const hand = state.hands[state.ourPlayerIndex];
 	const { play_clues, save_clues, fix_clues } = find_clues(state);
@@ -36,15 +45,27 @@ function take_action(state) {
 	// Then, look for playables, trash and important discards in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
 	const trash_cards = find_known_trash(state, state.ourPlayerIndex);
-	const discards = playable_cards.filter(pc => {
-		return trash_cards.some(tc => tc.order === pc.order) &&
-		!playable_cards.some(pc2 => pc2.matches(pc.suitIndex, pc.rank, { infer: true }));	// Not duplicated in our hand (should play first)
-	});
+
+	const discards = [];
+	for (const card of playable_cards) {
+		const id = card.identity({ infer: true });
+
+		// Skip non-trash cards and cards we don't know the identity of
+		if (!trash_cards.some(c => c.order === card.order) || id === undefined) {
+			continue;
+		}
+
+		// If there isn't a matching playable card in our hand, we should discard it to sarcastic for someone else
+		if (!playable_cards.some(c => c.matches(id.suitIndex, id.rank, { infer: true }))) {
+			discards.push(card);
+		}
+	}
 
 	// Remove trash cards from playables
 	playable_cards = playable_cards.filter(pc => !trash_cards.some(sc => sc.order === pc.order));
 	logger.info('playable cards', Utils.logHand(playable_cards));
 	logger.info('trash cards', Utils.logHand(trash_cards));
+	logger.info('discards', Utils.logHand(discards));
 
 	// Playing into finesse/bluff
 	let best_playable_card, priority;
@@ -60,7 +81,7 @@ function take_action(state) {
 	// Get a high value play clue
 	let best_play_clue, clue_value;
 	if (state.clue_tokens > 0) {
-		let all_play_clues = play_clues.flat();
+		const all_play_clues = play_clues.flat();
 		({ clue: best_play_clue, clue_value } = select_play_clue(all_play_clues));
 
 		if (best_play_clue?.result.finesses > 0) {
@@ -181,6 +202,11 @@ function take_action(state) {
 	discard_chop(hand, tableID);
 }
 
+/**
+ * Discards the card on chop from the hand.
+ * @param {Hand} hand
+ * @param {number} tableID
+ */
 function discard_chop(hand, tableID) {
 	// Nothing else to do, so discard chop
 	const chopIndex = find_chop(hand);
@@ -196,5 +222,3 @@ function discard_chop(hand, tableID) {
 
 	Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: discard.order });
 }
-
-module.exports = { take_action };

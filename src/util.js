@@ -1,22 +1,25 @@
-const readline = require('readline');
-const { Card } = require('./basics/Card.js');
-const { ACTION, CLUE } = require('./constants.js');
-const { logger } = require('./logger.js');
-const { shortForms } = require('./variants.js');
+import * as readline from 'readline';
+import { Card } from './basics/Card.js';
+import { ACTION, CLUE } from './constants.js';
+import logger from './logger.js';
+import { shortForms } from './variants.js';
+
+/** @typedef {import('./basics/Hand.js').Hand} Hand */
 
 const globals = {};
 
 /**
  * Modifies the global object.
+ * @param {any} obj
  */
-function globalModify(obj) {
+export function globalModify(obj) {
 	Object.assign(globals, obj);
 }
 
 /**
  * Initializes the console interactivity with the game state.
  */
-function initConsole() {
+export function initConsole() {
 	readline.emitKeypressEvents(process.stdin);
 	if (process.stdin.isTTY) {
 		process.stdin.setRawMode(true);
@@ -73,30 +76,46 @@ function initConsole() {
 	});
 }
 
-function sendChat(recipient, msg) {
+/**
+ * Sends a chat message in hanab.live to the recipient.
+ * @param {string} recipient
+ * @param {string} msg
+ */
+export function sendChat(recipient, msg) {
 	sendCmd('chatPM', { msg, recipient, room: 'lobby' });
 }
 
-function sendCmd(command, arg) {
+/**
+ * Sends a game command to hanab.live with an object as data.
+ * @param {string} command
+ * @param {any} arg
+ */
+export function sendCmd(command, arg) {
 	const cmd = command + ' ' + JSON.stringify(arg);
 	logger.debug('sending cmd ' + cmd);
 	globals.ws.send(cmd);
 }
 
-function objClone(obj) {
+/**
+ * Deep clones an object. Does not create clones of functions.
+ * @template T
+ * @param {T} obj
+ * @returns {T}
+ */
+export function objClone(obj) {
 	if (typeof obj === 'object') {
 		if (obj instanceof Card) {
-			return obj.clone();
+			return /** @type {T} */ (obj.clone());
 		}
 		else if (Array.isArray(obj)) {
-			return obj.map(elem => objClone(elem));
+			return /** @type {T} */ (obj.map(elem => objClone(elem)));
 		}
 		else {
 			const new_obj = {};
 			for (const [name, value] of Object.entries(obj)) {
 					new_obj[name] = objClone(value);
 			}
-			return new_obj;
+			return /** @type {T} */ (new_obj);
 		}
 	}
 	else {
@@ -104,20 +123,35 @@ function objClone(obj) {
 	}
 }
 
-function objPick(obj, attributes) {
-	const new_obj = {};
+/**
+ * Returns a copy of the object, keeping only the attributes whose names were provided.
+ * @template T
+ * @template {keyof T} K
+ * @param {T} 	obj 			The base object.
+ * @param {K[]} attributes 		The keys of the base object that you want to keep.
+ */
+export function objPick(obj, attributes) {
+	const new_obj = /** @type {Pick<T, K>} */ ({});
 	for (const attr of attributes) {
 		new_obj[attr] = obj[attr];
 	}
 	return new_obj;
 }
 
-function objEquals(obj1, obj2) {
+/**
+ * Checks if two objects look the same (i.e. have the same properties).
+ */
+export function objEquals(obj1, obj2) {
 	const keys1 = Object.keys(obj1);
 
 	// Different number of keys
 	if (keys1.length !== Object.keys(obj2).length) {
 		return false;
+	}
+
+	// Two literals
+	if (keys1.length === 0) {
+		return obj1 === obj2;
 	}
 
 	for (const key of keys1) {
@@ -142,7 +176,11 @@ function objEquals(obj1, obj2) {
 	return true;
 }
 
-function logCard(card) {
+/**
+ * Returns a log-friendly representation of a card.
+ * @param {{suitIndex: number, rank: number} & Partial<Card>} card
+ */
+export function logCard(card) {
 	let suitIndex, rank, append;
 
 	if (card.suitIndex !== -1) {
@@ -162,7 +200,11 @@ function logCard(card) {
 	return shortForms[globals.state.suits[suitIndex]] + rank + (append !== undefined ? ' ' + append : '');
 }
 
-function logHand(hand) {
+/**
+ * Returns a log-friendly representation of a hand.
+ * @param {Card[]} hand
+ */
+export function logHand(hand) {
 	const new_hand = [];
 
 	for (const card of hand) {
@@ -170,6 +212,7 @@ function logHand(hand) {
 		new_card.visible = (card.suitIndex === -1 ? 'unknown' : logCard(card));
 		new_card.order = card.order;
 
+		/** @type {string[]} */
 		new_card.flags = [];
 		for (const flag of ['clued', 'newly_clued', 'prompted', 'finessed', 'chop_moved', 'rewinded']) {
 			if (card[flag]) {
@@ -185,7 +228,11 @@ function logHand(hand) {
 	return new_hand;
 }
 
-function logClue(clue) {
+/**
+ * Returns a log-friendly representation of a clue.
+ * @param {import('./types.js').Clue} clue
+ */
+export function logClue(clue) {
 	if (clue === undefined) {
 		return;
 	}
@@ -194,7 +241,13 @@ function logClue(clue) {
 	return `(${value} to ${globals.state.playerNames[clue.target]})`;
 }
 
-function writeNote(turn, card, tableID) {
+/**
+ * Writes the card's inferences on it as a note.
+ * @param {number} turn
+ * @param {Card} card
+ * @param {number} tableID
+ */
+export function writeNote(turn, card, tableID) {
 	let note;
 
 	if (card.inferred.length === 0) {
@@ -229,10 +282,3 @@ function writeNote(turn, card, tableID) {
 		setTimeout(() => sendCmd('note', { tableID, order: card.order, note: card.full_note }), Math.random() * 3000);
 	}
 }
-
-module.exports = {
-	globalModify, initConsole,
-	sendChat, sendCmd,
-	objClone, objPick, objEquals,
-	logCard, logHand, logClue, writeNote
-};

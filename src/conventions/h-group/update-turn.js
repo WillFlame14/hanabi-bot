@@ -1,8 +1,19 @@
-const { update_hypo_stacks } = require('../../basics/helper.js');
-const { visibleFind } = require('../../basics/hanabi-util.js');
-const { logger } = require('../../logger.js');
-const Utils = require('../../util.js');
+import { update_hypo_stacks } from '../../basics/helper.js';
+import { visibleFind } from '../../basics/hanabi-util.js';
+import logger from '../../logger.js';
+import * as Utils from '../../util.js';
 
+/**
+ * @typedef {import('../../basics/State.js').State} State
+ * @typedef {import('../../basics/Card.js').Card} Card
+ * @typedef {import('../../types.js').TurnAction} TurnAction
+ */
+
+/**
+ * "Undoes" a connection by reverting/removing notes on connecting cards.
+ * @param {State} state
+ * @param {number} waiting_index
+ */
 function remove_finesse(state, waiting_index) {
 	const { connections, focused_card, inference } = state.waiting_connections[waiting_index];
 
@@ -42,11 +53,19 @@ function remove_finesse(state, waiting_index) {
 	}
 }
 
-function update_turn(state, action) {
+/**
+ * Performs relevant updates after someone takes a turn.
+ * @param {State} state
+ * @param {TurnAction} action
+ */
+export function update_turn(state, action) {
 	const { currentPlayerIndex } = action;
 	const lastPlayerIndex = (currentPlayerIndex + state.numPlayers - 1) % state.numPlayers;
 
+	/** @type {number[]} */
 	const to_remove = [];
+
+	/** @type {{card: Card, inferences: {suitIndex: number, rank: number}[]}[]} */
 	const demonstrated = [];
 
 	for (let i = 0; i < state.waiting_connections.length; i++) {
@@ -86,12 +105,12 @@ function update_turn(state, action) {
 
 					// Finesses demonstrate that a card must be playable and not save
 					if (type === 'finesse') {
-						const prev_card = demonstrated.find(pair => pair[0].order === focused_card.order);
+						const prev_card = demonstrated.find(({ card }) => card.order === focused_card.order);
 						if (prev_card === undefined) {
-							demonstrated.push([focused_card, [Utils.objPick(inference, ['suitIndex', 'rank'])]]);
+							demonstrated.push({card: focused_card, inferences: [inference]});
 						}
 						else {
-							prev_card[1].push(Utils.objPick(inference, ['suitIndex', 'rank']));
+							prev_card.inferences.push(inference);
 						}
 					}
 				}
@@ -108,7 +127,7 @@ function update_turn(state, action) {
 	}
 
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
-	for (const [card, inferences] of demonstrated) {
+	for (const { card, inferences } of demonstrated) {
 		logger.info(`intersecting card ${Utils.logCard(card)} with inferences ${inferences.map(c => Utils.logCard(c)).join(',')}`);
 		card.intersect('inferred', inferences);
 		// TODO: update hypo stacks?
@@ -117,5 +136,3 @@ function update_turn(state, action) {
 	// Filter out connections that have been removed
 	state.waiting_connections = state.waiting_connections.filter((_, i) => !to_remove.includes(i));
 }
-
-module.exports = { update_turn };

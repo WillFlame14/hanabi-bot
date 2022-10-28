@@ -1,10 +1,24 @@
-const { CLUE } = require('../../constants.js');
-const { handLoaded } = require('../../basics/helper.js');
-const { getPace, isBasicTrash, isSaved } = require('../../basics/hanabi-util.js');
-const { logger } = require('../../logger.js');
-const Utils = require('../../util.js');
+import { CLUE } from '../../constants.js';
+import { handLoaded } from '../../basics/helper.js';
+import { getPace, isTrash } from '../../basics/hanabi-util.js';
+import logger from '../../logger.js';
+import * as Utils from '../../util.js';
 
-function find_chop(hand, options = {}) {
+/**
+ * @typedef {import('../../basics/State.js').State} State
+ * @typedef {import('../../basics/Hand.js').Hand} Hand
+ * @typedef {import('../../basics/Card.js').Card} Card
+ */
+
+/**
+ * Returns the index (0-indexed) of the chop card in the given hand.
+ * 
+ * The 'includeNew' option ignores newly clued cards when determining chop.
+ * @param {Hand} hand
+ * @param {{includeNew?: boolean}} options
+ * @returns The index of the chop card, or -1 if the hand doesn't have a chop.
+ */
+export function find_chop(hand, options = {}) {
 	for (let i = hand.length - 1; i >= 0; i--) {
 		const { clued, newly_clued, chop_moved } = hand[i];
 		if (chop_moved || (clued && (options.includeNew ? true : !newly_clued))) {
@@ -15,7 +29,16 @@ function find_chop(hand, options = {}) {
 	return -1;
 }
 
-function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
+/**
+ * Finds a prompt in the hand for the given suitIndex and rank.
+ * @param {Hand} hand
+ * @param {number} suitIndex
+ * @param {number} rank
+ * @param {string[]} suits 			All suits in the current game.
+ * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
+ * @returns {Card | undefined}	The prompted card, or undefined if no card is a valid prompt.
+ */
+export function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
 	for (const card of hand) {
 		const { clued, newly_clued, order, possible, clues } = card;
 		// Ignore unclued, newly clued, and known cards (also intentionally ignored cards)
@@ -40,7 +63,15 @@ function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
 	return;
 }
 
-function find_finesse(hand, suitIndex, rank, ignoreOrders = []) {
+/**
+ * Finds a finesse in the hand for the given suitIndex and rank.
+ * @param {Hand} hand
+ * @param {number} suitIndex
+ * @param {number} rank
+ * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
+ * @returns {Card | undefined}	The prompted card, or undefined if no card is a valid finesse.
+ */
+export function find_finesse(hand, suitIndex, rank, ignoreOrders = []) {
 	for (const card of hand) {
 		// Ignore clued and finessed cards (also intentionally ignored cards)
 		if (card.clued || card.finessed || ignoreOrders.includes(card.order)) {
@@ -57,7 +88,16 @@ function find_finesse(hand, suitIndex, rank, ignoreOrders = []) {
 	return;
 }
 
-function determine_focus(hand, list, options = {}) {
+/**
+ * Finds the focused card and whether it was on chop before the clue.
+ * 
+ * The 'beforeClue' option is needed if this is called before the clue has been interpreted
+ * to prevent focusing a previously clued card.
+ * @param {Hand} hand
+ * @param {number[]} list 	The orders of all cards that were just clued.
+ * @param {{beforeClue?: boolean}} options
+ */
+export function determine_focus(hand, list, options = {}) {
 	const chopIndex = find_chop(hand);
 	logger.debug('determining focus with chopIndex', chopIndex, 'list', list, 'hand', Utils.logHand(hand));
 
@@ -88,18 +128,22 @@ function determine_focus(hand, list, options = {}) {
 	}
 }
 
-function find_bad_touch(state, cards) {
-	let bad_touch_cards = [];
+/**
+ * Returns all cards that would be bad touch if clued. In the case of duplicates, both will be returned.
+ * @param {State} state
+ * @param {Card[]} cards
+ */
+export function find_bad_touch(state, cards) {
+	/** @type {Card[]} */
+	const bad_touch_cards = [];
+
 	for (const card of cards) {
 		let bad_touch = false;
 
 		const { suitIndex, rank } = card;
-		// Card is either already played or can never be played
-		if (isBasicTrash(state, suitIndex, rank)) {
-			bad_touch = true;
-		}
-		// Someone else has the card finessed, clued or chop moved already
-		else if (isSaved(state, state.ourPlayerIndex, suitIndex, rank, card.order)) {
+		// Card has already been played or can never be played
+		// Or someone else has the card finessed, clued or chop moved already
+		if (isTrash(state, state.ourPlayerIndex, suitIndex, rank, card.order)) {
 			bad_touch = true;
 		}
 		// Cluing both copies of a card (will return both as bad touch)
@@ -125,7 +169,12 @@ function find_bad_touch(state, cards) {
 	return bad_touch_cards;
 }
 
-function stall_severity(state, giver) {
+/**
+ * Returns the current stall severity for the giver. [None, Early game, DDA/SDCM, Locked hand, 8 clues]
+ * @param {State} state
+ * @param {number} giver
+ */
+export function stall_severity(state, giver) {
 	if (state.clue_tokens === 7 && state.turn_count !== 0) {
 		return 4;
 	}
@@ -141,8 +190,10 @@ function stall_severity(state, giver) {
 	return 0;
 }
 
-function inEndgame(state) {
+/**
+ * Returns whether the state is in the endgame.
+ * @param {State} state
+ */
+export function inEndgame(state) {
 	return getPace(state) < state.numPlayers;
 }
-
-module.exports = { find_chop, find_prompt, find_finesse, determine_focus, find_bad_touch, stall_severity, inEndgame };

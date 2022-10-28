@@ -1,10 +1,27 @@
-const { cardCount } = require('../../../variants.js');
-const { find_prompt, find_finesse } = require('../hanabi-logic.js');
-const { card_elim } = require('../../../basics.js');
-const { logger } = require('../../../logger.js');
-const Utils = require('../../../util.js');
+import { cardCount } from '../../../variants.js';
+import { find_prompt, find_finesse } from '../hanabi-logic.js';
+import { card_elim } from '../../../basics.js';
+import logger from '../../../logger.js';
+import * as Utils from '../../../util.js';
 
-function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = []) {
+/**
+ * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../../basics/Card.js').Card} Card
+ * @typedef {import('../../../types.js').Clue} Clue
+ * @typedef {import('../../../types.js').Connection} Connection
+ */
+
+/**
+ * Looks for an inferred connecting card (i.e. without forcing a prompt/finesse).
+ * @param {State} state
+ * @param {number} giver 		The player index that gave the clue. They cannot deduce unknown information about their own hand.
+ * @param {number} target 		The player index receiving the clue. They will not find self-prompts or self-finesses.
+ * @param {number} suitIndex
+ * @param {number} rank
+ * @param {number[]} [ignoreOrders]		The orders of cards to ignore when searching.
+ * @returns {Connection}
+ */
+export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = []) {
 	logger.info('looking for connecting', Utils.logCard({suitIndex, rank}));
 
 	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits[suitIndex], rank)) {
@@ -80,7 +97,16 @@ function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = [
 	}
 }
 
-function find_own_finesses(state, giver, target, suitIndex, rank) {
+/**
+ * Looks for a connecting card, resorting to a prompt/finesse through own hand if necessary.
+ * @param {State} state
+ * @param {number} giver
+ * @param {number} target
+ * @param {number} suitIndex
+ * @param {number} rank
+ * @returns {{feasible: boolean, connections: Connection[]}}
+ */
+export function find_own_finesses(state, giver, target, suitIndex, rank) {
 	// We cannot finesse ourselves
 	if (giver === state.ourPlayerIndex) {
 		return { feasible: false, connections: [] };
@@ -91,6 +117,8 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 
 	logger.info('finding finesse for (potentially) clued card', Utils.logCard({suitIndex, rank}));
 	const our_hand = hypo_state.hands[state.ourPlayerIndex];
+
+	/** @type {Connection[]} */
 	const connections = [];
 
 	let feasible = true;
@@ -143,5 +171,3 @@ function find_own_finesses(state, giver, target, suitIndex, rank) {
 	}
 	return { feasible, connections };
 }
-
-module.exports = { find_connecting, find_own_finesses };

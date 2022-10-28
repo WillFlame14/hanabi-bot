@@ -1,12 +1,24 @@
-const { CLUE, ACTION } = require('../../../constants.js');
-const { clue_safe } = require('./clue-safe.js');
-const { find_fix_clues } = require('./fix-clues.js');
-const { determine_clue, direct_clues } = require('./determine-clue.js');
-const { find_chop, determine_focus, stall_severity } = require('../hanabi-logic.js');
-const { isBasicTrash, isCritical, isSaved, isTrash, visibleFind } = require('../../../basics/hanabi-util.js');
-const { logger } = require('../../../logger.js');
-const Utils = require('../../../util.js');
+import { CLUE, ACTION } from '../../../constants.js';
+import { clue_safe } from './clue-safe.js';
+import { find_fix_clues } from './fix-clues.js';
+import { determine_clue, direct_clues } from './determine-clue.js';
+import { find_chop, determine_focus, stall_severity } from '../hanabi-logic.js';
+import { isBasicTrash, isCritical, isSaved, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
+import logger from '../../../logger.js';
+import * as Utils from '../../../util.js';
 
+/**
+ * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../../basics/Card.js').Card} Card
+ * @typedef {import('../../../types.js').Clue} Clue
+ */
+
+/**
+ * Checks if the card is a valid (and safe) 2 save.
+ * @param {State} state
+ * @param {number} target 	The player with the card
+ * @param {{ suitIndex: number, rank: number }} card
+ */
 function save2(state, target, card) {
 	const { suitIndex, rank } = card;
 
@@ -22,6 +34,13 @@ function save2(state, target, card) {
 		clue_safe(state, clue);
 }
 
+/**
+ * Finds a save clue (if necessary) for the given card in the target's hand.
+ * @param {State} state
+ * @param {number} target
+ * @param {Card} card
+ * @returns {Clue | undefined} The save clue if necessary, otherwise undefined.
+ */
 function find_save(state, target, card) {
 	const { suitIndex, rank } = card;
 
@@ -52,6 +71,14 @@ function find_save(state, target, card) {
 	return;
 }
 
+/**
+ * Finds a Trash Chop Move (if valid) using the given trash card in the target's hand.
+ * @param {State} state
+ * @param {number} target
+ * @param {Card[]} saved_cards
+ * @param {Card} trash_card
+ * @returns {Clue | undefined} The TCM if valid, otherwise undefined.
+ */
 function find_tcm(state, target, saved_cards, trash_card) {
 	logger.info(`saved cards ${saved_cards.map(c => Utils.logCard(c)).join(',')}, trash card ${Utils.logCard(trash_card)}`);
 	const chop = saved_cards.at(-1);
@@ -121,6 +148,13 @@ function find_tcm(state, target, saved_cards, trash_card) {
 	return;
 }
 
+/**
+ * Finds a 5's Chop Move (if valid) with the given chop moved card in the target's hand.
+ * @param {State} state
+ * @param {number} target
+ * @param {Card} chop
+ * @returns {Clue | undefined} The 5CM if valid, otherwise undefined.
+ */
 function find_5cm(state, target, chop) {
 	const { suitIndex, rank, order } = chop;
 	const clue = { type: CLUE.RANK, value: 5, target };
@@ -135,8 +169,23 @@ function find_5cm(state, target, chop) {
 	return;
 }
 
-function find_clues(state, options = {}) {
-	const play_clues = [], save_clues = [];
+/**
+ * Finds all play, save and fix clues for the given state.
+ * Play and fix clues are 2D arrays as each player can potentially receive multiple play/fix clues.
+ * Each player has only one save clue.
+ * 
+ * The 'ignorePlayerIndex' option skips finding clues for a particular player.
+ * 
+ * The 'ignoreCM' option prevents looking for save clues that cause chop moves.
+ * @param {State} state
+ * @param {{ignorePlayerIndex?: number, ignoreCM?: boolean}} options
+ */
+export function find_clues(state, options = {}) {
+	/** @type Clue[][] */
+	const play_clues = [];
+	/** @type Clue[] */
+	const save_clues = [];
+
 	logger.info('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
 	// Find all valid clues
@@ -233,12 +282,10 @@ function find_clues(state, options = {}) {
 		}
 	}
 
-	const fix_clues = find_fix_clues(state, play_clues, save_clues);
+	const fix_clues = find_fix_clues(state, play_clues, save_clues, options);
 
 	logger.info('found play clues', play_clues.map(clues => clues.map(clue => Utils.logClue(clue))));
 	logger.info('found save clues', save_clues.map(clue => Utils.logClue(clue)));
 	logger.info('found fix clues', fix_clues.map(clues => clues.map(clue => Utils.logClue(clue))));
 	return { play_clues, save_clues, fix_clues };
 }
-
-module.exports = { find_clues };

@@ -1,10 +1,20 @@
-const { cardTouched } = require('../variants.js');
-const { isBasicTrash, visibleFind } = require('./hanabi-util.js');
-const { logger } = require('../logger.js');
+import { cardTouched } from '../variants.js';
+import { isBasicTrash, visibleFind } from './hanabi-util.js';
+import logger from '../logger.js';
+import * as Utils from '../util.js';
 
-const Utils = require('../util.js');
+/**
+ * @typedef {import('./State.js').State} State
+ * @typedef {import('./Hand.js').Hand} Hand
+ * @typedef {import('./Card.js').Card} Card
+ * @typedef {import('../types.js').Clue} Clue
+ */
 
-function find_possibilities(clue, suits) {
+/**
+ * @param {Clue} clue
+ * @param {string[]} suits
+ */
+export function find_possibilities(clue, suits) {
 	const new_possible = [];
 
 	for (let suitIndex = 0; suitIndex < suits.length; suitIndex++) {
@@ -18,7 +28,13 @@ function find_possibilities(clue, suits) {
 	return new_possible;
 }
 
-function bad_touch_possiblities(state, giver, target, prev_found = []) {
+/**
+ * @param {State} state
+ * @param {number} giver
+ * @param {number} target
+ * @param {{suitIndex: number, rank: number}[]} prev_found
+ */
+export function bad_touch_possiblities(state, giver, target, prev_found = []) {
 	const bad_touch = prev_found;
 
 	if (prev_found.length === 0) {
@@ -77,7 +93,11 @@ function bad_touch_possiblities(state, giver, target, prev_found = []) {
 	return bad_touch;
 }
 
-function find_playables(stacks, hand) {
+/**
+ * @param {number[]} stacks
+ * @param {Hand} hand
+ */
+export function find_playables(stacks, hand) {
 	const playables = [];
 
 	for (const card of hand) {
@@ -110,10 +130,15 @@ function find_playables(stacks, hand) {
 	return playables;
 }
 
-function find_known_trash(state, playerIndex) {
+/**
+ * @param {State} state
+ * @param {number} playerIndex
+ */
+export function find_known_trash(state, playerIndex) {
 	const hand = state.hands[playerIndex];
 	const trash = [];
 
+	/** @type {(suitIndex: number, rank: number, order: number) => boolean} */
 	const visible_elsewhere = (suitIndex, rank, order) => {
 		// Visible in someone else's hand or visible in the same hand (but only one is trash)
 		return visibleFind(state, state.ourPlayerIndex, suitIndex, rank, { ignore: [playerIndex] }).some(c => c.clued && c.order !== order) ||
@@ -132,12 +157,20 @@ function find_known_trash(state, playerIndex) {
 	return trash;
 }
 
-function handLoaded(state, target) {
+/**
+ * @param {State} state
+ * @param {number} target
+ */
+export function handLoaded(state, target) {
 	return find_playables(state.play_stacks, state.hands[target]).length > 0 ||
 		find_known_trash(state, target).length > 0;
 }
 
-function good_touch_elim(hand, cards, options = {}) {
+/**
+ * @param {Hand} hand
+ * @param {{suitIndex: number, rank: number}[]} cards
+ */
+export function good_touch_elim(hand, cards, options = {}) {
 	for (const card of hand) {
 		if (options.ignore?.includes(card.order)) {
 			continue;
@@ -153,7 +186,10 @@ function good_touch_elim(hand, cards, options = {}) {
 	}
 }
 
-function update_hypo_stacks(state) {
+/**
+ * @param {State} state
+ */
+export function update_hypo_stacks(state) {
 	// Fix hypo stacks if below play stacks
 	for (let i = 0; i < state.suits.length; i++) {
 		// TODO: Eventually, this should be added back. Need to maintain a better idea of the connections being made/broken.
@@ -176,6 +212,7 @@ function update_hypo_stacks(state) {
 				}
 
 				// Delayed playable if all possibilities have been either eliminated by good touch or are playable (but not all eliminated)
+				/** @param {Card[]} poss */
 				const delayed_playable = (poss) => {
 					let all_trash = true;
 					for (const c of poss) {
@@ -226,10 +263,3 @@ function update_hypo_stacks(state) {
 		}
 	}
 }
-
-module.exports = {
-	find_possibilities, bad_touch_possiblities,
-	find_playables, find_known_trash, handLoaded,
-	good_touch_elim,
-	update_hypo_stacks
-};

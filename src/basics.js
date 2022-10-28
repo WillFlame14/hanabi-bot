@@ -1,11 +1,22 @@
-const { Card } = require('./basics/Card.js');
-const { find_possibilities } = require('./basics/helper.js');
-const { cardCount } = require('./variants.js');
-const { logger } = require('./logger.js');
-const { visibleFind } = require('./basics/hanabi-util.js');
-const Utils = require('./util.js');
+import { Card } from './basics/Card.js';
+import { find_possibilities } from './basics/helper.js';
+import { visibleFind } from './basics/hanabi-util.js';
+import { cardCount } from './variants.js';
+import logger from './logger.js';
+import * as Utils from './util.js';
 
-function onClue(state, action) {
+/**
+ * @typedef {import('./basics/State.js').State} State
+ * @typedef {import('./types.js').ClueAction} ClueAction
+ * @typedef {import('./types.js').DiscardAction} DiscardAction
+ * @typedef {import('./types.js').CardAction} DrawAction
+ */
+
+/**
+ * @param {State} state
+ * @param {ClueAction} action
+ */
+export function onClue(state, action) {
 	const { target, clue, list } = action;
 	const new_possible = find_possibilities(clue, state.suits);
 
@@ -39,7 +50,11 @@ function onClue(state, action) {
 	state.clue_tokens--;
 }
 
-function onDiscard(state, action) {
+/**
+ * @param {State} state
+ * @param {DiscardAction} action
+ */
+export function onDiscard(state, action) {
 	const { failed, order, playerIndex, rank, suitIndex } = action;
 	state.hands[playerIndex].removeOrder(order);
 
@@ -57,7 +72,11 @@ function onDiscard(state, action) {
 	}
 }
 
-function onDraw(state, action) {
+/**
+ * @param {State} state
+ * @param {DrawAction} action
+ */
+export function onDraw(state, action) {
 	const { order, playerIndex, suitIndex, rank } = action;
 	const card = new Card(suitIndex, rank, {
 		order,
@@ -71,12 +90,18 @@ function onDraw(state, action) {
 		card_elim(state, suitIndex, rank, [playerIndex]);
 	}
 
-	state.cards_left--;
+	state.cardsLeft--;
 
 	// suitIndex and rank are -1 if they're your own cards
 }
 
-function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
+/**
+ * @param {State} state
+ * @param {number} suitIndex
+ * @param {number} rank
+ * @param {number[]} [ignorePlayerIndexes]
+ */
+export function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
 		if (ignorePlayerIndexes.includes(playerIndex)) {
 			continue;
@@ -126,10 +151,3 @@ function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
 		}
 	}
 }
-
-module.exports = {
-	card_elim,
-	onClue,
-	onDiscard,
-	onDraw
-};

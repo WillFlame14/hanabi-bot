@@ -1,19 +1,22 @@
-const { handle_action } = require('./action-handler.js');
-const { Card } = require('./basics/Card.js');
-const { Hand } = require('./basics/Hand.js');
-const { cardCount, getVariant } = require('./variants.js');
-const { logger } = require('./logger.js');
-const Utils = require('./util.js');
+import { getVariant } from './variants.js';
+import logger from './logger.js';
+import * as Utils from './util.js';
 
-const HGroup = require('./conventions/h-group.js');
+import HGroup from './conventions/h-group.js';
 
-const conventions = {
-	HGroup
-};
+/**
+ * @typedef {import('./basics/State.js').State} State
+ */
 
-let self, tables = {}, state;
+const conventions = { HGroup };
 
-const handle = {
+let self;
+const tables = {};
+
+/** @type {State} */
+let state;
+
+export const handle = {
 	// Received when any message in chat is sent
 	chat: (data) => {
 		// We only care about private messages to us
@@ -27,10 +30,8 @@ const handle = {
 							continue;
 						}
 
-						let ind = data.msg.indexOf(' '), password;
-						if (ind != -1) {
-							password = data.msg.slice(ind + 1);
-						}
+						const ind = data.msg.indexOf(' ');
+						const password = ind != -1 ? data.msg.slice(ind + 1) : undefined;
 						Utils.sendCmd('tableJoin', { tableID: table.id, password });
 						return;
 					}
@@ -76,7 +77,7 @@ const handle = {
 	// Received when an action is taken in the current active game
 	gameAction: (data, catchup = false) => {
 		const { action } = data;
-		handle_action(state, action, catchup);
+		state.handle_action(action, catchup);
 	},
 	// Received at the beginning of the game, as a list of all actions that have happened so far
 	gameActionList: (data) => {
@@ -101,61 +102,10 @@ const handle = {
 		const { tableID, playerNames, ourPlayerIndex, options } = data;
 		const variant = await getVariant(options.variantName);
 
-		// Initialize global game state
-		state = {
-			tableID,
-			turn_count: 0,
-			clue_tokens: 8,
-			playerNames,
-			numPlayers: playerNames.length,
-			ourPlayerIndex,
-			hands: [],
-			suits: variant.suits,
-			play_stacks: [],
-			hypo_stacks: [],
-			discard_stacks: [],
-			all_possible: [],
-			max_ranks: [],
-			actionList: [],
-			waiting_connections: [],
-			last_actions: [],
-			early_game: true
-		};
-
-		state.cards_left = state.suits.reduce((acc, suit) => {
-			let cards = 0;
-			for (let rank = 1; rank <= 5; rank++) {
-				cards += cardCount(suit, rank);
-			}
-			return acc + cards;
-		}, 0);
-
-		const all_possible = [];
-		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-			state.play_stacks.push(0);
-			state.hypo_stacks.push(0);
-			state.discard_stacks.push([0, 0, 0, 0, 0]);
-			state.max_ranks.push(5);
-
-			for (let rank = 1; rank <= 5; rank++) {
-				all_possible.push(new Card(suitIndex, rank));
-			}
-		}
-
-		for (let i = 0; i < state.numPlayers; i++) {
-			state.hands.push(new Hand());
-			state.all_possible.push(Utils.objClone(all_possible));
-		}
-
-		// Initialize convention set
+		// Initialize game state using convention set
 		const convention = process.env.MODE || 'HGroup';
-		Object.assign(state, conventions[convention]);
+		state = new conventions[convention](tableID, playerNames, ourPlayerIndex, variant.suits);
 
-		state.rewind = rewind;
-		state.simulate_clue = simulate_clue;
-
-		// Save blank state
-		state.blank = Utils.objClone(state);
 		Utils.globalModify({state});
 
 		// Ask the server for more info
@@ -182,74 +132,3 @@ const handle = {
 	// Received when we first register a websocket
 	welcome: (data) => { self = data; },
 };
-
-let rewind_depth = 0;
-
-function rewind(state, action_index, playerIndex, order, suitIndex, rank, finessed) {
-	if (rewind_depth > 2) {
-		throw new Error('attempted to rewind too many times!');
-	}
-	else if (action_index === undefined) {
-		logger.error('tried to rewind before any reasoning was done!');
-		return false;
-	}
-	rewind_depth++;
-
-	logger.info(`card actually ${Utils.logCard({suitIndex, rank})}, rewinding to action_index ${action_index}`);
-	const new_state = Utils.objClone(state.blank);
-	new_state.blank = Utils.objClone(new_state);
-	const history = state.actionList.slice(0, action_index);
-
-	logger.setLevel(logger.LEVELS.ERROR);
-
-	// Get up to speed
-	for (const action of history) {
-		handle_action(new_state, action, true);
-	}
-
-	logger.setLevel(logger.LEVELS.INFO);
-
-	// Rewrite and save as a rewind action
-	const known_action = { type: 'rewind', order, playerIndex, suitIndex, rank };
-	handle_action(new_state, known_action, true);
-	logger.warn('Rewriting order', order, 'to', Utils.logCard({suitIndex, rank}));
-
-	const pivotal_action = state.actionList[action_index];
-	pivotal_action.mistake = finessed || rewind_depth > 1;
-	logger.info('pivotal action', pivotal_action);
-	handle_action(new_state, pivotal_action, true);
-
-	logger.setLevel(logger.LEVELS.ERROR);
-
-	// Redo all the following actions
-	const future = state.actionList.slice(action_index + 1);
-	for (const action of future) {
-		handle_action(new_state, action, true);
-	}
-
-	logger.setLevel(logger.LEVELS.INFO);
-
-	// Overwrite state
-	Object.assign(state, new_state);
-	rewind_depth = 0;
-	return true;
-}
-
-function simulate_clue(state, action, options = {}) {
-	const hypo_state = Utils.objClone(state);
-
-	if (options.simulatePlayerIndex !== undefined) {
-		hypo_state.ourPlayerIndex = options.simulatePlayerIndex;
-	}
-
-	if (!options.enableLogs) {
-		logger.setLevel(logger.LEVELS.ERROR);
-	}
-
-	hypo_state.interpret_clue(hypo_state, action);
-	logger.setLevel(logger.LEVELS.INFO);
-
-	return hypo_state;
-}
-
-module.exports = { handle };

@@ -1,21 +1,27 @@
 class Logger {
-	constructor() {
-		this.LEVELS = {
-			DEBUG: 0,
-			INFO: 1,
-			WARN: 2,
-			ERROR: 3
-		};
-		this.level = this.LEVELS.INFO;
-		this.accumulate = false;
-		this.buffer = [];
-	}
+	LEVELS = Object.freeze({
+		DEBUG: 0,
+		INFO: 1,
+		WARN: 2,
+		ERROR: 3
+	});
+	level = this.LEVELS.INFO;
+	accumulate = false;
 
+	/** @type {any[][]} */
+	buffer = [];
+
+	/**
+	 * Sets the lowest level of logs that will be printed to console.
+	 * 
+	 * For example, setting the level to WARN will suppress DEBUG and INFO logs, and only print WARN and ERROR logs.
+	 * @param {number} level 
+	 */
 	setLevel(level) {
 		this.level = level;
 	}
 
-	log (...args) {
+	log(...args) {
 		if (this.accumulate) {
 			this.buffer.push(args);
 		}
@@ -48,10 +54,18 @@ class Logger {
 		}
 	}
 
+	/**
+	 * Starts collecting logs into a buffer (and does not print them immediately).
+	 * Logs can be printed or discarded using flush().
+	 */
 	collect() {
 		this.accumulate = true;
 	}
 
+	/**
+	 * Flushes the log buffer.
+	 * @param {boolean} print 	Whether to print the logs (true) or discard them (false).
+	 */
 	flush(print = true) {
 		if (print) {
 			for (const args of this.buffer) {
@@ -63,4 +77,4 @@ class Logger {
 	}
 }
 
-module.exports = { logger: new Logger() };
+export default new Logger();

@@ -1,7 +1,18 @@
-const { CLUE } = require('../../../constants.js');
-const { determine_focus, stall_severity } = require('../hanabi-logic.js');
-const { logger } = require('../../../logger.js');
+import { CLUE } from '../../../constants.js';
+import { determine_focus, stall_severity } from '../hanabi-logic.js';
+import logger from '../../../logger.js';
 
+/**
+ * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../../types.js').ClueAction} ClueAction
+ */
+
+/**
+ * Returns whether a clue could be a stall or not, given the severity level.
+ * @param {State} state
+ * @param {ClueAction} action
+ * @param {number} severity
+ */
 function isStall(state, action, severity) {
 	const { clue, list, target } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
@@ -55,7 +66,12 @@ function isStall(state, action, severity) {
 	}
 }
 
-function stalling_situation(state, action) {
+/**
+ * Returns whether the clue was given in a valid stalling situation.
+ * @param {State} state
+ * @param {ClueAction} action
+ */
+export function stalling_situation(state, action) {
 	const { giver } = action;
 	const severity = stall_severity(state, giver);
 
@@ -85,5 +101,3 @@ function stalling_situation(state, action) {
 	}
 	return false;
 }
-
-module.exports = { stalling_situation };

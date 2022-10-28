@@ -1,23 +1,43 @@
-const { CLUE } = require('../../../constants.js');
-const { determine_focus } = require('../hanabi-logic.js');
-const { find_connecting } = require('./connecting-cards.js');
-const { isCritical, playableAway, visibleFind } = require('../../../basics/hanabi-util.js');
-const { logger } = require('../../../logger.js');
-const Utils = require('../../../util.js');
+import { CLUE } from '../../../constants.js';
+import { determine_focus } from '../hanabi-logic.js';
+import { find_connecting } from './connecting-cards.js';
+import { isCritical, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
+import logger from '../../../logger.js';
+import * as Utils from '../../../util.js';
 
+/**
+ * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../../types.js').ClueAction} ClueAction
+ * @typedef {import('../../../types.js').Connection} Connection
+ * 
+ * @typedef FocusPossibility
+ * @property {number} suitIndex
+ * @property {number} rank
+ * @property {Connection[]} connections
+ * @property {boolean} [save]
+ */
+
+/**
+ * Returns all the valid focus possibilities of the focused card from a clue of the given colour.
+ * @param {State} state
+ * @param {number} suitIndex
+ * @param {ClueAction} action
+ */
 function find_colour_focus(state, suitIndex, action) {
 	const { giver, list, target } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
+	/** @type {FocusPossibility[]} */
 	const focus_possible = [];
 	let next_playable_rank = state.play_stacks[suitIndex] + 1;
 
 	// Play clue
+	/** @type {Connection[]} */
 	const connections = [];
 
 	// Try looking for a connecting card (other than itself)
 	const hypo_state = Utils.objClone(state);
-	let already_connected = [focused_card.order];
+	const already_connected = [focused_card.order];
 	let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, already_connected);
 
 	while (connecting !== undefined && next_playable_rank < 5) {
@@ -79,10 +99,17 @@ function find_colour_focus(state, suitIndex, action) {
 	return focus_possible;
 }
 
+/**
+ * Returns all the valid focus possibilities of the focused card from a clue of the given rank.
+ * @param {State} state
+ * @param {number} rank
+ * @param {ClueAction} action
+ */
 function find_rank_focus(state, rank, action) {
 	const { giver, list, target } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
+	/** @type {FocusPossibility[]} */
 	const focus_possible = [];
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 		// Play clue
@@ -145,10 +172,16 @@ function find_rank_focus(state, rank, action) {
 	return focus_possible;
 }
 
-function find_focus_possible(state, action) {
+/**
+ * Finds all the valid focus possibilities from the given clue.
+ * @param {State} state
+ * @param {ClueAction} action
+ */
+export function find_focus_possible(state, action) {
 	const { clue } = action;
 	logger.info('play/hypo/max stacks in clue interpretation:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
+	/** @type {FocusPossibility[]} */
 	let focus_possible = [];
 
 	if (clue.type === CLUE.COLOUR) {
@@ -171,5 +204,3 @@ function find_focus_possible(state, action) {
 		return !focus_possible.some((p2, index2) => p1.suitIndex === p2.suitIndex && p1.rank === p2.rank && index1 < index2);
 	});
 }
-
-module.exports = { find_focus_possible };
