@@ -30,40 +30,41 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 	}
 
 	for (let i = 0; i < state.numPlayers; i++) {
-		const hand = state.hands[i];
+		// Look through other players' hands first, since those are known
+		const playerIndex = (state.ourPlayerIndex + 1 + i) % state.numPlayers;
+		const hand = state.hands[playerIndex];
 
 		const known_connecting = hand.find(card =>
 			card.matches(suitIndex, rank, { symmetric: true, infer: true }) &&
-			(i !== state.ourPlayerIndex ? card.matches(suitIndex, rank) : true) &&		// The card should actually match
+			(playerIndex !== state.ourPlayerIndex ? card.matches(suitIndex, rank) : true) &&		// The card should actually match
 			!ignoreOrders.includes(card.order)
 		);
 
 		if (known_connecting !== undefined) {
-			logger.info(`found known ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[i]}'s hand`);
-			return { type: 'known', reacting: i, card: known_connecting };
+			logger.info(`found known ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
+			return { type: 'known', reacting: playerIndex, card: known_connecting };
 		}
 
-		let playable_connecting;
-		if (i !== state.ourPlayerIndex) {
-			playable_connecting = hand.find(card =>
-				(card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) || card.finessed) &&
-				card.matches(suitIndex, rank) &&
-				!ignoreOrders.includes(card.order)
-			);
-		}
-		else {
-			playable_connecting = hand.find(card =>
-				card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) &&
-				card.inferred.some(c => c.matches(suitIndex, rank)) &&
-				!ignoreOrders.includes(card.order)
-			);
-		}
+		const playable_connecting = hand.find(card => {
+			if (ignoreOrders.includes(card.order)) {
+				return false;
+			}
+
+			if (playerIndex !== state.ourPlayerIndex) {
+				return (card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) || card.finessed) &&
+					card.matches(suitIndex, rank);
+			}
+			else {
+				return card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) &&
+					card.inferred.some(c => c.matches(suitIndex, rank));
+			}
+		});
 
 		// There's a connecting card that is known playable (but not in the giver's hand!)
-		if (playable_connecting !== undefined && i !== giver) {
-			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[i]}'s hand`);
+		if (playable_connecting !== undefined && playerIndex !== giver) {
+			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
 			logger.info('card inferred', playable_connecting.inferred.map(c => Utils.logCard(c)).join());
-			return { type: 'playable', reacting: i, card: playable_connecting };
+			return { type: 'playable', reacting: playerIndex, card: playable_connecting };
 		}
 	}
 

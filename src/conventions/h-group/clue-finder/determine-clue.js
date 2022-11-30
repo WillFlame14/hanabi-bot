@@ -66,7 +66,7 @@ export function determine_clue(state, target, target_card) {
 
 		if (focused_card.order !== target_card.order) {
 			logger.info(`${Utils.logClue(clue)} doesn't focus, ignoring`);
-			return;
+			continue;
 		}
 
 		// Simulate clue from receiver's POV to see if they have the right interpretation
@@ -132,7 +132,7 @@ export function determine_clue(state, target, target_card) {
 					card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)) || 	// Card is known trash
 					(!card.reset && card.matches_inferences());										// Card matches interpretation
 			}));*/
-			return;
+			continue;
 		}
 
 		let bad_touch = 0;

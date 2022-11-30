@@ -37,6 +37,11 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 				continue;
 			}
 
+			// Card chop moved but not clued, don't fix
+			if (card.chop_moved && !card.clued) {
+				continue;
+			}
+
 			if (card.inferred.length === 0) {
 				// TODO
 				logger.error(`card ${Utils.logCard(card)} order ${card.order} need fix??`);
