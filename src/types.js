@@ -26,7 +26,7 @@
  * @property {number} 	giver
  * @property {number} 	target
  * @property {number[]} list
- * @property {Clue} 	clue
+ * @property {Omit<Clue, 'target'>} 	clue
  * @property {boolean}  [mistake]
  * @property {boolean}  [ignoreStall]
  * 
