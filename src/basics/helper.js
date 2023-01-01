@@ -11,7 +11,7 @@ import * as Utils from '../util.js';
  */
 
 /**
- * @param {Clue} clue
+ * @param {Omit<Clue, 'target'>} clue
  * @param {string[]} suits
  */
 export function find_possibilities(clue, suits) {

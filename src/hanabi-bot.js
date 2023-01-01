@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as https from 'https';
 import WebSocket from 'ws';
 import * as dotenv from 'dotenv';
