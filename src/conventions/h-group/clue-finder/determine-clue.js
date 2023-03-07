@@ -11,6 +11,8 @@ import * as Utils from '../../../util.js';
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').ClueResult} ClueResult
+ *
+ * @typedef {{ excludeColour: boolean, excludeRank: boolean }} ClueOptions
  */
 
 /**
@@ -18,23 +20,28 @@ import * as Utils from '../../../util.js';
  * @param {State} state
  * @param {number} target
  * @param {Card} card
+ * @param {Partial<ClueOptions>} [options] 	Any additional options when determining clues.
  */
-export function direct_clues(state, target, card) {
+export function direct_clues(state, target, card, options) {
 	const direct_clues = [];
 
-	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-		const clue = { type: CLUE.COLOUR, value: suitIndex, target };
+	if (!options?.excludeColour) {
+		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+			const clue = { type: CLUE.COLOUR, value: suitIndex, target };
 
-		if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
-			direct_clues.push(clue);
+			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
+				direct_clues.push(clue);
+			}
 		}
 	}
 
-	for (let rank = 1; rank <= 5; rank++) {
-		const clue = { type: CLUE.RANK, value: rank, target };
+	if (!options?.excludeRank) {
+		for (let rank = 1; rank <= 5; rank++) {
+			const clue = { type: CLUE.RANK, value: rank, target };
 
-		if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
-			direct_clues.push(clue);
+			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
+				direct_clues.push(clue);
+			}
 		}
 	}
 
@@ -44,15 +51,16 @@ export function direct_clues(state, target, card) {
 /**
  * Returns the best clue to focus the target card.
  * @param {State} state
- * @param {number} target 		The player index with the card.
- * @param {Card} target_card 	The card to be focused.
- * @returns {Clue}				The best clue (if valid), otherwise undefined.
+ * @param {number} target 					The player index with the card.
+ * @param {Card} target_card 				The card to be focused.
+ * @param {Partial<ClueOptions>} [options] 	Any additional options when determining clues.
+ * @returns {Clue}							The best clue (if valid), otherwise undefined.
  */
-export function determine_clue(state, target, target_card) {
+export function determine_clue(state, target, target_card, options) {
 	logger.info('determining clue to target card', Utils.logCard(target_card));
 	const hand = state.hands[target];
 
-	const possible_clues = direct_clues(state, target, target_card).filter(clue => clue_safe(state, clue));
+	const possible_clues = direct_clues(state, target, target_card, options).filter(clue => clue_safe(state, clue));
 
 	/** @type {ClueResult[]} */
 	const results = [];

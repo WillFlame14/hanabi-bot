@@ -215,8 +215,6 @@ export function find_clues(state, options = {}) {
 				continue;
 			}
 
-			logger.info('--------');
-
 			// Save clue
 			if (cardIndex === chopIndex) {
 				save_clues[target] = find_save(state, target, card);
@@ -231,10 +229,13 @@ export function find_clues(state, options = {}) {
 					// Use original save clue if tcm not found
 					save_clues[target] = find_tcm(state, target, saved_cards, card) ?? save_clues[target];
 					found_tcm = true;
+					logger.info('--------');
 				}
 				// TODO: Eventually, trash bluff/finesse/push?
 				continue;
 			}
+
+			let interpreted_5cm = false;
 
 			// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
 			if (!options.ignoreCM && !tried_5cm && rank === 5 && !(card.clued || card.chop_moved)) {
@@ -257,28 +258,29 @@ export function find_clues(state, options = {}) {
 						// Use original save clue (or look for play clue) if 5cm not found
 						save_clues[target] = find_5cm(state, target, hand[chopIndex]) ?? save_clues[target];
 						logger.info('found 5cm');
-						continue;
+						interpreted_5cm = true;
 					}
 					else {
 						logger.info(`rightmost 5 is ${distance_from_chop} from chop, cannot 5cm`);
-						logger.info('--------');
 					}
 				}
 			}
 
 			// Play clue
-			const clue = determine_clue(state, target, card);
+			const clue = determine_clue(state, target, card, { excludeRank: interpreted_5cm });
 			if (clue !== undefined) {
 				// Not a play clue
 				if (clue.result.playables.length === 0) {
 					if (cardIndex !== chopIndex) {
 						logger.info(`found clue ${Utils.logClue(clue)} that wasn't a save/tcm/5cm/play.`);
 					}
+					logger.info('--------');
 					continue;
 				}
 
 				play_clues[target].push(clue);
 			}
+			logger.info('--------');
 		}
 	}
 
