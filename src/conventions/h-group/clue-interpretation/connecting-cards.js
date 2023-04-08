@@ -1,15 +1,52 @@
 import { cardCount } from '../../../variants.js';
 import { find_prompt, find_finesse } from '../hanabi-logic.js';
 import { card_elim } from '../../../basics.js';
+import { playableAway } from '../../../basics/hanabi-util.js';
 import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 
 /**
- * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').Connection} Connection
  */
+
+/**
+ * Finds a known connecting card in the hand for a given suitIndex and rank.
+ * @param  {State} state
+ * @param  {number} playerIndex 	The player index whose hand we are looking through.
+ * @param  {number} suitIndex
+ * @param  {number} rank
+ * @param  {number[]} ignoreOrders	The orders of cards to ignore when searching.
+ * @return {Card}					A connecting card if it exists, otherwise undefined.
+ */
+function find_known(state, playerIndex, suitIndex, rank, ignoreOrders) {
+	return state.hands[playerIndex].find(card =>
+		!ignoreOrders.includes(card.order) &&
+		card.matches(suitIndex, rank, { symmetric: true, infer: true }) &&				// The card must be known to the holder
+		(playerIndex !== state.ourPlayerIndex ? card.matches(suitIndex, rank) : true)	// The card must actually match
+	);
+}
+
+/**
+ * Finds a (possibly unknown) playable card in the hand for a given suitIndex and rank.
+ * @param  {State} state
+ * @param  {number} playerIndex  	The player index whose hand we are looking through.
+ * @param  {number} suitIndex
+ * @param  {number} rank
+ * @param  {number[]} ignoreOrders	The orders of cards to ignore when searching.
+ * @return {Card}					A connecting card if it exists, otherwise undefined.
+ */
+function find_playable(state, playerIndex, suitIndex, rank, ignoreOrders) {
+	return state.hands[playerIndex].find(card =>
+		!ignoreOrders.includes(card.order) &&
+		(card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0) || card.finessed) &&	// Card must be playable
+		playerIndex !== state.ourPlayerIndex ?
+			card.matches(suitIndex, rank) :								// If not in our hand, the card must match
+			card.inferred.some(c => c.matches(suitIndex, rank))			// If in our hand, at least one inference must match
+	);
+}
 
 /**
  * Looks for an inferred connecting card (i.e. without forcing a prompt/finesse).
@@ -30,54 +67,42 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 	}
 
 	for (let i = 0; i < state.numPlayers; i++) {
-		// Look through other players' hands first, since those are known
+		// Prioritize other players' hands first, since those are known
 		const playerIndex = (state.ourPlayerIndex + 1 + i) % state.numPlayers;
-		const hand = state.hands[playerIndex];
 
-		const known_connecting = hand.find(card =>
-			card.matches(suitIndex, rank, { symmetric: true, infer: true }) &&
-			(playerIndex !== state.ourPlayerIndex ? card.matches(suitIndex, rank) : true) &&		// The card should actually match
-			!ignoreOrders.includes(card.order)
-		);
+		// Look for a known connecting card
+		const known_conn = find_known(state, playerIndex, suitIndex, rank, ignoreOrders);
 
-		if (known_connecting !== undefined) {
+		if (known_conn !== undefined) {
 			logger.info(`found known ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
-			return { type: 'known', reacting: playerIndex, card: known_connecting };
+			return { type: 'known', reacting: playerIndex, card: known_conn };
 		}
 
-		const playable_connecting = hand.find(card => {
-			if (ignoreOrders.includes(card.order)) {
-				return false;
-			}
+		// The giver cannot know about any unknown connecting cards in their hand
+		if (playerIndex === giver) {
+			continue;
+		}
 
-			if (playerIndex !== state.ourPlayerIndex) {
-				return (card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) || card.finessed) &&
-					card.matches(suitIndex, rank);
-			}
-			else {
-				return card.inferred.every(c => state.play_stacks[c.suitIndex] + 1 === c.rank) &&
-					card.inferred.some(c => c.matches(suitIndex, rank));
-			}
-		});
+		// Look for a playable card that is not known to connect (excludes giver)
+		const playable_conn = find_playable(state, playerIndex, suitIndex, rank, ignoreOrders);
 
-		// There's a connecting card that is known playable (but not in the giver's hand!)
-		if (playable_connecting !== undefined && playerIndex !== giver) {
-			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
-			logger.info('card inferred', playable_connecting.inferred.map(c => Utils.logCard(c)).join());
-			return { type: 'playable', reacting: playerIndex, card: playable_connecting };
+		if (playable_conn !== undefined) {
+			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, with inferences ${playable_conn.inferred.map(c => Utils.logCard(c)).join()}`);
+			return { type: 'playable', reacting: playerIndex, card: playable_conn };
 		}
 	}
 
+	// Only consider prompts/finesses if no connecting cards found
 	for (let i = 0; i < state.numPlayers; i++) {
 		if (i === giver || i === state.ourPlayerIndex) {
+			// Clue giver cannot finesse/prompt themselves, we find our own prompts/finesses later
 			continue;
 		}
 		else if (giver === state.ourPlayerIndex && i === target) {
-			// If we are giving the clue, the receiver will not be able to find known prompts/finesses in their hand
+			// If we are giving the clue, the receiver will not be able to find known prompts/finesses in their hand (FIX. Why?)
 			continue;
 		}
 		else {
-			// Try looking through another player's hand (known to giver) (target?)
 			const hand = state.hands[i];
 			const prompt = find_prompt(hand, suitIndex, rank, state.suits, ignoreOrders);
 			const finesse = find_finesse(hand, suitIndex, rank, ignoreOrders);

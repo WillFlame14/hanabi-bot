@@ -6,7 +6,7 @@ import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 
 /**
- * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
  * 
@@ -185,10 +185,8 @@ export function find_focus_possible(state, action) {
 	let focus_possible = [];
 
 	if (clue.type === CLUE.COLOUR) {
-		if (state.suits.includes('Rainbow')) {
-			focus_possible = focus_possible.concat(find_colour_focus(state, state.suits.indexOf('Rainbow'), action));
-		}
-		focus_possible = focus_possible.concat(find_colour_focus(state, clue.value, action));
+		const colour = state.suits.includes('Rainbow') ? state.suits.indexOf('Rainbow') : clue.value;
+		focus_possible = focus_possible.concat(find_colour_focus(state, colour, action));
 	}
 	else {
 		// Pink promise assumed

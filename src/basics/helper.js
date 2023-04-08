@@ -32,12 +32,12 @@ export function find_possibilities(clue, suits) {
  * @param {State} state
  * @param {number} giver
  * @param {number} target
- * @param {{suitIndex: number, rank: number}[]} prev_found
+ * @param {{suitIndex: number, rank: number}[]} prev_found	All previously found bad touch possibiltiies.
  */
 export function bad_touch_possiblities(state, giver, target, prev_found = []) {
 	const bad_touch = prev_found;
 
-	if (prev_found.length === 0) {
+	if (bad_touch.length === 0) {
 		// Find useless cards
 		for (let suitIndex = 0; suitIndex <= state.suits.length; suitIndex++) {
 			for (let rank = 1; rank <= 5; rank++) {
@@ -52,6 +52,7 @@ export function bad_touch_possiblities(state, giver, target, prev_found = []) {
 	// Find cards clued in other hands (or inferred cards in our hand or giver's hand)
 	for (let i = 0; i < state.numPlayers; i++) {
 		const hand = state.hands[i];
+
 		for (let j = 0; j < hand.length; j++) {
 			const card = hand[j];
 			if (!card.clued) {

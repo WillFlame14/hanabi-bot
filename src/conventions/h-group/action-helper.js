@@ -5,7 +5,7 @@ import { playableAway } from '../../basics/hanabi-util.js';
 import * as Utils from '../../util.js';
 
 /**
- * @typedef {import('../../basics/State.js').State} State
+ * @typedef {import('../h-group.js').default} State
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').ClueResult} ClueResult
  * @typedef {import('../../types.js').Clue} Clue

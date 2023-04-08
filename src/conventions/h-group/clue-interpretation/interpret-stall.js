@@ -3,7 +3,7 @@ import { determine_focus, stall_severity } from '../hanabi-logic.js';
 import logger from '../../../logger.js';
 
 /**
- * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  */
 
