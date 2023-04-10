@@ -1,4 +1,5 @@
 import { CLUE } from '../../../constants.js';
+import { LEVEL } from '../h-constants.js';
 import { Card } from '../../../basics/Card.js';
 import { interpret_tcm, interpret_5cm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
@@ -90,7 +91,7 @@ export function interpret_clue(state, action) {
 
 	logger.debug('pre-inferences', focused_card.inferred.map(c => Utils.logCard(c)).join());
 
-	if (fix || mistake) {
+	if ((state.level >= LEVEL.FIX && fix) || mistake) {
 		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
 		// FIX: Rewind to when the earliest card was clued so that we don't perform false eliminations
 		if (focused_card.inferred.length === 1) {
@@ -108,18 +109,21 @@ export function interpret_clue(state, action) {
 		return;
 	}
 
-	// Trash chop move
-	if (focused_card.newly_clued &&
-		focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: false })) &&
-		!(focused_card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0))
-	) {
-		interpret_tcm(state, target);
-		return;
-	}
-	// 5's chop move
-	else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued) {
-		if (interpret_5cm(state, target)) {
+	// Check for chop moves at level 4+
+	if (state.level >= LEVEL.BASIC_CM) {
+		// Trash chop move
+		if (focused_card.newly_clued &&
+			focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: false })) &&
+			!(focused_card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0))
+		) {
+			interpret_tcm(state, target);
 			return;
+		}
+		// 5's chop move
+		else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued) {
+			if (interpret_5cm(state, target)) {
+				return;
+			}
 		}
 	}
 

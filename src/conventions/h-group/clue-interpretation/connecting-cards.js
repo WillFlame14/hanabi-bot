@@ -113,9 +113,14 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 					logger.info(`found prompt ${Utils.logCard(prompt)} in ${state.playerNames[i]}'s hand`);
 					return { type: 'prompt', reacting: i, card: prompt, self: false };
 				}
-				logger.debug(`couldn't prompt ${Utils.logCard({suitIndex, rank})}, ignoreOrders ${ignoreOrders}`);
+				logger.debug(`wrong prompt on ${Utils.logCard(prompt)}`);
 			}
 			else if (finesse?.matches(suitIndex, rank)) {
+				// If target is after giver, then finesse must be in between. Otherwise, finesse must be outside.
+				if (state.level === 1 && !((target > giver) ? (giver < i && i < target) : (i < giver || i > target))) {
+					logger.warn(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand, but not between giver and target`);
+					continue;
+				}
 				logger.info(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand`);
 				return { type: 'finesse', reacting: i, card: finesse, self: false };
 			}
@@ -166,6 +171,12 @@ export function find_own_finesses(state, giver, target, suitIndex, rank) {
 			// Otherwise, try to find prompt in our hand
 			const prompt = find_prompt(our_hand, suitIndex, next_rank, hypo_state.suits, already_prompted);
 			if (prompt !== undefined) {
+				if (state.level === 1 && already_finessed.length >= 1) {
+					logger.warn('blocked prompt + finesse at level 1');
+					feasible = false;
+					break;
+				}
+
 				logger.info('found prompt in our hand');
 				connections.push({ type: 'prompt', reacting: hypo_state.ourPlayerIndex, card: prompt, self: true });
 
@@ -179,6 +190,12 @@ export function find_own_finesses(state, giver, target, suitIndex, rank) {
 				// Otherwise, try to find finesse in our hand
 				const finesse = find_finesse(our_hand, suitIndex, next_rank, already_finessed);
 				if (finesse !== undefined) {
+					if (state.level === 1 && (already_finessed.length >= 1 || already_prompted.length >= 1)) {
+						logger.warn(`blocked ${already_finessed.length >= 1 ? 'double finesse' : 'prompt + finesse'} at level 1`);
+						feasible = false;
+						break;
+					}
+
 					logger.info('found finesse in our hand');
 					connections.push({ type: 'finesse', reacting: hypo_state.ourPlayerIndex, card: finesse, self: true });
 

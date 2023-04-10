@@ -1,4 +1,5 @@
 import { ACTION } from '../../constants.js';
+import { LEVEL } from './h-constants.js';
 import { select_play_clue, find_urgent_actions, determine_playable_card } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { find_stall_clue } from './clue-finder/stall-clues.js';
@@ -92,7 +93,7 @@ export function take_action(state) {
 	}
 
 	// Sarcastic discard to someone else
-	if (discards.length > 0) {
+	if (state.level >= LEVEL.SARCASTIC && discards.length > 0) {
 		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: discards[0].order });
 		return;
 	}
