@@ -119,8 +119,8 @@ export function interpret_clue(state, action) {
 			interpret_tcm(state, target);
 			return;
 		}
-		// 5's chop move
-		else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued) {
+		// 5's chop move - for now, 5cm cannot be done in early game.
+		else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued && !state.early_game) {
 			if (interpret_5cm(state, target)) {
 				return;
 			}

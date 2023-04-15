@@ -81,7 +81,7 @@ function find_save(state, target, card) {
  * @returns {Clue | undefined} The TCM if valid, otherwise undefined.
  */
 function find_tcm(state, target, saved_cards, trash_card) {
-	logger.info(`saved cards ${saved_cards.map(c => Utils.logCard(c)).join(',')}, trash card ${Utils.logCard(trash_card)}`);
+	logger.info(`attempting tcm with trash card ${Utils.logCard(trash_card)}, saved cards ${saved_cards.map(c => Utils.logCard(c)).join(',')}`);
 	const chop = saved_cards.at(-1);
 
 	// Colour or rank save (if possible) is preferred over trash chop move
@@ -101,22 +101,17 @@ function find_tcm(state, target, saved_cards, trash_card) {
 		return;
 	}
 
-	let saved_trash = 0;
-	// At most 1 trash card should be saved
-	for (const card of saved_cards) {
-		const { suitIndex, rank, order } = card;
+	const saved_trash = saved_cards.filter(card => {
+		const {suitIndex, rank, order} = card;
 
-		// Saving a trash card or two of the same card
-		if (isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) ||
-			saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order)
-		) {
-			saved_trash++;
-			logger.info(`would save trash ${Utils.logCard(card)}`);
-		}
-	}
+		return isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) ||					// Saving a trash card
+			saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order);	// Saving 2 of the same card
+	}).map(c => Utils.logCard(c));
 
-	// There has to be more useful cards saved than trash cards, and a trash card should not be on chop (otherwise can wait)
-	if (saved_trash <= 1 && (saved_cards.length - saved_trash) > saved_trash) {
+	logger.info(`would save ${saved_trash.length === 0 ? 'no' : saved_trash.join()} trash`);
+
+	// There has to be more useful cards saved than trash cards
+	if (saved_trash.length <= 1 && (saved_cards.length - saved_trash.length) > saved_trash.length) {
 		const possible_clues = direct_clues(state, target, trash_card);
 
 		const tcm = possible_clues.find(clue => {
@@ -228,7 +223,6 @@ export function find_clues(state, options = {}) {
 				if (!options.ignoreCM && isBasicTrash(state, suitIndex, rank)) {
 					// Trash chop move (we only want to find the rightmost tcm)
 					if (!(card.clued || card.chop_moved) && cardIndex !== chopIndex && !found_tcm) {
-						logger.info('looking for tcm on', Utils.logCard(card));
 						const saved_cards = hand.slice(cardIndex + 1).filter(c => !(c.clued || c.chop_moved));
 						// Use original save clue if tcm not found
 						save_clues[target] = find_tcm(state, target, saved_cards, card) ?? save_clues[target];

@@ -69,8 +69,8 @@ export function determine_clue(state, target, target_card, options) {
 		const touch = hand.clueTouched(state.suits, clue);
 		const list = touch.map(c => c.order);
 
-		const bad_touch_cards = find_bad_touch(state, touch.filter(c => !c.clued));		// Ignore cards that were already clued
 		const { focused_card } = determine_focus(hand, list, { beforeClue: true });
+		const bad_touch_cards = find_bad_touch(state, touch.filter(c => !c.clued), focused_card.order);		// Ignore cards that were already clued
 
 		if (focused_card.order !== target_card.order) {
 			logger.info(`${Utils.logClue(clue)} doesn't focus, ignoring`);
@@ -83,9 +83,9 @@ export function determine_clue(state, target, target_card, options) {
 		// Prevent outputting logs until we know that the result is correct
 		logger.collect();
 
-		logger.info('------- ENTERING HYPO --------');
+		logger.info(`------- ENTERING HYPO ${Utils.logClue(clue)} --------`);
 
-		let hypo_state = state.simulate_clue(action, { enableLogs: true });
+		const hypo_state = state.simulate_clue(action, { enableLogs: true });
 
 		logger.info('------- EXITING HYPO --------');
 
@@ -153,7 +153,8 @@ export function determine_clue(state, target, target_card, options) {
 				}
 				else {
 					// Don't double count bad touch when cluing two of the same card
-					if (bad_touch_cards.some(c => c.matches(card.suitIndex, card.rank) && c.order > card.order)) {
+					// Focused card should not be bad touched?
+					if (bad_touch_cards.some(c => c.matches(card.suitIndex, card.rank) && c.order > card.order) || focused_card.order === card.order) {
 						continue;
 					}
 					bad_touch++;
@@ -161,15 +162,12 @@ export function determine_clue(state, target, target_card, options) {
 			}
 		}
 
-		// Re-simulate clue, but from our perspective so we can count the playable cards and finesses correctly
-		hypo_state = state.simulate_clue(action);
-
 		let finesses = 0;
 		const playables = [];
 
 		// Count the number of finesses and newly known playable cards
-		logger.info(`hypo stacks before clue: ${state.hypo_stacks}`);
-		logger.info(`hypo stacks after clue:  ${hypo_state.hypo_stacks}`);
+		logger.debug(`hypo stacks before clue: ${state.hypo_stacks}`);
+		logger.debug(`hypo stacks after clue:  ${hypo_state.hypo_stacks}`);
 		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 			for (let rank = state.hypo_stacks[suitIndex] + 1; rank <= hypo_state.hypo_stacks[suitIndex]; rank++) {
 				// Find the card

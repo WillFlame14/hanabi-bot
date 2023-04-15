@@ -133,12 +133,17 @@ export function determine_focus(hand, list, options = {}) {
  * @param {State} state
  * @param {Card[]} cards
  */
-export function find_bad_touch(state, cards) {
+export function find_bad_touch(state, cards, focusedCardOrder = -1) {
 	/** @type {Card[]} */
 	const bad_touch_cards = [];
 
 	for (const card of cards) {
 		let bad_touch = false;
+
+		// Assume focused card cannot be bad touched
+		if (card.order === focusedCardOrder) {
+			continue;
+		}
 
 		const { suitIndex, rank } = card;
 		// Card has already been played or can never be played
@@ -178,10 +183,7 @@ export function stall_severity(state, giver) {
 	if (state.clue_tokens === 7 && state.turn_count !== 0) {
 		return 4;
 	}
-	if (state.hands[giver].isLocked()) {
-		if (handLoaded(state, giver)) {
-			return 0;
-		}
+	if (state.hands[giver].isLocked() && !handLoaded(state, giver)) {
 		return 3;
 	}
 	if (state.early_game) {

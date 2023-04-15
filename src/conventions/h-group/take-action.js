@@ -118,8 +118,8 @@ export function take_action(state) {
 		return;
 	}
 
-	// Discard known trash at high pace
-	if (trash_cards.length > 0 && getPace(state) > state.numPlayers * 2) {
+	// Discard known trash at high pace, low clues
+	if (trash_cards.length > 0 && getPace(state) > state.numPlayers * 2 && state.clue_tokens <= 3) {
 		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: trash_cards[0].order });
 		return;
 	}

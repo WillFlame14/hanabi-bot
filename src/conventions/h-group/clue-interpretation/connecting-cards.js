@@ -42,9 +42,9 @@ function find_playable(state, playerIndex, suitIndex, rank, ignoreOrders) {
 	return state.hands[playerIndex].find(card =>
 		!ignoreOrders.includes(card.order) &&
 		(card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0) || card.finessed) &&	// Card must be playable
-		playerIndex !== state.ourPlayerIndex ?
-			card.matches(suitIndex, rank) :								// If not in our hand, the card must match
-			card.inferred.some(c => c.matches(suitIndex, rank))			// If in our hand, at least one inference must match
+		(playerIndex !== state.ourPlayerIndex ?
+			card.matches(suitIndex, rank) :									// If not in our hand, the card must match
+			card.inferred.some(c => c.matches(suitIndex, rank)))			// If in our hand, at least one inference must match
 	);
 }
 
@@ -59,10 +59,8 @@ function find_playable(state, playerIndex, suitIndex, rank, ignoreOrders) {
  * @returns {Connection}
  */
 export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrders = []) {
-	logger.info('looking for connecting', Utils.logCard({suitIndex, rank}));
-
 	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits[suitIndex], rank)) {
-		logger.info('all cards in trash');
+		logger.info(`all ${Utils.logCard({suitIndex, rank})} in trash`);
 		return;
 	}
 
@@ -117,7 +115,7 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 			}
 			else if (finesse?.matches(suitIndex, rank)) {
 				// If target is after giver, then finesse must be in between. Otherwise, finesse must be outside.
-				if (state.level === 1 && !((target > giver) ? (giver < i && i < target) : (i < giver || i > target))) {
+				if (state.level === 1 && !inBetween(state.numPlayers, i, giver, target)) {
 					logger.warn(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand, but not between giver and target`);
 					continue;
 				}
@@ -126,6 +124,19 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 			}
 		}
 	}
+
+	logger.info(`couldn't find connecting ${Utils.logCard({suitIndex, rank})}`);
+}
+
+function inBetween(numPlayers, playerIndex, giver, target) {
+	let i = (giver + 1) % numPlayers;
+	while(i !== target) {
+		if (i === playerIndex) {
+			return true;
+		}
+		i = (i + 1) % numPlayers;
+	}
+	return false;
 }
 
 /**
