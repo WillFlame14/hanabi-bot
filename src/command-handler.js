@@ -76,9 +76,9 @@ export const handle = {
 				const parts = data.msg.split(' ');
 				Utils.sendCmd('tableCreate', { name: parts[1], maxPlayers: Number(parts[2]), password: parts[3] });
 			}
-			// Starts the game (format: /start <tableId>)
+			// Starts the game (format: /start)
 			else if (data.msg.startsWith('/start')) {
-				Utils.sendCmd('tableStart', { tableID: Number(data.msg.slice(data.msg.indexOf(' ') + 1)) });
+				Utils.sendCmd('tableStart', { tableID: state.tableID });
 			}
 			// Displays or modifies the current settings (format: /settings [convention = 'HGroup'] [level = 1])
 			else if (data.msg.startsWith('/settings')) {
