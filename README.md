@@ -1,9 +1,15 @@
 # hanabi-bot
 A deterministic NodeJS bot that plays on the [hanab.live](https://hanab.live/) interface. Basic structure and ideas were taken from [Zamiell's example bot](https://github.com/Zamiell/hanabi-live-bot) (Python).
 
-Currently, it can play around levels 1-4 of [H-Group](https://hanabi.github.io/). The goal of the bot is to play with humans, so it should be able to handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning".
+It follows [H-Group](https://hanabi.github.io/) conventions. The goal of the bot is to play with humans, so it can handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning" during a game.
 
 https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-92d0-e1d01291986e.mp4
+
+## Bot features
+- Can play at different levels of the H-Group convention set (currently, levels 1-4 are supported).
+- Takes notes during the game on cards in its own hand.
+- Internally rewinds to relevant turns  to understand mistakes.
+- Can create and start games on its own (to play bot-only games, or to control it remotely).
 
 ## Running locally
 - You'll need to have NodeJS v16 or above. You can download it [here](https://nodejs.org/en/download/).
@@ -13,6 +19,8 @@ https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-
     - You'll need to create its account on hanab.live first.
 - Run `npm start` to start the bot.
     - If you want to run multiple bot accounts using one env file, export environment variables with a number at the end (like `HANABI_USERNAME2`) and use `npm start -- index=2`. See `.env.template` for an example.
+- Debug logs will show up in the console, providing more information about what the bot thinks about every action.
+    - Typing `hand <playerName>` will display the bot's information on that player's hand.
 
 ## Supported commands
 Send a PM to the bot on hanab.live (`/pm <HANABI_USERNAME> <message>`) to interact with it.
