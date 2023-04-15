@@ -5,7 +5,7 @@ import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 
 /**
- * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../h-group.js').default} State
  */
 
 /**
@@ -27,15 +27,18 @@ export function interpret_tcm(state, target) {
 
 	logger.info(`oldest trash card is ${Utils.logCard(state.hands[target][oldest_trash_index])}`);
 
+	const cm_cards = [];
+
 	// Chop move every unclued card to the right of this
 	for (let i = oldest_trash_index + 1; i < state.hands[target].length; i++) {
 		const card = state.hands[target][i];
 
 		if (!card.clued) {
 			card.chop_moved = true;
-			logger.info(`trash chop move on ${Utils.logCard(card)}`);
+			cm_cards.push(Utils.logCard(card));
 		}
 	}
+	logger.info(`trash chop move on ${cm_cards.join(',')}`);
 }
 
 /**

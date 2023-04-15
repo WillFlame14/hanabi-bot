@@ -6,7 +6,7 @@ import * as Utils from '../../../util.js';
 
 /**
  * Determines if the clue is safe to give (i.e. doesn't put a critical on chop with nothing to do)
- * @param {import('../../../basics/State.js').State} state
+ * @param {import('../../h-group.js').default} state
  * @param {import('../../../types.js').Clue} clue
  */
 export function clue_safe(state, clue) {

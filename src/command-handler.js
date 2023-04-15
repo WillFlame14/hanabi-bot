@@ -14,7 +14,15 @@ let self;
 const tables = {};
 
 /** @type {State} */
-let state;
+let state = {};
+
+/** @type {boolean} */
+let gameStarted = false;
+
+const settings = {
+	convention: 'HGroup',
+	level: 1
+};
 
 export const handle = {
 	// Received when any message in chat is sent
@@ -68,9 +76,38 @@ export const handle = {
 				const parts = data.msg.split(' ');
 				Utils.sendCmd('tableCreate', { name: parts[1], maxPlayers: Number(parts[2]), password: parts[3] });
 			}
-			// Starts the game (format: /start <tableId>)
+			// Starts the game (format: /start)
 			else if (data.msg.startsWith('/start')) {
-				Utils.sendCmd('tableStart', { tableID: Number(data.msg.slice(data.msg.indexOf(' ') + 1)) });
+				Utils.sendCmd('tableStart', { tableID: state.tableID });
+			}
+			// Displays or modifies the current settings (format: /settings [convention = 'HGroup'] [level = 1])
+			else if (data.msg.startsWith('/settings')) {
+				const parts = data.msg.split(' ');
+
+				if (parts.length > 1) {
+					if (gameStarted) {
+						Utils.sendChat(data.who, 'Settings cannot be modified in the middle of a game.');
+					}
+					else {
+						if (conventions[parts[1]]) {
+							settings.convention = parts[1];
+
+							if (settings.convention === 'HGroup' && (parts.length === 2 || !isNaN(Number(parts[2])))) {
+								const level = Number(parts[2]) || 1;
+
+								if (level <= 0 || level > 4) {
+									Utils.sendChat(data.who, 'This bot can currently only play between levels 1 and 4.');
+								}
+								settings.level = Math.max(Math.min(level, 4), 1);
+							}
+						}
+						else {
+							Utils.sendChat(data.who, `Correct format is /settings [convention = 'HGroup'] [level = 1].`);
+						}
+					}
+				}
+				const settingsString = (settings.convention === 'HGroup') ? `H-Group level ${settings.level}` : 'Referential Sieve';
+				Utils.sendChat(data.who, `Currently playing with ${settingsString} conventions.`);
 			}
 		}
 	},
@@ -97,19 +134,27 @@ export const handle = {
 			setTimeout(() => state.take_action(state), 3000);
 		}
 	},
+	joined: (data) => {
+		const { tableID } = data;
+		state.tableID = tableID;
+	},
 	// Received at the beginning of the game, with information about the game
 	init: async (data) => {
 		const { tableID, playerNames, ourPlayerIndex, options } = data;
 		const variant = await getVariant(options.variantName);
 
 		// Initialize game state using convention set
-		const convention = process.env.MODE || 'HGroup';
-		state = new conventions[convention](tableID, playerNames, ourPlayerIndex, variant.suits);
+		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, settings.level);
 
 		Utils.globalModify({state});
 
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });
+		gameStarted = true;
+	},
+	left: () => {
+		state.tableID = undefined;
+		gameStarted = false;
 	},
 	// Received when a table updates its information
 	table: (data) => {

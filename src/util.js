@@ -38,7 +38,8 @@ export function initConsole() {
 
 		process.stdout.write(key.sequence);
 		switch(key.sequence) {
-			case '\r': {
+			case '\r':
+			case '\n': {
 				console.log();
 				const parts = command.join('').split(' ');
 				const { state } = globals;

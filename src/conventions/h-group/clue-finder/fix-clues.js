@@ -1,10 +1,11 @@
+import { LEVEL } from '../h-constants.js';
 import { direct_clues } from './determine-clue.js';
 import { isBasicTrash, isSaved, isTrash, playableAway } from '../../../basics/hanabi-util.js';
 import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 
 /**
- * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').FixClue} FixClue
@@ -24,6 +25,11 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 
 	for (let target = 0; target < state.numPlayers; target++) {
 		fix_clues[target] = [];
+
+		if (state.level <= LEVEL.FIX) {
+			continue;
+		}
+
 		// Ignore our own hand
 		if (target === state.ourPlayerIndex || target === options.ignorePlayerIndex) {
 			continue;

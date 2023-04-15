@@ -6,7 +6,7 @@ import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 
 /**
- * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
  * 
@@ -40,6 +40,8 @@ function find_colour_focus(state, suitIndex, action) {
 	const already_connected = [focused_card.order];
 	let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, already_connected);
 
+	let finesses = 0;
+
 	while (connecting !== undefined && next_playable_rank < 5) {
 		const { type, card } = connecting;
 
@@ -50,6 +52,12 @@ function find_colour_focus(state, suitIndex, action) {
 			break;
 		}
 		else if (type === 'finesse') {
+			finesses++;
+			if (state.level === 1 && finesses === 2) {
+				logger.warn('blocked double finesse at level 1');
+				break;
+			}
+
 			// Even if a finesse is possible, it might not be a finesse
 			focus_possible.push({ suitIndex, rank: next_playable_rank, save: false, connections: Utils.objClone(connections) });
 			card.finessed = true;
@@ -125,6 +133,8 @@ function find_rank_focus(state, rank, action) {
 			let connecting;
 			const already_connected = [focused_card.order];
 
+			let finesses = 0;
+
 			while (stack_rank !== rank) {
 				connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, already_connected);
 				if (connecting === undefined) {
@@ -136,6 +146,11 @@ function find_rank_focus(state, rank, action) {
 				already_connected.push(card.order);
 
 				if (type === 'finesse') {
+					finesses++;
+					if (state.level === 1 && finesses === 2) {
+						logger.warn('blocked double finesse at level 1');
+						break;
+					}
 					card.finessed = true;
 				}
 				stack_rank++;
@@ -185,10 +200,8 @@ export function find_focus_possible(state, action) {
 	let focus_possible = [];
 
 	if (clue.type === CLUE.COLOUR) {
-		if (state.suits.includes('Rainbow')) {
-			focus_possible = focus_possible.concat(find_colour_focus(state, state.suits.indexOf('Rainbow'), action));
-		}
-		focus_possible = focus_possible.concat(find_colour_focus(state, clue.value, action));
+		const colour = state.suits.includes('Rainbow') ? state.suits.indexOf('Rainbow') : clue.value;
+		focus_possible = focus_possible.concat(find_colour_focus(state, colour, action));
 	}
 	else {
 		// Pink promise assumed

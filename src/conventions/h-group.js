@@ -17,11 +17,13 @@ export default class HGroup extends State {
      * @param {number} ourPlayerIndex
      * @param {string[]} suits
      */
-	constructor(tableID, playerNames, ourPlayerIndex, suits) {
+	constructor(tableID, playerNames, ourPlayerIndex, suits, level = 1) {
 		super(tableID, playerNames, ourPlayerIndex, suits);
+
+		this.level = level;
 	}
 
 	createBlank() {
-		return new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits);
+		return new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.level);
 	}
 }

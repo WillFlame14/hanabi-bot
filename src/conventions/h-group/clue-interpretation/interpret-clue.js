@@ -1,4 +1,5 @@
 import { CLUE } from '../../../constants.js';
+import { LEVEL } from '../h-constants.js';
 import { Card } from '../../../basics/Card.js';
 import { interpret_tcm, interpret_5cm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
@@ -12,7 +13,7 @@ import * as Basics from '../../../basics.js';
 import * as Utils from '../../../util.js';
 
 /**
- * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
  */
@@ -27,14 +28,8 @@ function apply_good_touch(state, action) {
 	const { giver, list, target } = action;
 	let fix = false;
 
-	/** @type {number[]} */
-	const had_inferences = [];
-
-	for (const card of state.hands[target]) {
-		if (card.inferred.length > 0) {
-			had_inferences.push(card.order);
-		}
-	}
+	// Keep track of all cards that previously had inferences (i.e. not known trash)
+	const had_inferences = state.hands[target].filter(card => card.inferred.length > 0).map(card => card.order);
 
 	Basics.onClue(state, action);
 
@@ -50,32 +45,23 @@ function apply_good_touch(state, action) {
 				card.subtract('inferred', bad_touch);
 			}
 
-			// Lost all inferences (fix), revert to good touch principle (must not have been known trash)
-			if (card.inferred.length === 0 && had_inferences.includes(card.order) && list.includes(card.order) &&
-				!card.newly_clued && !card.reset
-			) {
-				fix = true;
-				card.inferred = Utils.objClone(card.possible);
-				card.subtract('inferred', bad_touch);
-				card.reset = true;
-			}
+			// Check for fix on retouched cards
+			if (list.includes(card.order) && !card.newly_clued) {
+				// Lost all inferences, revert to good touch principle (must not have been known trash)
+				if (card.inferred.length === 0 && had_inferences.includes(card.order) && !card.reset) {
+					fix = true;
+					card.inferred = Utils.objClone(card.possible);
+					card.subtract('inferred', bad_touch);
+					card.reset = true;
+					continue;
+				}
+				// Directly revealing a duplicated card in someone else's hand (if we're using an inference, the card must match the inference, unless it's unknown)
+				// (card.inferred.length === 1 && (target === state.ourPlayerIndex || card.matches_inferences()))
+				else if (card.possible.length === 1) {
+					const { suitIndex, rank } = card.possible[0];
 
-			// Directly fixing duplicates (if we're using an inference, the card must match the inference, unless it's unknown)
-			// (card.inferred.length === 1 && (target === state.ourPlayerIndex || card.matches_inferences()))
-			if (!fix && list.includes(card.order) && !card.newly_clued && card.possible.length === 1) {
-				const { suitIndex, rank } = card.possible[0];
-
-				// The fix can be in anyone's hand
-				for (const hand of state.hands) {
-					for (const c of hand) {
-						if ((c.clued || c.finessed) && c.matches(suitIndex, rank, { infer: true }) && c.order !== card.order) {
-							fix = true;
-							break;
-						}
-					}
-					if (fix) {
-						break;
-					}
+					// The fix can be in anyone's hand, including the clue receiver's
+					fix = state.hands.some(hand => hand.some(c => (c.clued || c.finessed) && c.matches(suitIndex, rank, { infer: true }) && c.order !== card.order));
 				}
 			}
 		}
@@ -105,7 +91,7 @@ export function interpret_clue(state, action) {
 
 	logger.debug('pre-inferences', focused_card.inferred.map(c => Utils.logCard(c)).join());
 
-	if (fix || mistake) {
+	if ((state.level >= LEVEL.FIX && fix) || mistake) {
 		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
 		// FIX: Rewind to when the earliest card was clued so that we don't perform false eliminations
 		if (focused_card.inferred.length === 1) {
@@ -123,18 +109,21 @@ export function interpret_clue(state, action) {
 		return;
 	}
 
-	// Trash chop move
-	if (focused_card.newly_clued &&
-		focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: false })) &&
-		!(focused_card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0))
-	) {
-		interpret_tcm(state, target);
-		return;
-	}
-	// 5's chop move
-	else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued) {
-		if (interpret_5cm(state, target)) {
+	// Check for chop moves at level 4+
+	if (state.level >= LEVEL.BASIC_CM) {
+		// Trash chop move
+		if (focused_card.newly_clued &&
+			focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: false })) &&
+			!(focused_card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0))
+		) {
+			interpret_tcm(state, target);
 			return;
+		}
+		// 5's chop move - for now, 5cm cannot be done in early game.
+		else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued && !state.early_game) {
+			if (interpret_5cm(state, target)) {
+				return;
+			}
 		}
 	}
 

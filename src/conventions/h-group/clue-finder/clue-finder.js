@@ -1,4 +1,5 @@
 import { CLUE, ACTION } from '../../../constants.js';
+import { LEVEL } from '../h-constants.js';
 import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { determine_clue, direct_clues } from './determine-clue.js';
@@ -8,7 +9,7 @@ import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 
 /**
- * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
  */
@@ -80,7 +81,7 @@ function find_save(state, target, card) {
  * @returns {Clue | undefined} The TCM if valid, otherwise undefined.
  */
 function find_tcm(state, target, saved_cards, trash_card) {
-	logger.info(`saved cards ${saved_cards.map(c => Utils.logCard(c)).join(',')}, trash card ${Utils.logCard(trash_card)}`);
+	logger.info(`attempting tcm with trash card ${Utils.logCard(trash_card)}, saved cards ${saved_cards.map(c => Utils.logCard(c)).join(',')}`);
 	const chop = saved_cards.at(-1);
 
 	// Colour or rank save (if possible) is preferred over trash chop move
@@ -100,22 +101,17 @@ function find_tcm(state, target, saved_cards, trash_card) {
 		return;
 	}
 
-	let saved_trash = 0;
-	// At most 1 trash card should be saved
-	for (const card of saved_cards) {
-		const { suitIndex, rank, order } = card;
+	const saved_trash = saved_cards.filter(card => {
+		const {suitIndex, rank, order} = card;
 
-		// Saving a trash card or two of the same card
-		if (isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) ||
-			saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order)
-		) {
-			saved_trash++;
-			logger.info(`would save trash ${Utils.logCard(card)}`);
-		}
-	}
+		return isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) ||					// Saving a trash card
+			saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order);	// Saving 2 of the same card
+	}).map(c => Utils.logCard(c));
 
-	// There has to be more useful cards saved than trash cards, and a trash card should not be on chop (otherwise can wait)
-	if (saved_trash <= 1 && (saved_cards.length - saved_trash) > saved_trash) {
+	logger.info(`would save ${saved_trash.length === 0 ? 'no' : saved_trash.join()} trash`);
+
+	// There has to be more useful cards saved than trash cards
+	if (saved_trash.length <= 1 && (saved_cards.length - saved_trash.length) > saved_trash.length) {
 		const possible_clues = direct_clues(state, target, trash_card);
 
 		const tcm = possible_clues.find(clue => {
@@ -220,48 +216,49 @@ export function find_clues(state, options = {}) {
 				save_clues[target] = find_save(state, target, card);
 			}
 
-			// Trash card (not conventionally play)
-			if (!options.ignoreCM && isBasicTrash(state, suitIndex, rank)) {
-				// Trash chop move (we only want to find the rightmost tcm)
-				if (!(card.clued || card.chop_moved) && cardIndex !== chopIndex && !found_tcm) {
-					logger.info('looking for tcm on', Utils.logCard(card));
-					const saved_cards = hand.slice(cardIndex + 1).filter(c => !(c.clued || c.chop_moved));
-					// Use original save clue if tcm not found
-					save_clues[target] = find_tcm(state, target, saved_cards, card) ?? save_clues[target];
-					found_tcm = true;
-					logger.info('--------');
-				}
-				// TODO: Eventually, trash bluff/finesse/push?
-				continue;
-			}
-
 			let interpreted_5cm = false;
 
-			// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
-			if (!options.ignoreCM && !tried_5cm && rank === 5 && !(card.clued || card.chop_moved)) {
-				logger.info('trying 5cm with 5 at index', cardIndex);
-				tried_5cm = true;
+			if (state.level >= LEVEL.BASIC_CM) {
+				// Trash card (not conventionally play)
+				if (!options.ignoreCM && isBasicTrash(state, suitIndex, rank)) {
+					// Trash chop move (we only want to find the rightmost tcm)
+					if (!(card.clued || card.chop_moved) && cardIndex !== chopIndex && !found_tcm) {
+						const saved_cards = hand.slice(cardIndex + 1).filter(c => !(c.clued || c.chop_moved));
+						// Use original save clue if tcm not found
+						save_clues[target] = find_tcm(state, target, saved_cards, card) ?? save_clues[target];
+						found_tcm = true;
+						logger.info('--------');
+					}
+					// TODO: Eventually, trash bluff/finesse/push?
+					continue;
+				}
 
-				// Can only perform a 5cm at severity 0 (otherwise, looks like 5 stall)
-				if (severity === 0) {
-					// Find where chop is, relative to the rightmost clued 5
-					let distance_from_chop = 0;
-					for (let j = cardIndex; j < chopIndex; j++) {
-						// Skip clued/finessed cards
-						if (hand[j].clued) {
-							continue;
+				// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
+				if (!options.ignoreCM && !tried_5cm && rank === 5 && !(card.clued || card.chop_moved)) {
+					logger.info('trying 5cm with 5 at index', cardIndex);
+					tried_5cm = true;
+
+					// Can only perform a 5cm at severity 0 (otherwise, looks like 5 stall)
+					if (severity === 0) {
+						// Find where chop is, relative to the rightmost clued 5
+						let distance_from_chop = 0;
+						for (let j = cardIndex; j < chopIndex; j++) {
+							// Skip clued/finessed cards
+							if (hand[j].clued) {
+								continue;
+							}
+							distance_from_chop++;
 						}
-						distance_from_chop++;
-					}
 
-					if (distance_from_chop === 1) {
-						// Use original save clue (or look for play clue) if 5cm not found
-						save_clues[target] = find_5cm(state, target, hand[chopIndex]) ?? save_clues[target];
-						logger.info('found 5cm');
-						interpreted_5cm = true;
-					}
-					else {
-						logger.info(`rightmost 5 is ${distance_from_chop} from chop, cannot 5cm`);
+						if (distance_from_chop === 1) {
+							// Use original save clue (or look for play clue) if 5cm not found
+							save_clues[target] = find_5cm(state, target, hand[chopIndex]) ?? save_clues[target];
+							logger.info('found 5cm');
+							interpreted_5cm = true;
+						}
+						else {
+							logger.info(`rightmost 5 is ${distance_from_chop} from chop, cannot 5cm`);
+						}
 					}
 				}
 			}
