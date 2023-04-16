@@ -85,7 +85,6 @@ describe('play clue', () => {
 		state.hands[PLAYER.CATHY][1].clued = true;
 		state.hands[PLAYER.CATHY][1].intersect('possible', ['r1', 'r2', 'r3', 'r4', 'r5'].map(expandShortCard));
 		state.hands[PLAYER.CATHY][1].intersect('inferred', ['r1'].map(expandShortCard));
-		console.log(Utils.logHand(state.hands[PLAYER.CATHY]));
 
 		// Alice clues Bob red on slot 3.
 		const action = { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [7], target: PLAYER.BOB, turn: 0 };

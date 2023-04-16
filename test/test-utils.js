@@ -24,11 +24,11 @@ export const PLAYER = Object.freeze({
  * @param {typeof State} StateClass
  * @param {string[][]} hands
  */
-export function setup(StateClass, hands) {
+export function setup(StateClass, hands, level) {
 	const playerNames = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'].slice(0, hands.length);
 	const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
 
-	const state = new StateClass(-1, playerNames, 1, suits);
+	const state = new StateClass(-1, playerNames, 0, suits, level);
 	Utils.globalModify({state});
 
 	let orderCounter = 0;
@@ -37,11 +37,8 @@ export function setup(StateClass, hands) {
 	for (let playerIndex = 0; playerIndex < hands.length; playerIndex++) {
 		const hand = hands[playerIndex];
 		for (const short of hand.reverse()) {
-			const card = expandShortCard(short);
-			if (card.suitIndex !== -1) {
-				console.log('EEEEE');
-			}
-			const action = { type: 'draw', order: orderCounter, playerIndex, suitIndex: card.suitIndex, rank: card.rank };
+			const { suitIndex, rank } = expandShortCard(short);
+			const action = { type: 'draw', order: orderCounter, playerIndex, suitIndex, rank };
 			orderCounter++;
 
 			state.handle_action(action);
