@@ -39,7 +39,7 @@ export class State {
      * @param {number} ourPlayerIndex
      * @param {string[]} suits
      */
-	constructor(tableID, playerNames, ourPlayerIndex, suits, level) {
+	constructor(tableID, playerNames, ourPlayerIndex, suits) {
 		/** @type {number} */
 		this.tableID = tableID;
 		/** @type {string[]} */

@@ -130,10 +130,13 @@ function find_tcm(state, target, saved_cards, trash_card) {
 				}
 			}
 
-			const touch = state.hands[target].clueTouched(state.suits, clue);
-			const { focused_card } = determine_focus(state.hands[target], touch.map(c => c.order), { beforeClue: true });
+			return true;
 
-			return focused_card.order === trash_card.order;
+			// Card doesn't need to be focused?
+			// const touch = state.hands[target].clueTouched(state.suits, clue);
+			// const { focused_card } = determine_focus(state.hands[target], touch.map(c => c.order), { beforeClue: true });
+
+			// return focused_card.order === trash_card.order;
 		});
 
 		if (tcm !== undefined) {
