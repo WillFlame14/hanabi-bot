@@ -1,4 +1,4 @@
-import { ACTION } from '../../constants.js';
+import { CLUE, ACTION } from '../../constants.js';
 import { handLoaded } from '../../basics/helper.js';
 import logger from '../../logger.js';
 import { playableAway } from '../../basics/hanabi-util.js';
@@ -173,8 +173,8 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 				if (save_clues[target] !== undefined) {
 					const { type, value } = save_clues[target];
 					urgent_actions[8].push({ tableID: state.tableID, type, target, value });
-					continue;
 				}
+				continue;
 			}
 
 			// Try to see if they have a playable card that connects directly through our hand
@@ -239,7 +239,7 @@ export function determine_playable_card(state, playable_cards) {
 	/** @type {Card[][]} */
 	const priorities = [[], [], [], [], [], []];
 
-	let min_rank = 5;
+	let min_rank = 5, fresh_1s = 0;
 	for (const card of playable_cards) {
 		const possibilities = card.inferred.length > 0 ? card.inferred : card.possible;
 		logger.debug(`examining card with possibilities ${possibilities.map(p => Utils.logCard(p)).join(',')}`);
@@ -302,6 +302,25 @@ export function determine_playable_card(state, playable_cards) {
 
 		// Unknown card
 		if (possibilities.length > 1) {
+			if (card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
+				// Fresh 1's
+				if (card.order >= (state.numPlayers * state.hands[0].length)) {
+					priorities[4].push(card);
+					fresh_1s++;
+				}
+				// Starting hand 1's
+				else {
+					// Chop focus
+					if (card.order === state.hands[state.ourPlayerIndex].at(-1).order) {
+						priorities[4].unshift(card);
+					}
+					else {
+						// Otherwise, right to left but after fresh 1s
+						priorities[4].splice(fresh_1s, 0, card);
+					}
+				}
+				continue;
+			}
 			priorities[4].push(card);
 			continue;
 		}

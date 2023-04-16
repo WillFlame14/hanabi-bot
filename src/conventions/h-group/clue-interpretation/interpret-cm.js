@@ -38,7 +38,7 @@ export function interpret_tcm(state, target) {
 			cm_cards.push(Utils.logCard(card));
 		}
 	}
-	logger.info(`trash chop move on ${cm_cards.join(',')}`);
+	logger.info(cm_cards.length === 0 ? 'no cards to tcm' : `trash chop move on ${cm_cards.join(',')}`);
 }
 
 /**
