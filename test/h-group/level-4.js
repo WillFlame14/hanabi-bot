@@ -22,8 +22,6 @@ describe('trash chop move', () => {
 
 		state.play_stacks = [2, 2, 2, 2, 2];
 
-		logger.setLevel(logger.LEVELS.ERROR);
-
 		const { save_clues } = find_clues(state);
 		const bob_save = save_clues[PLAYER.BOB];
 

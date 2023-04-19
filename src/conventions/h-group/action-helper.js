@@ -3,7 +3,7 @@ import { LEVEL } from './h-constants.js';
 import { find_chop } from './hanabi-logic.js';
 import { handLoaded } from '../../basics/helper.js';
 import logger from '../../logger.js';
-import { playableAway } from '../../basics/hanabi-util.js';
+import { isCritical, playableAway } from '../../basics/hanabi-util.js';
 import * as Utils from '../../util.js';
 
 /**
@@ -214,8 +214,16 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 
 				// If we want to OCM the next player (distance 1), we need at least two unknown 1s.
 				if (unknown_1s.length > distance) {
-					urgent_actions[i === 1 ? 1 : 5].push({ tableId: state.tableID, type: ACTION.PLAY, target: unknown_1s[distance] });
-					continue;
+					const new_hand = Utils.objClone(state.hands[target]);
+					new_hand[find_chop(new_hand)].chop_moved = true;
+
+					// Make sure the new chop isn't critical
+					const new_chop = new_hand[find_chop(new_hand)];
+					if (!isCritical(state, new_chop.suitIndex, new_chop.rank)) {
+						urgent_actions[i === 1 ? 1 : 5].push({ tableId: state.tableID, type: ACTION.PLAY, target: unknown_1s[distance].order });
+						continue;
+					}
+					
 				}
 			}
 
