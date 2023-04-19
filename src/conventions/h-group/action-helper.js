@@ -1,4 +1,5 @@
 import { CLUE, ACTION } from '../../constants.js';
+import { find_chop } from './hanabi-logic.js';
 import { handLoaded } from '../../basics/helper.js';
 import logger from '../../logger.js';
 import { playableAway } from '../../basics/hanabi-util.js';
@@ -311,7 +312,7 @@ export function determine_playable_card(state, playable_cards) {
 				// Starting hand 1's
 				else {
 					// Chop focus
-					if (card.order === state.hands[state.ourPlayerIndex].at(-1).order) {
+					if (card.order === state.hands[state.ourPlayerIndex][find_chop(state.hands[state.ourPlayerIndex])].order) {
 						priorities[4].unshift(card);
 					}
 					else {
