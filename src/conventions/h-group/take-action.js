@@ -22,28 +22,8 @@ export function take_action(state) {
 	const { tableID } = state;
 	const hand = state.hands[state.ourPlayerIndex];
 	const { play_clues, save_clues, fix_clues } = find_clues(state);
-	const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues);
 
-	logger.info('all urgent actions', urgent_actions);
-
-	// Unlock next player
-	if (urgent_actions[0].length > 0) {
-		Utils.sendCmd('action', urgent_actions[0][0]);
-		return;
-	}
-
-	// Urgent save for next player
-	if (state.clue_tokens > 0) {
-		for (let i = 1; i < 4; i++) {
-			const actions = urgent_actions[i];
-			if (actions.length > 0) {
-				Utils.sendCmd('action', actions[0]);
-				return;
-			}
-		}
-	}
-
-	// Then, look for playables, trash and important discards in own hand
+	// Look for playables, trash and important discards in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
 	const trash_cards = find_known_trash(state, state.ourPlayerIndex);
 
@@ -68,15 +48,35 @@ export function take_action(state) {
 	logger.info('trash cards', Utils.logHand(trash_cards));
 	logger.info('discards', Utils.logHand(discards));
 
-	// Playing into finesse/bluff
-	let best_playable_card, priority;
-	if (playable_cards.length > 0) {
-		({ card: best_playable_card, priority } = determine_playable_card(state, playable_cards));
+	const playable_priorities = determine_playable_card(state, playable_cards);
+	const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
 
-		if (priority === 0) {
-			Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
-			return;
+	logger.info('all urgent actions', urgent_actions);
+
+	// Unlock next player
+	if (urgent_actions[0].length > 0) {
+		Utils.sendCmd('action', urgent_actions[0][0]);
+		return;
+	}
+
+	// Urgent save for next player
+	if (state.clue_tokens > 0) {
+		for (let i = 1; i < 4; i++) {
+			const actions = urgent_actions[i];
+			if (actions.length > 0) {
+				Utils.sendCmd('action', actions[0]);
+				return;
+			}
 		}
+	}
+
+	const priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
+	const best_playable_card = priority === -1 ? undefined : playable_priorities[priority][0];
+
+	// Playing into finesse/bluff
+	if (playable_cards.length > 0 && priority === 0) {
+		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
+		return;
 	}
 
 	// Get a high value play clue

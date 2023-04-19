@@ -1,4 +1,5 @@
 import { CLUE, ACTION } from '../../constants.js';
+import { LEVEL } from './h-constants.js';
 import { find_chop } from './hanabi-logic.js';
 import { handLoaded } from '../../basics/helper.js';
 import logger from '../../logger.js';
@@ -156,8 +157,9 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
  * @param {Clue[][]} play_clues
  * @param {Clue[]} save_clues
  * @param {FixClue[][]} fix_clues
+ * @param {Card[][]} playable_priorities
  */
-export function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
+export function find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities) {
 	const urgent_actions = [[], [], [], [], [], [], [], [], []];
 
 	for (let i = 1; i < state.numPlayers; i++) {
@@ -204,6 +206,19 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 				continue;
 			}
 
+			// Check if Order Chop Move is available - 4 (unknown card) must be highest priority, and they must be 1s
+			if (state.level >= LEVEL.BASIC_CM && playable_priorities.every((priority_cards, priority) => priority >= 4 || priority_cards.length === 0)) {
+				const unknown_1s = playable_priorities[4].filter(card => card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+
+				const distance = (target + state.numPlayers - state.ourPlayerIndex) % state.numPlayers;
+
+				// If we want to OCM the next player (distance 1), we need at least two unknown 1s.
+				if (unknown_1s.length > distance) {
+					urgent_actions[i === 1 ? 1 : 5].push({ tableId: state.tableID, type: ACTION.PLAY, target: unknown_1s[distance] });
+					continue;
+				}
+			}
+
 			// No alternative, have to give save
 			if (save_clues[target] !== undefined) {
 				const { type, value } = save_clues[target];
@@ -232,7 +247,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 }
 
 /**
- * Returns the playable card with the highest priority, along with its priority.
+ * Returns the playable cards categorized by priority.
  * @param {State} state
  * @param {Card[]} playable_cards
  */
@@ -303,7 +318,7 @@ export function determine_playable_card(state, playable_cards) {
 
 		// Unknown card
 		if (possibilities.length > 1) {
-			if (card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
+			if (state.level >= 3 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
 				// Fresh 1's
 				if (card.order >= (state.numPlayers * state.hands[0].length)) {
 					priorities[4].push(card);
@@ -333,10 +348,5 @@ export function determine_playable_card(state, playable_cards) {
 		}
 	}
 
-	for (let priority = 0; priority < 6; priority++) {
-		const cards = priorities[priority];
-		if (cards.length > 0) {
-			return { card: cards[0], priority };
-		}
-	}
+	return priorities;
 }
