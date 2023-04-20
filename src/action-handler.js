@@ -10,6 +10,7 @@ import * as Utils from'./util.js';
  * @typedef {import('./types.js').ClueAction} ClueAction
  * @typedef {import('./types.js').DiscardAction} DiscardAction
  * @typedef {import('./types.js').CardAction} CardAction
+ * @typedef {import('./types.js').PlayAction} PlayAction
  * @typedef {import('./basics/State.js').State} State
  */
 
@@ -96,31 +97,8 @@ export function handle_action(action, catchup = false) {
 			Object.assign(card, {suitIndex, rank});
 			logger.warn(`${playerName} plays ${Utils.logCard(card)}`);
 
-			// If the card doesn't match any of our inferences, rewind to the reasoning and adjust
-			if (!card.rewinded && playerIndex === this.ourPlayerIndex && (card.inferred.length > 1 || !card.matches_inferences())) {
-				logger.info('all inferences', card.inferred.map(c => Utils.logCard(c)));
-				if (this.rewind(card.reasoning.pop(), playerIndex, order, suitIndex, rank, false)) {
-					return;
-				}
-			}
-			this.hands[playerIndex].removeOrder(order);
-
-			this.play_stacks[suitIndex] = rank;
-
-			// Apply good touch principle on remaining possibilities
-			for (const hand of this.hands) {
-				good_touch_elim(hand, [{suitIndex, rank}], { hard: true });
-			}
-
-			// Update hypo stacks
-			update_hypo_stacks(this);
-
+			this.interpret_play(this, /** @type {PlayAction} */ (action));
 			this.last_actions[playerIndex] = action;
-
-			// Get a clue token back for playing a 5
-			if (rank === 5 && this.clue_tokens < 8) {
-				this.clue_tokens++;
-			}
 			break;
 		}
 		case 'rewind': {

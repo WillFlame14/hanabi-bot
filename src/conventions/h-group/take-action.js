@@ -1,6 +1,6 @@
 import { ACTION } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
-import { select_play_clue, find_urgent_actions, determine_playable_card } from './action-helper.js';
+import { select_play_clue, find_urgent_actions, determine_playable_card, order_1s } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { find_stall_clue } from './clue-finder/stall-clues.js';
 import { find_chop, inEndgame } from './hanabi-logic.js';
@@ -71,7 +71,18 @@ export function take_action(state) {
 	}
 
 	const priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
-	const best_playable_card = priority === -1 ? undefined : playable_priorities[priority][0];
+
+	let best_playable_card;
+	if (priority !== -1) {
+		// Play unknown 1s in the correct order
+		if (priority === 4 && state.level >= 3) {
+			const ordered_1s = order_1s(state, playable_priorities[4]);
+			if (ordered_1s.length > 0) {
+				best_playable_card = order_1s[0];
+			}
+		}
+		best_playable_card = playable_priorities[priority][0];
+	}
 
 	// Playing into finesse/bluff
 	if (playable_cards.length > 0 && priority === 0) {

@@ -10,6 +10,7 @@ import * as Utils from './util.js';
  * @typedef {import('./types.js').ClueAction} ClueAction
  * @typedef {import('./types.js').DiscardAction} DiscardAction
  * @typedef {import('./types.js').CardAction} DrawAction
+ * @typedef {import('./types.js').PlayAction} PlayAction
  */
 
 /**
@@ -93,6 +94,22 @@ export function onDraw(state, action) {
 	state.cardsLeft--;
 
 	// suitIndex and rank are -1 if they're your own cards
+}
+
+/**
+ * @param {State} state
+ * @param {PlayAction} action
+ */
+export function onPlay(state, action) {
+	const { order, playerIndex, rank, suitIndex } = action;
+	state.hands[playerIndex].removeOrder(order);
+
+	state.play_stacks[suitIndex] = rank;
+
+	// Get a clue token back for playing a 5
+	if (rank === 5 && state.clue_tokens < 8) {
+		state.clue_tokens++;
+	}
 }
 
 /**

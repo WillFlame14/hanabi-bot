@@ -3,7 +3,7 @@ import { LEVEL } from '../h-constants.js';
 import { Card } from '../../../basics/Card.js';
 import { interpret_tcm, interpret_5cm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
-import { determine_focus } from '../hanabi-logic.js';
+import { determine_focus, find_chop } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { find_own_finesses } from './connecting-cards.js';
 import { bad_touch_possiblities, update_hypo_stacks, good_touch_elim } from '../../../basics/helper.js';
@@ -82,7 +82,11 @@ export function interpret_clue(state, action) {
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
 	const fix = apply_good_touch(state, action);
 
-	const { focused_card } = determine_focus(state.hands[target], list);
+	const { focused_card, chop } = determine_focus(state.hands[target], list);
+
+	if (chop) {
+		focused_card.chop_when_first_clued = true;
+	}
 
 	if (focused_card.inferred.length === 0) {
 		focused_card.inferred = Utils.objClone(focused_card.possible);

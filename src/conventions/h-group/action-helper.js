@@ -3,7 +3,7 @@ import { LEVEL } from './h-constants.js';
 import { find_chop } from './hanabi-logic.js';
 import { handLoaded } from '../../basics/helper.js';
 import logger from '../../logger.js';
-import { isCritical, playableAway } from '../../basics/hanabi-util.js';
+import { isCritical, playableAway, inStartingHand } from '../../basics/hanabi-util.js';
 import * as Utils from '../../util.js';
 
 /**
@@ -152,6 +152,40 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
 }
 
 /**
+ * Given a set of playable cards, returns the unknown 1s in the order that they should be played.
+ * @param  {State} state
+ * @param  {Card[]} cards
+ */
+export function order_1s(state, cards) {
+	const unknown_1s = cards.filter(card => card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+
+	return unknown_1s.sort((c1, c2) => {
+		const [c1_start, c2_start] = [c1, c2].map(c => inStartingHand(state, c));
+		// c1 is chop focus
+		if (c1_start && c1.chop_when_first_clued) {
+			return -1;
+		}
+
+		// c2 is chop focus
+		if (c2_start && c2.chop_when_first_clued) {
+			return 1;
+		}
+
+		// c1 is fresh 1 (c2 isn't fresh, or fresh but older)
+		if (!c1_start && (c2_start || c1.order > c2.order)) {
+			return -1;
+		}
+
+		// c1 isn't fresh (c2 also isn't fresh and newer)
+		if (c1_start && c2_start && c2.order > c1.order) {
+			return -1;
+		}
+
+		return 1;
+	});
+}
+
+/**
  * Returns a 2D array of urgent actions in order of descending priority.
  * @param {State} state
  * @param {Clue[][]} play_clues
@@ -208,22 +242,20 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 
 			// Check if Order Chop Move is available - 4 (unknown card) must be highest priority, and they must be 1s
 			if (state.level >= LEVEL.BASIC_CM && playable_priorities.every((priority_cards, priority) => priority >= 4 || priority_cards.length === 0)) {
-				const unknown_1s = playable_priorities[4].filter(card => card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
-
+				const ordered_1s = order_1s(state, playable_priorities[4]);
 				const distance = (target + state.numPlayers - state.ourPlayerIndex) % state.numPlayers;
 
 				// If we want to OCM the next player (distance 1), we need at least two unknown 1s.
-				if (unknown_1s.length > distance) {
+				if (ordered_1s.length > distance) {
 					const new_hand = Utils.objClone(state.hands[target]);
 					new_hand[find_chop(new_hand)].chop_moved = true;
 
 					// Make sure the new chop isn't critical
 					const new_chop = new_hand[find_chop(new_hand)];
 					if (!isCritical(state, new_chop.suitIndex, new_chop.rank)) {
-						urgent_actions[i === 1 ? 1 : 5].push({ tableId: state.tableID, type: ACTION.PLAY, target: unknown_1s[distance].order });
+						urgent_actions[i === 1 ? 1 : 5].push({ tableId: state.tableID, type: ACTION.PLAY, target: ordered_1s[distance].order });
 						continue;
 					}
-					
 				}
 			}
 
@@ -270,7 +302,6 @@ export function determine_playable_card(state, playable_cards) {
 
 		// Blind play
 		if (card.finessed) {
-			logger.debug(`adding ${Utils.logCard(card)} to blind play priority`);
 			priorities[0].push(card);
 			continue;
 		}
@@ -326,25 +357,25 @@ export function determine_playable_card(state, playable_cards) {
 
 		// Unknown card
 		if (possibilities.length > 1) {
-			if (state.level >= 3 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
-				// Fresh 1's
-				if (card.order >= (state.numPlayers * state.hands[0].length)) {
-					priorities[4].push(card);
-					fresh_1s++;
-				}
-				// Starting hand 1's
-				else {
-					// Chop focus
-					if (card.order === state.hands[state.ourPlayerIndex][find_chop(state.hands[state.ourPlayerIndex])].order) {
-						priorities[4].unshift(card);
-					}
-					else {
-						// Otherwise, right to left but after fresh 1s
-						priorities[4].splice(fresh_1s, 0, card);
-					}
-				}
-				continue;
-			}
+			// if (state.level >= 3 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
+			// 	// Fresh 1's
+			// 	if (card.order >= (state.numPlayers * state.hands[0].length)) {
+			// 		priorities[4].push(card);
+			// 		fresh_1s++;
+			// 	}
+			// 	// Starting hand 1's
+			// 	else {
+			// 		// Chop focus
+			// 		if (card.order === state.hands[state.ourPlayerIndex][find_chop(state.hands[state.ourPlayerIndex])].order) {
+			// 			priorities[4].unshift(card);
+			// 		}
+			// 		else {
+			// 			// Otherwise, right to left but after fresh 1s
+			// 			priorities[4].splice(fresh_1s, 0, card);
+			// 		}
+			// 	}
+			// 	continue;
+			// }
 			priorities[4].push(card);
 			continue;
 		}
