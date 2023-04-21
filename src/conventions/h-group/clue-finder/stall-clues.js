@@ -3,9 +3,7 @@ import logger from '../../../logger.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
- * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
- * @typedef {import('../../../types.js').FixClue} FixClue
  */
 
 /**
@@ -27,14 +25,12 @@ export function find_stall_clue(state, severity, tempo_clue) {
 		}
 
 		const hand = state.hands[target];
-		console.log(severity);
 
 		// Early game
 		if (severity > 0) {
 			// 5 Stall (priority 0)
 			if (hand.some(c => c.rank === 5 && !c.clued && state.max_ranks[c.suitIndex] >= 5)) {
 				const c = hand.find(c => c.rank === 5 && !c.clued && state.max_ranks[c.suitIndex] >= 5);
-				console.log(state.max_ranks, c.suitIndex);
 				stall_clues[0].push({ type: ACTION.RANK, target, value: 5 });
 				break;
 			}

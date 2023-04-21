@@ -6,10 +6,10 @@ It follows [H-Group](https://hanabi.github.io/) conventions. The goal of the bot
 https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-92d0-e1d01291986e.mp4
 
 ## Bot features
-- Can play at different levels of the H-Group convention set (currently, levels 1-4 are supported).
+- Can play at different levels of the H-Group convention set. Currently, levels 1-4 are supported.
 - Takes notes during the game on cards in its own hand.
-- Internally rewinds to relevant turns  to understand mistakes.
-- Can create and start games on its own (to play bot-only games, or to control it remotely).
+- Internally rewinds to relevant turns to understand mistakes.
+- Can create and start games on its own (i.e. for playing bot-only games).
 
 ## Running locally
 - You'll need to have NodeJS v16 or above. You can download it [here](https://nodejs.org/en/download/).
@@ -30,5 +30,6 @@ Send a PM to the bot on hanab.live (`/pm <HANABI_USERNAME> <message>`) to intera
 - `/create <name> <maxPlayers> <password>` to have the bot create a table. The name can't have spaces.
 - `/start` to have the bot start the game (only works if it created the table).
 - `/settings [conventions='HGroup'] [level]` to set or view the bot's conventions and level. The bot plays with H-Group conventions at level 1 by default.
+- `/restart` and `remake` to perform the corresponding actions in the current room after the game has finished.
 
 Feel free to report any issues [here](https://github.com/WillFlame14/hanabi-bot/issues)!
