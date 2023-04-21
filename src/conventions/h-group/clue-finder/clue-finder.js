@@ -86,17 +86,15 @@ function find_tcm(state, target, saved_cards, trash_card) {
 
 	// Colour or rank save (if possible) is preferred over trash chop move
 	// TODO: Can save variant cards together (like rainbow)
-	if (isCritical(state, chop.suitIndex, chop.rank) &&
+	if ((isCritical(state, chop.suitIndex, chop.rank) || save2(state, target, chop)) &&
 		(saved_cards.every(c => c.suitIndex === chop.suitIndex) || saved_cards.every(c => c.rank === chop.rank))
 	) {
 		logger.info('prefer direct save');
 		return;
 	}
-	else if (save2(state, target, chop) && saved_cards.every(c => c.rank === 2)) {
-		logger.info('prefer direct 2 save');
-		return;
-	}
-	else if (isTrash(state, state.ourPlayerIndex, chop.suitIndex, chop.rank, chop.order)) {
+	else if (isTrash(state, state.ourPlayerIndex, chop.suitIndex, chop.rank, chop.order) ||
+		saved_cards.some(c => c.matches(chop.suitIndex, chop.rank) && c.order !== chop.order)	// A duplicated card is also trash
+	) {
 		logger.info('chop is trash, can give tcm later');
 		return;
 	}

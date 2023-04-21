@@ -61,11 +61,11 @@ export function isBasicTrash(state, suitIndex, rank) {
  * @param {number} inferringPlayerIndex     The inferring player (i.e. can only infer on their own cards).
  * @param {number} suitIndex
  * @param {number} rank
- * @param {FindOptions} [options]
+ * @param {FindOptions & {ignoreCM?: boolean}} [options]
  */
-export function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, options) {
+export function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, options = {}) {
 	return visibleFind(state, inferringPlayerIndex, suitIndex, rank, options).some(c => {
-		return c.order !== order && (c.finessed || c.clued || c.chop_moved);
+		return c.order !== order && (c.finessed || c.clued || (options.ignoreCM ? false : c.chop_moved));
 	});
 }
 

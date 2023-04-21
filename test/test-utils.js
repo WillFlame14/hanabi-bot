@@ -21,8 +21,10 @@ export const PLAYER = Object.freeze({
 });
 
 /**
- * @param {typeof State} StateClass
+ * @template {State} A
+ * @param {{new(...args: any[]): A}} StateClass
  * @param {string[][]} hands
+ * @return {A}
  */
 export function setup(StateClass, hands, level) {
 	const playerNames = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'].slice(0, hands.length);

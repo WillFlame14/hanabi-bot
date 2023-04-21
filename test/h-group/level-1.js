@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 // @ts-ignore
 import { describe, it } from 'node:test';
 
+import { ACTION } from '../../src/constants.js';
 import { COLOUR, PLAYER, setup, getRawInferences, expandShortCard } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
@@ -113,5 +114,20 @@ describe('play clue', () => {
 		// Bob's slot 1 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][0];
 		assert.deepEqual(getRawInferences(targetCard), ['r2'].map(expandShortCard));
+	});
+});
+
+describe('early game', () => {
+	it('will not 5 stall on a trash 5', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g4', 'r5', 'r4', 'y4', 'b3'],
+		]);
+
+		// Discarded both r4's
+		state.discard_stacks[0][3] = 2;
+
+		const action = state.take_action(state);
+		assert.deepEqual(action, { type: ACTION.DISCARD, target: 0 });
 	});
 });
