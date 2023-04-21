@@ -2,7 +2,15 @@ import { ACTION } from '../../../constants.js';
 import logger from '../../../logger.js';
 
 /**
+ * @typedef {import('../../h-group.js').default} State
+ * @typedef {import('../../../types.js').Clue} Clue
+ */
+
+/**
  * Finds a stall clue to give. Always finds a clue if severity is greater than 1 (hard burn).
+ * @param {State} state
+ * @param {number} severity
+ * @param {Clue} tempo_clue
  */
 export function find_stall_clue(state, severity, tempo_clue) {
 	const stall_clues = [[], [], [], []];
@@ -21,7 +29,8 @@ export function find_stall_clue(state, severity, tempo_clue) {
 		// Early game
 		if (severity > 0) {
 			// 5 Stall (priority 0)
-			if (hand.some(c => c.rank === 5 && !c.clued)) {
+			if (hand.some(c => c.rank === 5 && !c.clued && state.max_ranks[c.suitIndex] >= 5)) {
+				const c = hand.find(c => c.rank === 5 && !c.clued && state.max_ranks[c.suitIndex] >= 5);
 				stall_clues[0].push({ type: ACTION.RANK, target, value: 5 });
 				break;
 			}

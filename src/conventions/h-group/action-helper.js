@@ -12,6 +12,7 @@ import * as Utils from '../../util.js';
  * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').FixClue} FixClue
  * @typedef {import('../../types.js').PerformAction} PerformAction
+ * @typedef {import('../../types.js').Action} Action
  */
 
 /**
@@ -156,6 +157,7 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
  * @param {Clue[][]} play_clues
  * @param {Clue[]} save_clues
  * @param {FixClue[][]} fix_clues
+ * @returns {(Action & {value?: number})}[][]}
  */
 export function find_urgent_actions(state, play_clues, save_clues, fix_clues) {
 	const urgent_actions = [[], [], [], [], [], [], [], [], []];

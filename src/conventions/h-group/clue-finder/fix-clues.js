@@ -65,7 +65,7 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 
 				// We don't need to fix duplicated cards where we hold one copy, since we can just sarcastic discard
 				const unknown_duplicated = card.clued && card.inferred.length > 1 &&
-					isSaved(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order, { ignore: [state.ourPlayerIndex] });
+					isSaved(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order, { ignore: [state.ourPlayerIndex], ignoreCM: true });
 
 				let fix_criteria;
 				if (wrong_inference) {
