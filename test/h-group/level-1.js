@@ -125,9 +125,10 @@ describe('early game', () => {
 		]);
 
 		// Discarded both r4's
-		state.discard_stacks[0][3] = 2;
+		state.max_ranks[0] = 3;
+		state.clue_tokens = 7;
 
 		const action = state.take_action(state);
-		assert.deepEqual(action, { type: ACTION.DISCARD, target: 0 });
+		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.DISCARD, target: 0 });
 	});
 });

@@ -105,7 +105,7 @@ describe('trash chop move', () => {
 
 		const { play_clues, save_clues, fix_clues } = find_clues(state);
 		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues);
-		assert.equal(urgent_actions[1], undefined);
+		assert.deepEqual(urgent_actions[1], []);
 		assert.deepEqual(Utils.objPick(urgent_actions[2][0], ['type', 'value']), { type: ACTION.COLOUR, value: 1 });
 	});
 });
