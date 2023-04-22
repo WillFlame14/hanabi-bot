@@ -157,7 +157,7 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
  * @param  {Card[]} cards
  */
 export function order_1s(state, cards) {
-	const unknown_1s = cards.filter(card => card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+	const unknown_1s = cards.filter(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
 
 	return unknown_1s.sort((c1, c2) => {
 		const [c1_start, c2_start] = [c1, c2].map(c => inStartingHand(state, c));
