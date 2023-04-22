@@ -1,6 +1,7 @@
 import { State } from '../basics/State.js';
 import { interpret_clue } from './h-group/clue-interpretation/interpret-clue.js';
 import { interpret_discard } from './h-group/interpret-discard.js';
+import { interpret_play } from './h-group/interpret-play.js';
 import { take_action } from './h-group/take-action.js';
 import { update_turn } from './h-group/update-turn.js';
 
@@ -10,6 +11,7 @@ export default class HGroup extends State {
 	interpret_discard = interpret_discard;
 	take_action = take_action;
 	update_turn = update_turn;
+	interpret_play = interpret_play;
 
 	/**
      * @param {number} tableID

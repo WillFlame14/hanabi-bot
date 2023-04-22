@@ -38,6 +38,7 @@
  * @property {number} rank
  * 
  * @typedef {CardAction & {failed: boolean}} DiscardAction
+ * @typedef {Omit<CardAction, 'type'>} PlayAction
  * 
  * @typedef TurnAction
  * @property {string} type

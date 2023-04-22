@@ -102,3 +102,7 @@ export function getPace(state) {
 	const maxScore = state.max_ranks.reduce((acc, curr) => acc + curr);
 	return currScore + state.cardsLeft + state.numPlayers - maxScore;
 }
+
+export function inStartingHand(state, card) {
+    return card.order < state.numPlayers * state.hands[0].length;
+}

@@ -10,6 +10,7 @@ import * as Utils from '../util.js';
  * @typedef {import('../types.js').ClueAction} ClueAction
  * @typedef {import('../types.js').DiscardAction} DiscardAction
  * @typedef {import('../types.js').TurnAction} TurnAction
+ * @typedef {import('../types.js').PlayAction} PlayAction
  * @typedef {import('../types.js').WaitingConnection} WaitingConnection
  */
 
@@ -106,6 +107,15 @@ export class State {
      * @param {Card} _card
      */
 	interpret_discard(_state, _action, _card) {
+		throw new Error('must be implemented by subclass!');
+	}
+
+	/**
+	 * @abstract
+	 * @param  {State} _state
+	 * @param  {PlayAction} _action
+	 */
+	interpret_play(_state, _action) {
 		throw new Error('must be implemented by subclass!');
 	}
 
