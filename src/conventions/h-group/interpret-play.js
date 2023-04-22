@@ -52,6 +52,10 @@ function check_ocm(state, action) {
 export function interpret_play(state, action) {
     const { rank, suitIndex } = action;
 
+    if (state.level >= LEVEL.BASIC_CM) {
+        check_ocm(state, action);
+    }
+
     Basics.onPlay(this, /** @type {PlayAction} */ (action));
 
     // Apply good touch principle on remaining possibilities
@@ -61,8 +65,4 @@ export function interpret_play(state, action) {
 
     // Update hypo stacks
     update_hypo_stacks(this);
-
-    if (state.level >= LEVEL.BASIC_CM) {
-        check_ocm(state, action);
-    }
 }
