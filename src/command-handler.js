@@ -33,7 +33,7 @@ export const handle = {
 			if (data.msg.startsWith('/join')) {
 				// Find the table with the user that invited us
 				for (const table of Object.values(tables)) {
-					if (!table.sharedReplay && table.players.includes(data.who)) {
+					if (!table.sharedReplay && (table.players.includes(data.who) || table.spectators.some(spec => spec.name === data.who))) {
 						if (table.running || table.players.length === 6) {
 							continue;
 						}
@@ -52,7 +52,7 @@ export const handle = {
 			else if (data.msg.startsWith('/rejoin')) {
 				// Find the table with the user that invited us
 				for (const table of Object.values(tables)) {
-					if (!table.sharedReplay && table.players.includes(data.who)) {
+					if (table && !table.sharedReplay && (table.players.includes(data.who) || table.spectators.some(spec => spec.name === data.who))) {
 						if (!table.players.includes(self.username)) {
 							Utils.sendChat(data.who, 'Could not join, as the bot was never a player in this room.');
 							return;
@@ -79,6 +79,14 @@ export const handle = {
 			// Starts the game (format: /start)
 			else if (data.msg.startsWith('/start')) {
 				Utils.sendCmd('tableStart', { tableID: state.tableID });
+			}
+			// Restarts a game (format: /restart)
+			else if (data.msg.startsWith('/restart')) {
+				Utils.sendCmd('tableRestart', { tableID: state.tableID, hidePregame: true });
+			}
+			// Remakes a table (format: /remake)
+			else if (data.msg.startsWith('/remake')) {
+				Utils.sendCmd('tableRestart', { tableID: state.tableID, hidePregame: false });
 			}
 			// Displays or modifies the current settings (format: /settings [convention = 'HGroup'] [level = 1])
 			else if (data.msg.startsWith('/settings')) {
@@ -131,7 +139,7 @@ export const handle = {
 
 		// If we are going first, we need to take an action now
 		if (state.ourPlayerIndex === 0 && state.turn_count === 0) {
-			setTimeout(() => state.take_action(state), 3000);
+			setTimeout(() => Utils.sendCmd('action', state.take_action(state)), 3000);
 		}
 	},
 	joined: (data) => {

@@ -55,8 +55,7 @@ export function take_action(state) {
 
 	// Unlock next player
 	if (urgent_actions[0].length > 0) {
-		Utils.sendCmd('action', urgent_actions[0][0]);
-		return;
+		return urgent_actions[0][0];
 	}
 
 	// Urgent save for next player
@@ -64,8 +63,7 @@ export function take_action(state) {
 		for (let i = 1; i < 4; i++) {
 			const actions = urgent_actions[i];
 			if (actions.length > 0) {
-				Utils.sendCmd('action', actions[0]);
-				return;
+				return actions[0];
 			}
 		}
 	}
@@ -86,7 +84,7 @@ export function take_action(state) {
 
 	// Playing into finesse/bluff
 	if (playable_cards.length > 0 && priority === 0) {
-		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
+		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 		return;
 	}
 
@@ -98,21 +96,18 @@ export function take_action(state) {
 
 		if (best_play_clue?.result.finesses > 0) {
 			const { type, target, value } = best_play_clue;
-			Utils.sendCmd('action', { tableID, type, target, value });
-			return;
+			return { tableID, type, target, value };
 		}
 	}
 
 	// Sarcastic discard to someone else
 	if (state.level >= LEVEL.SARCASTIC && discards.length > 0) {
-		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: discards[0].order });
-		return;
+		return { tableID, type: ACTION.DISCARD, target: discards[0].order };
 	}
 
 	// Unlock other player than next
 	if (urgent_actions[4].length > 0) {
-		Utils.sendCmd('action', urgent_actions[4][0]);
-		return;
+		return urgent_actions[4][0];
 	}
 
 	// Forced discard if next player is locked without a playable or trash card
@@ -120,25 +115,21 @@ export function take_action(state) {
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
 	if (state.clue_tokens === 0 && state.hands[nextPlayerIndex].isLocked() && !handLoaded(state, nextPlayerIndex)) {
 		discard_chop(hand, tableID);
-		return;
 	}
 
 	// Playing a connecting card or playing a 5
 	if (playable_cards.length > 0 && priority <= 3) {
-		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
-		return;
+		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 	}
 
 	// Discard known trash at high pace, low clues
 	if (trash_cards.length > 0 && getPace(state) > state.numPlayers * 2 && state.clue_tokens <= 3) {
-		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: trash_cards[0].order });
-		return;
+		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 	}
 
 	// Playable card with any priority
 	if (playable_cards.length > 0) {
-		Utils.sendCmd('action', { tableID, type: ACTION.PLAY, target: best_playable_card.order });
-		return;
+		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 	}
 
 	if (state.clue_tokens > 0) {
@@ -151,8 +142,7 @@ export function take_action(state) {
 
 				if (clue_value >= minimum_clue_value) {
 					const { type, target, value } = best_play_clue;
-					Utils.sendCmd('action', { tableID, type, target, value });
-					return;
+					return { tableID, type, target, value };
 				}
 				else {
 					logger.info('clue too low value', Utils.logClue(best_play_clue), clue_value);
@@ -161,43 +151,39 @@ export function take_action(state) {
 
 			// Go through rest of actions in order of priority (except early save)
 			if (i !== 8 && urgent_actions[i].length > 0) {
-				Utils.sendCmd('action', urgent_actions[i][0]);
-				return;
+				return urgent_actions[i][0];
 			}
 		}
 	}
 
 	// Either there are no clue tokens or the best play clue doesn't meet MCVP
 
-	const endgame_stall = inEndgame(state) && state.clue_tokens > 0 &&
-		state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index]);
+	// TODO: Reconsider endgame stall
+	// const endgame_stall = inEndgame(state) && state.clue_tokens > 0 &&
+	// 	state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index]);
 
-	// 8 clues or endgame
-	if (state.clue_tokens === 8 || endgame_stall) {
+	// 8 clues or endgame (currently disabled)
+	if (state.clue_tokens === 8) {
 		const { type, value, target } = find_stall_clue(state, 4, best_play_clue);
 
 		// Should always be able to find a clue, even if it's a hard burn
-		Utils.sendCmd('action', { tableID, type, target, value });
-		return;
+		return { tableID, type, target, value };
 	}
 
 	// Discard known trash (no pace requirement)
 	if (trash_cards.length > 0) {
-		Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: trash_cards[0].order });
-		return;
+		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 	}
 
 	// Early save
 	if (state.clue_tokens > 0 && urgent_actions[8].length > 0) {
-		Utils.sendCmd('action', urgent_actions[8][0]);
-		return;
+		return urgent_actions[8][0];
 	}
 
 	// Locked hand and no good clues to give
 	if (state.hands[state.ourPlayerIndex].isLocked() && state.clue_tokens > 0) {
 		const { type, value, target } = find_stall_clue(state, 3, best_play_clue);
-		Utils.sendCmd('action', { tableID, type, target, value });
-		return;
+		return { tableID, type, target, value };
 	}
 
 	// Early game
@@ -206,12 +192,11 @@ export function take_action(state) {
 
 		if (clue !== undefined) {
 			const { type, value, target } = clue;
-			Utils.sendCmd('action', { tableID, type, target, value });
-			return;
+			return { tableID, type, target, value };
 		}
 	}
 
-	discard_chop(hand, tableID);
+	return discard_chop(hand, tableID);
 }
 
 /**
@@ -232,5 +217,5 @@ function discard_chop(hand, tableID) {
 		discard = hand[Math.floor(Math.random() * hand.length)];
 	}
 
-	Utils.sendCmd('action', { tableID, type: ACTION.DISCARD, target: discard.order });
+	return { tableID, type: ACTION.DISCARD, target: discard.order };
 }

@@ -101,8 +101,8 @@ export function stalling_situation(state, action) {
 
 		// Only early game 5 stall exists before level 9
 		if (state.level < LEVEL.STALLING && severity !== 1) {
-			logger.warn('ignoring possible stall found before level 9');
-			return false;
+			logger.warn('stall found before level 9');
+			// return false;
 		}
 
 		return true;

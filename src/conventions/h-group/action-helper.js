@@ -13,6 +13,7 @@ import * as Utils from '../../util.js';
  * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').FixClue} FixClue
  * @typedef {import('../../types.js').PerformAction} PerformAction
+ * @typedef {import('../../types.js').Action} Action
  */
 
 /**
@@ -192,6 +193,7 @@ export function order_1s(state, cards) {
  * @param {Clue[]} save_clues
  * @param {FixClue[][]} fix_clues
  * @param {Card[][]} playable_priorities
+ * @returns {(Action & {value?: number})}[][]}
  */
 export function find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities) {
 	const urgent_actions = [[], [], [], [], [], [], [], [], []];

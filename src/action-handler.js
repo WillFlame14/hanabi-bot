@@ -74,7 +74,7 @@ export function handle_action(action, catchup = false) {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
 			const { currentPlayerIndex } = action;
 			if (currentPlayerIndex === this.ourPlayerIndex && !catchup) {
-				setTimeout(() => this.take_action(this), 2000);
+				setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
 
 				// Update notes on cards
 				for (const card of this.hands[this.ourPlayerIndex]) {
