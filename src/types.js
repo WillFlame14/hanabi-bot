@@ -18,6 +18,7 @@
  * @property {number} bad_touch
  * @property {number} trash
  * @property {number} finesses
+ * @property {number} remainder
  * @property {({playerIndex: number, card: Card})[]} playables
  * 
  * 

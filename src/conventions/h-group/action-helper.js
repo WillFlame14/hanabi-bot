@@ -22,9 +22,9 @@ import * as Utils from '../../util.js';
  * A clue must have value >= 1 to meet Minimum Clue Value Principle (MCVP).
  * @param {ClueResult} clue_result
  */
-function find_clue_value(clue_result) {
-	const { finesses, new_touched, playables, bad_touch, elim } = clue_result;
-	return finesses + 0.5*((new_touched - bad_touch) + playables.length) + 0.01*elim - 1.5*bad_touch;
+export function find_clue_value(clue_result) {
+	const { finesses, new_touched, playables, bad_touch, elim, remainder } = clue_result;
+	return finesses + 0.5*((new_touched - bad_touch) + playables.length) + 0.01*elim - 1.5*bad_touch - 0.5*remainder;
 }
 
 /**

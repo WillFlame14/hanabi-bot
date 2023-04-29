@@ -1,6 +1,6 @@
 import { CLUE, ACTION } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
-import { clue_safe } from './clue-safe.js';
+import { clue_safe, save2 } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { determine_clue, direct_clues } from './determine-clue.js';
 import { find_chop, determine_focus, stall_severity } from '../hanabi-logic.js';
@@ -13,27 +13,6 @@ import * as Utils from '../../../util.js';
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
  */
-
-/**
- * Checks if the card is a valid (and safe) 2 save.
- * @param {State} state
- * @param {number} target 	The player with the card
- * @param {{ suitIndex: number, rank: number }} card
- */
-function save2(state, target, card) {
-	const { suitIndex, rank } = card;
-
-	if (rank !== 2) {
-		return false;
-	}
-
-	const clue = { type: CLUE.RANK, value: 2, target };
-
-	return state.play_stacks[suitIndex] === 0 &&									// play stack at 0
-		visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&	// other copy isn't visible
-		!state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true })) &&   // not in our hand
-		clue_safe(state, clue);
-}
 
 /**
  * Finds a save clue (if necessary) for the given card in the target's hand.
@@ -53,7 +32,7 @@ function find_save(state, target, card) {
 	if (state.hypo_stacks[suitIndex] + 1 === rank &&
 		visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1
 	) {
-		return determine_clue(state, target, card);
+		return determine_clue(state, target, card, { save: true });
 	}
 
 	if (isCritical(state, suitIndex, rank)) {
@@ -63,7 +42,7 @@ function find_save(state, target, card) {
 		}
 		else {
 			// The card is on chop, so it can always be focused
-			return determine_clue(state, target, card);
+			return determine_clue(state, target, card, { save: true });
 		}
 	}
 	else if (save2(state, target, card)) {
@@ -219,9 +198,9 @@ export function find_clues(state, options = {}) {
 
 			let interpreted_5cm = false;
 
-			if (state.level >= LEVEL.BASIC_CM) {
+			if (state.level >= LEVEL.BASIC_CM && !options.ignoreCM) {
 				// Trash card (not conventionally play)
-				if (!options.ignoreCM && isBasicTrash(state, suitIndex, rank)) {
+				if (isBasicTrash(state, suitIndex, rank)) {
 					// Trash chop move (we only want to find the rightmost tcm)
 					if (!(card.clued || card.chop_moved) && cardIndex !== chopIndex && !found_tcm) {
 						const saved_cards = hand.slice(cardIndex + 1).filter(c => !(c.clued || c.chop_moved));
@@ -235,16 +214,17 @@ export function find_clues(state, options = {}) {
 				}
 
 				// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
-				if (!options.ignoreCM && !tried_5cm && rank === 5 && !(card.clued || card.chop_moved)) {
+				if (!tried_5cm && rank === 5 && !(card.clued || card.chop_moved)) {
 					logger.info('trying 5cm with 5 at index', cardIndex);
 					tried_5cm = true;
 
 					// Can only perform a 5cm at severity 0 (otherwise, looks like 5 stall)
-					if (severity === 0) {
+					// Allow giving direct 5 clues when every hypo stack is at 4 or above
+					if (severity === 0 && !state.hypo_stacks.every(stack => stack >= 4)) {
 						// Find where chop is, relative to the rightmost clued 5
 						let distance_from_chop = 0;
 						for (let j = cardIndex; j < chopIndex; j++) {
-							// Skip clued/finessed cards
+							// Skip clued cards
 							if (hand[j].clued) {
 								continue;
 							}
@@ -260,6 +240,9 @@ export function find_clues(state, options = {}) {
 						else {
 							logger.info(`rightmost 5 is ${distance_from_chop} from chop, cannot 5cm`);
 						}
+					}
+					else {
+						logger.info(`looks like stall or direct play`);
 					}
 				}
 			}

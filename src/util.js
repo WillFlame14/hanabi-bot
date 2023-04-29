@@ -140,6 +140,27 @@ export function objPick(obj, attributes) {
 }
 
 /**
+ * Returns the "maximum" object in an array based on a value function.
+ * @template T
+ * @param  {T[]} arr 					The array of objects.
+ * @param  {(obj: T) => number} valueFunc	A function that takes in an object and returns its value.
+ */
+export function maxOn(arr, valueFunc) {
+	let max_value = valueFunc(arr[0]), max = arr[0];
+
+	for (let i = 0; i < arr.length; i++) {
+		const curr = valueFunc(arr[i]);
+
+		if (curr > max_value) {
+			max_value = curr;
+			max = arr[i];
+		}
+	}
+
+	return max;
+}
+
+/**
  * Checks if two objects look the same (i.e. have the same properties).
  */
 export function objEquals(obj1, obj2) {

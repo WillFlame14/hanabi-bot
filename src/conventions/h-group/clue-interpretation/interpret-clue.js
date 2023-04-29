@@ -3,7 +3,7 @@ import { LEVEL } from '../h-constants.js';
 import { Card } from '../../../basics/Card.js';
 import { interpret_tcm, interpret_5cm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
-import { determine_focus, find_chop } from '../hanabi-logic.js';
+import { determine_focus } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { find_own_finesses } from './connecting-cards.js';
 import { bad_touch_possiblities, update_hypo_stacks, good_touch_elim } from '../../../basics/helper.js';

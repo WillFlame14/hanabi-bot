@@ -85,7 +85,6 @@ export function take_action(state) {
 	// Playing into finesse/bluff
 	if (playable_cards.length > 0 && priority === 0) {
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
-		return;
 	}
 
 	// Get a high value play clue
