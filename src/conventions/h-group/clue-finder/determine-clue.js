@@ -133,9 +133,9 @@ export function determine_clue(state, target, target_card, options) {
 		const touch = hand.clueTouched(state.suits, clue);
 		const list = touch.map(c => c.order);
 
-		const { focused_card } = determine_focus(hand, list, { beforeClue: true });
+		const { focused_card, chop } = determine_focus(hand, list, { beforeClue: true });
 		if (focused_card.order !== target_card.order) {
-			logger.info(`${Utils.logClue(clue)} doesn't focus, ignoring`);
+			logger.info(`${Utils.logClue(clue)} focuses ${Utils.logCard(focused_card)} instead of ${Utils.logCard(target_card)}, ignoring`);
 			continue;
 		}
 
@@ -220,8 +220,9 @@ export function determine_clue(state, target, target_card, options) {
 			}
 		}
 
+		// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
 		const new_chop = hypo_state.hands[target][find_chop(hypo_state.hands[target], { includeNew: true })];
-		const remainder = new_chop !== undefined ? card_value(state, new_chop) : 0;
+		const remainder = (chop && new_chop !== undefined) ? card_value(state, new_chop) : 0;
 
 		const result_log = {
 			clue: Utils.logClue(clue),
