@@ -9,6 +9,7 @@ import * as Utils from '../../../util.js';
  * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
+ * @typedef {import('../../../types.js').BasicCard} BasicCard
  */
 
 /**
@@ -20,7 +21,7 @@ export function clue_safe(state, clue) {
 	const { target } = clue;
 
 	const list = state.hands[target].clueTouched(state.suits, clue).map(c => c.order);
-	const action = { type: 'clue', giver: state.ourPlayerIndex, target, list, clue };
+	const action = Object.freeze({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
 	const hypo_state = state.simulate_clue(action);//, { simulatePlayerIndex: target });
 
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
@@ -58,7 +59,7 @@ export function clue_safe(state, clue) {
 /**
  * Returns whether a card is a unique 2 on the board, according to us.
  * @param  {State} state
- * @param  {{ suitIndex: number, rank: number }} card
+ * @param  {BasicCard} card
  */
 function unique2(state, card) {
 	const { suitIndex, rank } = card;
@@ -72,7 +73,7 @@ function unique2(state, card) {
  * Returns the relative "value" of a card. 0 is worthless, 5 is critical.
  * TODO: Improve general algorithm. (e.g. having clued cards of a suit makes it better, a dead suit is worse)
  * @param  {State} state
- * @param  {{ suitIndex: number, rank: number }} card
+ * @param  {BasicCard} card
  */
 export function card_value(state, card) {
 	const { suitIndex, rank } = card;
@@ -97,7 +98,7 @@ export function card_value(state, card) {
  * Checks if the card is a valid (and safe) 2 save.
  * @param {State} state
  * @param {number} target 	The player with the card
- * @param {{ suitIndex: number, rank: number }} card
+ * @param {BasicCard} card
  */
 export function save2(state, target, card) {
 	if (card.rank !== 2) {

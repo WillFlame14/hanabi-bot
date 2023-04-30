@@ -169,11 +169,11 @@ export class State {
 		logger.setLevel(logger.LEVELS.INFO);
 
 		// Rewrite and save as a rewind action
-		const known_action = { type: 'rewind', order, playerIndex, suitIndex, rank };
+		const known_action = Object.freeze({ type: 'rewind', order, playerIndex, suitIndex, rank });
 		new_state.handle_action(known_action, true);
 		logger.warn('Rewriting order', order, 'to', Utils.logCard({suitIndex, rank}));
 
-		const pivotal_action = this.actionList[action_index];
+		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
 		pivotal_action.mistake = finessed || this.rewindDepth > 1;
 		logger.info('pivotal action', pivotal_action);
 		new_state.handle_action(pivotal_action, true);
@@ -201,7 +201,7 @@ export class State {
 	 * 
 	 * The 'enableLogs' option causes all logs from the simulated state to be printed.
 	 * Otherwise, only errors are printed from the simulated state.
-     * @param {Omit<ClueAction, 'type'>} action
+     * @param {ClueAction} action
      * @param {{simulatePlayerIndex?: number, enableLogs?: boolean}} options
      */
 	simulate_clue(action, options = {}) {

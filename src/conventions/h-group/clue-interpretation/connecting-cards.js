@@ -128,6 +128,13 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 	logger.info(`couldn't find connecting ${Utils.logCard({suitIndex, rank})}`);
 }
 
+/**
+ * Returns whether the playerIndex is "in between" the giver and target (in play order).
+ * @param {number} numPlayers
+ * @param {number} playerIndex
+ * @param {number} giver
+ * @param {number} target
+ */
 function inBetween(numPlayers, playerIndex, giver, target) {
 	let i = (giver + 1) % numPlayers;
 	while(i !== target) {

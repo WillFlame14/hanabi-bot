@@ -56,7 +56,7 @@ export function interpret_play(state, action) {
         check_ocm(state, action);
     }
 
-    Basics.onPlay(this, /** @type {PlayAction} */ (action));
+    Basics.onPlay(this, action);
 
     // Apply good touch principle on remaining possibilities
     for (const hand of this.hands) {

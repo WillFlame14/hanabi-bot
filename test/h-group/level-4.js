@@ -118,7 +118,7 @@ describe('giving order chop move', () => {
 		], 4);
 
 		// Bob clues Alice 1, touching slots 3 and 4.
-		const action = { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE };
+		const action = Object.freeze({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 		state.handle_action(action);
 
 		const our_hand = state.hands[state.ourPlayerIndex];
@@ -139,7 +139,7 @@ describe('giving order chop move', () => {
 		], 4);
 
 		// Bob clues Alice 1, touching slots 2, 3 and 4.
-		const action = { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2, 3], target: PLAYER.ALICE };
+		const action = Object.freeze({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2, 3], target: PLAYER.ALICE });
 		state.handle_action(action);
 
 		const our_hand = state.hands[PLAYER.ALICE];
@@ -159,7 +159,7 @@ describe('giving order chop move', () => {
 		], 4);
 
 		// Bob clues Alice 1, touching slots 3 and 4.
-		const action = { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE };
+		const action = Object.freeze({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 		state.handle_action(action);
 
 		const { save_clues } = find_clues(state);

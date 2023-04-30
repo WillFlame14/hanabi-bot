@@ -21,7 +21,7 @@ describe('playing 1s in the correct order', () => {
 		], 3);
 
 		// Bob clues Alice 1, touching slots 3 and 4.
-		const action = { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [1, 2], target: PLAYER.ALICE, turn: 0 };
+		const action = Object.freeze({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [1, 2], target: PLAYER.ALICE, turn: 0 });
 		state.handle_action(action);
 
 		const ordered_1s = order_1s(state, state.hands[PLAYER.ALICE]).map(c => c.order);
@@ -38,7 +38,7 @@ describe('playing 1s in the correct order', () => {
 		state.hands[PLAYER.ALICE][0].order = 10;
 
 		// Bob clues Alice 1, touching slots 1 and 4.
-		const action = { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [1, 10], target: PLAYER.ALICE, turn: 0 };
+		const action = Object.freeze({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [1, 10], target: PLAYER.ALICE, turn: 0 });
 		state.handle_action(action);
 
         const ordered_1s = order_1s(state, state.hands[PLAYER.ALICE]).map(c => c.order);
@@ -55,7 +55,7 @@ describe('playing 1s in the correct order', () => {
         state.hands[PLAYER.ALICE][0].order = 10;
 
 		// Bob clues Alice 1, touching slots 1, 2 and 5.
-		const action = { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [0, 3, 10], target: PLAYER.ALICE, turn: 0 };
+		const action = Object.freeze({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [0, 3, 10], target: PLAYER.ALICE, turn: 0 });
 		state.handle_action(action);
 
 		const ordered_1s = order_1s(state, state.hands[PLAYER.ALICE]).map(c => c.order);

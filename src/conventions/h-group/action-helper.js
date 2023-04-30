@@ -193,7 +193,7 @@ export function order_1s(state, cards) {
  * @param {Clue[]} save_clues
  * @param {FixClue[][]} fix_clues
  * @param {Card[][]} playable_priorities
- * @returns {(Action & {value?: number})}[][]}
+ * @returns {PerformAction[][]}
  */
 export function find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities) {
 	const urgent_actions = [[], [], [], [], [], [], [], [], []];
@@ -359,25 +359,6 @@ export function determine_playable_card(state, playable_cards) {
 
 		// Unknown card
 		if (possibilities.length > 1) {
-			// if (state.level >= 3 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
-			// 	// Fresh 1's
-			// 	if (card.order >= (state.numPlayers * state.hands[0].length)) {
-			// 		priorities[4].push(card);
-			// 		fresh_1s++;
-			// 	}
-			// 	// Starting hand 1's
-			// 	else {
-			// 		// Chop focus
-			// 		if (card.order === state.hands[state.ourPlayerIndex][find_chop(state.hands[state.ourPlayerIndex])].order) {
-			// 			priorities[4].unshift(card);
-			// 		}
-			// 		else {
-			// 			// Otherwise, right to left but after fresh 1s
-			// 			priorities[4].splice(fresh_1s, 0, card);
-			// 		}
-			// 	}
-			// 	continue;
-			// }
 			priorities[4].push(card);
 			continue;
 		}

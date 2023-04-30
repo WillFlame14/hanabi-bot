@@ -1,6 +1,5 @@
 import { CLUE } from'./constants.js';
 import { Card } from'./basics/Card.js';
-import { good_touch_elim, update_hypo_stacks } from'./basics/helper.js';
 import logger from'./logger.js';
 import * as Basics from'./basics.js';
 import * as Utils from'./util.js';
@@ -37,7 +36,7 @@ export function handle_action(action, catchup = false) {
 			}
 			logger.warn(`${playerName} clues ${clue_value} to ${targetName}`);
 
-			this.interpret_clue(this, /** @type {ClueAction} */ (action));
+			this.interpret_clue(this, action);
 			this.last_actions[giver] = action;
 
 			// Remove the newly_clued flag
@@ -57,14 +56,14 @@ export function handle_action(action, catchup = false) {
 			Object.assign(card, {suitIndex, rank});
 			logger.warn(`${playerName} ${failed ? 'bombs' : 'discards'} ${Utils.logCard(card)}`);
 
-			Basics.onDiscard(this, /** @type {DiscardAction} */ (action));
-			this.interpret_discard(this, /** @type {DiscardAction} */ (action), card);
+			Basics.onDiscard(this, action);
+			this.interpret_discard(this, action, card);
 			this.last_actions[playerIndex] = action;
 			break;
 		}
 		case 'draw': {
 			// { type: 'draw', playerIndex: 0, order: 2, suitIndex: 1, rank: 2 },
-			Basics.onDraw(this, /** @type {CardAction} */ (action));
+			Basics.onDraw(this, action);
 			break;
 		}
 		case 'gameOver':
@@ -97,7 +96,7 @@ export function handle_action(action, catchup = false) {
 			Object.assign(card, {suitIndex, rank});
 			logger.warn(`${playerName} plays ${Utils.logCard(card)}`);
 
-			this.interpret_play(this, /** @type {PlayAction} */ (action));
+			this.interpret_play(this, action);
 			this.last_actions[playerIndex] = action;
 			break;
 		}

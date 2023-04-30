@@ -1,12 +1,15 @@
 // @ts-nocheck
 
 /**
- * @typedef Clue
- * @property {number} type
- * @property {number} target
- * @property {number} value
- * @property {ClueResult} [result]
+ * @typedef BasicCard
+ * @property {number} suitIndex
+ * @property {number} rank 
  * 
+ * @typedef BaseClue
+ * @property {number} type
+ * @property {number} value
+ * 
+ * @typedef {BaseClue & {target: number, result?: ClueResult}} Clue
  * @typedef {Clue & {urgent: boolean, trash: boolean}} FixClue
  * 
  * @typedef ClueResult
@@ -21,31 +24,44 @@
  * @property {number} remainder
  * @property {({playerIndex: number, card: Card})[]} playables
  * 
+ * @typedef StatusAction
+ * @property {'status'} type
+ * @property {number}   clues
+ * @property {number}   score
+ * @property {number}   maxScore
+ * 
+ * @typedef TurnAction
+ * @property {'turn'}   type
+ * @property {number}   num
+ * @property {number}   currentPlayerIndex
  * 
  * @typedef ClueAction
- * @property {string} 	type
+ * @property {'clue'}   type
  * @property {number} 	giver
  * @property {number} 	target
  * @property {number[]} list
- * @property {Omit<Clue, 'target'>} 	clue
+ * @property {BaseClue} clue
  * @property {boolean}  [mistake]
  * @property {boolean}  [ignoreStall]
  * 
  * @typedef CardAction
- * @property {string} type
  * @property {number} order
  * @property {number} playerIndex
  * @property {number} suitIndex
  * @property {number} rank
  * 
- * @typedef {CardAction & {failed: boolean}} DiscardAction
- * @typedef {Omit<CardAction, 'type'>} PlayAction
+ * @typedef {CardAction & {type: 'draw'}} DrawAction
+ * @typedef {CardAction & {type: 'play'}} PlayAction
+ * @typedef {CardAction & {type:'rewind'}} RewindAction
+ * @typedef {CardAction & {type: 'discard', failed: boolean}} DiscardAction
  * 
- * @typedef TurnAction
- * @property {string} type
- * @property {number} [currentPlayerIndex]
+ * @typedef GameOverAction
+ * @property {'gameOver'}   type
+ * @property {number}       endCondition
+ * @property {number}       playerIndex
+ * @property {any}          votes
  * 
- * @typedef {{type: string} & Partial<(ClueAction & DiscardAction & TurnAction)>} Action
+ * @typedef {StatusAction | TurnAction | ClueAction | DrawAction | DiscardAction | PlayAction | GameOverAction | RewindAction} Action
  * 
  * @typedef PerformAction
  * @property {number} tableID`

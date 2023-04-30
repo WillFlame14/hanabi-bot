@@ -142,7 +142,7 @@ export function determine_clue(state, target, target_card, options) {
 		const bad_touch_cards = find_bad_touch(state, touch.filter(c => !c.clued), focused_card.order);		// Ignore cards that were already clued
 
 		// Simulate clue from receiver's POV to see if they have the right interpretation
-		const action = { type: 'clue', giver: state.ourPlayerIndex, target, list, clue };
+		const action = Object.freeze({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
 		const hypo_state = evaluate_clue(state, action, clue, target, target_card, bad_touch_cards);
 
 		// Clue had incorrect interpretation

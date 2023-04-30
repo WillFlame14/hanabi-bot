@@ -159,7 +159,7 @@ function check_fixed(state, target, card, clue, fix_criteria) {
 	const hand = state.hands[target];
 	const touch = hand.clueTouched(state.suits, clue);
 
-	const action = { type: 'clue', giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue };
+	const action = Object.freeze({ type: 'clue', giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue });
 
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();
