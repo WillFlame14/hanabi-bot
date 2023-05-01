@@ -7,11 +7,13 @@ import * as Utils from '../util.js';
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
+ * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Clue} Clue
+ * @typedef {import('../types.js').BasicCard} BasicCard
  */
 
 /**
- * @param {Omit<Clue, 'target'>} clue
+ * @param {BaseClue} clue
  * @param {string[]} suits
  */
 export function find_possibilities(clue, suits) {
@@ -32,7 +34,7 @@ export function find_possibilities(clue, suits) {
  * @param {State} state
  * @param {number} giver
  * @param {number} target
- * @param {{suitIndex: number, rank: number}[]} prev_found	All previously found bad touch possibiltiies.
+ * @param {BasicCard[]} prev_found	All previously found bad touch possibiltiies.
  */
 export function bad_touch_possiblities(state, giver, target, prev_found = []) {
 	const bad_touch = prev_found;
@@ -169,7 +171,8 @@ export function handLoaded(state, target) {
 
 /**
  * @param {Hand} hand
- * @param {{suitIndex: number, rank: number}[]} cards
+ * @param {BasicCard[]} cards
+ * @param {{ignore?: number[], hard?: boolean}} options
  */
 export function good_touch_elim(hand, cards, options = {}) {
 	for (const card of hand) {

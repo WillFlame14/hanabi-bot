@@ -1,8 +1,9 @@
 import { CLUE } from '../../../constants.js';
-import { clue_safe } from './clue-safe.js';
-import { determine_focus, find_bad_touch } from '../hanabi-logic.js';
+import { card_value, clue_safe } from './clue-safe.js';
+import { determine_focus, find_chop, find_bad_touch } from '../hanabi-logic.js';
 import { cardTouched, isCluable } from '../../../variants.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
+import { find_clue_value } from '../action-helper.js';
 import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 
@@ -10,9 +11,10 @@ import * as Utils from '../../../util.js';
  * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
+ * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').ClueResult} ClueResult
  *
- * @typedef {{ excludeColour: boolean, excludeRank: boolean }} ClueOptions
+ * @typedef {{ excludeColour: boolean, excludeRank: boolean, save: boolean }} ClueOptions
  */
 
 /**
@@ -49,6 +51,67 @@ export function direct_clues(state, target, card, options) {
 }
 
 /**
+ * Evaluates the result of a clue. Returns the hypothetical state after the clue if correct, otherwise undefined.
+ * @param  {State} state
+ * @param  {ClueAction} action
+ * @param  {Clue} clue
+ * @param  {number} target
+ * @param  {Card} target_card
+ * @param  {Card[]} bad_touch_cards
+ */
+export function evaluate_clue(state, action, clue, target, target_card, bad_touch_cards) {
+	// Prevent outputting logs until we know that the result is correct
+	logger.collect();
+
+	logger.info(`------- ENTERING HYPO ${Utils.logClue(clue)} --------`);
+
+	const hypo_state = state.simulate_clue(action, { enableLogs: true });
+
+	logger.info('------- EXITING HYPO --------');
+
+	const correct = hypo_state.hands[target].every((card, index) => {
+		// The focused card must not have been reset and must match inferences
+		if (card.order === target_card.order) {
+			return !card.reset && card.matches_inferences();
+		}
+
+		const old_card = state.hands[target][index];
+
+		// For non-focused cards:
+		return (!card.reset && card.matches_inferences()) || 		// Matches inferences
+			((old_card.reset || !old_card.matches_inferences()) ||	// Didn't match inference even before clue
+			bad_touch_cards.some(c => c.order === card.order) ||	// Bad touched
+			card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)));	// Known trash
+	});
+
+	// Print out logs if the result is correct
+	logger.flush(correct);
+
+	if (!correct) {
+		let reason = '';
+		for (const card of hypo_state.hands[target]) {
+			if (card.reset) {
+				reason = `card ${Utils.logCard(card)} lost all inferences and was reset`;
+				break;
+			}
+			if (!card.matches_inferences()) {
+				reason = `card ${Utils.logCard(card)} has inferences [${card.inferred.map(c => Utils.logCard(c)).join(',')}], doesn't match`;
+				break;
+			}
+			if (!card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order))) {
+				const not_trash_possibility = Utils.logCard(card.possible.find(c => !isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)));
+				reason = `card ${Utils.logCard(card)} has ${not_trash_possibility} possibility not trash`;
+				break;
+			}
+		}
+		logger.info(`${Utils.logClue(clue)} has incorrect interpretation, (${reason})`);
+		return undefined;
+	}
+
+	return hypo_state;
+}
+
+/**
  * Returns the best clue to focus the target card.
  * @param {State} state
  * @param {number} target 					The player index with the card.
@@ -60,7 +123,8 @@ export function determine_clue(state, target, target_card, options) {
 	logger.info('determining clue to target card', Utils.logCard(target_card));
 	const hand = state.hands[target];
 
-	const possible_clues = direct_clues(state, target, target_card, options).filter(clue => clue_safe(state, clue));
+	// All play clues should be safe, but save clues may not be (e.g. crit 4, 5 of different colour needs to identify that 5 is a valid clue)
+	const possible_clues = direct_clues(state, target, target_card, options).filter(clue => options.save ? true : clue_safe(state, clue));
 
 	/** @type {ClueResult[]} */
 	const results = [];
@@ -69,30 +133,25 @@ export function determine_clue(state, target, target_card, options) {
 		const touch = hand.clueTouched(state.suits, clue);
 		const list = touch.map(c => c.order);
 
-		const { focused_card } = determine_focus(hand, list, { beforeClue: true });
-		const bad_touch_cards = find_bad_touch(state, touch.filter(c => !c.clued), focused_card.order);		// Ignore cards that were already clued
-
+		const { focused_card, chop } = determine_focus(hand, list, { beforeClue: true });
 		if (focused_card.order !== target_card.order) {
-			logger.info(`${Utils.logClue(clue)} doesn't focus, ignoring`);
+			logger.info(`${Utils.logClue(clue)} focuses ${Utils.logCard(focused_card)} instead of ${Utils.logCard(target_card)}, ignoring`);
 			continue;
 		}
 
+		const bad_touch_cards = find_bad_touch(state, touch.filter(c => !c.clued), focused_card.order);		// Ignore cards that were already clued
+
 		// Simulate clue from receiver's POV to see if they have the right interpretation
-		const action = { type: 'clue', giver: state.ourPlayerIndex, target, list, clue };
+		const action = Object.freeze({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
+		const hypo_state = evaluate_clue(state, action, clue, target, target_card, bad_touch_cards);
 
-		// Prevent outputting logs until we know that the result is correct
-		logger.collect();
+		// Clue had incorrect interpretation
+		if (hypo_state === undefined) {
+			continue;
+		}
 
-		logger.info(`------- ENTERING HYPO ${Utils.logClue(clue)} --------`);
-
-		const hypo_state = state.simulate_clue(action, { enableLogs: true });
-
-		logger.info('------- EXITING HYPO --------');
-
-		const card_after_cluing = hypo_state.hands[target].find(c => c.order === target_card.order);
-		const { inferred: inferred_after_cluing } = card_after_cluing;
-		let elim = 0;
-		let new_touched = 0;
+		const interpret = hypo_state.hands[target].find(c => c.order === target_card.order).inferred;
+		let elim = 0, new_touched = 0, bad_touch = 0, trash = 0;
 
 		// Count the number of cards that have increased elimination (i.e. cards that were "filled in")
 		for (let i = 0; i < state.hands[target].length; i++) {
@@ -107,44 +166,6 @@ export function determine_clue(state, target, target_card, options) {
 			}
 		}
 
-		const interpret = inferred_after_cluing;
-		const correct = hypo_state.hands[target].every((card, index) => {
-			// The focused card must not have been reset and must match inferences
-			if (card.order === target_card.order) {
-				return !card.reset && card.matches_inferences();
-			}
-
-			const old_card = state.hands[target][index];
-
-			// For non-focused cards:
-			return (!card.reset && card.matches_inferences()) || 		// Matches inferences
-				((old_card.reset || !old_card.matches_inferences()) ||	// Didn't match inference even before clue
-				bad_touch_cards.some(c => c.order === card.order) ||	// Bad touched
-				card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)));	// Known trash
-		});
-
-		// Print out logs if the result is correct
-		logger.flush(correct);
-
-		if (!correct) {
-			logger.info(`${Utils.logClue(clue)} has incorrect interpretation, ignoring`);
-			/*logger.info(hypo_state.hands[target].map(card => {
-				if (card.reset || !card.matches_inferences()) {
-					logger.info(`card ${Utils.logCard(card)} has inferences [${card.inferred.map(c => Utils.logCard(c)).join(',')}] reset? ${card.reset}`);
-					logger.info(Utils.logHand(hypo_state.hands[target]));
-				}
-				if (!card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order))) {
-					logger.info(`${Utils.logCard(card.possible.find(c => !isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)))} possibility is not trash`);
-				}
-				return bad_touch_cards.some(c => c.order === card.order) ||							// Card is bad touched
-					card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)) || 	// Card is known trash
-					(!card.reset && card.matches_inferences());										// Card matches interpretation
-			}));*/
-			continue;
-		}
-
-		let bad_touch = 0;
-		let trash = 0;
 		for (const card of hypo_state.hands[target]) {
 			if (bad_touch_cards.some(c => c.order === card.order)) {
 				// Known trash
@@ -199,6 +220,10 @@ export function determine_clue(state, target, target_card, options) {
 			}
 		}
 
+		// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
+		const new_chop = hypo_state.hands[target][find_chop(hypo_state.hands[target], { includeNew: true })];
+		const remainder = (chop && new_chop !== undefined) ? card_value(state, new_chop) : 0;
+
 		const result_log = {
 			clue: Utils.logClue(clue),
 			bad_touch,
@@ -209,71 +234,21 @@ export function determine_clue(state, target, target_card, options) {
 			finesses,
 			playables: playables.map(({ playerIndex, card }) => {
 				return { player: state.playerNames[playerIndex], card: Utils.logCard(card) };
-			})
+			}),
+			remainder
 		};
 		logger.info('result,', result_log);
 
-		results.push({ clue, touch, interpret, elim, new_touched, bad_touch, trash, finesses, playables});
+		results.push({ clue, touch, interpret, elim, new_touched, bad_touch, trash, finesses, playables, remainder });
 	}
 
 	if (results.length === 0) {
 		return;
 	}
 
-	const fields = [
-		{ field: 'bad_touch', reverse: true },
-		{ field: 'finesses' },
-		{ field: 'playables', length: true },
-		{ field: 'new_touched' },
-		{ field: 'elim' },
-		{ field: 'interpret', reverse: true, length: true }
-	];
-
-	const best_result = filterMax(results, fields);
+	const best_result = Utils.maxOn(results, find_clue_value);
 	const { clue } = best_result;
 
 	// Change type from CLUE to ACTION
 	return { type: clue.type + 2, value: clue.value, target: clue.target, result: best_result };
-}
-
-/**
- * Given an array of objects, returns the element that has the highest value based on the given fields.
- * @template T
- * @param {T[]} array
- * @param {{field: string, reverse?: boolean, length?: boolean}[]} fields
- */
-function filterMax(array, fields) {
-	let field_index = 0;
-
-	while (array.length > 1 && field_index < fields.length) {
-		const { field, reverse, length } = fields[field_index];
-		let max = [array[0]];
-
-		for (let i = 1; i < array.length; i++) {
-			const item = array[i];
-			let arg1 = item[field], arg2 = max[0][field];
-
-			if (length) {
-				arg1 = arg1.length;
-				arg2 = arg2.length;
-			}
-
-			if (reverse) {
-				const arg3 = arg1;
-				arg1 = arg2;
-				arg2 = arg3;
-			}
-
-			if (arg1 > arg2) {
-				max = [item];
-			}
-			else if (arg1 === arg2) {
-				max.push(item);
-			}
-		}
-		array = max;
-		field_index++;
-	}
-
-	return array[0];
 }

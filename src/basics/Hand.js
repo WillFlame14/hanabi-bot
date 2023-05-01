@@ -4,6 +4,7 @@ import logger from '../logger.js';
 /**
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').MatchOptions} MatchOptions
+ * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Clue} Clue
  */
 
@@ -57,7 +58,7 @@ export class Hand extends Array {
 	/**
 	 * Returns an array of cards touched by the clue.
      * @param {string[]} suits
-     * @param {Omit<Clue, 'target'>} clue
+     * @param {BaseClue} clue
      */
 	clueTouched(suits, clue) {
 		return this.filter(card => cardTouched(card, suits, clue));

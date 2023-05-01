@@ -20,8 +20,7 @@ describe('play clue', () => {
 		]);
 
 		// Alice clues Bob red on slot 2.
-		const action = { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [8], target: PLAYER.BOB, turn: 0 };
-		state.handle_action(action);
+		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [8], target: PLAYER.BOB });
 
 		// Target card should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][1];
@@ -35,8 +34,7 @@ describe('play clue', () => {
 		]);
 
 		// Alice clues Bob red on slots 1, 2 and 3.
-		const action = { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [7, 8, 9], target: PLAYER.BOB, turn: 0 };
-		state.handle_action(action);
+		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [7, 8, 9], target: PLAYER.BOB });
 
 		// Bob's slot 1 should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][0];
@@ -50,8 +48,7 @@ describe('play clue', () => {
 		]);
 
 		// Alice clues Bob red on slots 1, 2 and 3.
-		const action = { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [5, 8, 9], target: PLAYER.BOB, turn: 0 };
-		state.handle_action(action);
+		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [5, 8, 9], target: PLAYER.BOB });
 
 		// Bob's slot 5 (chop) should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][4];
@@ -67,8 +64,7 @@ describe('play clue', () => {
 		state.play_stacks[COLOUR.RED] = 2;
 
 		// Alice clues Bob red on slot 3.
-		const action = { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [7], target: PLAYER.BOB, turn: 0 };
-		state.handle_action(action);
+		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [7], target: PLAYER.BOB });
 
 		// Bob's slot 3 should be inferred as r3.
 		const targetCard = state.hands[PLAYER.BOB][2];
@@ -88,8 +84,7 @@ describe('play clue', () => {
 		state.hands[PLAYER.CATHY][1].intersect('inferred', ['r1'].map(expandShortCard));
 
 		// Alice clues Bob red on slot 3.
-		const action = { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [7], target: PLAYER.BOB, turn: 0 };
-		state.handle_action(action);
+		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [7], target: PLAYER.BOB });
 
 		// Bob's slot 3 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][2];
@@ -108,8 +103,7 @@ describe('play clue', () => {
 		state.hands[PLAYER.BOB][1].intersect('inferred', ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
 
 		// Alice clues Bob red in slots 1 and 2 (filling in red 1).
-		const action = { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [8, 9], target: PLAYER.BOB, turn: 0 };
-		state.handle_action(action);
+		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [8, 9], target: PLAYER.BOB });
 
 		// Bob's slot 1 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][0];

@@ -12,11 +12,13 @@ import * as Utils from '../../util.js';
 /**
  * @typedef {import('../h-group.js').default} State
  * @typedef {import('../../basics/Hand.js').Hand} Hand
+ * @typedef {import('../../types.js').PerformAction} PerformAction
  */
 
 /**
  * Performs the most appropriate action given the current state.
  * @param {State} state
+ * @return {PerformAction}
  */
 export function take_action(state) {
 	const { tableID } = state;
@@ -85,7 +87,6 @@ export function take_action(state) {
 	// Playing into finesse/bluff
 	if (playable_cards.length > 0 && priority === 0) {
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
-		return;
 	}
 
 	// Get a high value play clue
