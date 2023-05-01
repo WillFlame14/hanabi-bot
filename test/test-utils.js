@@ -40,9 +40,9 @@ export function setup(StateClass, hands, level) {
 		const hand = hands[playerIndex];
 		for (const short of hand.reverse()) {
 			const { suitIndex, rank } = expandShortCard(short);
-			orderCounter++;
 
 			state.handle_action({ type: 'draw', order: orderCounter, playerIndex, suitIndex, rank });
+			orderCounter++;
 		}
 	}
 
