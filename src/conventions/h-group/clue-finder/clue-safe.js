@@ -64,7 +64,8 @@ export function clue_safe(state, clue) {
 function unique2(state, card) {
 	const { suitIndex, rank } = card;
 
-	return state.play_stacks[suitIndex] === 0 &&													// play stack at 0
+	return rank === 2 &&
+		state.play_stacks[suitIndex] === 0 &&														// play stack at 0
 		visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&						// other copy isn't visible
 		!state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true }));  // not in our hand
 }
@@ -91,7 +92,8 @@ export function card_value(state, card) {
 		return 4;
 	}
 
-	return rank - state.hypo_stacks[suitIndex];
+	// Next playable rank is value 4, rank 4 with nothing on the stack is value 1
+	return 5 - (rank - state.hypo_stacks[suitIndex]);
 }
 
 /**
