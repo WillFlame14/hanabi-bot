@@ -118,8 +118,7 @@ describe('giving order chop move', () => {
 		], 4);
 
 		// Bob clues Alice 1, touching slots 3 and 4.
-		const action = Object.freeze({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
-		state.handle_action(action);
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 
 		const our_hand = state.hands[state.ourPlayerIndex];
 
@@ -139,8 +138,7 @@ describe('giving order chop move', () => {
 		], 4);
 
 		// Bob clues Alice 1, touching slots 2, 3 and 4.
-		const action = Object.freeze({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2, 3], target: PLAYER.ALICE });
-		state.handle_action(action);
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2, 3], target: PLAYER.ALICE });
 
 		const our_hand = state.hands[PLAYER.ALICE];
 
@@ -159,8 +157,7 @@ describe('giving order chop move', () => {
 		], 4);
 
 		// Bob clues Alice 1, touching slots 3 and 4.
-		const action = Object.freeze({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
-		state.handle_action(action);
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 
 		const { save_clues } = find_clues(state);
 		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: ACTION.RANK, value: 5 });

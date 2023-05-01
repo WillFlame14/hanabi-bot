@@ -150,7 +150,7 @@ export function determine_clue(state, target, target_card, options) {
 			continue;
 		}
 
-		const { inferred: interpret } = hypo_state.hands[target].find(c => c.order === target_card.order);
+		const interpret = hypo_state.hands[target].find(c => c.order === target_card.order).inferred;
 		let elim = 0, new_touched = 0, bad_touch = 0, trash = 0;
 
 		// Count the number of cards that have increased elimination (i.e. cards that were "filled in")

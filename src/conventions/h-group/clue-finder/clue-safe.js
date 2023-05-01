@@ -21,8 +21,7 @@ export function clue_safe(state, clue) {
 	const { target } = clue;
 
 	const list = state.hands[target].clueTouched(state.suits, clue).map(c => c.order);
-	const action = Object.freeze({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
-	const hypo_state = state.simulate_clue(action);//, { simulatePlayerIndex: target });
+	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });	//, { simulatePlayerIndex: target });
 
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
 	const hand = hypo_state.hands[nextPlayerIndex];

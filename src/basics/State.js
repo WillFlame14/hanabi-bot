@@ -169,8 +169,7 @@ export class State {
 		logger.setLevel(logger.LEVELS.INFO);
 
 		// Rewrite and save as a rewind action
-		const known_action = Object.freeze({ type: 'rewind', order, playerIndex, suitIndex, rank });
-		new_state.handle_action(known_action, true);
+		new_state.handle_action({ type: 'rewind', order, playerIndex, suitIndex, rank }, true);
 		logger.warn('Rewriting order', order, 'to', Utils.logCard({suitIndex, rank}));
 
 		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
