@@ -51,7 +51,6 @@ function check_ocm(state, action) {
  */
 export function interpret_play(state, action) {
     const { playerIndex, order, rank, suitIndex } = action;
-    console.log(JSON.stringify(action));
 
     // Now that we know about this card, rewind from the beginning
     if (playerIndex === state.ourPlayerIndex) {

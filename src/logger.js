@@ -5,7 +5,7 @@ class Logger {
 		WARN: 2,
 		ERROR: 3
 	});
-	level = this.LEVELS.INFO;
+	level = 1;
 	accumulate = false;
 
 	/** @type {any[][]} */
@@ -44,13 +44,15 @@ class Logger {
 
 	warn(...args) {
 		if (this.level <= this.LEVELS.WARN) {
-			this.log('\x1b[33m%s', ...args, '\x1b[0m');
+			//this.log('\x1b[33m%s', ...args, '\x1b[0m');
+			this.log(...args);
 		}
 	}
 
 	error(...args) {
 		if (this.level <= this.LEVELS.ERROR) {
-			this.log('\x1b[35m%s', ...args, '\x1b[0m');
+			//this.log('\x1b[35m%s', ...args, '\x1b[0m');
+			this.log(...args);
 		}
 	}
 
@@ -77,4 +79,5 @@ class Logger {
 	}
 }
 
-export default new Logger();
+const logger = new Logger();
+export default logger;

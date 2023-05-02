@@ -43,7 +43,7 @@ function find_colour_focus(state, suitIndex, action) {
 	let finesses = 0;
 
 	while (connecting !== undefined && next_playable_rank < 5) {
-		const { type, card } = connecting;
+		const { type, card, hidden } = connecting;
 
 		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
@@ -64,7 +64,9 @@ function find_colour_focus(state, suitIndex, action) {
 		}
 		hypo_state.play_stacks[suitIndex]++;
 
-		next_playable_rank++;
+		if (!hidden) {
+			next_playable_rank++;
+		}
 		connections.push(connecting);
 		already_connected.push(card.order);
 		connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, already_connected);
@@ -141,7 +143,7 @@ function find_rank_focus(state, rank, action) {
 					break;
 				}
 
-				const { type, card } = connecting;
+				const { type, card, hidden } = connecting;
 				connections.push(connecting);
 				already_connected.push(card.order);
 
@@ -153,7 +155,10 @@ function find_rank_focus(state, rank, action) {
 					}
 					card.finessed = true;
 				}
-				stack_rank++;
+
+				if (!hidden) {
+					stack_rank++;
+				}
 				hypo_state.play_stacks[suitIndex]++;
 			}
 

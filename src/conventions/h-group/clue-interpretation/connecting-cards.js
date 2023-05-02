@@ -113,16 +113,32 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 					logger.info(`found prompt ${Utils.logCard(prompt)} in ${state.playerNames[i]}'s hand`);
 					return { type: 'prompt', reacting: i, card: prompt, self: false };
 				}
-				logger.debug(`wrong prompt on ${Utils.logCard(prompt)}`);
-			}
-			else if (finesse?.matches(suitIndex, rank)) {
-				// If target is after giver, then finesse must be in between. Otherwise, finesse must be outside.
-				if (state.level === 1 && !inBetween(state.numPlayers, i, giver, target)) {
-					logger.warn(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand, but not between giver and target`);
+
+				// Prompted card is delayed playable
+				if (state.hypo_stacks[prompt.suitIndex] + 1 === prompt.rank) {
+					logger.info(`prompts playable ${Utils.logCard(prompt)}`)
+					return { type: 'prompt', reacting: i, card: prompt, self: false, hidden: true };
+				}
+				else {
+					logger.info(`wrong prompt on ${Utils.logCard(prompt)}`);
 					continue;
 				}
-				logger.info(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand`);
-				return { type: 'finesse', reacting: i, card: finesse, self: false };
+			}
+			else if (finesse !== undefined) {
+				if (finesse.matches(suitIndex, rank)) {
+					// At level 1, only forward finesses are allowed.
+					if (state.level === 1 && !inBetween(state.numPlayers, i, giver, target)) {
+						logger.warn(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand, but not between giver and target`);
+						continue;
+					}
+					logger.info(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand`);
+					return { type: 'finesse', reacting: i, card: finesse, self: false };
+				}
+				// Finessed card is delayed playable
+				else if (state.hypo_stacks[finesse.suitIndex] + 1 === finesse.rank) {
+					logger.info(`finesses playable ${Utils.logCard(finesse)}`)
+					return { type: 'finesse', reacting: i, card: finesse, self: false, hidden: true };
+				}
 			}
 		}
 	}

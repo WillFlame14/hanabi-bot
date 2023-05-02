@@ -1,5 +1,6 @@
 import { Card } from '../../basics/Card.js';
-import { isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
+import { isBasicTrash } from '../../basics/hanabi-util.js';
+import { isSaved, isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../logger.js';
 import * as Utils from '../../util.js';
 
@@ -74,10 +75,12 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
 export function interpret_discard(state, action, card) {
 	const { order, playerIndex, rank, suitIndex, failed } = action;
 
-	// Early game and discard wasn't known trash or misplay, so end early game
-	if (state.early_game && !isTrash(state, playerIndex, suitIndex, rank, order) && !action.failed) {
-		logger.warn('ending early game from discard of', Utils.logCard(card));
-		state.early_game = false;
+	// End early game?
+	if (state.early_game && !action.failed &&										// Not bombed
+		!(card.clued && isSaved(state, playerIndex, suitIndex, rank, order)) && 	// Not clued card that is duplicated
+		!card.possible.every(c => isBasicTrash(state, c.suitIndex, c.rank))) {		// Not known trash
+			logger.warn('ending early game from discard of', Utils.logCard(card));
+			state.early_game = false;
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust

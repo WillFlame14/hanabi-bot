@@ -75,6 +75,7 @@
  * @property {number} reacting
  * @property {Card} card
  * @property {boolean} [self]
+ * @property {boolean} [hidden]
  * 
  * @typedef WaitingConnection
  * @property {Connection[]} connections
