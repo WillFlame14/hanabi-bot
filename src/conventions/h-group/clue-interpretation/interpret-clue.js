@@ -313,7 +313,8 @@ function assign_connections(state, connections, suitIndex) {
 		next_rank++;
 
 		// Updating notes not on our turn
-		if (self) {
+		// TODO: Examine why this originally had self only?
+		if (self || true) {
 			// There might be multiple possible inferences on the same card from a self component
 			if (card.reasoning.at(-1) !== state.actionList.length - 1) {
 				card.reasoning.push(state.actionList.length - 1);

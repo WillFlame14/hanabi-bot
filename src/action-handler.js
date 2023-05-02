@@ -110,6 +110,7 @@ export function handle_action(action, catchup = false) {
 			if (card === undefined) {
 				throw new Error('Could not find card to rewrite!');
 			}
+			logger.info(`identifying card with order ${order} as ${Utils.logCard({ suitIndex, rank })}`);
 			card.possible = [new Card(suitIndex, rank)];
 			card.inferred = [new Card(suitIndex, rank)];
 			card.finessed = true;

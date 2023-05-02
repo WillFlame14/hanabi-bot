@@ -62,7 +62,7 @@
  * @property {number}       playerIndex
  * @property {any}          votes
  * 
- * @typedef {StatusAction | TurnAction | ClueAction | DrawAction | DiscardAction | PlayAction | GameOverAction | RewindAction} Action
+ * @typedef {StatusAction | TurnAction | ClueAction | DrawAction | DiscardAction | PlayAction | GameOverAction | IdentifyAction | IgnoreAction} Action
  * 
  * @typedef PerformAction
  * @property {number} tableID`

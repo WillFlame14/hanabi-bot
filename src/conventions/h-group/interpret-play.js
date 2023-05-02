@@ -50,7 +50,21 @@ function check_ocm(state, action) {
  * @param  {PlayAction} action
  */
 export function interpret_play(state, action) {
-    const { rank, suitIndex } = action;
+    const { playerIndex, order, rank, suitIndex } = action;
+    console.log(JSON.stringify(action));
+
+    // Now that we know about this card, rewind from the beginning
+    if (playerIndex === state.ourPlayerIndex) {
+        const card = state.hands[playerIndex].findOrder(order);
+        const action_index = card.reasoning[0];
+		if (!card.rewinded && action_index !== undefined) {
+            // If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
+			if (state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
+                return;
+            }
+            
+		}
+    }
 
     if (state.level >= LEVEL.BASIC_CM) {
         check_ocm(state, action);

@@ -158,6 +158,10 @@ export class State {
 		}
 		this.rewindDepth++;
 
+		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
+		pivotal_action.mistake = mistake || this.rewindDepth > 1;
+		logger.warn(`Rewinding to before ${JSON.stringify(pivotal_action)} to insert ${JSON.stringify(rewind_action)}`);
+
 		const new_state = this.createBlank();
 		const history = this.actionList.slice(0, action_index);
 
@@ -174,15 +178,12 @@ export class State {
 		new_state.handle_action(rewind_action, true);
 		// logger.warn('Rewriting order', order, 'to', Utils.logCard({suitIndex, rank}));
 
-		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
-		pivotal_action.mistake = mistake || this.rewindDepth > 1;
-		logger.info('pivotal action', pivotal_action);
 		new_state.handle_action(pivotal_action, true);
 
 		logger.setLevel(logger.LEVELS.ERROR);
 
 		// Redo all the following actions
-		const future = this.actionList.slice(action_index + 1);
+		const future = this.actionList.slice(action_index);
 		for (const action of future) {
 			new_state.handle_action(action, true);
 		}
