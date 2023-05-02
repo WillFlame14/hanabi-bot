@@ -80,7 +80,12 @@ export function update_turn(state, action) {
 				// Didn't play into finesse
 				if (type === 'finesse' && state.play_stacks[card.suitIndex] + 1 === card.rank) {
 					logger.info(`Didn't play into finesse, removing inference ${Utils.logCard(inference)}`);
-					remove_finesse(state, i);
+					// remove_finesse(state, i);
+
+					const action_index = card.reasoning.pop();
+					if (action_index !== undefined) {
+						state.rewind(action_index, { type: 'ignore', order: card.order, playerIndex: reacting });
+					}
 
 					// Flag it to be removed
 					to_remove.push(i);

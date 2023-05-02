@@ -83,7 +83,8 @@ export function interpret_discard(state, action, card) {
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
 	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order)))) {
 		logger.info('all inferences', card.inferred.map(c => Utils.logCard(c)));
-		if (state.rewind(card.reasoning.pop(), playerIndex, order, suitIndex, rank, card.finessed)) {
+		const action_index = card.reasoning.pop();
+		if (action_index !== undefined && state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, card.finessed)) {
 			return;
 		}
 	}

@@ -64,6 +64,8 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 		return;
 	}
 
+	ignoreOrders = ignoreOrders.concat(state.next_ignore);
+
 	for (let i = 0; i < state.numPlayers; i++) {
 		// Prioritize other players' hands first, since those are known
 		const playerIndex = (state.ourPlayerIndex + 1 + i) % state.numPlayers;

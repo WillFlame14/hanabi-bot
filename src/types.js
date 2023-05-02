@@ -52,7 +52,8 @@
  * 
  * @typedef {CardAction & {type: 'draw'}} DrawAction
  * @typedef {CardAction & {type: 'play'}} PlayAction
- * @typedef {CardAction & {type:'rewind'}} RewindAction
+ * @typedef {CardAction & {type: 'identify'}} IdentifyAction
+ * @typedef {{type: 'ignore', playerIndex: number, order: number}} IgnoreAction
  * @typedef {CardAction & {type: 'discard', failed: boolean}} DiscardAction
  * 
  * @typedef GameOverAction
