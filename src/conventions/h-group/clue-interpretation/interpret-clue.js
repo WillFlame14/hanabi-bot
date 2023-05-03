@@ -133,17 +133,13 @@ export function interpret_clue(state, action) {
 
 	const focus_possible = find_focus_possible(state, action);
 	logger.info('focus possible', focus_possible.map(p => Utils.logCard(p)).join(','));
-	const matched_inferences = focus_possible.filter(p => {
-		if (target === state.ourPlayerIndex) {
-			return focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank));
-		}
-		else {
-			return focused_card.matches(p.suitIndex, p.rank);
-		}
-	});
+
+	const matched_inferences = focus_possible.filter(p => focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank)));
+	const matched_correct = target === state.ourPlayerIndex || matched_inferences.some(p => focused_card.matches(p.suitIndex, p.rank));
 
 	// Card matches an inference and not a save/stall
-	if (matched_inferences.length >= 1) {
+	// If we know the identity of the card, one of the matched inferences must also be correct.
+	if (matched_inferences.length >= 1 && matched_correct) {
 		focused_card.intersect('inferred', focus_possible);
 
 		for (const inference of matched_inferences) {
@@ -153,11 +149,11 @@ export function interpret_clue(state, action) {
 				assign_connections(state, connections, suitIndex);
 
 				// Only one inference, we can update hypo stacks
-				if (matched_inferences.length === 1) {
+				if (matched_inferences.length === 1 && (connections.length === 0 || !['prompt', 'finesse'].includes(connections[0].type))) {
 					team_elim(state, focused_card, giver, target, suitIndex, rank);
 				}
 				// Multiple inferences, we need to wait for connections
-				else if (connections.length > 0 && !connections[0].self) {
+				else if (connections.length > 0/* && !connections[0].self*/) {
 					state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank } });
 				}
 			}

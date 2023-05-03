@@ -111,13 +111,13 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 			if (prompt !== undefined) {
 				if (prompt.matches(suitIndex, rank)) {
 					logger.info(`found prompt ${Utils.logCard(prompt)} in ${state.playerNames[i]}'s hand`);
-					return { type: 'prompt', reacting: i, card: prompt, self: false };
+					return { type: 'prompt', reacting: i, card: prompt };
 				}
 
 				// Prompted card is delayed playable
 				if (state.hypo_stacks[prompt.suitIndex] + 1 === prompt.rank) {
 					logger.info(`prompts playable ${Utils.logCard(prompt)}`)
-					return { type: 'prompt', reacting: i, card: prompt, self: false, hidden: true };
+					return { type: 'prompt', reacting: i, card: prompt, hidden: true };
 				}
 				else {
 					logger.info(`wrong prompt on ${Utils.logCard(prompt)}`);
@@ -132,12 +132,12 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 						continue;
 					}
 					logger.info(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand`);
-					return { type: 'finesse', reacting: i, card: finesse, self: false };
+					return { type: 'finesse', reacting: i, card: finesse };
 				}
 				// Finessed card is delayed playable
 				else if (state.hypo_stacks[finesse.suitIndex] + 1 === finesse.rank) {
 					logger.info(`finesses playable ${Utils.logCard(finesse)}`)
-					return { type: 'finesse', reacting: i, card: finesse, self: false, hidden: true };
+					return { type: 'finesse', reacting: i, card: finesse, hidden: true };
 				}
 			}
 		}

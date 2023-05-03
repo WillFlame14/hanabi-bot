@@ -61,7 +61,6 @@ export function interpret_play(state, action) {
 			if (state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
                 return;
             }
-            
 		}
     }
 
