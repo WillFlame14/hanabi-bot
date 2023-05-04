@@ -1,4 +1,5 @@
 import { cardCount } from '../../../variants.js';
+import { LEVEL } from '../h-constants.js';
 import { find_prompt, find_finesse } from '../hanabi-logic.js';
 import { card_elim } from '../../../basics.js';
 import { playableAway } from '../../../basics/hanabi-util.js';
@@ -114,9 +115,8 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 					return { type: 'prompt', reacting: i, card: prompt };
 				}
 
-				// Prompted card is delayed playable
-				if (state.hypo_stacks[prompt.suitIndex] + 1 === prompt.rank) {
-					logger.info(`prompts playable ${Utils.logCard(prompt)}`)
+				// Prompted card is delayed playable (must be in the player's hand who actually has the card)
+				if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank && hand.some(c => c.matches(suitIndex, rank))) {
 					return { type: 'prompt', reacting: i, card: prompt, hidden: true };
 				}
 				else {
@@ -135,8 +135,7 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 					return { type: 'finesse', reacting: i, card: finesse };
 				}
 				// Finessed card is delayed playable
-				else if (state.hypo_stacks[finesse.suitIndex] + 1 === finesse.rank) {
-					logger.info(`finesses playable ${Utils.logCard(finesse)}`)
+				else if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank && hand.some(c => c.matches(suitIndex, rank))) {
 					return { type: 'finesse', reacting: i, card: finesse, hidden: true };
 				}
 			}

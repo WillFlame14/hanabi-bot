@@ -126,7 +126,7 @@ export function update_turn(state, action) {
 					}
 				}
 				// The card was discarded and its copy is not visible
-				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.ourPlayerIndex, card.suitIndex, card.rank).length === 0) {
+				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.ourPlayerIndex, old_card.suitIndex, old_card.rank).length === 0) {
 					logger.info(`waiting card ${Utils.logCard(old_card)} discarded?? removing finesse`);
 					remove_finesse(state, i);
 

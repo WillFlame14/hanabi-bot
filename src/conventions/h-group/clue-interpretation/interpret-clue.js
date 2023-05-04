@@ -146,7 +146,9 @@ export function interpret_clue(state, action) {
 			const { suitIndex, rank, connections, save = false } = inference;
 
 			if (!save) {
-				assign_connections(state, connections, suitIndex);
+				if ((target === state.ourPlayerIndex || focused_card.matches(suitIndex, rank))) {
+					assign_connections(state, connections, suitIndex);
+				}
 
 				// Only one inference, we can update hypo stacks
 				if (matched_inferences.length === 1 && (connections.length === 0 || !['prompt', 'finesse'].includes(connections[0].type))) {

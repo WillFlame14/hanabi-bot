@@ -176,14 +176,12 @@ export class State {
 
 		// Rewrite and save as a rewind action
 		new_state.handle_action(rewind_action, true);
-		// logger.warn('Rewriting order', order, 'to', Utils.logCard({suitIndex, rank}));
-
 		new_state.handle_action(pivotal_action, true);
 
 		logger.setLevel(logger.LEVELS.ERROR);
 
 		// Redo all the following actions
-		const future = this.actionList.slice(action_index);
+		const future = this.actionList.slice(action_index + 1);
 		for (const action of future) {
 			new_state.handle_action(action, true);
 		}
