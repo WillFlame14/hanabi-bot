@@ -61,7 +61,7 @@ export async function getVariant(name) {
 	return variants.find(variant => variant.name === name);
 }
 
-export const shortForms = Object.freeze({
+export const shortForms = /** @type {const} */ ({
 	'Red': 'r',
 	'Yellow': 'y',
 	'Green': 'g',

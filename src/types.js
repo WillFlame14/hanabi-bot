@@ -1,15 +1,18 @@
 // @ts-nocheck
 
+import { CLUE, ACTION } from './constants.js';
+
 /**
  * @typedef BasicCard
  * @property {number} suitIndex
  * @property {number} rank 
  * 
  * @typedef BaseClue
- * @property {number} type
+ * @property {typeof CLUE.COLOUR | typeof CLUE.RANK} type
  * @property {number} value
  * 
  * @typedef {BaseClue & {target: number, result?: ClueResult}} Clue
+ * @typedef {Clue & {playable: boolean}} SaveClue
  * @typedef {Clue & {urgent: boolean, trash: boolean}} FixClue
  * 
  * @typedef ClueResult
@@ -65,8 +68,8 @@
  * @typedef {StatusAction | TurnAction | ClueAction | DrawAction | DiscardAction | PlayAction | GameOverAction | IdentifyAction | IgnoreAction} Action
  * 
  * @typedef PerformAction
- * @property {number} tableID`
- * @property {number} type
+ * @property {number} tableID
+ * @property {typeof ACTION.PLAY | typeof ACTION.DISCARD | typeof ACTION.COLOUR | typeof ACTION.RANK} type
  * @property {number} target
  * @property {number} [value]
  * 

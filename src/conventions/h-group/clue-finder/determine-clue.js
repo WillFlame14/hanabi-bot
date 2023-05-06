@@ -112,6 +112,95 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 }
 
 /**
+ * Returns some statistics about the clue.
+ * @param  {State} state
+ * @param  {State} hypo_state
+ * @param  {Clue} clue
+ */
+export function get_result(state, hypo_state, clue) {
+	const { target } = clue;
+	const hand = state.hands[target];
+
+	const touch = hand.clueTouched(state.suits, clue);
+	const list = touch.map(c => c.order);
+
+	const { focused_card } = determine_focus(hand, list, { beforeClue: true });
+	const bad_touch_cards = find_bad_touch(state, touch.filter(c => !c.clued), focused_card.order);
+
+	let elim = 0, new_touched = 0, bad_touch = 0, trash = 0;
+
+	// Count the number of cards that have increased elimination (i.e. cards that were "filled in")
+	for (let i = 0; i < state.hands[target].length; i++) {
+		const old_card = state.hands[target][i];
+		const hypo_card = hypo_state.hands[target][i];
+
+		if (hypo_card.clued && hypo_card.inferred.length < old_card.inferred.length && hypo_card.matches_inferences()) {
+			if (hypo_card.newly_clued) {
+				new_touched++;
+			}
+			elim++;
+		}
+	}
+
+	for (const card of hypo_state.hands[target]) {
+		if (bad_touch_cards.some(c => c.order === card.order)) {
+			// Known trash
+			if (card.possible.every(p => isTrash(hypo_state, target, p.suitIndex, p.rank, card.order))) {
+				trash++;
+			}
+			else {
+				// Don't double count bad touch when cluing two of the same card
+				// Focused card should not be bad touched?
+				if (bad_touch_cards.some(c => c.matches(card.suitIndex, card.rank) && c.order > card.order) || focused_card.order === card.order) {
+					continue;
+				}
+				bad_touch++;
+			}
+		}
+	}
+
+	let finesses = 0;
+	const playables = [];
+
+	// Count the number of finesses and newly known playable cards
+	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+		for (let rank = state.hypo_stacks[suitIndex] + 1; rank <= hypo_state.hypo_stacks[suitIndex]; rank++) {
+			// Find the card
+			let found = false;
+			for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
+				const hand = state.hands[playerIndex];
+
+				for (let j = 0; j < hand.length; j++) {
+					const old_card = hand[j];
+					const hypo_card = hypo_state.hands[playerIndex][j];
+
+					// TODO: This might not find the right card if it was duplicated...
+					if ((hypo_card.clued || hypo_card.finessed || hypo_card.chop_moved) &&
+						hypo_card.matches(suitIndex, rank, { infer: true })
+					) {
+						if (hypo_card.finessed && !old_card.finessed) {
+							finesses++;
+						}
+						playables.push({ playerIndex, card: old_card });
+						found = true;
+						break;
+					}
+				}
+
+				if (found) {
+					break;
+				}
+			}
+		}
+	}
+
+	const new_chop = hypo_state.hands[target][find_chop(hypo_state.hands[target], { includeNew: true })];
+	const remainder = (new_chop !== undefined) ? card_value(state, new_chop) : 0;
+
+	return { elim, new_touched, bad_touch, trash, finesses, playables, remainder };
+}
+
+/**
  * Returns the best clue to focus the target card.
  * @param {State} state
  * @param {number} target 					The player index with the card.
@@ -142,7 +231,7 @@ export function determine_clue(state, target, target_card, options) {
 		const bad_touch_cards = find_bad_touch(state, touch.filter(c => !c.clued), focused_card.order);		// Ignore cards that were already clued
 
 		// Simulate clue from receiver's POV to see if they have the right interpretation
-		const action = Object.freeze({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
+		const action =  /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
 		const hypo_state = evaluate_clue(state, action, clue, target, target_card, bad_touch_cards);
 
 		// Clue had incorrect interpretation
@@ -151,78 +240,7 @@ export function determine_clue(state, target, target_card, options) {
 		}
 
 		const interpret = hypo_state.hands[target].find(c => c.order === target_card.order).inferred;
-		let elim = 0, new_touched = 0, bad_touch = 0, trash = 0;
-
-		// Count the number of cards that have increased elimination (i.e. cards that were "filled in")
-		for (let i = 0; i < state.hands[target].length; i++) {
-			const old_card = state.hands[target][i];
-			const hypo_card = hypo_state.hands[target][i];
-
-			if (hypo_card.clued && hypo_card.inferred.length < old_card.inferred.length && hypo_card.matches_inferences()) {
-				if (hypo_card.newly_clued) {
-					new_touched++;
-				}
-				elim++;
-			}
-		}
-
-		for (const card of hypo_state.hands[target]) {
-			if (bad_touch_cards.some(c => c.order === card.order)) {
-				// Known trash
-				if (card.possible.every(p => isTrash(hypo_state, target, p.suitIndex, p.rank, card.order))) {
-					trash++;
-				}
-				else {
-					// Don't double count bad touch when cluing two of the same card
-					// Focused card should not be bad touched?
-					if (bad_touch_cards.some(c => c.matches(card.suitIndex, card.rank) && c.order > card.order) || focused_card.order === card.order) {
-						continue;
-					}
-					bad_touch++;
-				}
-			}
-		}
-
-		let finesses = 0;
-		const playables = [];
-
-		// Count the number of finesses and newly known playable cards
-		logger.debug(`hypo stacks before clue: ${state.hypo_stacks}`);
-		logger.debug(`hypo stacks after clue:  ${hypo_state.hypo_stacks}`);
-		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-			for (let rank = state.hypo_stacks[suitIndex] + 1; rank <= hypo_state.hypo_stacks[suitIndex]; rank++) {
-				// Find the card
-				let found = false;
-				for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
-					const hand = state.hands[playerIndex];
-
-					for (let j = 0; j < hand.length; j++) {
-						const old_card = hand[j];
-						const hypo_card = hypo_state.hands[playerIndex][j];
-
-						// TODO: This might not find the right card if it was duplicated...
-						if ((hypo_card.clued || hypo_card.finessed || hypo_card.chop_moved) &&
-							hypo_card.matches(suitIndex, rank, { infer: true })
-						) {
-							if (hypo_card.finessed && !old_card.finessed) {
-								finesses++;
-							}
-							playables.push({ playerIndex, card: old_card });
-							found = true;
-							break;
-						}
-					}
-
-					if (found) {
-						break;
-					}
-				}
-			}
-		}
-
-		// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
-		const new_chop = hypo_state.hands[target][find_chop(hypo_state.hands[target], { includeNew: true })];
-		const remainder = (chop && new_chop !== undefined) ? card_value(state, new_chop) : 0;
+		const { elim, new_touched, bad_touch, trash, finesses, playables, remainder } = get_result(state, hypo_state, clue);
 
 		const result_log = {
 			clue: Utils.logClue(clue),
@@ -235,11 +253,11 @@ export function determine_clue(state, target, target_card, options) {
 			playables: playables.map(({ playerIndex, card }) => {
 				return { player: state.playerNames[playerIndex], card: Utils.logCard(card) };
 			}),
-			remainder
+			remainder: chop ? remainder : 0 	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
 		};
 		logger.info('result,', result_log);
 
-		results.push({ clue, touch, interpret, elim, new_touched, bad_touch, trash, finesses, playables, remainder });
+		results.push({ clue, touch, interpret, elim, new_touched, bad_touch, trash, finesses, playables, remainder: chop ? remainder: 0 });
 	}
 
 	if (results.length === 0) {
@@ -250,5 +268,5 @@ export function determine_clue(state, target, target_card, options) {
 	const { clue } = best_result;
 
 	// Change type from CLUE to ACTION
-	return { type: clue.type + 2, value: clue.value, target: clue.target, result: best_result };
+	return { type: clue.type, value: clue.value, target: clue.target, result: best_result };
 }

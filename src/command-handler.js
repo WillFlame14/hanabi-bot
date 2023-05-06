@@ -13,8 +13,7 @@ const conventions = { HGroup };
 let self;
 const tables = {};
 
-/** @type {State} */
-let state = {};
+let state = /** @type {State} */ ({});
 
 /** @type {boolean} */
 let gameStarted = false;

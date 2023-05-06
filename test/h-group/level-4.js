@@ -28,7 +28,7 @@ describe('trash chop move', () => {
 		const bob_save = save_clues[PLAYER.BOB];
 
 		assert(bob_save !== undefined);
-		assert(bob_save.type === ACTION.RANK && bob_save.value === 1);
+		assert(bob_save.type === CLUE.RANK && bob_save.value === 1);
 	});
 
 	it('will give a rank tcm touching multiple trash cards', () => {
@@ -43,7 +43,7 @@ describe('trash chop move', () => {
 		const bob_save = save_clues[PLAYER.BOB];
 
 		assert(bob_save !== undefined);
-		assert(bob_save.type === ACTION.RANK && bob_save.value === 1);
+		assert(bob_save.type === CLUE.RANK && bob_save.value === 1);
 	});
 
 	it('will not give a tcm if chop is trash', () => {

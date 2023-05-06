@@ -21,7 +21,7 @@ function check_ocm(state, action) {
     const card = state.hands[playerIndex].findOrder(order);
 
     // Played an unknown 1
-    if (card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
+    if (card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) && card.inferred.length > 1) {
         const ordered_1s = order_1s(state, state.hands[playerIndex]);
 
         const offset = ordered_1s.findIndex(c => c.order === card.order);
@@ -33,7 +33,7 @@ function check_ocm(state, action) {
             if (target !== playerIndex) {
                 const target_hand = state.hands[target];
                 target_hand[find_chop(target_hand)].chop_moved = true;
-                logger.info(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
+                logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
             }
             else {
                 logger.error('double order chop move???');

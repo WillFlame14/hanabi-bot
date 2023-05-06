@@ -27,7 +27,7 @@ export function take_action(state) {
 
 	// Look for playables, trash and important discards in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
-	const trash_cards = find_known_trash(state, state.ourPlayerIndex);
+	const trash_cards = find_known_trash(state, state.ourPlayerIndex).filter(c => c.clued);
 
 	const discards = [];
 	for (const card of playable_cards) {
@@ -96,8 +96,7 @@ export function take_action(state) {
 		({ clue: best_play_clue, clue_value } = select_play_clue(all_play_clues));
 
 		if (best_play_clue?.result.finesses > 0) {
-			const { type, target, value } = best_play_clue;
-			return { tableID, type, target, value };
+			return Utils.clueToAction(best_play_clue, tableID);
 		}
 	}
 
@@ -142,8 +141,7 @@ export function take_action(state) {
 				const minimum_clue_value = 1 - (state.numPlayers === 2 ? 0.5 : 0) - (inEndgame(state) ? 10 : 0);
 
 				if (clue_value >= minimum_clue_value) {
-					const { type, target, value } = best_play_clue;
-					return { tableID, type, target, value };
+					return Utils.clueToAction(best_play_clue, state.tableID);
 				}
 				else {
 					logger.info('clue too low value', Utils.logClue(best_play_clue), clue_value);
@@ -165,10 +163,7 @@ export function take_action(state) {
 
 	// 8 clues or endgame (currently disabled)
 	if (state.clue_tokens === 8) {
-		const { type, value, target } = find_stall_clue(state, 4, best_play_clue);
-
-		// Should always be able to find a clue, even if it's a hard burn
-		return { tableID, type, target, value };
+		return Utils.clueToAction(find_stall_clue(state, 4, best_play_clue), state.tableID);
 	}
 
 	// Discard known trash (no pace requirement)
@@ -183,8 +178,7 @@ export function take_action(state) {
 
 	// Locked hand and no good clues to give
 	if (state.hands[state.ourPlayerIndex].isLocked() && state.clue_tokens > 0) {
-		const { type, value, target } = find_stall_clue(state, 3, best_play_clue);
-		return { tableID, type, target, value };
+		return Utils.clueToAction(find_stall_clue(state, 3, best_play_clue), state.tableID);
 	}
 
 	// Early game
@@ -192,8 +186,7 @@ export function take_action(state) {
 		const clue = find_stall_clue(state, 1, best_play_clue);
 
 		if (clue !== undefined) {
-			const { type, value, target } = clue;
-			return { tableID, type, target, value };
+			return Utils.clueToAction(clue, state.tableID);
 		}
 	}
 

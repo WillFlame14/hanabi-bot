@@ -1,9 +1,6 @@
-import { Card } from '../src/basics/Card.js';
-import { State } from '../src/basics/State.js';
 import * as Utils from '../src/util.js';
 
-/** @type {Readonly<{RED: 0, YELLOW: 1, GREEN: 2, BLUE: 3, PURPLE: 4}>} */
-export const COLOUR = Object.freeze({
+export const COLOUR = /** @type {const} */ ({
 	RED: 0,
 	YELLOW: 1,
 	GREEN: 2,
@@ -11,8 +8,7 @@ export const COLOUR = Object.freeze({
 	PURPLE: 4
 });
 
-/** @type {Readonly<{ALICE: 0, BOB: 1, CATHY: 2, DONALD: 3, EMILY: 4}>} */
-export const PLAYER = Object.freeze({
+export const PLAYER = /** @type {const} */ ({
 	ALICE: 0,
 	BOB: 1,
 	CATHY: 2,
@@ -21,7 +17,7 @@ export const PLAYER = Object.freeze({
 });
 
 /**
- * @template {State} A
+ * @template {import ('../src/basics/State.js').State} A
  * @param {{new(...args: any[]): A}} StateClass
  * @param {string[][]} hands
  * @return {A}
@@ -60,7 +56,7 @@ export function expandShortCard(short) {
 }
 
 /**
- * @param  {Card} card [description]
+ * @param  {import('../src/basics/Card.js').Card} card [description]
  */
 export function getRawInferences(card) {
 	return card.inferred.map(c => Utils.objPick(c, ['suitIndex', 'rank']));

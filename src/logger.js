@@ -1,5 +1,5 @@
 class Logger {
-	LEVELS = Object.freeze({
+	LEVELS = /** @type {const} */ ({
 		DEBUG: 0,
 		INFO: 1,
 		WARN: 2,
