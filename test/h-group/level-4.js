@@ -79,7 +79,7 @@ describe('trash chop move', () => {
 		state.play_stacks = [2, 2, 2, 2, 2];
 
 		const { save_clues } = find_clues(state);
-		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: ACTION.RANK, value: 5 });
+		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 5 });
 	});
 
 	it('will not give a tcm if chop can be saved directly (2 save)', () => {
@@ -91,7 +91,7 @@ describe('trash chop move', () => {
 		state.play_stacks = [5, 0, 0, 2, 2];
 
 		const { save_clues } = find_clues(state);
-		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: ACTION.RANK, value: 2 });
+		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 2 });
 	});
 
 	it('will not give a tcm if a play can be given instead', () => {
@@ -160,7 +160,7 @@ describe('giving order chop move', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 
 		const { save_clues } = find_clues(state);
-		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: ACTION.RANK, value: 5 });
+		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 5 });
 	});
 });
 
