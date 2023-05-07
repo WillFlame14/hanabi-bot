@@ -69,39 +69,36 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 
 	logger.info('------- EXITING HYPO --------');
 
-	const correct = hypo_state.hands[target].every((card, index) => {
+	const incorrect_card = hypo_state.hands[target].find((card, index) => {
 		// The focused card must not have been reset and must match inferences
 		if (card.order === target_card.order) {
-			return !card.reset && card.matches_inferences();
+			return !(!card.reset && card.matches_inferences());
 		}
 
 		const old_card = state.hands[target][index];
 
 		// For non-focused cards:
-		return (!card.reset && card.matches_inferences()) || 		// Matches inferences
-			((old_card.reset || !old_card.matches_inferences()) ||	// Didn't match inference even before clue
+		return !((!card.reset && card.matches_inferences()) || 		// Matches inferences
+			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||	// Didn't match inference even before clue
 			bad_touch_cards.some(c => c.order === card.order) ||	// Bad touched
 			card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)));	// Known trash
 	});
 
 	// Print out logs if the result is correct
-	logger.flush(correct);
+	logger.flush(incorrect_card === undefined);
 
-	if (!correct) {
+	if (incorrect_card) {
 		let reason = '';
-		for (const card of hypo_state.hands[target]) {
-			if (card.reset) {
-				reason = `card ${Utils.logCard(card)} lost all inferences and was reset`;
-				break;
-			}
-			if (!card.matches_inferences()) {
-				reason = `card ${Utils.logCard(card)} has inferences [${card.inferred.map(c => Utils.logCard(c)).join(',')}], doesn't match`;
-				break;
-			}
-			if (!card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order))) {
-				const not_trash_possibility = Utils.logCard(card.possible.find(c => !isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)));
-				reason = `card ${Utils.logCard(card)} has ${not_trash_possibility} possibility not trash`;
-				break;
+		if (incorrect_card.reset) {
+			reason = `card ${Utils.logCard(incorrect_card)} lost all inferences and was reset`;
+		}
+		else if (!incorrect_card.matches_inferences()) {
+			reason = `card ${Utils.logCard(incorrect_card)} has inferences [${incorrect_card.inferred.map(c => Utils.logCard(c)).join(',')}], doesn't match`;
+		}
+		else {
+			const not_trash_possibility = incorrect_card.possible.find(c => !isTrash(hypo_state, target, c.suitIndex, c.rank, incorrect_card.order));
+			if (not_trash_possibility !== undefined) {
+				reason = `card ${Utils.logCard(incorrect_card)} has ${not_trash_possibility} possibility not trash`;
 			}
 		}
 		logger.info(`${Utils.logClue(clue)} has incorrect interpretation, (${reason})`);
@@ -194,7 +191,7 @@ export function get_result(state, hypo_state, clue) {
 		}
 	}
 
-	const new_chop = hypo_state.hands[target][find_chop(hypo_state.hands[target], { includeNew: true })];
+	const new_chop = hypo_state.hands[target][find_chop(hypo_state.hands[target], { afterClue: true })];
 	const remainder = (new_chop !== undefined) ? card_value(state, new_chop) : 0;
 
 	return { elim, new_touched, bad_touch, trash, finesses, playables, remainder };

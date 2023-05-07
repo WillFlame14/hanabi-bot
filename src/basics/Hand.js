@@ -30,10 +30,10 @@ export class Hand extends Array {
 	}
 
 	/**
-	 * Returns whether the hand is locked (i.e. every card is clued or chop moved).
+	 * Returns whether the hand is locked (i.e. every card is clued, chop moved, or an unplayable finesse).
 	 */
-	isLocked() {
-		return this.every(c => c.clued || c.chop_moved);
+	isLocked(state) {
+		return this.every(c => c.clued || c.chop_moved || (c.finessed && state.play_stacks[c.suitIndex] < c.rank));
 	}
 
 	/**

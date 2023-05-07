@@ -17,32 +17,39 @@ import * as Basics from '../../basics.js';
  * @param  {PlayAction} action
  */
 function check_ocm(state, action) {
-    const { order, playerIndex } = action;
-    const card = state.hands[playerIndex].findOrder(order);
+	const { order, playerIndex } = action;
+	const card = state.hands[playerIndex].findOrder(order);
 
-    // Played an unknown 1
-    if (card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) && card.inferred.length > 1) {
-        const ordered_1s = order_1s(state, state.hands[playerIndex]);
+	// Played an unknown 1
+	if (card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) && card.inferred.length > 1) {
+		const ordered_1s = order_1s(state, state.hands[playerIndex]);
 
-        const offset = ordered_1s.findIndex(c => c.order === card.order);
-        // Didn't play the 1 in the correct order
-        if (offset !== 0) {
-            const target = (playerIndex + offset) % state.numPlayers;
+		const offset = ordered_1s.findIndex(c => c.order === card.order);
+		// Didn't play the 1 in the correct order
+		if (offset !== 0) {
+			const target = (playerIndex + offset) % state.numPlayers;
 
-            // Just going to assume no double order chop moves in 3p
-            if (target !== playerIndex) {
-                const target_hand = state.hands[target];
-                target_hand[find_chop(target_hand)].chop_moved = true;
-                logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
-            }
-            else {
-                logger.error('double order chop move???');
-            }
-        }
-        else {
-            logger.info('played unknown 1 in correct order, no ocm');
-        }
-    }
+			// Just going to assume no double order chop moves in 3p
+			if (target !== playerIndex) {
+				const target_hand = state.hands[target];
+				const chopIndex = find_chop(target_hand);
+
+				if (chopIndex === -1) {
+					logger.error(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
+				}
+				else {
+					target_hand[chopIndex].chop_moved = true;
+					logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
+				}
+			}
+			else {
+				logger.error('double order chop move???');
+			}
+		}
+		else {
+			logger.info('played unknown 1 in correct order, no ocm');
+		}
+	}
 }
 
 /**
@@ -50,31 +57,31 @@ function check_ocm(state, action) {
  * @param  {PlayAction} action
  */
 export function interpret_play(state, action) {
-    const { playerIndex, order, rank, suitIndex } = action;
+	const { playerIndex, order, rank, suitIndex } = action;
 
-    // Now that we know about this card, rewind from the beginning
-    if (playerIndex === state.ourPlayerIndex) {
-        const card = state.hands[playerIndex].findOrder(order);
-        const action_index = card.reasoning[0];
+	// Now that we know about this card, rewind from the beginning
+	if (playerIndex === state.ourPlayerIndex) {
+		const card = state.hands[playerIndex].findOrder(order);
+		const action_index = card.reasoning[0];
 		if (!card.rewinded && action_index !== undefined) {
-            // If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
+			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
 			if (state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
-                return;
-            }
+				return;
+			}
 		}
-    }
+	}
 
-    if (state.level >= LEVEL.BASIC_CM) {
-        check_ocm(state, action);
-    }
+	if (state.level >= LEVEL.BASIC_CM) {
+		check_ocm(state, action);
+	}
 
-    Basics.onPlay(this, action);
+	Basics.onPlay(this, action);
 
-    // Apply good touch principle on remaining possibilities
-    for (const hand of this.hands) {
-        good_touch_elim(hand, [{suitIndex, rank}], { hard: true });
-    }
+	// Apply good touch principle on remaining possibilities
+	for (const hand of this.hands) {
+		good_touch_elim(hand, [{suitIndex, rank}], { hard: true });
+	}
 
-    // Update hypo stacks
-    update_hypo_stacks(this);
+	// Update hypo stacks
+	update_hypo_stacks(this);
 }

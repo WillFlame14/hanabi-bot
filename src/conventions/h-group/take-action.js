@@ -113,7 +113,7 @@ export function take_action(state) {
 	// Forced discard if next player is locked without a playable or trash card
 	// TODO: Anxiety play
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-	if (state.clue_tokens === 0 && state.hands[nextPlayerIndex].isLocked() && !handLoaded(state, nextPlayerIndex)) {
+	if (state.clue_tokens === 0 && state.hands[nextPlayerIndex].isLocked(state) && !handLoaded(state, nextPlayerIndex)) {
 		discard_chop(hand, tableID);
 	}
 
@@ -157,12 +157,12 @@ export function take_action(state) {
 
 	// Either there are no clue tokens or the best play clue doesn't meet MCVP
 
-	// TODO: Reconsider endgame stall
-	// const endgame_stall = inEndgame(state) && state.clue_tokens > 0 &&
-	// 	state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index]);
+	// TODO: Reconsider endgame stall more carefully
+	const endgame_stall = getPace(state) === 0 && state.clue_tokens > 0 &&
+		state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index]);
 
-	// 8 clues or endgame (currently disabled)
-	if (state.clue_tokens === 8) {
+	// 8 clues or endgame
+	if (state.clue_tokens === 8 || endgame_stall) {
 		return Utils.clueToAction(find_stall_clue(state, 4, best_play_clue), state.tableID);
 	}
 
@@ -177,7 +177,7 @@ export function take_action(state) {
 	}
 
 	// Locked hand and no good clues to give
-	if (state.hands[state.ourPlayerIndex].isLocked() && state.clue_tokens > 0) {
+	if (state.hands[state.ourPlayerIndex].isLocked(state) && state.clue_tokens > 0) {
 		return Utils.clueToAction(find_stall_clue(state, 3, best_play_clue), state.tableID);
 	}
 

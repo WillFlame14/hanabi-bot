@@ -36,7 +36,11 @@ function find_save(state, target, card) {
 	if (state.hypo_stacks[suitIndex] + 1 === rank &&
 		visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1
 	) {
-		return Object.assign(determine_clue(state, target, card, { save: true }), { playable: true });
+		const c = determine_clue(state, target, card, { save: true });
+		if (c) {
+			return Object.assign(c, { playable: true });
+		}
+		return;
 	}
 
 	if (isCritical(state, suitIndex, rank)) {

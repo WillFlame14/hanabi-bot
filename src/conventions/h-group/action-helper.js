@@ -208,7 +208,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 		// (play) (give play if 2+ clues)
 		// [other, save only] [other, play/trash fix over save] [all other fixes]
 		// (give play if < 2 clues) [early saves]
-		if (save_clues[target] !== undefined || state.hands[target].isLocked()) {
+		if (save_clues[target] !== undefined || state.hands[target].isLocked(state)) {
 			// They already have a playable or trash (i.e. early save)
 			if (handLoaded(state, target)) {
 				if (save_clues[target] !== undefined) {
@@ -227,7 +227,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 
 			// Try to give a play clue involving them
 			if (state.clue_tokens > 1) {
-				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked());
+				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked(state));
 				if (play_over_save !== undefined) {
 					logger.debug('found play over save', Utils.logClue(play_over_save));
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);

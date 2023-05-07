@@ -42,7 +42,7 @@ function find_colour_focus(state, suitIndex, action) {
 
 	let finesses = 0;
 
-	while (connecting !== undefined && next_playable_rank < 5) {
+	while (connecting !== undefined && next_playable_rank < state.max_ranks[suitIndex]) {
 		const { type, card, hidden } = connecting;
 
 		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
@@ -75,9 +75,9 @@ function find_colour_focus(state, suitIndex, action) {
 	// Our card could be the final rank that we can't find
 	focus_possible.push({ suitIndex, rank: next_playable_rank, save: false, connections });
 
-	// Save clue on chop (5 save cannot be done with number)
+	// Save clue on chop (5 save cannot be done with colour)
 	if (chop) {
-		for (let rank = next_playable_rank + 1; rank < 5; rank++) {
+		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 4); rank++) {
 			// Determine if possible save on k2, k5 with colour
 			if (state.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
 				let fill_ins = 0;

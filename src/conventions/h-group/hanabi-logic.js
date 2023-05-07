@@ -13,15 +13,16 @@ import * as Utils from '../../util.js';
 /**
  * Returns the index (0-indexed) of the chop card in the given hand.
  * 
- * The 'includeNew' option ignores newly clued cards when determining chop.
+ * The 'afterClue' option can be set to true to find chop after a clue.
+ * Otherwise, the default behaviour finds chop which could be a newly clued card.
  * @param {Hand} hand
- * @param {{includeNew?: boolean}} options
+ * @param {{afterClue?: boolean}} options
  * @returns The index of the chop card, or -1 if the hand doesn't have a chop.
  */
 export function find_chop(hand, options = {}) {
 	for (let i = hand.length - 1; i >= 0; i--) {
 		const { clued, newly_clued, chop_moved } = hand[i];
-		if (chop_moved || (clued && (options.includeNew ? true : !newly_clued))) {
+		if (chop_moved || (clued && (options.afterClue ? true : !newly_clued))) {
 			continue;
 		}
 		return i;
@@ -183,7 +184,7 @@ export function stall_severity(state, giver) {
 	if (state.clue_tokens === 7 && state.turn_count !== 0) {
 		return 4;
 	}
-	if (state.hands[giver].isLocked() && !handLoaded(state, giver)) {
+	if (state.hands[giver].isLocked(state) && !handLoaded(state, giver)) {
 		return 3;
 	}
 	if (state.early_game) {
