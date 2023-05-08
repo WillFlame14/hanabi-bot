@@ -56,12 +56,13 @@ function apply_good_touch(state, action) {
 					continue;
 				}
 				// Directly revealing a duplicated card in someone else's hand (if we're using an inference, the card must match the inference, unless it's unknown)
-				// (card.inferred.length === 1 && (target === state.ourPlayerIndex || card.matches_inferences()))
 				else if (card.possible.length === 1) {
 					const { suitIndex, rank } = card.possible[0];
 
-					// The fix can be in anyone's hand, including the clue receiver's
-					fix = state.hands.some(hand => hand.some(c => (c.clued || c.finessed) && c.matches(suitIndex, rank, { infer: true }) && c.order !== card.order));
+					// The fix can be in anyone's hand except the giver's
+					fix = state.hands.some((hand, index) =>
+						index !== giver && hand.some(c => (c.clued || c.finessed) && c.matches(suitIndex, rank, { infer: true }) && c.order !== card.order)
+					);
 				}
 			}
 		}

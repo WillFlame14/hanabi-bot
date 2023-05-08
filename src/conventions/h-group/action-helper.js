@@ -26,7 +26,7 @@ import * as Utils from '../../util.js';
  */
 export function find_clue_value(clue_result) {
 	const { finesses, new_touched, playables, bad_touch, elim, remainder } = clue_result;
-	return finesses + 0.5*(new_touched + playables.length) + 0.01*elim - 1.5*bad_touch - 0.5*remainder;
+	return 0.5*(finesses + new_touched + playables.length) + 0.01*elim - 1*bad_touch - 0.25*remainder;
 }
 
 /**

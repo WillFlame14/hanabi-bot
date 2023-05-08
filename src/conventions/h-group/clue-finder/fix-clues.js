@@ -23,16 +23,14 @@ import * as Utils from '../../../util.js';
 export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 	/** @type {FixClue[][]} */
 	const fix_clues = [];
+	const duplicated_cards = [];
 
-	for (let target = 0; target < state.numPlayers; target++) {
+	// Skip ourselves
+	for (let i = 1; i < state.numPlayers; i++) {
+		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 		fix_clues[target] = [];
 
-		if (state.level <= LEVEL.FIX) {
-			continue;
-		}
-
-		// Ignore our own hand
-		if (target === state.ourPlayerIndex || target === options.ignorePlayerIndex) {
+		if (state.level <= LEVEL.FIX || target === options.ignorePlayerIndex) {
 			continue;
 		}
 
@@ -72,12 +70,14 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 				if (wrong_inference) {
 					fix_criteria = inference_corrected;
 				}
-				else if (unknown_duplicated) {
+				// We only want to give a fix clue to the player whose turn comes sooner
+				else if (unknown_duplicated && !duplicated_cards.some(c => c.matches(card.suitIndex, card.rank))) {
 					fix_criteria = duplication_known;
+					duplicated_cards.push(card);
 				}
 
 				// Card doesn't match any inferences and seems playable but isn't (need to fix)
-				if (wrong_inference || unknown_duplicated) {
+				if (fix_criteria !== undefined) {
 					let found_clue = false;
 
 					// Try all play clues and save clue if it exists

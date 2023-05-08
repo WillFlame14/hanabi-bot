@@ -30,7 +30,7 @@ export function find_stall_clue(state, severity, tempo_clue) {
 		// Early game
 		if (severity > 0) {
 			// 5 Stall (priority 0)
-			if (hand.some(c => c.rank === 5 && !c.clued && state.max_ranks[c.suitIndex] >= 5)) {
+			if (hand.some(c => c.rank === 5 && !c.clued && !c.chop_moved && state.max_ranks[c.suitIndex] >= 5)) {
 				stall_clues[0].push({ type: CLUE.RANK, target, value: 5 });
 				break;
 			}

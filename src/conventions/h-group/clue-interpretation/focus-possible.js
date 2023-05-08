@@ -188,7 +188,6 @@ function find_rank_focus(state, rank, action) {
 				// Saving 2s or 5s will never cause a prompt or finesse.
 				if (save2 || rank === 5) {
 					focus_possible = focus_possible.filter(({ connections }) => !connections.some(conn => ['prompt', 'finesse'].includes(conn.type)));
-					logger.warn(`2 or 5 save, remaining`, focus_possible);
 				}
 
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });

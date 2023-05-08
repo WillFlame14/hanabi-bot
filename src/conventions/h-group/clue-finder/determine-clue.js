@@ -2,7 +2,7 @@ import { CLUE } from '../../../constants.js';
 import { card_value, clue_safe } from './clue-safe.js';
 import { determine_focus, find_chop, find_bad_touch } from '../hanabi-logic.js';
 import { cardTouched, isCluable } from '../../../variants.js';
-import { isTrash } from '../../../basics/hanabi-util.js';
+import { isTrash, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
@@ -78,9 +78,11 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 		const old_card = state.hands[target][index];
 
 		// For non-focused cards:
-		return !((!card.reset && card.matches_inferences()) || 		// Matches inferences
-			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||	// Didn't match inference even before clue
-			bad_touch_cards.some(c => c.order === card.order) ||	// Bad touched
+		return !((!card.reset && card.matches_inferences()) || 											// Matches inferences
+			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||		// Didn't match inference even before clue
+			card.chop_moved ||																			// Chop moved (might have become trash)
+			(old_card.clued && visibleFind(state, state.ourPlayerIndex, card.suitIndex, card.rank).some(c => c.order !== card.order)) ||	// Previously-clued duplicate
+			bad_touch_cards.some(c => c.order === card.order) ||										// Bad touched
 			card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)));	// Known trash
 	});
 

@@ -94,6 +94,7 @@ export function interpret_discard(state, action, card) {
 
 	// Discarding a useful card
 	if ((card.clued || card.chop_moved || card.finessed) && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
+		logger.warn('discarded useful card!');
 		const duplicates = visibleFind(state, playerIndex, suitIndex, rank);
 
 		// Card was bombed
@@ -106,7 +107,10 @@ export function interpret_discard(state, action, card) {
 				const sarcastic = find_sarcastic(state.hands[state.ourPlayerIndex], suitIndex, rank);
 
 				if (sarcastic.length === 1) {
-					sarcastic[0].inferred = [new Card(suitIndex, rank)];
+					const action_index = card.reasoning.pop();
+					if (action_index !== undefined && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank })) {
+						return;
+					}
 				}
 				else {
 					apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);

@@ -33,14 +33,8 @@ function find_save(state, target, card) {
 	}
 
 	// Save a delayed playable card that isn't visible somewhere else
-	if (state.hypo_stacks[suitIndex] + 1 === rank &&
-		visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1
-	) {
-		const c = determine_clue(state, target, card, { save: true });
-		if (c) {
-			return Object.assign(c, { playable: true });
-		}
-		return;
+	if (state.hypo_stacks[suitIndex] + 1 === rank && visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
+		return Object.assign(determine_clue(state, target, card, { save: true }), { playable: true });
 	}
 
 	if (isCritical(state, suitIndex, rank)) {

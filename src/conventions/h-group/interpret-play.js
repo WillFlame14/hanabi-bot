@@ -21,7 +21,7 @@ function check_ocm(state, action) {
 	const card = state.hands[playerIndex].findOrder(order);
 
 	// Played an unknown 1
-	if (card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) && card.inferred.length > 1) {
+	if (card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) && (card.inferred.length > 1 || card.rewinded)) {
 		const ordered_1s = order_1s(state, state.hands[playerIndex]);
 
 		const offset = ordered_1s.findIndex(c => c.order === card.order);
@@ -71,7 +71,7 @@ export function interpret_play(state, action) {
 		}
 	}
 
-	if (state.level >= LEVEL.BASIC_CM) {
+	if (state.level >= LEVEL.BASIC_CM && rank === 1) {
 		check_ocm(state, action);
 	}
 

@@ -41,7 +41,7 @@ export function find_chop(hand, options = {}) {
  */
 export function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
 	for (const card of hand) {
-		const { clued, newly_clued, order, possible, clues } = card;
+		const { clued, newly_clued, order, inferred, possible, clues } = card;
 		// Ignore unclued, newly clued, and known cards (also intentionally ignored cards)
 		if (!clued || newly_clued || possible.length === 1 || ignoreOrders.includes(order)) {
 			continue;
@@ -52,6 +52,10 @@ export function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
 			continue;
 		}
 
+		// Ignore cards that have information lock
+		if (inferred.length === 1) {
+			continue;
+		}
 
 		// A clue must match the card (or rainbow/omni connect)
 		if (clues.some(clue =>
