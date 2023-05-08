@@ -2,8 +2,9 @@ import { CLUE, ACTION } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
 import { find_chop } from './hanabi-logic.js';
 import { handLoaded } from '../../basics/helper.js';
+import { card_value } from './clue-finder/clue-safe.js';
 import logger from '../../logger.js';
-import { isCritical, playableAway, inStartingHand } from '../../basics/hanabi-util.js';
+import { playableAway, inStartingHand } from '../../basics/hanabi-util.js';
 import * as Utils from '../../util.js';
 
 /**
@@ -11,6 +12,7 @@ import * as Utils from '../../util.js';
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').ClueResult} ClueResult
  * @typedef {import('../../types.js').Clue} Clue
+ * @typedef {import('../../types.js').SaveClue} SaveClue
  * @typedef {import('../../types.js').FixClue} FixClue
  * @typedef {import('../../types.js').PerformAction} PerformAction
  * @typedef {import('../../types.js').Action} Action
@@ -24,7 +26,7 @@ import * as Utils from '../../util.js';
  */
 export function find_clue_value(clue_result) {
 	const { finesses, new_touched, playables, bad_touch, elim, remainder } = clue_result;
-	return finesses + 0.5*((new_touched - bad_touch) + playables.length) + 0.01*elim - 1.5*bad_touch - 0.5*remainder;
+	return 0.5*(finesses + new_touched + playables.length) + 0.01*elim - 1*bad_touch - 0.25*remainder;
 }
 
 /**
@@ -64,9 +66,7 @@ function find_unlock(state, target) {
 
 			if (our_connecting !== undefined) {
 				// The card must become playable
-				const known = card.inferred.every(c => {
-					return playableAway(state, c.suitIndex, c.rank) === 0 || c.matches(suitIndex, rank);
-				});
+				const known = card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0 || c.matches(suitIndex, rank));
 
 				if (known) {
 					return { tableID: state.tableID, type: ACTION.PLAY, target: our_connecting.order };
@@ -82,7 +82,7 @@ function find_unlock(state, target) {
  * @param {State} state
  * @param {number} target 				The index of the player that needs a save clue.
  * @param {Clue[]} all_play_clues 		An array of all valid play clues that can be currently given.
- * @returns {PerformAction & {value: number} | undefined}	The play clue to give if it exists, otherwise undefined.
+ * @returns {PerformAction | undefined}	The play clue to give if it exists, otherwise undefined.
  */
 function find_play_over_save(state, target, all_play_clues, locked = false) {
 	logger.debug('looking for play over save for target', state.playerNames[target]);
@@ -149,7 +149,9 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
 	}
 
 	const { clue } = select_play_clue(play_clues);
-	return { tableID: state.tableID, type: clue.type, target: clue.target, value: clue.value };
+
+	// Convert CLUE to ACTION
+	return Utils.clueToAction(clue, state.tableID);
 }
 
 /**
@@ -190,7 +192,7 @@ export function order_1s(state, cards) {
  * Returns a 2D array of urgent actions in order of descending priority.
  * @param {State} state
  * @param {Clue[][]} play_clues
- * @param {Clue[]} save_clues
+ * @param {SaveClue[]} save_clues
  * @param {FixClue[][]} fix_clues
  * @param {Card[][]} playable_priorities
  * @returns {PerformAction[][]}
@@ -206,12 +208,11 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 		// (play) (give play if 2+ clues)
 		// [other, save only] [other, play/trash fix over save] [all other fixes]
 		// (give play if < 2 clues) [early saves]
-		if (save_clues[target] !== undefined || state.hands[target].isLocked()) {
+		if (save_clues[target] !== undefined || state.hands[target].isLocked(state)) {
 			// They already have a playable or trash (i.e. early save)
 			if (handLoaded(state, target)) {
 				if (save_clues[target] !== undefined) {
-					const { type, value } = save_clues[target];
-					urgent_actions[8].push({ tableID: state.tableID, type, target, value });
+					urgent_actions[8].push(Utils.clueToAction(save_clues[target], state.tableID));
 				}
 				continue;
 			}
@@ -226,7 +227,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 
 			// Try to give a play clue involving them
 			if (state.clue_tokens > 1) {
-				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked());
+				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked(state));
 				if (play_over_save !== undefined) {
 					logger.debug('found play over save', Utils.logClue(play_over_save));
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
@@ -234,27 +235,37 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 				}
 			}
 
-			// Give them an urgent fix clue with known trash if possible
-			const trash_fix = fix_clues[target].find(clue => clue.urgent && clue.trash);
+			// Give them a fix clue with known trash if possible (TODO: Re-examine if this should only be urgent fixes)
+			const trash_fix = fix_clues[target].find(clue => clue.trash);
 			if (trash_fix !== undefined) {
-				const { type, value } = trash_fix;
-				urgent_actions[i === 1 ? 2 : 6].push({ tableID: state.tableID, type, target, value });
+				urgent_actions[i === 1 ? 2 : 6].push(Utils.clueToAction(trash_fix, state.tableID));
 				continue;
 			}
 
-			// Check if Order Chop Move is available - 4 (unknown card) must be highest priority, and they must be 1s
-			if (state.level >= LEVEL.BASIC_CM && playable_priorities.every((priority_cards, priority) => priority >= 4 || priority_cards.length === 0)) {
+			// Check if Order Chop Move is available - 4 (unknown card) must be highest priority, they must be 1s, and this cannot be a playable save
+			if (state.level >= LEVEL.BASIC_CM &&
+				playable_priorities.every((priority_cards, priority) => priority >= 4 || priority_cards.length === 0) &&
+				(save_clues[target] && !save_clues[target].playable)
+			) {
 				const ordered_1s = order_1s(state, playable_priorities[4]);
 				const distance = (target + state.numPlayers - state.ourPlayerIndex) % state.numPlayers;
 
 				// If we want to OCM the next player (distance 1), we need at least two unknown 1s.
 				if (ordered_1s.length > distance) {
+					const hand = state.hands[target];
 					const new_hand = Utils.objClone(state.hands[target]);
 					new_hand[find_chop(new_hand)].chop_moved = true;
 
-					// Make sure the new chop isn't critical
-					const new_chop = new_hand[find_chop(new_hand)];
-					if (!isCritical(state, new_chop.suitIndex, new_chop.rank)) {
+					const [old_chop_value, new_chop_value] = [hand, new_hand].map(h => {
+						const chopIndex = find_chop(h);
+
+						// A locked hand is value 4. It is worth locking hand for a unique 2, but not anything less.
+						return chopIndex === -1 ? 4 : card_value(state, h[chopIndex]);
+					});
+
+
+					// Make sure the old chop is better than the new one
+					if (old_chop_value >= new_chop_value) {
 						urgent_actions[i === 1 ? 1 : 5].push({ tableId: state.tableID, type: ACTION.PLAY, target: ordered_1s[distance].order });
 						continue;
 					}
@@ -263,8 +274,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 
 			// No alternative, have to give save
 			if (save_clues[target] !== undefined) {
-				const { type, value } = save_clues[target];
-				urgent_actions[i === 1 ? 1 : 5].push({ tableID: state.tableID, type, target, value });
+				urgent_actions[i === 1 ? 1 : 5].push(Utils.clueToAction(save_clues[target], state.tableID));
 			}
 		}
 
@@ -272,17 +282,14 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 		if (fix_clues[target].length > 0) {
 			const urgent_fix = fix_clues[target].find(clue => clue.urgent);
 
+			// Urgent fix on the next player is particularly urgent, but we should prioritize urgent fixes for others too
 			if (urgent_fix !== undefined) {
-				const { type, value } = urgent_fix;
-
-				// Urgent fix on the next player is particularly urgent, but should prioritize urgent fixes for others too
-				urgent_actions[i === 1 ? 3 : 7].push({ tableID: state.tableID, type, target, value });
+				urgent_actions[i === 1 ? 3 : 7].push(Utils.clueToAction(urgent_fix, state.tableID));
 				continue;
 			}
 
 			// No urgent fixes required
-			const { type, value } = fix_clues[target][0];
-			urgent_actions[7].push({ tableID: state.tableID, type, target, value });
+			urgent_actions[7].push(Utils.clueToAction(fix_clues[target][0], state.tableID));
 		}
 	}
 	return urgent_actions;
@@ -297,7 +304,7 @@ export function determine_playable_card(state, playable_cards) {
 	/** @type {Card[][]} */
 	const priorities = [[], [], [], [], [], []];
 
-	let min_rank = 5, fresh_1s = 0;
+	let min_rank = 5;
 	for (const card of playable_cards) {
 		const possibilities = card.inferred.length > 0 ? card.inferred : card.possible;
 		logger.debug(`examining card with possibilities ${possibilities.map(p => Utils.logCard(p)).join(',')}`);

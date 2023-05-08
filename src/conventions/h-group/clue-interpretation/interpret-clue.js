@@ -56,12 +56,13 @@ function apply_good_touch(state, action) {
 					continue;
 				}
 				// Directly revealing a duplicated card in someone else's hand (if we're using an inference, the card must match the inference, unless it's unknown)
-				// (card.inferred.length === 1 && (target === state.ourPlayerIndex || card.matches_inferences()))
 				else if (card.possible.length === 1) {
 					const { suitIndex, rank } = card.possible[0];
 
-					// The fix can be in anyone's hand, including the clue receiver's
-					fix = state.hands.some(hand => hand.some(c => (c.clued || c.finessed) && c.matches(suitIndex, rank, { infer: true }) && c.order !== card.order));
+					// The fix can be in anyone's hand except the giver's
+					fix = state.hands.some((hand, index) =>
+						index !== giver && hand.some(c => (c.clued || c.finessed) && c.matches(suitIndex, rank, { infer: true }) && c.order !== card.order)
+					);
 				}
 			}
 		}
@@ -133,31 +134,29 @@ export function interpret_clue(state, action) {
 
 	const focus_possible = find_focus_possible(state, action);
 	logger.info('focus possible', focus_possible.map(p => Utils.logCard(p)).join(','));
-	const matched_inferences = focus_possible.filter(p => {
-		if (target === state.ourPlayerIndex) {
-			return focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank));
-		}
-		else {
-			return focused_card.matches(p.suitIndex, p.rank);
-		}
-	});
+
+	const matched_inferences = focus_possible.filter(p => focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank)));
+	const matched_correct = target === state.ourPlayerIndex || matched_inferences.some(p => focused_card.matches(p.suitIndex, p.rank));
 
 	// Card matches an inference and not a save/stall
-	if (matched_inferences.length >= 1) {
+	// If we know the identity of the card, one of the matched inferences must also be correct.
+	if (matched_inferences.length >= 1 && matched_correct) {
 		focused_card.intersect('inferred', focus_possible);
 
 		for (const inference of matched_inferences) {
 			const { suitIndex, rank, connections, save = false } = inference;
 
 			if (!save) {
-				assign_connections(state, connections, suitIndex);
+				if ((target === state.ourPlayerIndex || focused_card.matches(suitIndex, rank))) {
+					assign_connections(state, connections, suitIndex);
+				}
 
 				// Only one inference, we can update hypo stacks
-				if (matched_inferences.length === 1) {
+				if (matched_inferences.length === 1 && (connections.length === 0 || !['prompt', 'finesse'].includes(connections[0].type))) {
 					team_elim(state, focused_card, giver, target, suitIndex, rank);
 				}
 				// Multiple inferences, we need to wait for connections
-				else if (connections.length > 0 && !connections[0].self) {
+				else if (connections.length > 0/* && !connections[0].self*/) {
 					state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank } });
 				}
 			}
@@ -313,7 +312,8 @@ function assign_connections(state, connections, suitIndex) {
 		next_rank++;
 
 		// Updating notes not on our turn
-		if (self) {
+		// TODO: Examine why this originally had self only?
+		if (self || true) {
 			// There might be multiple possible inferences on the same card from a self component
 			if (card.reasoning.at(-1) !== state.actionList.length - 1) {
 				card.reasoning.push(state.actionList.length - 1);

@@ -1,11 +1,11 @@
 class Logger {
-	LEVELS = Object.freeze({
+	LEVELS = /** @type {const} */ ({
 		DEBUG: 0,
 		INFO: 1,
 		WARN: 2,
 		ERROR: 3
 	});
-	level = this.LEVELS.INFO;
+	level = 1;
 	accumulate = false;
 
 	/** @type {any[][]} */
@@ -77,4 +77,5 @@ class Logger {
 	}
 }
 
-export default new Logger();
+const logger = new Logger();
+export default logger;

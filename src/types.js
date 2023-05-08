@@ -1,15 +1,18 @@
 // @ts-nocheck
 
+import { CLUE, ACTION } from './constants.js';
+
 /**
  * @typedef BasicCard
  * @property {number} suitIndex
  * @property {number} rank 
  * 
  * @typedef BaseClue
- * @property {number} type
+ * @property {typeof CLUE.COLOUR | typeof CLUE.RANK} type
  * @property {number} value
  * 
  * @typedef {BaseClue & {target: number, result?: ClueResult}} Clue
+ * @typedef {Clue & {playable: boolean}} SaveClue
  * @typedef {Clue & {urgent: boolean, trash: boolean}} FixClue
  * 
  * @typedef ClueResult
@@ -52,7 +55,8 @@
  * 
  * @typedef {CardAction & {type: 'draw'}} DrawAction
  * @typedef {CardAction & {type: 'play'}} PlayAction
- * @typedef {CardAction & {type:'rewind'}} RewindAction
+ * @typedef {CardAction & {type: 'identify'}} IdentifyAction
+ * @typedef {{type: 'ignore', playerIndex: number, order: number}} IgnoreAction
  * @typedef {CardAction & {type: 'discard', failed: boolean}} DiscardAction
  * 
  * @typedef GameOverAction
@@ -61,11 +65,11 @@
  * @property {number}       playerIndex
  * @property {any}          votes
  * 
- * @typedef {StatusAction | TurnAction | ClueAction | DrawAction | DiscardAction | PlayAction | GameOverAction | RewindAction} Action
+ * @typedef {StatusAction | TurnAction | ClueAction | DrawAction | DiscardAction | PlayAction | GameOverAction | IdentifyAction | IgnoreAction} Action
  * 
  * @typedef PerformAction
- * @property {number} tableID`
- * @property {number} type
+ * @property {number} tableID
+ * @property {typeof ACTION.PLAY | typeof ACTION.DISCARD | typeof ACTION.COLOUR | typeof ACTION.RANK} type
  * @property {number} target
  * @property {number} [value]
  * 
@@ -74,6 +78,7 @@
  * @property {number} reacting
  * @property {Card} card
  * @property {boolean} [self]
+ * @property {boolean} [hidden]
  * 
  * @typedef WaitingConnection
  * @property {Connection[]} connections

@@ -13,8 +13,7 @@ const conventions = { HGroup };
 let self;
 const tables = {};
 
-/** @type {State} */
-let state = {};
+let state = /** @type {State} */ ({});
 
 /** @type {boolean} */
 let gameStarted = false;
@@ -103,10 +102,10 @@ export const handle = {
 							if (settings.convention === 'HGroup' && (parts.length === 2 || !isNaN(Number(parts[2])))) {
 								const level = Number(parts[2]) || 1;
 
-								if (level <= 0 || level > 4) {
-									Utils.sendChat(data.who, 'This bot can currently only play between levels 1 and 4.');
+								if (level <= 0 || level > 5) {
+									Utils.sendChat(data.who, 'This bot can currently only play between levels 1 and 5.');
 								}
-								settings.level = Math.max(Math.min(level, 4), 1);
+								settings.level = Math.max(Math.min(level, 5), 1);
 							}
 						}
 						else {

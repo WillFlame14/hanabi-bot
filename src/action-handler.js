@@ -44,6 +44,9 @@ export function handle_action(action, catchup = false) {
 				const card = this.hands[target].findOrder(order);
 				card.newly_clued = false;
 			}
+
+			// Clear the list of ignored cards
+			this.next_ignore = [];
 			break;
 		}
 		case 'discard': {
@@ -100,17 +103,29 @@ export function handle_action(action, catchup = false) {
 			this.last_actions[playerIndex] = action;
 			break;
 		}
-		case 'rewind': {
+		case 'identify': {
 			const { order, playerIndex, suitIndex, rank } = action;
 
 			const card = this.hands[playerIndex].findOrder(order);
 			if (card === undefined) {
 				throw new Error('Could not find card to rewrite!');
 			}
+			logger.info(`identifying card with order ${order} as ${Utils.logCard({ suitIndex, rank })}`);
 			card.possible = [new Card(suitIndex, rank)];
 			card.inferred = [new Card(suitIndex, rank)];
 			card.finessed = true;
 			card.rewinded = true;
+			break;
+		}
+		case 'ignore': {
+			const { order, playerIndex } = action;
+
+			const card = this.hands[playerIndex].findOrder(order);
+			if (card === undefined) {
+				throw new Error('Could not find card to ignore!');
+			}
+
+			this.next_ignore.push(card.order);
 			break;
 		}
 		default:

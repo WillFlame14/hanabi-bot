@@ -42,8 +42,8 @@ function find_colour_focus(state, suitIndex, action) {
 
 	let finesses = 0;
 
-	while (connecting !== undefined && next_playable_rank < 5) {
-		const { type, card } = connecting;
+	while (connecting !== undefined && next_playable_rank < state.max_ranks[suitIndex]) {
+		const { type, card, hidden } = connecting;
 
 		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
@@ -64,7 +64,9 @@ function find_colour_focus(state, suitIndex, action) {
 		}
 		hypo_state.play_stacks[suitIndex]++;
 
-		next_playable_rank++;
+		if (!hidden) {
+			next_playable_rank++;
+		}
 		connections.push(connecting);
 		already_connected.push(card.order);
 		connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, already_connected);
@@ -73,9 +75,9 @@ function find_colour_focus(state, suitIndex, action) {
 	// Our card could be the final rank that we can't find
 	focus_possible.push({ suitIndex, rank: next_playable_rank, save: false, connections });
 
-	// Save clue on chop (5 save cannot be done with number)
+	// Save clue on chop (5 save cannot be done with colour)
 	if (chop) {
-		for (let rank = next_playable_rank + 1; rank < 5; rank++) {
+		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 4); rank++) {
 			// Determine if possible save on k2, k5 with colour
 			if (state.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
 				let fill_ins = 0;
@@ -118,7 +120,7 @@ function find_rank_focus(state, rank, action) {
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
 	/** @type {FocusPossibility[]} */
-	const focus_possible = [];
+	let focus_possible = [];
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 		// Play clue
 		let stack_rank = state.play_stacks[suitIndex] + 1;
@@ -141,7 +143,7 @@ function find_rank_focus(state, rank, action) {
 					break;
 				}
 
-				const { type, card } = connecting;
+				const { type, card, hidden } = connecting;
 				connections.push(connecting);
 				already_connected.push(card.order);
 
@@ -153,7 +155,10 @@ function find_rank_focus(state, rank, action) {
 					}
 					card.finessed = true;
 				}
-				stack_rank++;
+
+				if (!hidden) {
+					stack_rank++;
+				}
 				hypo_state.play_stacks[suitIndex]++;
 			}
 
@@ -180,6 +185,11 @@ function find_rank_focus(state, rank, action) {
 
 			// Critical save or 2 save
 			if (isCritical(state, suitIndex, rank) || save2) {
+				// Saving 2s or 5s will never cause a prompt or finesse.
+				if (save2 || rank === 5) {
+					focus_possible = focus_possible.filter(({ connections }) => !connections.some(conn => ['prompt', 'finesse'].includes(conn.type)));
+				}
+
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 			}
 		}

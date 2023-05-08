@@ -32,6 +32,12 @@ export class State {
 	actionList = /** @type {Action[]} */ ([]);
 	last_actions = /** @type {Action[]} */ ([]);
 
+	/**
+	 * The orders of cards to ignore in the next play clue.
+	 * @type {number[]}
+	 */
+	next_ignore = [];
+
 	handle_action = handle_action;
 
 	/**
@@ -137,15 +143,12 @@ export class State {
 	}
 
 	/**
-	 * Rewinds the state to a particular action index, while rewriting the given card to its known identity.
+	 * Rewinds the state to a particular action index, inserts the rewind action just before it and then replays all future moves.
      * @param {number} action_index
-     * @param {number} playerIndex		The player that drew the rewinded card.
-     * @param {number} order
-     * @param {number} suitIndex
-     * @param {number} rank
-     * @param {boolean} finessed 		Whether the card was played as a finesse.
+     * @param {Action} rewind_action	The rewind action to insert before the target action
+     * @param {boolean} [mistake] 		Whether the target action was a mistake
      */
-	rewind(action_index, playerIndex, order, suitIndex, rank, finessed) {
+	rewind(action_index, rewind_action, mistake = false) {
 		if (this.rewindDepth > 2) {
 			throw new Error('attempted to rewind too many times!');
 		}
@@ -155,7 +158,10 @@ export class State {
 		}
 		this.rewindDepth++;
 
-		logger.info(`card actually ${Utils.logCard({suitIndex, rank})}, rewinding to action_index ${action_index}`);
+		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
+		pivotal_action.mistake = mistake || this.rewindDepth > 1;
+		logger.warn(`Rewinding to before ${JSON.stringify(pivotal_action)} to insert ${JSON.stringify(rewind_action)}`);
+
 		const new_state = this.createBlank();
 		const history = this.actionList.slice(0, action_index);
 
@@ -169,12 +175,7 @@ export class State {
 		logger.setLevel(logger.LEVELS.INFO);
 
 		// Rewrite and save as a rewind action
-		new_state.handle_action({ type: 'rewind', order, playerIndex, suitIndex, rank }, true);
-		logger.warn('Rewriting order', order, 'to', Utils.logCard({suitIndex, rank}));
-
-		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
-		pivotal_action.mistake = finessed || this.rewindDepth > 1;
-		logger.info('pivotal action', pivotal_action);
+		new_state.handle_action(rewind_action, true);
 		new_state.handle_action(pivotal_action, true);
 
 		logger.setLevel(logger.LEVELS.ERROR);

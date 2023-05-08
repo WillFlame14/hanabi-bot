@@ -71,16 +71,27 @@ export function update_turn(state, action) {
 	for (let i = 0; i < state.waiting_connections.length; i++) {
 		const { connections, focused_card, inference } = state.waiting_connections[i];
 		logger.info(`next conn ${Utils.logCard(connections[0].card)} for inference ${Utils.logCard(inference)}`);
-		const { type, reacting, card } = connections[0];
+		const { type, reacting, card: old_card } = connections[0];
+
+		// Card may have been updated, so need to find it again
+		const card = state.hands[reacting].findOrder(old_card.order);
 
 		// After the turn we were waiting for
 		if (reacting === lastPlayerIndex) {
 			// They still have the card
-			if (state.hands[reacting].findOrder(card.order) !== undefined) {
+			if (card !== undefined) {
 				// Didn't play into finesse
 				if (type === 'finesse' && state.play_stacks[card.suitIndex] + 1 === card.rank) {
 					logger.info(`Didn't play into finesse, removing inference ${Utils.logCard(inference)}`);
-					remove_finesse(state, i);
+					// remove_finesse(state, i);
+
+					const action_index = card.reasoning.pop();
+					if (action_index !== undefined) {
+						state.rewind(action_index, { type: 'ignore', order: card.order, playerIndex: reacting });
+					}
+					else {
+						logger.warn(`no reasoning on card ${Utils.logCard(card)}`);
+					}
 
 					// Flag it to be removed
 					to_remove.push(i);
@@ -97,7 +108,7 @@ export function update_turn(state, action) {
 			else {
 				// The card was played
 				if (state.last_actions[reacting].type === 'play') {
-					logger.info(`waiting card ${Utils.logCard(card)} played`);
+					logger.info(`waiting card ${Utils.logCard(old_card)} played`);
 					connections.shift();
 					if (connections.length === 0) {
 						to_remove.push(i);
@@ -115,8 +126,8 @@ export function update_turn(state, action) {
 					}
 				}
 				// The card was discarded and its copy is not visible
-				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.ourPlayerIndex, card.suitIndex, card.rank).length === 0) {
-					logger.info(`waiting card ${Utils.logCard(card)} discarded?? removing finesse`);
+				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.ourPlayerIndex, old_card.suitIndex, old_card.rank).length === 0) {
+					logger.info(`waiting card ${Utils.logCard(old_card)} discarded?? removing finesse`);
 					remove_finesse(state, i);
 
 					// Flag it to be removed

@@ -4,7 +4,11 @@ import { ACTION, CLUE } from './constants.js';
 import logger from './logger.js';
 import { shortForms } from './variants.js';
 
-/** @typedef {import('./basics/Hand.js').Hand} Hand */
+/**
+ * @typedef {import('./basics/Hand.js').Hand} Hand
+ * @typedef {import('./types.js').Clue} Clue
+ * @typedef {import('./types.js').PerformAction} PerformAction
+ */
 
 const globals = {};
 
@@ -142,10 +146,14 @@ export function objPick(obj, attributes) {
 /**
  * Returns the "maximum" object in an array based on a value function.
  * @template T
- * @param  {T[]} arr 					The array of objects.
+ * @param  {T[]} arr 						The array of objects.
  * @param  {(obj: T) => number} valueFunc	A function that takes in an object and returns its value.
  */
 export function maxOn(arr, valueFunc) {
+	if (arr.length === 0) {
+		return undefined;
+	}
+
 	let max_value = valueFunc(arr[0]), max = arr[0];
 
 	for (let i = 0; i < arr.length; i++) {
@@ -252,13 +260,13 @@ export function logHand(hand) {
 
 /**
  * Returns a log-friendly representation of a clue.
- * @param {import('./types.js').Clue} clue
+ * @param {Clue | PerformAction} clue
  */
 export function logClue(clue) {
 	if (clue === undefined) {
 		return;
 	}
-	const value = [CLUE.COLOUR, ACTION.COLOUR].includes(clue.type) ? globals.state.suits[clue.value].toLowerCase() : clue.value;
+	const value = (clue.type === CLUE.COLOUR || clue.type === ACTION.COLOUR) ? globals.state.suits[clue.value].toLowerCase() : clue.value;
 
 	return `(${value} to ${globals.state.playerNames[clue.target]})`;
 }
@@ -303,4 +311,15 @@ export function writeNote(turn, card, tableID) {
 
 		setTimeout(() => sendCmd('note', { tableID, order: card.order, note: card.full_note }), Math.random() * 3000);
 	}
+}
+
+/**
+ * Transforms a CLUE into an ACTION.
+ * @param  {Clue} clue
+ * @param  {number} tableID
+ * @return {PerformAction}
+ */
+export function clueToAction(clue, tableID) {
+	const { type, value, target } = clue;
+	return { tableID, type: /** @type {ACTION[keyof ACTION]} */ (type + 2), value, target };
 }

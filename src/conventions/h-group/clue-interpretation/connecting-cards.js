@@ -1,4 +1,5 @@
 import { cardCount } from '../../../variants.js';
+import { LEVEL } from '../h-constants.js';
 import { find_prompt, find_finesse } from '../hanabi-logic.js';
 import { card_elim } from '../../../basics.js';
 import { playableAway } from '../../../basics/hanabi-util.js';
@@ -64,6 +65,8 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 		return;
 	}
 
+	ignoreOrders = ignoreOrders.concat(state.next_ignore);
+
 	for (let i = 0; i < state.numPlayers; i++) {
 		// Prioritize other players' hands first, since those are known
 		const playerIndex = (state.ourPlayerIndex + 1 + i) % state.numPlayers;
@@ -109,18 +112,32 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 			if (prompt !== undefined) {
 				if (prompt.matches(suitIndex, rank)) {
 					logger.info(`found prompt ${Utils.logCard(prompt)} in ${state.playerNames[i]}'s hand`);
-					return { type: 'prompt', reacting: i, card: prompt, self: false };
+					return { type: 'prompt', reacting: i, card: prompt };
 				}
-				logger.debug(`wrong prompt on ${Utils.logCard(prompt)}`);
-			}
-			else if (finesse?.matches(suitIndex, rank)) {
-				// If target is after giver, then finesse must be in between. Otherwise, finesse must be outside.
-				if (state.level === 1 && !inBetween(state.numPlayers, i, giver, target)) {
-					logger.warn(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand, but not between giver and target`);
+
+				// Prompted card is delayed playable (must be in the player's hand who actually has the card)
+				if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank && hand.some(c => c.matches(suitIndex, rank))) {
+					return { type: 'prompt', reacting: i, card: prompt, hidden: true };
+				}
+				else {
+					logger.info(`wrong prompt on ${Utils.logCard(prompt)}`);
 					continue;
 				}
-				logger.info(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand`);
-				return { type: 'finesse', reacting: i, card: finesse, self: false };
+			}
+			else if (finesse !== undefined) {
+				if (finesse.matches(suitIndex, rank)) {
+					// At level 1, only forward finesses are allowed.
+					if (state.level === 1 && !inBetween(state.numPlayers, i, giver, target)) {
+						logger.warn(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand, but not between giver and target`);
+						continue;
+					}
+					logger.info(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[i]}'s hand`);
+					return { type: 'finesse', reacting: i, card: finesse };
+				}
+				// Finessed card is delayed playable
+				else if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank && hand.some(c => c.matches(suitIndex, rank))) {
+					return { type: 'finesse', reacting: i, card: finesse, hidden: true };
+				}
 			}
 		}
 	}

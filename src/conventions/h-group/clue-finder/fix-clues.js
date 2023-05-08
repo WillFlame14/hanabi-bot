@@ -8,6 +8,7 @@ import * as Utils from '../../../util.js';
  * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
+ * @typedef {import('../../../types.js').SaveClue} SaveClue
  * @typedef {import('../../../types.js').FixClue} FixClue
  */
 
@@ -16,22 +17,20 @@ import * as Utils from '../../../util.js';
  * as they might be able to elim fix at the same time.
  * @param {State} state
  * @param {Clue[][]} play_clues
- * @param {Clue[]} save_clues
+ * @param {SaveClue[]} save_clues
  * @param {{ignorePlayerIndex?: number}} options
  */
 export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 	/** @type {FixClue[][]} */
 	const fix_clues = [];
+	const duplicated_cards = [];
 
-	for (let target = 0; target < state.numPlayers; target++) {
+	// Skip ourselves
+	for (let i = 1; i < state.numPlayers; i++) {
+		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 		fix_clues[target] = [];
 
-		if (state.level <= LEVEL.FIX) {
-			continue;
-		}
-
-		// Ignore our own hand
-		if (target === state.ourPlayerIndex || target === options.ignorePlayerIndex) {
+		if (state.level <= LEVEL.FIX || target === options.ignorePlayerIndex) {
 			continue;
 		}
 
@@ -71,38 +70,32 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 				if (wrong_inference) {
 					fix_criteria = inference_corrected;
 				}
-				else if (unknown_duplicated) {
+				// We only want to give a fix clue to the player whose turn comes sooner
+				else if (unknown_duplicated && !duplicated_cards.some(c => c.matches(card.suitIndex, card.rank))) {
 					fix_criteria = duplication_known;
+					duplicated_cards.push(card);
 				}
 
 				// Card doesn't match any inferences and seems playable but isn't (need to fix)
-				if (wrong_inference || unknown_duplicated) {
+				if (fix_criteria !== undefined) {
 					let found_clue = false;
 
-					const other_clues = Utils.objClone(play_clues[target]);
-
-					// Try the save clue as well if it exists
-					if (save_clues[target] !== undefined) {
-						other_clues.push(save_clues[target]);
-					}
+					// Try all play clues and save clue if it exists
+					const other_clues = play_clues[target].concat(save_clues[target] !== undefined ? [save_clues[target]] : []);
 
 					// Go through all other clues to see if one fixes
 					for (const clue of other_clues) {
-						// Convert clue type from ACTION to CLUE
-						const clue_copy = Utils.objClone(clue);
-						clue_copy.type -= 2;
-
 						// The clue cannot touch the fixed card or it will look like just a fix
-						if (hand.clueTouched(state.suits, clue_copy).some(c => c.order === card.order)) {
+						if (hand.clueTouched(state.suits, clue).some(c => c.order === card.order)) {
 							continue;
 						}
 
-						const { fixed, trash } = check_fixed(state, target, card, clue_copy, fix_criteria);
+						const { fixed, trash } = check_fixed(state, target, card, clue, fix_criteria);
 
 						if (fixed) {
 							// TODO: Find the highest value play clue
 							// logger.info(`found fix ${Utils.logClue(clue)} for card ${Utils.logCard(card)} to inferences [${card_after_cluing.inferred.map(c => Utils.logCard(c)).join(',')}]`);
-							fix_clues[target].push(Object.assign(clue, { trash, urgent: seems_playable }));
+							fix_clues[target].push(Object.assign({}, clue, { trash, urgent: seems_playable }));
 							found_clue = true;
 							break;
 						}
@@ -113,12 +106,13 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 					}
 
 					const possible_clues = direct_clues(state, target, card);
-					const fix_clue = possible_clues.find(clue => check_fixed(state, target, card, clue, fix_criteria).fixed);
+					for (const clue of possible_clues) {
+						const { fixed, trash } = check_fixed(state, target, card, clue, fix_criteria);
 
-					if (fix_clue !== undefined) {
-						// Change type from CLUE to ACTION
-						fix_clue.type += 2;
-						fix_clues[target].push(Object.assign(fix_clue, { trash: fix_clue.trash, urgent: seems_playable }));
+						if (fixed) {
+							fix_clues[target].push(Object.assign(clue, { trash, urgent: seems_playable }));
+							break;
+						}
 					}
 				}
 			}
@@ -159,7 +153,7 @@ function check_fixed(state, target, card, clue, fix_criteria) {
 	const hand = state.hands[target];
 	const touch = hand.clueTouched(state.suits, clue);
 
-	const action = Object.freeze({ type: 'clue', giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue });
+	const action =  /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue });
 
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();
@@ -169,7 +163,7 @@ function check_fixed(state, target, card, clue, fix_criteria) {
 
 	const result = {
 		fixed: fix_criteria(hypo_state, card_after_cluing, target),
-		trash: card.possible.every(p => isTrash(hypo_state, target, p.suitIndex, p.rank, card_after_cluing.order))
+		trash: card_after_cluing.possible.every(p => isTrash(hypo_state, target, p.suitIndex, p.rank, card_after_cluing.order))
 	};
 
 	logger.flush(result.fixed);

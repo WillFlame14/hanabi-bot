@@ -38,7 +38,7 @@ export function interpret_tcm(state, target) {
 			cm_cards.push(Utils.logCard(card));
 		}
 	}
-	logger.info(cm_cards.length === 0 ? 'no cards to tcm' : `trash chop move on ${cm_cards.join(',')}`);
+	logger.warn(cm_cards.length === 0 ? 'no cards to tcm' : `trash chop move on ${cm_cards.join(',')}`);
 }
 
 /**
@@ -50,7 +50,7 @@ export function interpret_tcm(state, target) {
 export function interpret_5cm(state, target) {
 	logger.info('interpreting potential 5cm');
 	const hand = state.hands[target];
-	const chopIndex = find_chop(hand, { includeNew: true });
+	const chopIndex = find_chop(hand);
 
 	// Find the oldest 5 clued and its distance from chop
 	let distance_from_chop = 0;

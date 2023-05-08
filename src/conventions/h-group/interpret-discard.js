@@ -1,5 +1,6 @@
 import { Card } from '../../basics/Card.js';
-import { isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
+import { isBasicTrash } from '../../basics/hanabi-util.js';
+import { isSaved, isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../logger.js';
 import * as Utils from '../../util.js';
 
@@ -74,22 +75,26 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
 export function interpret_discard(state, action, card) {
 	const { order, playerIndex, rank, suitIndex, failed } = action;
 
-	// Early game and discard wasn't known trash or misplay, so end early game
-	if (state.early_game && !isTrash(state, playerIndex, suitIndex, rank, order) && !action.failed) {
-		logger.warn('ending early game from discard of', Utils.logCard(card));
-		state.early_game = false;
+	// End early game?
+	if (state.early_game && !action.failed &&										// Not bombed
+		!(card.clued && isSaved(state, playerIndex, suitIndex, rank, order)) && 	// Not clued card that is duplicated
+		!card.possible.every(c => isBasicTrash(state, c.suitIndex, c.rank))) {		// Not known trash
+			logger.warn('ending early game from discard of', Utils.logCard(card));
+			state.early_game = false;
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
 	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order)))) {
 		logger.info('all inferences', card.inferred.map(c => Utils.logCard(c)));
-		if (state.rewind(card.reasoning.pop(), playerIndex, order, suitIndex, rank, card.finessed)) {
+		const action_index = card.reasoning.pop();
+		if (action_index !== undefined && state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, card.finessed)) {
 			return;
 		}
 	}
 
 	// Discarding a useful card
 	if ((card.clued || card.chop_moved || card.finessed) && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
+		logger.warn('discarded useful card!');
 		const duplicates = visibleFind(state, playerIndex, suitIndex, rank);
 
 		// Card was bombed
@@ -102,7 +107,10 @@ export function interpret_discard(state, action, card) {
 				const sarcastic = find_sarcastic(state.hands[state.ourPlayerIndex], suitIndex, rank);
 
 				if (sarcastic.length === 1) {
-					sarcastic[0].inferred = [new Card(suitIndex, rank)];
+					const action_index = card.reasoning.pop();
+					if (action_index !== undefined && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank })) {
+						return;
+					}
 				}
 				else {
 					apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);
