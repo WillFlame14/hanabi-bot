@@ -44,13 +44,15 @@ class Logger {
 
 	warn(...args) {
 		if (this.level <= this.LEVELS.WARN) {
-			this.log('\x1b[33m%s', ...args, '\x1b[0m');
+			// this.log('\x1b[33m%s', ...args, '\x1b[0m');
+			this.log(...args);
 		}
 	}
 
 	error(...args) {
 		if (this.level <= this.LEVELS.ERROR) {
-			this.log('\x1b[35m%s', ...args, '\x1b[0m');
+			// this.log('\x1b[35m%s', ...args, '\x1b[0m');
+			this.log(...args);
 		}
 	}
 

@@ -57,6 +57,10 @@ export function clue_safe(state, clue) {
 			finessed_card2 = hypo_state.hands[next_unoccupied2].find(c => c.finessed && playableAway(hypo_state, c.suitIndex, c.rank) === 0);
 		}
 
+		if (next_unoccupied2 === state.ourPlayerIndex) {
+			return true;
+		}
+
 		logger.info(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop but loaded,
 			next next ${state.playerNames[next_unoccupied2]} has ${chopUnsafe(hypo_state, next_unoccupied2) ? 'unsafe' : 'safe'} chop with ${hypo_state.clue_tokens} clues`);
 

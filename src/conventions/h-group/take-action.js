@@ -55,21 +55,6 @@ export function take_action(state) {
 
 	logger.info('all urgent actions', urgent_actions);
 
-	// Unlock next player
-	if (urgent_actions[0].length > 0) {
-		return urgent_actions[0][0];
-	}
-
-	// Urgent save for next player
-	if (state.clue_tokens > 0) {
-		for (let i = 1; i < 4; i++) {
-			const actions = urgent_actions[i];
-			if (actions.length > 0) {
-				return actions[0];
-			}
-		}
-	}
-
 	const priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 
 	let best_playable_card;
@@ -87,6 +72,21 @@ export function take_action(state) {
 	// Playing into finesse/bluff
 	if (playable_cards.length > 0 && priority === 0) {
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
+	}
+
+	// Unlock next player
+	if (urgent_actions[0].length > 0) {
+		return urgent_actions[0][0];
+	}
+
+	// Urgent save for next player
+	if (state.clue_tokens > 0) {
+		for (let i = 1; i < 4; i++) {
+			const actions = urgent_actions[i];
+			if (actions.length > 0) {
+				return actions[0];
+			}
+		}
 	}
 
 	// Get a high value play clue
