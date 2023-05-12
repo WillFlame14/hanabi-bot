@@ -12,6 +12,7 @@ import * as Utils from '../../util.js';
 /**
  * @typedef {import('../h-group.js').default} State
  * @typedef {import('../../basics/Hand.js').Hand} Hand
+ * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').PerformAction} PerformAction
  */
 
@@ -57,16 +58,22 @@ export function take_action(state) {
 
 	const priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 
+	/** @type {Card} */
 	let best_playable_card;
 	if (priority !== -1) {
 		// Play unknown 1s in the correct order
 		if (priority === 4 && state.level >= 3) {
 			const ordered_1s = order_1s(state, playable_priorities[4]);
 			if (ordered_1s.length > 0) {
-				best_playable_card = order_1s[0];
+				best_playable_card = ordered_1s[0];
 			}
 		}
-		best_playable_card = playable_priorities[priority][0];
+
+		if (best_playable_card === undefined) {
+			best_playable_card = playable_priorities[priority][0];
+		}
+
+		logger.info(`best playable card is order ${best_playable_card.order}, inferences ${best_playable_card.inferred.map(c => Utils.logCard(c))}`);
 	}
 
 	// Playing into finesse/bluff

@@ -28,7 +28,7 @@ export function clue_safe(state, clue) {
 
 	// Find the next player without a playable finessed card
 	while (finessed_card && next_unoccupied !== state.ourPlayerIndex) {
-		next_unoccupied++;
+		next_unoccupied = (next_unoccupied + 1) % state.numPlayers;
 		hypo_state.play_stacks[finessed_card.suitIndex]++;
 		finessed_card = hypo_state.hands[next_unoccupied].find(c => c.finessed && playableAway(hypo_state, c.suitIndex, c.rank) === 0);
 	}
@@ -52,7 +52,7 @@ export function clue_safe(state, clue) {
 
 		// Find the next next player without a playable finessed card
 		while (finessed_card2 && next_unoccupied2 !== state.ourPlayerIndex) {
-			next_unoccupied2++;
+			next_unoccupied2 = (next_unoccupied2 + 1) % state.numPlayers;
 			hypo_state.play_stacks[finessed_card2.suitIndex]++;
 			finessed_card2 = hypo_state.hands[next_unoccupied2].find(c => c.finessed && playableAway(hypo_state, c.suitIndex, c.rank) === 0);
 		}
