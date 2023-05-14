@@ -26,8 +26,18 @@ const settings = {
 export const handle = {
 	// Received when any message in chat is sent
 	chat: (data) => {
-		// We only care about private messages to us
-		if (data.recipient === self.username) {
+		// Sent in room
+		if (data.recipient === '' && data.room.startsWith('table')) {
+			if (data.msg.startsWith('/setall')) {
+				assignSettings(data, false);
+			}
+			else if (data.msg.startsWith('/leaveall')) {
+				Utils.sendCmd('tableLeave', { tableID: state.tableID });
+				gameStarted = false;
+			}
+		}
+		// Private messages to us
+		else if (data.recipient === self.username) {
 			// Invites the bot to a lobby (format: /join [password])
 			if (data.msg.startsWith('/join')) {
 				// Find the table with the user that invited us
@@ -45,7 +55,7 @@ export const handle = {
 				}
 
 				// Table not found
-				Utils.sendChat(data.who, 'Could not join. Check that the room is not full and the game has not started.');
+				Utils.sendPM(data.who, 'Could not join. Check that the room is not full and the game has not started.');
 			}
 			// Readds the bot to a game (format: /rejoin)
 			else if (data.msg.startsWith('/rejoin')) {
@@ -53,7 +63,7 @@ export const handle = {
 				for (const table of Object.values(tables)) {
 					if (table && !table.sharedReplay && (table.players.includes(data.who) || table.spectators.some(spec => spec.name === data.who))) {
 						if (!table.players.includes(self.username)) {
-							Utils.sendChat(data.who, 'Could not join, as the bot was never a player in this room.');
+							Utils.sendPM(data.who, 'Could not join, as the bot was never a player in this room.');
 							return;
 						}
 
@@ -64,11 +74,12 @@ export const handle = {
 				}
 
 				// Table not found
-				Utils.sendChat(data.who, 'Could not rejoin, as you are not in a room.');
+				Utils.sendPM(data.who, 'Could not rejoin, as you are not in a room.');
 			}
 			// Kicks the bot from a game (format: /leave)
 			else if (data.msg.startsWith('/leave')) {
-				Utils.sendCmd('tableUnattend', { tableID: state.tableID });
+				Utils.sendCmd('tableLeave', { tableID: state.tableID });
+				gameStarted = false;
 			}
 			// Creates a new table (format: /create <name> <maxPlayers> <password>)
 			else if (data.msg.startsWith('/create')) {
@@ -89,32 +100,7 @@ export const handle = {
 			}
 			// Displays or modifies the current settings (format: /settings [convention = 'HGroup'] [level = 1])
 			else if (data.msg.startsWith('/settings')) {
-				const parts = data.msg.split(' ');
-
-				if (parts.length > 1) {
-					if (gameStarted) {
-						Utils.sendChat(data.who, 'Settings cannot be modified in the middle of a game.');
-					}
-					else {
-						if (conventions[parts[1]]) {
-							settings.convention = parts[1];
-
-							if (settings.convention === 'HGroup' && (parts.length === 2 || !isNaN(Number(parts[2])))) {
-								const level = Number(parts[2]) || 1;
-
-								if (level <= 0 || level > 5) {
-									Utils.sendChat(data.who, 'This bot can currently only play between levels 1 and 5.');
-								}
-								settings.level = Math.max(Math.min(level, 5), 1);
-							}
-						}
-						else {
-							Utils.sendChat(data.who, `Correct format is /settings [convention = 'HGroup'] [level = 1].`);
-						}
-					}
-				}
-				const settingsString = (settings.convention === 'HGroup') ? `H-Group level ${settings.level}` : 'Referential Sieve';
-				Utils.sendChat(data.who, `Currently playing with ${settingsString} conventions.`);
+				assignSettings(data, true);
 			}
 		}
 	},
@@ -184,3 +170,34 @@ export const handle = {
 	// Received when we first register a websocket
 	welcome: (data) => { self = data; },
 };
+
+function assignSettings(data, priv) {
+	const parts = data.msg.split(' ');
+
+	const reply = priv ? (msg) => Utils.sendPM(data.who, msg) : (msg) => Utils.sendChat(state.tableID, msg);
+
+	if (parts.length > 1) {
+		if (gameStarted) {
+			reply('Settings cannot be modified in the middle of a game.');
+		}
+		else {
+			if (conventions[parts[1]]) {
+				settings.convention = parts[1];
+
+				if (settings.convention === 'HGroup' && (parts.length === 2 || !isNaN(Number(parts[2])))) {
+					const level = Number(parts[2]) || 1;
+
+					if (level <= 0 || level > 5) {
+						Utils.sendPM(data.who, 'This bot can currently only play between levels 1 and 5.');
+					}
+					settings.level = Math.max(Math.min(level, 5), 1);
+				}
+			}
+			else {
+				reply(`Correct format is /settings [convention = 'HGroup'] [level = 1].`);
+			}
+		}
+	}
+	const settingsString = (settings.convention === 'HGroup') ? `H-Group level ${settings.level}` : 'Referential Sieve';
+	reply(`Currently playing with ${settingsString} conventions.`);
+}

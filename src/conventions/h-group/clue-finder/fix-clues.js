@@ -69,11 +69,13 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 				let fix_criteria;
 				if (wrong_inference) {
 					fix_criteria = inference_corrected;
+					logger.info(`card ${Utils.logCard(card)} needs fix, wrong inferences ${card.inferred.map(c => Utils.logCard(c))}`);
 				}
 				// We only want to give a fix clue to the player whose turn comes sooner
 				else if (unknown_duplicated && !duplicated_cards.some(c => c.matches(card.suitIndex, card.rank))) {
 					fix_criteria = duplication_known;
 					duplicated_cards.push(card);
+					logger.info(`card ${Utils.logCard(card)} needs fix, duplicated`);
 				}
 
 				// Card doesn't match any inferences and seems playable but isn't (need to fix)

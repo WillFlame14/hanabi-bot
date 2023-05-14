@@ -82,12 +82,21 @@ export function initConsole() {
 }
 
 /**
- * Sends a chat message in hanab.live to the recipient.
+ * Sends a private chat message in hanab.live to the recipient.
  * @param {string} recipient
  * @param {string} msg
  */
-export function sendChat(recipient, msg) {
+export function sendPM(recipient, msg) {
 	sendCmd('chatPM', { msg, recipient, room: 'lobby' });
+}
+
+/**
+ * Sends a chat message in hanab.live to the room.
+ * @param {number} tableID
+ * @param {string} msg
+ */
+export function sendChat(tableID, msg) {
+	sendCmd('chat', { msg, room: `table${tableID}` });
 }
 
 /**
