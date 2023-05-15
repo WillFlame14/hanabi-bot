@@ -33,22 +33,26 @@ function find_colour_focus(state, suitIndex, action) {
 
 	// Play clue
 	/** @type {Connection[]} */
-	const connections = [];
+	let connections = [];
 
 	// Try looking for a connecting card (other than itself)
 	const hypo_state = Utils.objClone(state);
-	const already_connected = [focused_card.order];
-	let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, already_connected);
+	let already_connected = [focused_card.order];
 
 	let finesses = 0;
 
-	while (connecting !== undefined && next_playable_rank < state.max_ranks[suitIndex]) {
-		const { type, card, hidden } = connecting;
+	while (next_playable_rank < state.max_ranks[suitIndex]) {
+		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, already_connected);
+		if (connecting.length === 0) {
+			break;
+		}
+
+		const { type, card } = connecting[0];
 
 		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
 			// e.g. If 2 reds are clued with only r5 remaining, the focus should not connect to the other card as r6
-			logger.warn(`blocked connection - focused card could be ${Utils.logCard({suitIndex, rank: next_playable_rank})}`);
+			logger.debug(`blocked connection - focused card could be ${Utils.logCard({suitIndex, rank: next_playable_rank})}`);
 			break;
 		}
 		else if (type === 'finesse') {
@@ -60,16 +64,12 @@ function find_colour_focus(state, suitIndex, action) {
 
 			// Even if a finesse is possible, it might not be a finesse
 			focus_possible.push({ suitIndex, rank: next_playable_rank, save: false, connections: Utils.objClone(connections) });
-			card.finessed = true;
 		}
 		hypo_state.play_stacks[suitIndex]++;
+		next_playable_rank++;
 
-		if (!hidden) {
-			next_playable_rank++;
-		}
-		connections.push(connecting);
-		already_connected.push(card.order);
-		connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, already_connected);
+		connections = connections.concat(connecting);
+		already_connected = already_connected.concat(connections.map(conn => conn.card.order));
 	}
 
 	// Our card could be the final rank that we can't find
@@ -124,7 +124,9 @@ function find_rank_focus(state, rank, action) {
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 		// Play clue
 		let stack_rank = state.play_stacks[suitIndex] + 1;
-		const connections = [];
+
+		/** @type {Connection[]} */
+		let connections = [];
 
 		if (rank === stack_rank) {
 			focus_possible.push({ suitIndex, rank, save: false, connections });
@@ -132,33 +134,26 @@ function find_rank_focus(state, rank, action) {
 		else if (rank > stack_rank) {
 			// Try looking for all connecting cards
 			const hypo_state = Utils.objClone(state);
-			let connecting;
-			const already_connected = [focused_card.order];
+			let already_connected = [focused_card.order];
 
 			let finesses = 0;
 
 			while (stack_rank !== rank) {
-				connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, already_connected);
-				if (connecting === undefined) {
+				const connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, already_connected);
+				if (connecting.length === 0) {
 					break;
 				}
 
-				const { type, card, hidden } = connecting;
-				connections.push(connecting);
-				already_connected.push(card.order);
-
-				if (type === 'finesse') {
-					finesses++;
-					if (state.level === 1 && finesses === 2) {
-						logger.warn('blocked double finesse at level 1');
-						break;
-					}
-					card.finessed = true;
+				finesses += connecting.filter(conn => conn.type === 'finesse').length;
+				if (state.level === 1 && finesses === 2) {
+					logger.warn('blocked double finesse at level 1');
+					break;
 				}
 
-				if (!hidden) {
-					stack_rank++;
-				}
+				connections = connections.concat(connecting);
+				already_connected = already_connected.concat(connections.map(conn => conn.card.order));
+
+				stack_rank++;
 				hypo_state.play_stacks[suitIndex]++;
 			}
 

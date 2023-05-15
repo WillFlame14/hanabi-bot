@@ -1,7 +1,7 @@
 import { CLUE } from '../../../constants.js';
 import { find_chop } from '../hanabi-logic.js';
 import { handLoaded } from '../../../basics/helper.js';
-import { isCritical, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
+import { isCritical, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 
@@ -23,36 +23,50 @@ export function clue_safe(state, clue) {
 	const list = state.hands[target].clueTouched(state.suits, clue).map(c => c.order);
 	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });	//, { simulatePlayerIndex: target });
 
-	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-	const hand = hypo_state.hands[nextPlayerIndex];
+	let next_unoccupied = (state.ourPlayerIndex + 1) % state.numPlayers;
+	let finessed_card = hypo_state.hands[next_unoccupied].find(c => c.finessed && playableAway(hypo_state, c.suitIndex, c.rank) === 0);
 
-	// They won't discard next turn
-	if (handLoaded(hypo_state, nextPlayerIndex)) {
-		return true;
+	// Find the next player without a playable finessed card
+	while (finessed_card && next_unoccupied !== state.ourPlayerIndex) {
+		next_unoccupied = (next_unoccupied + 1) % state.numPlayers;
+		hypo_state.play_stacks[finessed_card.suitIndex]++;
+		finessed_card = hypo_state.hands[next_unoccupied].find(c => c.finessed && playableAway(hypo_state, c.suitIndex, c.rank) === 0);
 	}
 
-	// Note that chop will be undefined if the entire hand is clued
-	const chop = hand[find_chop(hand, { afterClue: true })];
-	logger.debug(chop ? `chop after clue is ${Utils.logCard(chop)}` : 'no chop after clue');
-
-	let give_clue = true;
-
-	// New chop is critical
-	if (chop !== undefined && isCritical(hypo_state, chop.suitIndex, chop.rank)) {
-		// No time to give second save
-		if (state.clue_tokens === 1) {
-			logger.error(`Not giving clue ${Utils.logClue(clue)}, as ${Utils.logCard(chop)} is critical.`);
-			give_clue = false;
+	// If everyone has a finessed card and it loops back to us, we assume we are fine. (TODO: Possibly allow someone to scream?)
+	if (next_unoccupied !== state.ourPlayerIndex) {
+		// Not dangerous, clue is fine to give
+		if (!chopUnsafe(hypo_state, next_unoccupied)) {
+			return true;
 		}
-	}
 
-	// Locked hand and no clues
-	if (chop === undefined && hypo_state.clue_tokens === 0) {
-		logger.error(`Not giving clue ${Utils.logClue(clue)}, as hand would be locked with no clues.`);
-		give_clue = false;
-	}
+		// Dangerous and not loaded, clue is not fine
+		if (!handLoaded(hypo_state, next_unoccupied)) {
+			logger.warn(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop and not loaded`);
+			return false;
+		}
 
-	return give_clue;
+		// Dangerous and loaded
+		let next_unoccupied2 = (next_unoccupied + 1) % state.numPlayers;
+		let finessed_card2 = hypo_state.hands[next_unoccupied2].find(c => c.finessed && playableAway(hypo_state, c.suitIndex, c.rank) === 0);
+
+		// Find the next next player without a playable finessed card
+		while (finessed_card2 && next_unoccupied2 !== state.ourPlayerIndex) {
+			next_unoccupied2 = (next_unoccupied2 + 1) % state.numPlayers;
+			hypo_state.play_stacks[finessed_card2.suitIndex]++;
+			finessed_card2 = hypo_state.hands[next_unoccupied2].find(c => c.finessed && playableAway(hypo_state, c.suitIndex, c.rank) === 0);
+		}
+
+		if (next_unoccupied2 === state.ourPlayerIndex) {
+			return true;
+		}
+
+		logger.info(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop but loaded, next next ${state.playerNames[next_unoccupied2]} has ${chopUnsafe(hypo_state, next_unoccupied2) ? 'unsafe' : 'safe'} chop with ${hypo_state.clue_tokens} clues`);
+
+		// Safe chop or can be saved
+		return !chopUnsafe(hypo_state, next_unoccupied2) || hypo_state.clue_tokens > 0;
+	}
+	return true;
 }
 
 /**
@@ -108,4 +122,13 @@ export function save2(state, target, card) {
 
 	const clue = { type: CLUE.RANK, value: 2, target };
 	return unique2(state, card) && clue_safe(state, clue);
+}
+
+export function chopUnsafe(state, playerIndex) {
+	// Note that chop will be undefined if the entire hand is clued
+	const hand = state.hands[playerIndex];
+	const chop = hand[find_chop(hand, { afterClue: true })];
+
+	return (chop && isCritical(state, chop.suitIndex, chop.rank) && !unique2(state, chop)) ||	// Crit or unique 2 on chop
+			(state.clue_tokens === 0 && chop === undefined);									// Locked with no clue tokens (TODO: See if a 5 can be played?)
 }

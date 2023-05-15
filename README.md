@@ -29,7 +29,11 @@ Send a PM to the bot on hanab.live (`/pm <HANABI_USERNAME> <message>`) to intera
 - `/leave` to kick the bot from your table.
 - `/create <name> <maxPlayers> <password>` to have the bot create a table. The name can't have spaces.
 - `/start` to have the bot start the game (only works if it created the table).
-- `/settings [conventions='HGroup'] [level]` to set or view the bot's conventions and level. The bot plays with H-Group conventions at level 1 by default.
+- `/settings [conventions=HGroup] [level]` to set or view the bot's conventions and level. The bot plays with H-Group conventions at level 1 by default.
 - `/restart` and `remake` to perform the corresponding actions in the current room after the game has finished.
+
+Some commands can be sent inside a room to affect all bots that have joined.
+- `/setall [conventions=HGroup] [level]` to set conventions and level for all bots.
+- `/leaveall` to kick all bots from the table.
 
 Feel free to report any issues [here](https://github.com/WillFlame14/hanabi-bot/issues)!

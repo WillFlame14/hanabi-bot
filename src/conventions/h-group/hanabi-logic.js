@@ -52,8 +52,8 @@ export function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
 			continue;
 		}
 
-		// Ignore cards that have information lock
-		if (inferred.length === 1) {
+		// Ignore cards that don't match and have information lock
+		if (inferred.length === 1 && !(inferred[0].suitIndex === suitIndex && inferred[0].rank === rank)) {
 			continue;
 		}
 
@@ -71,26 +71,11 @@ export function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
 /**
  * Finds a finesse in the hand for the given suitIndex and rank.
  * @param {Hand} hand
- * @param {number} suitIndex
- * @param {number} rank
  * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
- * @returns {Card | undefined}	The prompted card, or undefined if no card is a valid finesse.
+ * @returns {Card}		The card on finesse position, or undefined if there is none.
  */
-export function find_finesse(hand, suitIndex, rank, ignoreOrders = []) {
-	for (const card of hand) {
-		// Ignore clued and finessed cards (also intentionally ignored cards)
-		if (card.clued || card.finessed || ignoreOrders.includes(card.order)) {
-			continue;
-		}
-
-		// Ignore cards that don't match the inference
-		if (!card.inferred.some(p => p.matches(suitIndex, rank))) {
-			continue;
-		}
-
-		return card;
-	}
-	return;
+export function find_finesse(hand, ignoreOrders = []) {
+	return hand.find(card => !card.clued && !card.finessed && !ignoreOrders.includes(card.order));
 }
 
 /**
