@@ -194,7 +194,7 @@ function assignSettings(data, priv) {
 				}
 			}
 			else {
-				reply(`Correct format is /settings [convention = 'HGroup'] [level = 1].`);
+				reply(`Format is ${priv ? '/settings' : '/setall'} [convention=HGroup] [level=1]. For example, try '${priv ? '/settings' : '/setall'} HGroup 1'.`);
 			}
 		}
 	}
