@@ -106,6 +106,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 
 		// Prompted card is delayed playable
 		if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank) {
+			logger.info(`found playable prompt ${Utils.logCard(prompt)} in ${state.playerNames[playerIndex]}'s hand`)
 			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true };
 		}
 		else {
@@ -125,6 +126,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 		}
 		// Finessed card is delayed playable
 		else if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
+			logger.info(`found playable finesse ${Utils.logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand`);
 			return { type: 'finesse', reacting: playerIndex, card: finesse, hidden: true };
 		}
 	}
@@ -190,8 +192,13 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 			}
 
 			// The final card must not be hidden
-			if (connections.length > 0 && !connections.at(-1).hidden) {
-				return connections;
+			if (connections.length > 0){
+				if (!connections.at(-1).hidden) {
+					return connections;
+				}
+				else {
+					logger.info(`couldn't finish layered finesse`);
+				}
 			}
 		}
 	}

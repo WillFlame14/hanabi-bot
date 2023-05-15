@@ -61,8 +61,7 @@ export function clue_safe(state, clue) {
 			return true;
 		}
 
-		logger.info(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop but loaded,
-			next next ${state.playerNames[next_unoccupied2]} has ${chopUnsafe(hypo_state, next_unoccupied2) ? 'unsafe' : 'safe'} chop with ${hypo_state.clue_tokens} clues`);
+		logger.info(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop but loaded, next next ${state.playerNames[next_unoccupied2]} has ${chopUnsafe(hypo_state, next_unoccupied2) ? 'unsafe' : 'safe'} chop with ${hypo_state.clue_tokens} clues`);
 
 		// Safe chop or can be saved
 		return !chopUnsafe(hypo_state, next_unoccupied2) || hypo_state.clue_tokens > 0;

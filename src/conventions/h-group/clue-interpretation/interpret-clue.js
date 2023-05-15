@@ -238,7 +238,7 @@ export function interpret_clue(state, action) {
 
 			for (const { connections, conn_suit } of all_connections) {
 				assign_connections(state, connections, conn_suit);
-				const inference_rank = state.play_stacks[conn_suit] + 1 + connections.length;
+				const inference_rank = state.play_stacks[conn_suit] + 1 + connections.filter(conn => !conn.hidden).length;
 
 				// Add inference to focused card
 				focused_card.union('inferred', [new Card(conn_suit, inference_rank)]);
@@ -253,6 +253,8 @@ export function interpret_clue(state, action) {
 					state.waiting_connections.push({ connections, focused_card, inference });
 				}
 			}
+
+			state.hands.forEach(hand => hand.forEach(card => card.superposition = false));
 		}
 	}
 	logger.info('final inference on focused card', focused_card.inferred.map(c => Utils.logCard(c)).join(','));
@@ -295,7 +297,7 @@ function team_elim(state, focused_card, giver, target, suitIndex, rank) {
 function assign_connections(state, connections, suitIndex) {
 	let next_rank = state.play_stacks[suitIndex] + 1;
 	for (const connection of connections) {
-		const { type, reacting, self } = connection;
+		const { type, reacting, self, hidden } = connection;
 		// The connections can be cloned, so need to modify the card directly
 		const card = state.hands[reacting].findOrder(connection.card.order);
 
@@ -303,13 +305,22 @@ function assign_connections(state, connections, suitIndex) {
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		card.old_inferred = Utils.objClone(card.inferred);
-		card.inferred = [new Card(suitIndex, next_rank)];
 
 		if (type === 'finesse') {
 			card.finessed = true;
 		}
 
-		next_rank++;
+		if (!hidden) {
+			// There are multiple possible connections on this card
+			if (card.superposition) {
+				card.union('inferred', [new Card(suitIndex, next_rank)]);
+			}
+			else {
+				card.inferred = [new Card(suitIndex, next_rank)];
+				card.superposition = true;
+			}
+			next_rank++;
+		}
 
 		// Updating notes not on our turn
 		// TODO: Examine why this originally had self only?
