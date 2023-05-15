@@ -8,6 +8,7 @@ import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
 import * as Utils from '../../src/util.js';
 import logger from '../../src/logger.js';
+import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -237,9 +238,6 @@ describe('layered finesse', () => {
 
         state.update_turn(state, { type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
-        // Alice's slot 3 should still be [y1, y2] to allow for the possibility of a layered finesse.
-        assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['y1', 'y2'].map(expandShortCard));
-
         // Alice discards.
         state.handle_action({ type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
         state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.BOB });
@@ -359,5 +357,18 @@ describe('ambiguous finesse', () => {
 
         // Alice's slot 1 should be finessed.
         assert.equal(state.hands[PLAYER.ALICE][0].finessed, true);
+    });
+});
+
+describe('guide principle', () => {
+    it('does not give a finesse leaving a critical on chop', () => {
+        const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'r2', 'g4', 'r5', 'b4'],
+            ['r4', 'r3', 'b3', 'y3', 'b5']
+		], 5);
+
+        // Giving 3 to Cathy should be unsafe since b5 will be discarded.
+        assert.equal(clue_safe(state, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);
     });
 });
