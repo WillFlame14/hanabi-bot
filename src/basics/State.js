@@ -165,7 +165,7 @@ export class State {
 		const new_state = this.createBlank();
 		const history = this.actionList.slice(0, action_index);
 
-		logger.setLevel(logger.LEVELS.WARN);
+		logger.setLevel(logger.LEVELS.ERROR);
 
 		// Get up to speed
 		for (const action of history) {
@@ -178,7 +178,7 @@ export class State {
 		new_state.handle_action(rewind_action, true);
 		new_state.handle_action(pivotal_action, true);
 
-		logger.setLevel(logger.LEVELS.WARN);
+		logger.setLevel(logger.LEVELS.ERROR);
 
 		// Redo all the following actions
 		const future = this.actionList.slice(action_index + 1);

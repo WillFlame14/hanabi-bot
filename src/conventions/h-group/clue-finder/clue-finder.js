@@ -178,7 +178,7 @@ export function find_clues(state, options = {}) {
 	/** @type SaveClue[] */
 	const save_clues = [];
 
-	logger.info('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
+	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
 	// Find all valid clues
 	for (let target = 0; target < state.numPlayers; target++) {
@@ -198,7 +198,7 @@ export function find_clues(state, options = {}) {
 
 		for (let cardIndex = hand.length - 1; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
-			const { suitIndex, rank, finessed } = card;
+			const { suitIndex, rank, order, finessed } = card;
 			const duplicates = visibleFind(state, state.ourPlayerIndex, suitIndex, rank);
 
 			// Ignore finessed cards (do not ignore cm'd cards), cards visible elsewhere, or cards possibly part of a finesse (that we either know for certain or in our hand)
@@ -263,6 +263,11 @@ export function find_clues(state, options = {}) {
 				}
 			}
 
+			// Ignore trash cards
+			if (isTrash(state, state.ourPlayerIndex, suitIndex, rank, order)) {
+				continue;
+			}
+
 			// Play clue
 			const clue = determine_clue(state, target, card, { excludeRank: interpreted_5cm });
 			if (clue !== undefined) {
@@ -292,8 +297,15 @@ export function find_clues(state, options = {}) {
 
 	const fix_clues = find_fix_clues(state, play_clues, save_clues, options);
 
-	logger.info('found play clues', play_clues.map(clues => clues.map(clue => Utils.logClue(clue))));
-	logger.info('found save clues', save_clues.map(clue => Utils.logClue(clue)));
-	logger.info('found fix clues', fix_clues.map(clues => clues.map(clue => Utils.logClue(clue))));
+	if (play_clues.some(clues => clues.length > 0)) {
+		logger.info('found play clues', play_clues.map(clues => clues.map(clue => Utils.logClue(clue))).flat());
+	}
+	if (save_clues.some(clue => clue !== undefined)) {
+		logger.info('found save clues', save_clues.filter(clue => clue !== undefined).map(clue => Utils.logClue(clue)));
+	}
+	if (fix_clues.some(clues => clues.length > 0)) {
+		logger.info('found fix clues', fix_clues.map(clues => clues.map(clue => Utils.logClue(clue))).flat());
+	}
+
 	return { play_clues, save_clues, fix_clues };
 }

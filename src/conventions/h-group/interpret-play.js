@@ -35,7 +35,7 @@ function check_ocm(state, action) {
 				const chopIndex = find_chop(target_hand);
 
 				if (chopIndex === -1) {
-					logger.error(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
+					logger.warn(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
 				}
 				else {
 					target_hand[chopIndex].chop_moved = true;

@@ -153,7 +153,7 @@ export function find_known_trash(state, playerIndex) {
 
 		// Every possibility is trash or known duplicated somewhere
 		if (possibilities.every(c => isBasicTrash(state, c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
-			logger.info(`order ${card.order} is trash, possibilities ${possibilities.map(c => Utils.logCard(c)).join()}, results ${possibilities.map(c => isBasicTrash(state, c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
+			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => Utils.logCard(c)).join()}, results ${possibilities.map(c => isBasicTrash(state, c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
 			trash.push(card);
 		}
 	}
@@ -261,7 +261,6 @@ export function update_hypo_stacks(state) {
 
 					good_touch_elim.push(card);
 					found_new_playable = true;
-					logger.debug(`found new playable ${Utils.logCard(card)}`);
 				}
 			}
 		}

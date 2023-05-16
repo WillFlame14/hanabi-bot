@@ -91,7 +91,7 @@ export function interpret_clue(state, action) {
 
 	if (focused_card.inferred.length === 0) {
 		focused_card.inferred = Utils.objClone(focused_card.possible);
-		logger.error('focused card had no inferences after applying good touch');
+		logger.warn('focused card had no inferences after applying good touch');
 	}
 
 	logger.debug('pre-inferences', focused_card.inferred.map(c => Utils.logCard(c)).join());
@@ -133,13 +133,13 @@ export function interpret_clue(state, action) {
 	}
 
 	const focus_possible = find_focus_possible(state, action);
-	logger.info('focus possible', focus_possible.map(p => Utils.logCard(p)).join(','));
+	logger.info(`focus possible: [focus_possible.map(p => Utils.logCard(p)).join(',')]`);
 
 	const matched_inferences = focus_possible.filter(p => focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank)));
 	const matched_correct = target === state.ourPlayerIndex || matched_inferences.some(p => focused_card.matches(p.suitIndex, p.rank));
 
 	// Card matches an inference and not a save/stall
-	// If we know the identity of the card, one of the matched inferences must also be correct.
+	// If we know the identity of the card, one of the matched inferences must also be correct before we can give this clue.
 	if (matched_inferences.length >= 1 && matched_correct) {
 		focused_card.intersect('inferred', focus_possible);
 
@@ -233,7 +233,6 @@ export function interpret_clue(state, action) {
 			}
 		}
 		else {
-			logger.info('playable!');
 			focused_card.inferred = [];
 
 			for (const { connections, conn_suit } of all_connections) {
@@ -257,7 +256,7 @@ export function interpret_clue(state, action) {
 			state.hands.forEach(hand => hand.forEach(card => card.superposition = false));
 		}
 	}
-	logger.info('final inference on focused card', focused_card.inferred.map(c => Utils.logCard(c)).join(','));
+	logger.highlight('blue', 'final inference on focused card', focused_card.inferred.map(c => Utils.logCard(c)).join(','));
 	logger.debug('hand state after clue', Utils.logHand(state.hands[target]));
 	update_hypo_stacks(state);
 }

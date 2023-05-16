@@ -199,7 +199,7 @@ function find_rank_focus(state, rank, action) {
  */
 export function find_focus_possible(state, action) {
 	const { clue } = action;
-	logger.info('play/hypo/max stacks in clue interpretation:', state.play_stacks, state.hypo_stacks, state.max_ranks);
+	logger.debug('play/hypo/max stacks in clue interpretation:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
 	/** @type {FocusPossibility[]} */
 	let focus_possible = [];

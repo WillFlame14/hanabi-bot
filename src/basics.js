@@ -134,9 +134,6 @@ export function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
 		const inferred_count = base_count + visibleFind(state, playerIndex, suitIndex, rank).length;
 		const total_count = cardCount(state.suits[suitIndex], rank);
 
-		logger.debug('checking count for card', Utils.logCard({suitIndex, rank}));
-		logger.debug(`base ${base_count} certain ${certain_count} inferred ${inferred_count} total ${total_count}`);
-
 		// Note that inferred_count >= certain_count.
 		// If all copies of a card are already visible (or there exist too many copies)
 		if (inferred_count >= total_count) {

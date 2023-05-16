@@ -8,7 +8,7 @@ class Logger {
 	level = 1;
 	accumulate = false;
 
-	/** @type {any[][]} */
+	/** @type {{colour: string, args: string[]}[]} */
 	buffer = [];
 
 	/**
@@ -21,36 +21,49 @@ class Logger {
 		this.level = level;
 	}
 
-	log(...args) {
+	log(colour, ...args) {
 		if (this.accumulate) {
-			this.buffer.push(args);
+			this.buffer.push({ colour, args });
 		}
 		else {
-			console.log(...args);
+			let colour_code = '';
+			if (colour.endsWith('b')) {
+				colour_code = `1;${COLOURS[colour.slice(0, colour.length - 1)]}`;
+			}
+			else {
+				colour_code = COLOURS[colour];
+			}
+			console.log(`\x1b[${colour_code}m%s`, ...args, '\x1b[0m');
 		}
 	}
 
 	debug(...args) {
 		if (this.level <= this.LEVELS.DEBUG) {
-			this.log('\x1b[36m%s', ...args, '\x1b[0m');
+			this.log('purple', ...args);
 		}
 	}
 
 	info(...args) {
 		if (this.level <= this.LEVELS.INFO) {
-			this.log(...args);
+			this.log('white', ...args);
+		}
+	}
+
+	highlight(colour, ...args) {
+		if (this.level <= this.LEVELS.INFO && (COLOURS[colour] || (colour.endsWith('b') && COLOURS[colour.slice(0, colour.length - 1)]))) {
+			this.log(colour, ...args);
 		}
 	}
 
 	warn(...args) {
 		if (this.level <= this.LEVELS.WARN) {
-			this.log('\x1b[33m%s', ...args, '\x1b[0m');
+			this.log('cyan', ...args);
 		}
 	}
 
 	error(...args) {
 		if (this.level <= this.LEVELS.ERROR) {
-			this.log('\x1b[35m%s', ...args, '\x1b[0m');
+			this.log('red', ...args);
 		}
 	}
 
@@ -67,15 +80,29 @@ class Logger {
 	 * @param {boolean} print 	Whether to print the logs (true) or discard them (false).
 	 */
 	flush(print = true) {
+		this.accumulate = false;
+
 		if (print) {
-			for (const args of this.buffer) {
-				console.log(...args);
+			for (const log of this.buffer) {
+				const { colour, args } = log;
+				this.log(colour, ...args);
 			}
 		}
-		this.accumulate = false;
+
 		this.buffer = [];
 	}
 }
 
 const logger = new Logger();
 export default logger;
+
+const COLOURS = /** @type {const} */ ({
+	gray: 30,
+	red: 31,
+	green: 32,
+	yellow: 33,
+	blue: 34,
+	purple: 35,
+	cyan: 36,
+	white: 37
+});

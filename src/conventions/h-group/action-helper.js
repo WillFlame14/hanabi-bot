@@ -85,8 +85,6 @@ function find_unlock(state, target) {
  * @returns {PerformAction | undefined}	The play clue to give if it exists, otherwise undefined.
  */
 function find_play_over_save(state, target, all_play_clues, locked = false) {
-	logger.debug('looking for play over save for target', state.playerNames[target]);
-
 	/** @type {Clue[]} */
 	const play_clues = [];
 
@@ -99,10 +97,6 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
 		const { playables } = clue.result;
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target).map(p => p.card);
 		const immediately_playable = target_cards.find(card => playableAway(state, card.suitIndex, card.rank) === 0);
-
-		logger.debug('examining clue', Utils.logClue(clue), 'with playables', playables.map(play => {
-			return { playerIndex: play.playerIndex, card: Utils.logCard(play.card) };
-		}));
 
 		// The card can be played without any additional help
 		if (immediately_playable !== undefined) {
@@ -229,7 +223,6 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 			if (state.clue_tokens > 1) {
 				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked(state));
 				if (play_over_save !== undefined) {
-					logger.debug('found play over save', Utils.logClue(play_over_save));
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
 					continue;
 				}
@@ -307,7 +300,6 @@ export function determine_playable_card(state, playable_cards) {
 	let min_rank = 5;
 	for (const card of playable_cards) {
 		const possibilities = card.inferred.length > 0 ? card.inferred : card.possible;
-		logger.debug(`examining card with possibilities ${possibilities.map(p => Utils.logCard(p)).join(',')}`);
 
 		// Blind play
 		if (card.finessed) {
@@ -329,21 +321,13 @@ export function determine_playable_card(state, playable_cards) {
 
 					// Connecting in own hand, demote priority to 2
 					if (target === state.ourPlayerIndex) {
-						logger.debug(`inference ${Utils.logCard(inference)} connects to own hand`);
 						priority = 2;
 					}
-					else {
-						logger.debug(`inference ${Utils.logCard(inference)} connects to other hand`);
-					}
 					break;
-				}
-				else {
-					logger.debug(`inference ${Utils.logCard(inference)} doesn't connect to ${state.playerNames[target]}`);
 				}
 			}
 
 			if (!connected) {
-				logger.debug(`inference ${Utils.logCard(inference)} doesn't connect`);
 				priority = 3;
 				break;
 			}
@@ -351,7 +335,6 @@ export function determine_playable_card(state, playable_cards) {
 
 		if (priority < 3) {
 			priorities[priority].push(card);
-			logger.debug(`connecting in ${priority === 1 ? 'other' : 'own'} hand!`);
 			continue;
 		}
 

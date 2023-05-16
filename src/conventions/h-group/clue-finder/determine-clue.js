@@ -63,11 +63,11 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();
 
-	logger.info(`------- ENTERING HYPO ${Utils.logClue(clue)} --------`);
+	logger.highlight('green', `------- ENTERING HYPO ${Utils.logClue(clue)} --------`);
 
 	const hypo_state = state.simulate_clue(action, { enableLogs: true });
 
-	logger.info('------- EXITING HYPO --------');
+	logger.highlight('green', '------- EXITING HYPO --------');
 
 	const incorrect_card = hypo_state.hands[target].find((card, index) => {
 		// The focused card must not have been reset and must match inferences
@@ -254,7 +254,7 @@ export function determine_clue(state, target, target_card, options) {
 			}),
 			remainder: chop ? remainder : 0 	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
 		};
-		logger.info('result,', result_log);
+		logger.info('result,', JSON.stringify(result_log));
 
 		results.push({ clue, touch, interpret, elim, new_touched, bad_touch, trash, finesses, playables, remainder: chop ? remainder: 0 });
 	}

@@ -59,7 +59,6 @@ export function interpret_5cm(state, target) {
 
 		// Skip previously clued cards
 		if (card.clued && !card.newly_clued) {
-			logger.info('skipping card', Utils.logCard(card));
 			continue;
 		}
 

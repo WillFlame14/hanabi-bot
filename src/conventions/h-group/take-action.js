@@ -47,14 +47,23 @@ export function take_action(state) {
 
 	// Remove trash cards from playables
 	playable_cards = playable_cards.filter(pc => !trash_cards.some(sc => sc.order === pc.order));
-	logger.info('playable cards', Utils.logHand(playable_cards));
-	logger.info('trash cards', Utils.logHand(trash_cards));
-	logger.info('discards', Utils.logHand(discards));
+
+	if (playable_cards.length > 0) {
+		logger.info('playable cards', Utils.logHand(playable_cards));
+	}
+	if (trash_cards.length > 0) {
+		logger.info('trash cards', Utils.logHand(trash_cards));
+	}
+	if (discards.length > 0) {
+		logger.info('discards', Utils.logHand(discards));
+	}
 
 	const playable_priorities = determine_playable_card(state, playable_cards);
 	const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
 
-	logger.info('all urgent actions', urgent_actions);
+	if (urgent_actions.some(actions => actions.length > 0)) {
+		logger.info('all urgent actions', urgent_actions.map((actions, index) => actions.map(action => { return { [index]: action }; })).flat());
+	}
 
 	const priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 
@@ -139,7 +148,7 @@ export function take_action(state) {
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 	}
 
-	if (state.clue_tokens > 0) {
+	if (state.clue_tokens > 0 && best_play_clue !== undefined) {
 		for (let i = 5; i < 9; i++) {
 			// Give play clue (at correct priority level)
 			if (i === (state.clue_tokens > 1 ? 5 : 8)) {
@@ -208,15 +217,7 @@ export function take_action(state) {
 function discard_chop(hand, tableID) {
 	// Nothing else to do, so discard chop
 	const chopIndex = find_chop(hand);
-	logger.debug('discarding chop index', chopIndex);
-	let discard;
-
-	if (chopIndex !== -1) {
-		discard = hand[chopIndex];
-	}
-	else {
-		discard = hand[Math.floor(Math.random() * hand.length)];
-	}
+	const discard = (chopIndex !== -1) ? hand[chopIndex] : hand[Math.floor(Math.random() * hand.length)];
 
 	return { tableID, type: ACTION.DISCARD, target: discard.order };
 }
