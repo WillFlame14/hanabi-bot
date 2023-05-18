@@ -1,6 +1,9 @@
 import * as https from 'https';
 
 import { ACTION, CLUE, END_CONDITION } from './constants.js';
+import { Card } from './basics/Card.js';
+import { Hand } from './basics/Hand.js';
+
 import HGroup from './conventions/h-group.js';
 import { fetchVariants, getVariant } from './variants.js';
 import * as Utils from './util.js';
@@ -60,15 +63,15 @@ async function main() {
 
 	const { players, deck, actions, options } = game_data;
 	const variant = await getVariant(options?.variant ?? 'No Variant');
-	const state = new HGroup(id, players, index ?? 0, variant.suits, level ?? 1);
+	const state = new HGroup(Number(id), players, Number(index) ?? 0, variant.suits, Number(level) ?? 1);
 
 	Utils.globalModify({state});
 
 	// Draw cards in starting hands
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
 		for (let i = 0; i < HAND_SIZE[state.numPlayers]; i++) {
-			const { suitIndex, rank } = deck[order];
-			state.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank });
+			const { suitIndex, rank } = playerIndex !== state.ourPlayerIndex ? deck[order] : { suitIndex: -1, rank: -1 };
+			state.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank }, true);
 			order++;
 		}
 	}
@@ -77,12 +80,12 @@ async function main() {
 
 	// Take actions
 	for (const action of actions) {
-		state.handle_action({ type: 'turn', num: turn, currentPlayerIndex });
-		state.handle_action(parse_action(state, action, currentPlayerIndex, deck));
+		state.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
+		state.handle_action(parse_action(state, action, currentPlayerIndex, deck), true);
 
 		if ((action.type === ACTION.PLAY || action.type === ACTION.DISCARD) && order < deck.length) {
-			const { suitIndex, rank } = deck[order];
-			state.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank });
+			const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
+			state.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank }, true);
 			order++;
 
 			if (order === deck.length) {
@@ -131,13 +134,19 @@ function parse_action(state, action, playerIndex, deck) {
 		}
 		case ACTION.RANK: {
 			const clue = { type: CLUE.RANK, value };
-			const list = state.hands[target].clueTouched(state.suits, clue).map(c => c.order);
+			const hand = target === state.ourPlayerIndex ?
+				new Hand(...state.hands[target].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order }))) :
+				state.hands[target];
+			const list = hand.clueTouched(state.suits, clue).map(c => c.order);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
 		case ACTION.COLOUR: {
 			const clue = { type: CLUE.COLOUR, value };
-			const list = state.hands[target].clueTouched(state.suits, clue).map(c => c.order);
+			const hand = target === state.ourPlayerIndex ?
+				new Hand(...state.hands[target].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order }))) :
+				state.hands[target];
+			const list = hand.clueTouched(state.suits, clue).map(c => c.order);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}

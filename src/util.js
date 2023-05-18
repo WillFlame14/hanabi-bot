@@ -24,7 +24,7 @@ export function globalModify(obj) {
  *	Parses the command-line arguments into an object.
  */
 export function parse_args() {
-	const args = {}, arg_lines = process.argv.slice(2);
+	const args = /** @type {Record<string, string>} */ ({}), arg_lines = process.argv.slice(2);
 
 	for (const arg_line of arg_lines) {
 		const parts = arg_line.split('=');
@@ -32,7 +32,7 @@ export function parse_args() {
 			args[parts[0]] = parts[1];
 		}
 		else {
-			args[parts[0]] = true;
+			args[parts[0]] = 'true';
 		}
 	}
 	return args;
