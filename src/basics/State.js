@@ -17,6 +17,7 @@ import * as Utils from '../util.js';
 export class State {
 	turn_count = 0;
 	clue_tokens = 8;
+	strikes = 0;
 	early_game = true;
 	rewindDepth = 0;
 
@@ -165,28 +166,24 @@ export class State {
 		const new_state = this.createBlank();
 		const history = this.actionList.slice(0, action_index);
 
-		logger.setLevel(logger.LEVELS.ERROR);
-
-		// Get up to speed
-		for (const action of history) {
-			new_state.handle_action(action, true);
-		}
-
-		logger.setLevel(logger.LEVELS.INFO);
+		logger.wrapLevel(logger.LEVELS.ERROR, () => {
+			// Get up to speed
+			for (const action of history) {
+				new_state.handle_action(action, true);
+			}
+		});
 
 		// Rewrite and save as a rewind action
 		new_state.handle_action(rewind_action, true);
 		new_state.handle_action(pivotal_action, true);
 
-		logger.setLevel(logger.LEVELS.ERROR);
-
-		// Redo all the following actions
-		const future = this.actionList.slice(action_index + 1);
-		for (const action of future) {
-			new_state.handle_action(action, true);
-		}
-
-		logger.setLevel(logger.LEVELS.INFO);
+		logger.wrapLevel(logger.LEVELS.ERROR, () => {
+			// Redo all the following actions
+			const future = this.actionList.slice(action_index + 1);
+			for (const action of future) {
+				new_state.handle_action(action, true);
+			}
+		});
 
 		// Overwrite state
 		Object.assign(this, new_state);
@@ -211,12 +208,9 @@ export class State {
 			hypo_state.ourPlayerIndex = options.simulatePlayerIndex;
 		}
 
-		if (!options.enableLogs) {
-			logger.setLevel(logger.LEVELS.ERROR);
-		}
-
-		hypo_state.interpret_clue(hypo_state, action);
-		logger.setLevel(logger.LEVELS.INFO);
+		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
+			hypo_state.interpret_clue(hypo_state, action);
+		});
 
 		return hypo_state;
 	}

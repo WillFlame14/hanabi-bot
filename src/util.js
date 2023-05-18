@@ -21,6 +21,25 @@ export function globalModify(obj) {
 }
 
 /**
+ *	Parses the command-line arguments into an object.
+ */
+export function parse_args() {
+	const args = {}, arg_lines = process.argv.slice(2);
+
+	for (const arg_line of arg_lines) {
+		const parts = arg_line.split('=');
+		if (parts.length === 2 && arg_line.length >= 3) {
+			args[parts[0]] = parts[1];
+		}
+		else {
+			args[parts[0]] = true;
+		}
+	}
+	return args;
+}
+
+
+/**
  * Initializes the console interactivity with the game state.
  */
 export function initConsole() {

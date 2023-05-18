@@ -133,7 +133,7 @@ export function interpret_clue(state, action) {
 	}
 
 	const focus_possible = find_focus_possible(state, action);
-	logger.info(`focus possible: [focus_possible.map(p => Utils.logCard(p)).join(',')]`);
+	logger.info(`focus possible: [${focus_possible.map(p => Utils.logCard(p)).join(',')}]`);
 
 	const matched_inferences = focus_possible.filter(p => focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank)));
 	const matched_correct = target === state.ourPlayerIndex || matched_inferences.some(p => focused_card.matches(p.suitIndex, p.rank));

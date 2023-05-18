@@ -9,21 +9,6 @@ import { fetchVariants } from './variants.js';
 import * as Utils from './util.js';
 
 /**
- *	Parses the command-line arguments into an object.
- */
-function parse_args() {
-	const args = {}, arg_lines = process.argv.slice(2);
-
-	for (const arg_line of arg_lines) {
-		const parts = arg_line.split('=');
-		if (parts.length === 2 && arg_line.length >= 3) {
-			args[parts[0]] = parts[1];
-		}
-	}
-	return args;
-}
-
-/**
  * Logs in to hanab.live and returns the session cookie to authenticate future requests.
  */
 function connect(bot_index = '') {
@@ -61,8 +46,7 @@ function connect(bot_index = '') {
 		});
 
 		req.on('error', (error) => {
-			console.log('Request error:', error);
-			reject();
+			reject(`Request error: ${error}`);
 			return;
 		});
 
@@ -73,7 +57,7 @@ function connect(bot_index = '') {
 }
 
 async function main() {
-	const args = parse_args();
+	const args = Utils.parse_args();
 
 	let cookie = connect(args.index);
 	fetchVariants();

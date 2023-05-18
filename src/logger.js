@@ -21,6 +21,13 @@ class Logger {
 		this.level = level;
 	}
 
+	wrapLevel(level, func) {
+		const last_level = this.level;
+		this.level = level;
+		func();
+		this.level = last_level;
+	}
+
 	log(colour, ...args) {
 		if (this.accumulate) {
 			this.buffer.push({ colour, args });

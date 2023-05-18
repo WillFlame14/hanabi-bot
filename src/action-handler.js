@@ -1,4 +1,4 @@
-import { CLUE } from'./constants.js';
+import { CLUE, END_CONDITION } from'./constants.js';
 import { Card } from'./basics/Card.js';
 import logger from'./logger.js';
 import * as Basics from'./basics.js';
@@ -69,9 +69,28 @@ export function handle_action(action, catchup = false) {
 			Basics.onDraw(this, action);
 			break;
 		}
-		case 'gameOver':
-			logger.info('gameOver', action);
+		case 'gameOver': {
+			const { endCondition, playerIndex } = action;
+
+			switch(endCondition) {
+				case END_CONDITION.NORMAL:
+					logger.highlight('redb', `Players score ${this.play_stacks.reduce((acc, stack) => acc += stack, 0)} points.`);
+					break;
+				case END_CONDITION.STRIKEOUT:
+					logger.highlight('redb', `Players lose!`);
+					break;
+				case END_CONDITION.TERMINATED:
+					logger.highlight('redb', `${this.playerNames[playerIndex]} terminated the game!`);
+					break;
+				case END_CONDITION.IDLE_TIMEOUT:
+					logger.highlight('redb', 'Players were idle for too long.');
+					break;
+				default:
+					logger.info('gameOver', action);
+					break;
+			}
 			break;
+		}
 		case 'turn': {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
 			const { currentPlayerIndex } = action;
