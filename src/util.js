@@ -98,7 +98,11 @@ export function initConsole() {
 							break;
 						}
 
-						const turn = Number(parts[1]);
+						const turn = parts[1] === '+' ? state.turn_count + 1 :
+									parts[1] === '++' ? state.turn_count + state.numPlayers :
+									parts[1] === '-' ? state.turn_count - 1 :
+									parts[1] === '--' ? state.turn_count - state.numPlayers :
+										Number(parts[1]);
 
 						if (isNaN(turn)) {
 							logger.warn('Please provide a valid turn number.');
@@ -106,8 +110,7 @@ export function initConsole() {
 						}
 
 						if (!state.actionList.some(action => action.type === 'turn' && action.num === turn)) {
-							logger.error('That turn does not exist.');
-							console.log(state.actionList.filter(action => action.type === 'turn'));
+							logger.error(`Turn ${turn} does not exist.`);
 							break;
 						}
 
