@@ -144,6 +144,7 @@ export const handle = {
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });
 		gameStarted = true;
+		state.in_progress = true;
 	},
 	left: () => {
 		state.tableID = undefined;

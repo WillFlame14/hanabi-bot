@@ -89,19 +89,27 @@ export function handle_action(action, catchup = false) {
 					logger.info('gameOver', action);
 					break;
 			}
+			this.in_progress = false;
 			break;
 		}
 		case 'turn': {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
 			const { currentPlayerIndex } = action;
 			if (currentPlayerIndex === this.ourPlayerIndex && !catchup) {
-				setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
+				if (this.in_progress) {
+					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
 
-				// Update notes on cards
-				for (const card of this.hands[this.ourPlayerIndex]) {
-					if (card.clued || card.finessed || card.chop_moved) {
-						Utils.writeNote(this.turn_count + 1, card, this.tableID);
+					// Update notes on cards
+					for (const card of this.hands[this.ourPlayerIndex]) {
+						if (card.clued || card.finessed || card.chop_moved) {
+							Utils.writeNote(this.turn_count + 1, card, this.tableID);
+						}
 					}
+				}
+				// Replaying a turn
+				else {
+					const suggested_action = this.take_action(this);
+					logger.highlight('cyan', 'Suggested action:', Utils.logAction(suggested_action));
 				}
 			}
 

@@ -63,7 +63,7 @@ async function main() {
 
 	const { players, deck, actions, options } = game_data;
 	const variant = await getVariant(options?.variant ?? 'No Variant');
-	const state = new HGroup(Number(id), players, Number(index) ?? 0, variant.suits, Number(level) ?? 1);
+	const state = new HGroup(Number(id), players, Number(index ?? 0), variant.suits, Number(level ?? 1));
 
 	Utils.globalModify({state});
 

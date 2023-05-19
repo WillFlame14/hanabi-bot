@@ -11,6 +11,7 @@ import * as Utils from '../util.js';
  * @typedef {import('../types.js').DiscardAction} DiscardAction
  * @typedef {import('../types.js').TurnAction} TurnAction
  * @typedef {import('../types.js').PlayAction} PlayAction
+ * @typedef {import('../types.js').PerformAction} PerformAction
  * @typedef {import('../types.js').WaitingConnection} WaitingConnection
  */
 
@@ -20,6 +21,7 @@ export class State {
 	strikes = 0;
 	early_game = true;
 	rewindDepth = 0;
+	in_progress = false;
 
 	hands = /** @type {Hand[]} */ ([]);
 
@@ -129,6 +131,7 @@ export class State {
 	/**
 	 * @abstract
      * @param {State} _state
+     * @returns {PerformAction}
      */
 	take_action(_state) {
 		throw new Error('must be implemented by subclass!');
@@ -185,10 +188,56 @@ export class State {
 			}
 		});
 
+		logger.highlight('green', '------- REWIND COMPLETE -------');
+
 		// Overwrite state
 		Object.assign(this, new_state);
+		Utils.globalModify({ state: this });
+
 		this.rewindDepth = 0;
 		return true;
+	}
+
+	navigate(turn) {
+		logger.highlight('greenb', `------- NAVIGATING (turn ${turn}) -------`);
+
+		const new_state = this.createBlank();
+		Utils.globalModify({ state: new_state });
+
+		// Remove special actions from the action list (they will be added back in when rewinding)
+		const actionList = this.actionList.filter(action => action.type !== 'identify' && action.type !== 'ignore');
+
+		let turn_count = 0, action_index = 0;
+
+		// Don't log history
+		logger.wrapLevel(logger.LEVELS.ERROR, () => {
+			while (turn_count < turn - 1) {
+				const action = actionList[action_index];
+				new_state.handle_action(action, true);
+				action_index++;
+
+				if (action.type === 'turn') {
+					turn_count++;
+				}
+			}
+		});
+
+		// Log the previous turn and the 'turn' action leading to the desired turn
+		while (turn_count < turn) {
+			const action = actionList[action_index];
+			new_state.handle_action(action);
+			action_index++;
+
+			if (action.type === 'turn') {
+				turn_count++;
+			}
+		}
+
+		// Copy over the full game history
+		new_state.actionList = actionList;
+		Object.assign(this, new_state);
+
+		Utils.globalModify({ state: this });
 	}
 
 	/**
