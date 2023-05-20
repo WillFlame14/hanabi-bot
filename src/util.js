@@ -59,6 +59,10 @@ export function initConsole() {
 			return;
 		}
 
+		if (key.sequence === '\x7F') {
+			key.sequence = '\b';
+		}
+
 		process.stdout.write(key.sequence);
 		switch(key.sequence) {
 			case '\r':

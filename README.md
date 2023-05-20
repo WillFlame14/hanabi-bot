@@ -10,6 +10,7 @@ https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-
 - Takes notes during the game on cards in its own hand.
 - Internally rewinds to relevant turns to understand mistakes.
 - Can create and start games on its own (i.e. for playing bot-only games).
+- Can replay completed games on hanab.live and offer suggestions.
 
 ## Running locally
 - You'll need to have NodeJS v16 or above. You can download it [here](https://nodejs.org/en/download/).
@@ -20,7 +21,8 @@ https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-
 - Run `npm start` to start the bot.
     - If you want to run multiple bot accounts using one env file, export environment variables with a number at the end (like `HANABI_USERNAME2`) and use `npm start -- index=2`. See `.env.template` for an example.
 - Debug logs will show up in the console, providing more information about what the bot thinks about every action.
-    - Typing `hand <playerName>` will display the bot's information on that player's hand.
+    - `hand <playerName>` will display the bot's information on that player's hand.
+    - `state <attribute>` will display the internal value of the state's attribute (i.e. `state[attribute]`).
 
 ## Supported commands
 Send a PM to the bot on hanab.live (`/pm <HANABI_USERNAME> <message>`) to interact with it.
@@ -35,5 +37,13 @@ Send a PM to the bot on hanab.live (`/pm <HANABI_USERNAME> <message>`) to intera
 Some commands can be sent inside a room to affect all bots that have joined.
 - `/setall [conventions=HGroup] [level]` to set conventions and level for all bots.
 - `/leaveall` to kick all bots from the table.
+
+## Watching replays
+A replay from hanab.live can be simulated using `npm run replay -- id=<id>`. Additional options `index=0` (the index of the player the bot will simulate as) and `level=1` (the H-Group level) can be provided.
+
+In a replay, the following commands are also supported:
+- `navigate <turn>` to travel to a specific turn.
+    - If it is the bot's turn, it will provide a suggestion on what it would do.
+    - Instead of a turn number, `+` (next turn), `++` (next turn of the same player), `-`, and `--` can also be used.
 
 Feel free to report any issues [here](https://github.com/WillFlame14/hanabi-bot/issues)!

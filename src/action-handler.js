@@ -34,7 +34,7 @@ export function handle_action(action, catchup = false) {
 			else {
 				clue_value = clue.value;
 			}
-			logger.highlight('yellowb', `${playerName} clues ${clue_value} to ${targetName}`);
+			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} clues ${clue_value} to ${targetName}`);
 
 			this.interpret_clue(this, action);
 			this.last_actions[giver] = action;
@@ -57,7 +57,7 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			logger.highlight('yellowb', `${playerName} ${failed ? 'bombs' : 'discards'} ${Utils.logCard(card)}`);
+			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} ${failed ? 'bombs' : 'discards'} ${Utils.logCard(card)}`);
 
 			Basics.onDiscard(this, action);
 			this.interpret_discard(this, action, card);
@@ -124,7 +124,7 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			logger.highlight('yellowb', `${playerName} plays ${Utils.logCard(card)}`);
+			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} plays ${Utils.logCard(card)}`);
 
 			this.interpret_play(this, action);
 			this.last_actions[playerIndex] = action;

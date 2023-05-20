@@ -247,7 +247,7 @@ export function interpret_clue(state, action) {
 					team_elim(state, focused_card, giver, target, conn_suit, inference_rank);
 				}
 				// Multiple possible sets, we need to wait for connections
-				else {
+				else if (connections.length > 0) {
 					const inference = { suitIndex: conn_suit, rank: inference_rank };
 					state.waiting_connections.push({ connections, focused_card, inference });
 				}
