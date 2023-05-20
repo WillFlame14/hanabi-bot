@@ -11,14 +11,17 @@ import * as Utils from '../util.js';
  * @typedef {import('../types.js').DiscardAction} DiscardAction
  * @typedef {import('../types.js').TurnAction} TurnAction
  * @typedef {import('../types.js').PlayAction} PlayAction
+ * @typedef {import('../types.js').PerformAction} PerformAction
  * @typedef {import('../types.js').WaitingConnection} WaitingConnection
  */
 
 export class State {
 	turn_count = 0;
 	clue_tokens = 8;
+	strikes = 0;
 	early_game = true;
 	rewindDepth = 0;
+	in_progress = false;
 
 	hands = /** @type {Hand[]} */ ([]);
 
@@ -128,6 +131,7 @@ export class State {
 	/**
 	 * @abstract
      * @param {State} _state
+     * @returns {PerformAction}
      */
 	take_action(_state) {
 		throw new Error('must be implemented by subclass!');
@@ -165,33 +169,75 @@ export class State {
 		const new_state = this.createBlank();
 		const history = this.actionList.slice(0, action_index);
 
-		logger.setLevel(logger.LEVELS.ERROR);
-
-		// Get up to speed
-		for (const action of history) {
-			new_state.handle_action(action, true);
-		}
-
-		logger.setLevel(logger.LEVELS.INFO);
+		logger.wrapLevel(logger.LEVELS.ERROR, () => {
+			// Get up to speed
+			for (const action of history) {
+				new_state.handle_action(action, true);
+			}
+		});
 
 		// Rewrite and save as a rewind action
 		new_state.handle_action(rewind_action, true);
 		new_state.handle_action(pivotal_action, true);
 
-		logger.setLevel(logger.LEVELS.ERROR);
+		logger.wrapLevel(logger.LEVELS.ERROR, () => {
+			// Redo all the following actions
+			const future = this.actionList.slice(action_index + 1);
+			for (const action of future) {
+				new_state.handle_action(action, true);
+			}
+		});
 
-		// Redo all the following actions
-		const future = this.actionList.slice(action_index + 1);
-		for (const action of future) {
-			new_state.handle_action(action, true);
-		}
-
-		logger.setLevel(logger.LEVELS.INFO);
+		logger.highlight('green', '------- REWIND COMPLETE -------');
 
 		// Overwrite state
 		Object.assign(this, new_state);
+		Utils.globalModify({ state: this });
+
 		this.rewindDepth = 0;
 		return true;
+	}
+
+	navigate(turn) {
+		logger.highlight('greenb', `------- NAVIGATING (turn ${turn}) -------`);
+
+		const new_state = this.createBlank();
+		Utils.globalModify({ state: new_state });
+
+		// Remove special actions from the action list (they will be added back in when rewinding)
+		const actionList = this.actionList.filter(action => action.type !== 'identify' && action.type !== 'ignore');
+
+		let turn_count = 0, action_index = 0;
+
+		// Don't log history
+		logger.wrapLevel(logger.LEVELS.ERROR, () => {
+			while (turn_count < turn - 1) {
+				const action = actionList[action_index];
+				new_state.handle_action(action, true);
+				action_index++;
+
+				if (action.type === 'turn') {
+					turn_count++;
+				}
+			}
+		});
+
+		// Log the previous turn and the 'turn' action leading to the desired turn
+		while (turn_count < turn) {
+			const action = actionList[action_index];
+			new_state.handle_action(action);
+			action_index++;
+
+			if (action.type === 'turn') {
+				turn_count++;
+			}
+		}
+
+		// Copy over the full game history
+		new_state.actionList = actionList;
+		Object.assign(this, new_state);
+
+		Utils.globalModify({ state: this });
 	}
 
 	/**
@@ -211,12 +257,9 @@ export class State {
 			hypo_state.ourPlayerIndex = options.simulatePlayerIndex;
 		}
 
-		if (!options.enableLogs) {
-			logger.setLevel(logger.LEVELS.ERROR);
-		}
-
-		hypo_state.interpret_clue(hypo_state, action);
-		logger.setLevel(logger.LEVELS.INFO);
+		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
+			hypo_state.interpret_clue(hypo_state, action);
+		});
 
 		return hypo_state;
 	}

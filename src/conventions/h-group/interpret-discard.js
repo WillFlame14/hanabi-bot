@@ -102,12 +102,12 @@ export function interpret_discard(state, action, card) {
 			undo_hypo_stacks(state, playerIndex, suitIndex, rank);
 		}
 		else {
-			// Sarcastic discard to us
+			// Unknown sarcastic discard to us
 			if (duplicates.length === 0) {
 				const sarcastic = find_sarcastic(state.hands[state.ourPlayerIndex], suitIndex, rank);
 
 				if (sarcastic.length === 1) {
-					const action_index = card.reasoning.pop();
+					const action_index = sarcastic[0].reasoning.pop();
 					if (action_index !== undefined && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank })) {
 						return;
 					}
@@ -116,13 +116,13 @@ export function interpret_discard(state, action, card) {
 					apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);
 				}
 			}
-			// Sarcastic discard to other
+			// Sarcastic discard to other (or known sarcastic discard to us)
 			else {
-				for (let i = 1; i < state.numPlayers; i++) {
+				for (let i = 0; i < state.numPlayers; i++) {
 					const receiver = (state.ourPlayerIndex + i) % state.numPlayers;
 					const sarcastic = find_sarcastic(state.hands[receiver], suitIndex, rank);
 
-					if (sarcastic.some(c => c.matches(suitIndex, rank) && c.clued)) {
+					if (sarcastic.some(c => c.matches(suitIndex, rank, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
 						// The matching card must be the only possible option in the hand to be known sarcastic
 						if (sarcastic.length === 1) {
 							sarcastic[0].inferred = [new Card(suitIndex, rank)];

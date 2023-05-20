@@ -67,6 +67,10 @@ export function onDiscard(state, action) {
 		state.max_ranks[suitIndex] = rank - 1;
 	}
 
+	if (failed) {
+		state.strikes++;
+	}
+
 	// Bombs count as discards, but they don't give a clue token
 	if (!failed && state.clue_tokens < 8) {
 		state.clue_tokens++;

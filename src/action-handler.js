@@ -1,4 +1,4 @@
-import { CLUE } from'./constants.js';
+import { CLUE, END_CONDITION } from'./constants.js';
 import { Card } from'./basics/Card.js';
 import logger from'./logger.js';
 import * as Basics from'./basics.js';
@@ -34,7 +34,7 @@ export function handle_action(action, catchup = false) {
 			else {
 				clue_value = clue.value;
 			}
-			logger.highlight('yellowb', `${playerName} clues ${clue_value} to ${targetName}`);
+			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} clues ${clue_value} to ${targetName}`);
 
 			this.interpret_clue(this, action);
 			this.last_actions[giver] = action;
@@ -57,7 +57,7 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			logger.highlight('yellowb', `${playerName} ${failed ? 'bombs' : 'discards'} ${Utils.logCard(card)}`);
+			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} ${failed ? 'bombs' : 'discards'} ${Utils.logCard(card)}`);
 
 			Basics.onDiscard(this, action);
 			this.interpret_discard(this, action, card);
@@ -69,20 +69,47 @@ export function handle_action(action, catchup = false) {
 			Basics.onDraw(this, action);
 			break;
 		}
-		case 'gameOver':
-			logger.info('gameOver', action);
+		case 'gameOver': {
+			const { endCondition, playerIndex } = action;
+
+			switch(endCondition) {
+				case END_CONDITION.NORMAL:
+					logger.highlight('redb', `Players score ${this.play_stacks.reduce((acc, stack) => acc += stack, 0)} points.`);
+					break;
+				case END_CONDITION.STRIKEOUT:
+					logger.highlight('redb', `Players lose!`);
+					break;
+				case END_CONDITION.TERMINATED:
+					logger.highlight('redb', `${this.playerNames[playerIndex]} terminated the game!`);
+					break;
+				case END_CONDITION.IDLE_TIMEOUT:
+					logger.highlight('redb', 'Players were idle for too long.');
+					break;
+				default:
+					logger.info('gameOver', action);
+					break;
+			}
+			this.in_progress = false;
 			break;
+		}
 		case 'turn': {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
 			const { currentPlayerIndex } = action;
 			if (currentPlayerIndex === this.ourPlayerIndex && !catchup) {
-				setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
+				if (this.in_progress) {
+					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
 
-				// Update notes on cards
-				for (const card of this.hands[this.ourPlayerIndex]) {
-					if (card.clued || card.finessed || card.chop_moved) {
-						Utils.writeNote(this.turn_count + 1, card, this.tableID);
+					// Update notes on cards
+					for (const card of this.hands[this.ourPlayerIndex]) {
+						if (card.clued || card.finessed || card.chop_moved) {
+							Utils.writeNote(this.turn_count + 1, card, this.tableID);
+						}
 					}
+				}
+				// Replaying a turn
+				else {
+					const suggested_action = this.take_action(this);
+					logger.highlight('cyan', 'Suggested action:', Utils.logAction(suggested_action));
 				}
 			}
 
@@ -97,7 +124,7 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			logger.highlight('yellowb', `${playerName} plays ${Utils.logCard(card)}`);
+			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} plays ${Utils.logCard(card)}`);
 
 			this.interpret_play(this, action);
 			this.last_actions[playerIndex] = action;

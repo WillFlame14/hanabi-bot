@@ -21,6 +21,25 @@ export function globalModify(obj) {
 }
 
 /**
+ *	Parses the command-line arguments into an object.
+ */
+export function parse_args() {
+	const args = /** @type {Record<string, string>} */ ({}), arg_lines = process.argv.slice(2);
+
+	for (const arg_line of arg_lines) {
+		const parts = arg_line.split('=');
+		if (parts.length === 2 && arg_line.length >= 3) {
+			args[parts[0]] = parts[1];
+		}
+		else {
+			args[parts[0]] = 'true';
+		}
+	}
+	return args;
+}
+
+
+/**
  * Initializes the console interactivity with the game state.
  */
 export function initConsole() {
@@ -40,23 +59,27 @@ export function initConsole() {
 			return;
 		}
 
+		if (key.sequence === '\x7F') {
+			key.sequence = '\b';
+		}
+
 		process.stdout.write(key.sequence);
 		switch(key.sequence) {
 			case '\r':
 			case '\n': {
-				console.log();
+				logger.info();
 				const parts = command.join('').split(' ');
 				const { state } = globals;
 
 				switch(parts[0]) {
 					case 'hand': {
 						if (parts.length !== 2) {
-							console.log('Correct usage is "hand <playerName>"');
+							logger.warn('Correct usage is "hand <playerName>"');
 							break;
 						}
 						const playerName = parts[1];
 						if (!state.playerNames.includes(playerName)) {
-							console.log('That player is not in this room.');
+							logger.error('That player is not in this room.');
 							console.log(state.playerNames, playerName);
 							break;
 						}
@@ -67,6 +90,37 @@ export function initConsole() {
 					case 'state':
 						console.log(state[parts[1]]);
 						break;
+					case 'navigate':
+					case 'nav': {
+						if (parts.length !== 2) {
+							logger.warn('Correct usage is "navigate <turn>"');
+							break;
+						}
+
+						if (state.in_progress) {
+							logger.warn('Cannot navigate while game is in progress.');
+							break;
+						}
+
+						const turn = parts[1] === '+' ? state.turn_count + 1 :
+									parts[1] === '++' ? state.turn_count + state.numPlayers :
+									parts[1] === '-' ? state.turn_count - 1 :
+									parts[1] === '--' ? state.turn_count - state.numPlayers :
+										Number(parts[1]);
+
+						if (isNaN(turn)) {
+							logger.warn('Please provide a valid turn number.');
+							break;
+						}
+
+						if (!state.actionList.some(action => action.type === 'turn' && action.num === turn)) {
+							logger.error(`Turn ${turn} does not exist.`);
+							break;
+						}
+
+						state.navigate(turn);
+						break;
+					}
 				}
 				command = [];
 				break;
@@ -278,6 +332,42 @@ export function logClue(clue) {
 	const value = (clue.type === CLUE.COLOUR || clue.type === ACTION.COLOUR) ? globals.state.suits[clue.value].toLowerCase() : clue.value;
 
 	return `(${value} to ${globals.state.playerNames[clue.target]})`;
+}
+
+/**
+ * Returns a log-friendly representation of an action.
+ * @param  {PerformAction} action
+ */
+export function logAction(action) {
+	if (action === undefined) {
+		return;
+	}
+
+	const { type, target } = action;
+
+	const hand = globals.state.hands[globals.state.ourPlayerIndex];
+
+	switch(type) {
+		case ACTION.PLAY: {
+			const slot = hand.findIndex(card => card.order === target) + 1;
+			const card = hand[slot - 1];
+
+			return `Play slot ${slot}, inferences [${card.inferred.map(c => logCard(c))}]`;
+		}
+		case ACTION.DISCARD: {
+			const slot = hand.findIndex(card => card.order === target) + 1;
+			const card = hand[slot - 1];
+
+			return `Discard slot ${slot}, inferences [${card.inferred.map(c => logCard(c))}]`;
+		}
+		case ACTION.COLOUR:
+		case ACTION.RANK:
+			return logClue(action);
+		case ACTION.END_GAME:
+			return JSON.stringify(action);
+		default:
+			throw new Error('Attempted to log invalid action');
+	}
 }
 
 /**

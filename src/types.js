@@ -69,7 +69,7 @@ import { CLUE, ACTION } from './constants.js';
  * 
  * @typedef PerformAction
  * @property {number} tableID
- * @property {typeof ACTION.PLAY | typeof ACTION.DISCARD | typeof ACTION.COLOUR | typeof ACTION.RANK} type
+ * @property {ACTION[keyof ACTION]} type
  * @property {number} target
  * @property {number} [value]
  * 

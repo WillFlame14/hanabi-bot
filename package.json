@@ -8,6 +8,7 @@
     "eslint": "^8.20.0"
   },
   "scripts": {
-    "start": "node src/hanabi-bot.js"
+    "start": "node src/hanabi-bot.js",
+    "replay": "node src/replay.js"
   }
 }

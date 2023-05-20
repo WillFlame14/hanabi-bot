@@ -106,7 +106,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 
 		// Prompted card is delayed playable
 		if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank) {
-			logger.info(`found playable prompt ${Utils.logCard(prompt)} in ${state.playerNames[playerIndex]}'s hand`)
+			logger.info(`found playable prompt ${Utils.logCard(prompt)} in ${state.playerNames[playerIndex]}'s hand`);
 			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true };
 		}
 		else {
