@@ -137,14 +137,13 @@ export const handle = {
 		const variant = await getVariant(options.variantName);
 
 		// Initialize game state using convention set
-		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, settings.level);
+		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, true, settings.level);
 
 		Utils.globalModify({state});
 
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });
 		gameStarted = true;
-		state.in_progress = true;
 	},
 	left: () => {
 		state.tableID = undefined;

@@ -49,7 +49,7 @@ export class State {
      * @param {number} ourPlayerIndex
      * @param {string[]} suits
      */
-	constructor(tableID, playerNames, ourPlayerIndex, suits) {
+	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress) {
 		/** @type {number} */
 		this.tableID = tableID;
 		/** @type {string[]} */
@@ -61,6 +61,8 @@ export class State {
 
 		/** @type {string[]} */
 		this.suits = suits;
+
+		this.in_progress = in_progress;
 
 		/** @type {WaitingConnection[]} */
 		this.waiting_connections = [];
@@ -96,7 +98,7 @@ export class State {
 	 * Returns a blank copy of the state, as if the game had restarted.
 	 */
 	createBlank() {
-		return new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits);
+		return new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress);
 	}
 
 
