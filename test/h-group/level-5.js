@@ -314,6 +314,29 @@ describe('layered finesse', () => {
         // Alice's slot 2 should be [r1].
         assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['r1'].map(expandShortCard));
     });
+
+    it('waits for a queued finesse to resolve', () => {
+        const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+            ['g2', 'b3', 'r2', 'y3', 'p3'],
+            ['g1', 'r1', 'r4', 'g4', 'b4']
+		], 5);
+
+		// Alice clues Bob green.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.ALICE, list: [9], target: PLAYER.BOB });
+        state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.BOB });
+
+        // Bob clues red to Alice, touching slot 2.
+        state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
+        state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.CATHY });
+
+        // Cathy plays g1.
+        state.handle_action({ type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.GREEN, rank: 1 });
+        state.update_turn(state, { type: 'turn', num: 3, currentPlayerIndex: PLAYER.ALICE });
+
+        // Alice's slot 2 should still be [r1, r2].
+        assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['r1', 'r2'].map(expandShortCard));
+    });
 });
 
 describe('ambiguous finesse', () => {

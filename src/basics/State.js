@@ -33,7 +33,7 @@ export class State {
 	all_possible = /** @type {Card[][]} */ ([]);
 
 	actionList = /** @type {Action[]} */ ([]);
-	last_actions = /** @type {Action[]} */ ([]);
+	last_actions = /** @type {(Action & {card?: Card})[]} */ ([]);
 
 	/**
 	 * The orders of cards to ignore in the next play clue.

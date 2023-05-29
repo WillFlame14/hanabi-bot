@@ -81,23 +81,27 @@ export function update_turn(state, action) {
 			// They still have the card
 			if (card !== undefined) {
 				// Didn't play into finesse
-				if (type === 'finesse' && state.play_stacks[card.suitIndex] + 1 === card.rank) {
-					logger.info(`Didn't play into finesse, removing inference ${Utils.logCard(inference)}`);
-					// remove_finesse(state, i);
-
-					const action_index = card.reasoning.pop();
-					if (action_index !== undefined) {
-						state.rewind(action_index, { type: 'ignore', order: card.order, playerIndex: reacting });
+				if (type === 'finesse') {
+					if (state.play_stacks[card.suitIndex] + 1 !== card.rank) {
+						logger.info(`didn't play into unplayable finesse`);
+					}
+					else if (state.last_actions[reacting].card?.finessed) {
+						logger.info(`played into other finesse, continuing to wait`);
 					}
 					else {
-						logger.warn(`no reasoning on card ${Utils.logCard(card)}`);
-					}
+						logger.info(`Didn't play into finesse, removing inference ${Utils.logCard(inference)}`);
 
-					// Flag it to be removed
-					to_remove.push(i);
-				}
-				else if (type === 'finesse') {
-					logger.info(`didn't play into unplayable finesse`);
+						const action_index = card.reasoning.pop();
+						if (action_index !== undefined) {
+							state.rewind(action_index, { type: 'ignore', order: card.order, playerIndex: reacting });
+						}
+						else {
+							logger.warn(`no reasoning on card ${Utils.logCard(card)}`);
+						}
+
+						// Flag it to be removed
+						to_remove.push(i);
+					}
 				}
 				else if (state.last_actions[reacting].type === 'discard') {
 					logger.info(`Discarded with a waiting connection, removing inference ${Utils.logCard(inference)}`);

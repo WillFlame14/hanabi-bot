@@ -61,7 +61,7 @@ export function handle_action(action, catchup = false) {
 
 			Basics.onDiscard(this, action);
 			this.interpret_discard(this, action, card);
-			this.last_actions[playerIndex] = action;
+			this.last_actions[playerIndex] = Object.assign(action, { card });
 			break;
 		}
 		case 'draw': {
@@ -127,7 +127,7 @@ export function handle_action(action, catchup = false) {
 			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} plays ${Utils.logCard(card)}`);
 
 			this.interpret_play(this, action);
-			this.last_actions[playerIndex] = action;
+			this.last_actions[playerIndex] = Object.assign(action, { card });
 			break;
 		}
 		case 'identify': {

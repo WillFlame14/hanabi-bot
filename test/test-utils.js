@@ -26,7 +26,7 @@ export function setup(StateClass, hands, level) {
 	const playerNames = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'].slice(0, hands.length);
 	const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
 
-	const state = new StateClass(-1, playerNames, 0, suits, level);
+	const state = new StateClass(-1, playerNames, 0, suits, false, level);
 	Utils.globalModify({state});
 
 	let orderCounter = 0;
