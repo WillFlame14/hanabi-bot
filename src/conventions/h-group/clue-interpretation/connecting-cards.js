@@ -1,6 +1,7 @@
 import { cardCount } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
 import { find_prompt, find_finesse } from '../hanabi-logic.js';
+import { order_1s } from '../action-helper.js';
 import { card_elim } from '../../../basics.js';
 import { playableAway } from '../../../basics/hanabi-util.js';
 import logger from '../../../logger.js';
@@ -31,16 +32,16 @@ function find_known(state, playerIndex, suitIndex, rank, ignoreOrders) {
 }
 
 /**
- * Finds a (possibly unknown) playable card in the hand for a given suitIndex and rank.
+ * Finds all (possibly unknown) playable cards in the hand for a given suitIndex and rank.
  * @param  {State} state
  * @param  {number} playerIndex  	The player index whose hand we are looking through.
  * @param  {number} suitIndex
  * @param  {number} rank
  * @param  {number[]} ignoreOrders	The orders of cards to ignore when searching.
- * @return {Card}					A connecting card if it exists, otherwise undefined.
+ * @return {Card[]}					All connecting cards.
  */
-function find_playable(state, playerIndex, suitIndex, rank, ignoreOrders) {
-	return state.hands[playerIndex].find(card =>
+function find_playables(state, playerIndex, suitIndex, rank, ignoreOrders) {
+	return state.hands[playerIndex].filter(card =>
 		!ignoreOrders.includes(card.order) &&
 		(card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0) || card.finessed) &&	// Card must be playable
 		(playerIndex !== state.ourPlayerIndex ?
@@ -74,11 +75,20 @@ function find_known_connecting(state, giver, target, playerIndex, suitIndex, ran
 	}
 
 	// Look for a playable card that is not known to connect (excludes giver)
-	const playable_conn = find_playable(state, playerIndex, suitIndex, rank, ignoreOrders);
+	const playable_conns = find_playables(state, playerIndex, suitIndex, rank, ignoreOrders);
 
-	if (playable_conn !== undefined) {
-		logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, with inferences ${playable_conn.inferred.map(c => Utils.logCard(c)).join()}`);
-		return { type: 'playable', reacting: playerIndex, card: playable_conn };
+	if (playable_conns.length !== 0) {
+		if (rank === 1) {
+			const ordered_1s = order_1s(state, playable_conns);
+
+			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, reordering to oldest 1`);
+			return { type: 'playable', reacting: playerIndex, card: ordered_1s[0] };
+		}
+		else {
+			const playable_conn = playable_conns[0];
+			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, with inferences ${playable_conn.inferred.map(c => Utils.logCard(c)).join()}`);
+			return { type: 'playable', reacting: playerIndex, card: playable_conn };
+		}
 	}
 }
 
