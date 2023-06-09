@@ -1,4 +1,5 @@
 import { ACTION } from '../../constants.js';
+import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
 import { select_play_clue, find_urgent_actions, determine_playable_card, order_1s } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
@@ -70,16 +71,14 @@ export function take_action(state) {
 	/** @type {Card} */
 	let best_playable_card;
 	if (priority !== -1) {
-		// Play unknown 1s in the correct order
-		if (priority === 4 && state.level >= 3) {
-			const ordered_1s = order_1s(state, playable_priorities[4]);
+		best_playable_card = playable_priorities[priority][0];
+
+		// Best playable card is an unknown 1, so we should order correctly
+		if (best_playable_card.clues.length > 0 && best_playable_card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
+			const ordered_1s = order_1s(state, playable_cards);
 			if (ordered_1s.length > 0) {
 				best_playable_card = ordered_1s[0];
 			}
-		}
-
-		if (best_playable_card === undefined) {
-			best_playable_card = playable_priorities[priority][0];
 		}
 
 		logger.info(`best playable card is order ${best_playable_card.order}, inferences ${best_playable_card.inferred.map(c => Utils.logCard(c))}`);

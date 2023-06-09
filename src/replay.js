@@ -63,7 +63,7 @@ async function main() {
 
 	const { players, deck, actions, options } = game_data;
 	const variant = await getVariant(options?.variant ?? 'No Variant');
-	const state = new HGroup(Number(id), players, Number(index ?? 0), variant.suits, Number(level ?? 1));
+	const state = new HGroup(Number(id), players, Number(index ?? 0), variant.suits, false, Number(level ?? 1));
 
 	Utils.globalModify({state});
 
@@ -80,7 +80,9 @@ async function main() {
 
 	// Take actions
 	for (const action of actions) {
-		state.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
+		if (turn !== 0) {
+			state.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
+		}
 		state.handle_action(parse_action(state, action, currentPlayerIndex, deck), true);
 
 		if ((action.type === ACTION.PLAY || action.type === ACTION.DISCARD) && order < deck.length) {

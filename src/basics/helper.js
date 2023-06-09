@@ -36,7 +36,7 @@ export function find_possibilities(clue, suits) {
  * @param {number} target
  * @param {BasicCard[]} prev_found	All previously found bad touch possibiltiies.
  */
-export function bad_touch_possiblities(state, giver, target, prev_found = []) {
+export function bad_touch_possibilities(state, giver, target, prev_found = []) {
 	const bad_touch = prev_found;
 
 	if (bad_touch.length === 0) {
@@ -68,13 +68,9 @@ export function bad_touch_possiblities(state, giver, target, prev_found = []) {
 					({suitIndex, rank} = card.possible[0]);
 					method = 'elim';
 				}
-				else if (card.inferred.length === 1) {
+				else if (card.inferred.length === 1 && card.matches(suitIndex, rank, { infer: true })) {
 					({suitIndex, rank} = card.inferred[0]);
 					method = 'inference';
-					if (!card.matches(suitIndex, rank, { infer: true })) {
-						logger.warn(`tried to identify ${Utils.logCard(card.inferred[0])} as bad touch when card's identity is ${Utils.logCard(card)}`);
-						continue;
-					}
 				}
 				else {
 					continue;
@@ -145,7 +141,7 @@ export function find_known_trash(state, playerIndex) {
 	const visible_elsewhere = (suitIndex, rank, order) => {
 		// Visible in someone else's hand or visible in the same hand (but only one is trash)
 		return visibleFind(state, playerIndex, suitIndex, rank, { ignore: [playerIndex] }).some(c => c.clued && c.order !== order) ||
-			visibleFind(state, playerIndex, suitIndex, rank).some(c => c.clued && c.order > order);
+			visibleFind(state, playerIndex, suitIndex, rank).some(c => c.clued && c.order !== order && c.focused);
 	};
 
 	for (const card of hand) {

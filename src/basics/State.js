@@ -16,7 +16,7 @@ import * as Utils from '../util.js';
  */
 
 export class State {
-	turn_count = 0;
+	turn_count = 1;
 	clue_tokens = 8;
 	strikes = 0;
 	early_game = true;
@@ -219,7 +219,7 @@ export class State {
 				action_index++;
 
 				if (action.type === 'turn') {
-					turn_count++;
+					turn_count = action.num + 1;
 				}
 			}
 		});
@@ -231,7 +231,7 @@ export class State {
 			action_index++;
 
 			if (action.type === 'turn') {
-				turn_count++;
+				turn_count = action.num + 1;
 			}
 		}
 

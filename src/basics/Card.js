@@ -19,6 +19,7 @@ export class Card {
 	old_inferred = /** @type {Card[] | undefined} */ (undefined);		// Only used when undoing a finesse
 
 	// Boolean flags about the state of the card
+	focused = false;
 	clued = false;
 	newly_clued = false;
 	finessed = false;

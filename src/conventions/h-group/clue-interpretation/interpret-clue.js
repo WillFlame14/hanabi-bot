@@ -6,8 +6,9 @@ import { stalling_situation } from './interpret-stall.js';
 import { determine_focus } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { find_own_finesses } from './connecting-cards.js';
-import { bad_touch_possiblities, update_hypo_stacks, good_touch_elim } from '../../../basics/helper.js';
-import { isBasicTrash, isTrash, playableAway } from '../../../basics/hanabi-util.js';
+import { bad_touch_possibilities, update_hypo_stacks, good_touch_elim } from '../../../basics/helper.js';
+import { isBasicTrash, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
+import { cardCount } from '../../../variants.js';
 import logger from '../../../logger.js';
 import * as Basics from '../../../basics.js';
 import * as Utils from '../../../util.js';
@@ -34,7 +35,7 @@ function apply_good_touch(state, action) {
 	Basics.onClue(state, action);
 
 	// Touched cards should also obey good touch principle
-	let bad_touch = bad_touch_possiblities(state, giver, target);
+	let bad_touch = bad_touch_possibilities(state, giver, target);
 	let bad_touch_len;
 
 	// Recursively deduce information until no new information is learned
@@ -66,7 +67,7 @@ function apply_good_touch(state, action) {
 				}
 			}
 		}
-		bad_touch = bad_touch_possiblities(state, giver, target, bad_touch);
+		bad_touch = bad_touch_possibilities(state, giver, target, bad_touch);
 	}
 	while (bad_touch_len !== bad_touch.length);
 
@@ -256,6 +257,7 @@ export function interpret_clue(state, action) {
 			state.hands.forEach(hand => hand.forEach(card => card.superposition = false));
 		}
 	}
+	focused_card.focused = true;
 	logger.highlight('blue', 'final inference on focused card', focused_card.inferred.map(c => Utils.logCard(c)).join(','));
 	logger.debug('hand state after clue', Utils.logHand(state.hands[target]));
 	update_hypo_stacks(state);
@@ -274,9 +276,12 @@ function team_elim(state, focused_card, giver, target, suitIndex, rank) {
 	for (let i = 0; i < state.numPlayers; i++) {
 		const hand = state.hands[i];
 
-		// Giver cannot elim own cards
+		// Giver cannot elim own cards unless all identities can be seen
 		if (i === giver) {
-			continue;
+			const count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0) + visibleFind(state, giver, suitIndex, rank).length;
+			if (count < cardCount(state.suits[suitIndex], rank)) {
+				continue;
+			}
 		}
 
 		// Target can elim only if inference is known, everyone else can elim
@@ -327,7 +332,7 @@ function assign_connections(state, connections, suitIndex) {
 			// There might be multiple possible inferences on the same card from a self component
 			if (card.reasoning.at(-1) !== state.actionList.length - 1) {
 				card.reasoning.push(state.actionList.length - 1);
-				card.reasoning_turn.push(state.turn_count + 1);
+				card.reasoning_turn.push(state.turn_count);
 			}
 		}
 	}

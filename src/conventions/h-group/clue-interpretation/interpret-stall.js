@@ -19,7 +19,7 @@ function isStall(state, action, severity) {
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
 	// 5 Stall given
-	if (clue.type === CLUE.RANK && clue.value === 5) {
+	if (clue.type === CLUE.RANK && clue.value === 5 && !chop) {
 		logger.info('5 stall!');
 		return true;
 	}

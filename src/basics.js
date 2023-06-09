@@ -34,7 +34,7 @@ export function onClue(state, action) {
 			card.clues.push(clue);
 			if (card.inferred.length < inferences_before) {
 				card.reasoning.push(state.actionList.length - 1);
-				card.reasoning_turn.push(state.turn_count + 1);
+				card.reasoning_turn.push(state.turn_count);
 			}
 		}
 		else {

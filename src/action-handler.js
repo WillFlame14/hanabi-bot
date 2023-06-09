@@ -94,7 +94,9 @@ export function handle_action(action, catchup = false) {
 		}
 		case 'turn': {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
-			const { currentPlayerIndex } = action;
+			const { currentPlayerIndex, num } = action;
+			this.turn_count = num + 1;
+
 			if (currentPlayerIndex === this.ourPlayerIndex && !catchup) {
 				if (this.in_progress) {
 					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
@@ -102,7 +104,7 @@ export function handle_action(action, catchup = false) {
 					// Update notes on cards
 					for (const card of this.hands[this.ourPlayerIndex]) {
 						if (card.clued || card.finessed || card.chop_moved) {
-							Utils.writeNote(this.turn_count + 1, card, this.tableID);
+							Utils.writeNote(this.turn_count, card, this.tableID);
 						}
 					}
 				}
@@ -114,7 +116,6 @@ export function handle_action(action, catchup = false) {
 			}
 
 			this.update_turn(this, action);
-			this.turn_count++;
 			break;
 		}
 		case 'play': {
@@ -140,7 +141,6 @@ export function handle_action(action, catchup = false) {
 			logger.info(`identifying card with order ${order} as ${Utils.logCard({ suitIndex, rank })}`);
 			card.possible = [new Card(suitIndex, rank)];
 			card.inferred = [new Card(suitIndex, rank)];
-			card.finessed = true;
 			card.rewinded = true;
 			break;
 		}

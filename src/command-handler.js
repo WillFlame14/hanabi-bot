@@ -32,7 +32,7 @@ export const handle = {
 				assignSettings(data, false);
 			}
 			else if (data.msg.startsWith('/leaveall')) {
-				Utils.sendCmd('tableLeave', { tableID: state.tableID });
+				Utils.sendCmd(gameStarted ? 'tableUnattend' : 'tableLeave', { tableID: state.tableID });
 				gameStarted = false;
 			}
 		}
@@ -78,7 +78,7 @@ export const handle = {
 			}
 			// Kicks the bot from a game (format: /leave)
 			else if (data.msg.startsWith('/leave')) {
-				Utils.sendCmd('tableLeave', { tableID: state.tableID });
+				Utils.sendCmd(gameStarted ? 'tableUnattend' : 'tableLeave', { tableID: state.tableID });
 				gameStarted = false;
 			}
 			// Creates a new table (format: /create <name> <maxPlayers> <password>)
@@ -123,7 +123,7 @@ export const handle = {
 		Utils.sendCmd('loaded', { tableID: data.tableID });
 
 		// If we are going first, we need to take an action now
-		if (state.ourPlayerIndex === 0 && state.turn_count === 0) {
+		if (state.ourPlayerIndex === 0 && state.turn_count === 1) {
 			setTimeout(() => Utils.sendCmd('action', state.take_action(state)), 3000);
 		}
 	},
@@ -143,7 +143,6 @@ export const handle = {
 
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });
-		gameStarted = true;
 	},
 	left: () => {
 		state.tableID = undefined;
@@ -164,7 +163,10 @@ export const handle = {
 		}
 	},
 	// Received when the current table starts a game
-	tableStart: (data) => Utils.sendCmd('getGameInfo1', { tableID: data.tableID }),
+	tableStart: (data) => {
+		Utils.sendCmd('getGameInfo1', { tableID: data.tableID });
+		gameStarted = true;
+	},
 	// Received when we send an invalid command
 	warning: (warn) => logger.error(warn),
 	// Received when we first register a websocket

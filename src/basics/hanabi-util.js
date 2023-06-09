@@ -28,9 +28,11 @@ export function visibleFind(state, inferringPlayerIndex, suitIndex, rank, option
 		}
 
 		const hand = state.hands[i];
-		options.infer = options.infer ?? (i === inferringPlayerIndex || i === state.ourPlayerIndex);
-		options.symmetric = (i === inferringPlayerIndex);
-		found = found.concat(hand.findCards(suitIndex, rank, options));
+		const find_options = {
+			infer: options.infer ?? (i === inferringPlayerIndex || i === state.ourPlayerIndex),
+			symmetric: i === inferringPlayerIndex
+		};
+		found = found.concat(hand.findCards(suitIndex, rank, find_options));
 	}
 	return found;
 }
@@ -104,5 +106,5 @@ export function getPace(state) {
 }
 
 export function inStartingHand(state, card) {
-    return card.order < state.numPlayers * state.hands[0].length;
+	return card.order < state.numPlayers * state.hands[0].length;
 }
