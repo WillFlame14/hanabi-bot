@@ -371,48 +371,6 @@ export function logAction(action) {
 }
 
 /**
- * Writes the card's inferences on it as a note.
- * @param {number} turn
- * @param {Card} card
- * @param {number} tableID
- */
-export function writeNote(turn, card, tableID) {
-	let note;
-
-	if (card.inferred.length === 0) {
-		note = '??';
-	}
-	else if (card.inferred.length <= 3) {
-		note = card.inferred.map(c => logCard(c)).join(',');
-	}
-	else {
-		note = '...';
-	}
-
-	if (card.finessed) {
-		note = `[f] [${note}]`;
-	}
-
-	if (card.chop_moved) {
-		note = `[cm] [${note}]`;
-	}
-
-	// Only write a new note if it's different from the last note
-	if (note !== card.last_note) {
-		card.last_note = note;
-
-		if (card.full_note === '') {
-			card.full_note = `t${turn}: ${note}`;
-		}
-		else {
-			card.full_note = `${card.full_note} | t${turn}: ${note}`;
-		}
-
-		setTimeout(() => sendCmd('note', { tableID, order: card.order, note: card.full_note }), Math.random() * 3000);
-	}
-}
-
-/**
  * Transforms a CLUE into an ACTION.
  * @param  {Clue} clue
  * @param  {number} tableID

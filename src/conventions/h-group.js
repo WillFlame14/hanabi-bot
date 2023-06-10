@@ -26,6 +26,8 @@ export default class HGroup extends State {
 	}
 
 	createBlank() {
-		return new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress, this.level);
+		const blank = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress, this.level);
+		blank.notes = this.notes;
+		return blank;
 	}
 }

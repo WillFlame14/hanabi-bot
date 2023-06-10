@@ -108,6 +108,10 @@ export const handle = {
 	gameAction: (data, catchup = false) => {
 		const { action } = data;
 		state.handle_action(action, catchup);
+
+		if (action.type === 'gameOver') {
+			gameStarted = false;
+		}
 	},
 	// Received at the beginning of the game, as a list of all actions that have happened so far
 	gameActionList: (data) => {

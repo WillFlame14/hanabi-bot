@@ -1,3 +1,5 @@
+import * as Utils from '../util.js';
+
 /**
  * @typedef {{symmetric?: boolean, infer?: boolean}} MatchOptions
  * @typedef {import('../types.js').BaseClue} BaseClue
@@ -31,9 +33,6 @@ export class Card {
 	reasoning = /** @type {number[]} */ ([]);		// The action indexes of when the card's possibilities/inferences were updated
 	reasoning_turn = /** @type {number[]} */ ([]);	// The game turns of when the card's possibilities/inferences were updated
 	rewinded = false;								// Whether the card has ever been rewinded
-
-	full_note = '';		// The entire note on the card
-	last_note = '';		// The most recent note on the card
 
 	/**
      * @param {number} suitIndex
@@ -145,5 +144,31 @@ export class Card {
 				this[type].push(card);
 			}
 		}
+	}
+
+	/**
+	 * Returns the note on the card.
+	 */
+	getNote() {
+		let note;
+		if (this.inferred.length === 0) {
+			note = '??';
+		}
+		else if (this.inferred.length <= 3) {
+			note = this.inferred.map(c => Utils.logCard(c)).join(',');
+		}
+		else {
+			note = '...';
+		}
+
+		if (this.finessed) {
+			note = `[f] [${note}]`;
+		}
+
+		if (this.chop_moved) {
+			note = `[cm] [${note}]`;
+		}
+
+		return note;
 	}
 }

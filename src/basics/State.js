@@ -35,6 +35,8 @@ export class State {
 	actionList = /** @type {Action[]} */ ([]);
 	last_actions = /** @type {(Action & {card?: Card})[]} */ ([]);
 
+	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
+
 	/**
 	 * The orders of cards to ignore in the next play clue.
 	 * @type {number[]}
@@ -98,7 +100,9 @@ export class State {
 	 * Returns a blank copy of the state, as if the game had restarted.
 	 */
 	createBlank() {
-		return new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress);
+		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress);
+		newState.notes = this.notes;
+		return newState;
 	}
 
 

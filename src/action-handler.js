@@ -100,18 +100,37 @@ export function handle_action(action, catchup = false) {
 			if (currentPlayerIndex === this.ourPlayerIndex && !catchup) {
 				if (this.in_progress) {
 					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
-
-					// Update notes on cards
-					for (const card of this.hands[this.ourPlayerIndex]) {
-						if (card.clued || card.finessed || card.chop_moved) {
-							Utils.writeNote(this.turn_count, card, this.tableID);
-						}
-					}
 				}
 				// Replaying a turn
 				else {
 					const suggested_action = this.take_action(this);
 					logger.highlight('cyan', 'Suggested action:', Utils.logAction(suggested_action));
+				}
+			}
+
+			// Update notes on cards
+			for (const card of this.hands[this.ourPlayerIndex]) {
+				if (card.clued || card.finessed || card.chop_moved) {
+					const note = card.getNote();
+
+					if (this.notes[card.order] === undefined) {
+						this.notes[card.order] = { last: '', turn: 0, full: '' };
+					}
+
+					// Only write a new note if it's different from the last note and is a later turn
+					if (note !== this.notes[card.order].last && this.turn_count > this.notes[card.order].turn) {
+						this.notes[card.order].last = note;
+						this.notes[card.order].turn = this.turn_count;
+
+						if (this.notes[card.order].full !== '') {
+							this.notes[card.order].full += ' | ';
+						}
+						this.notes[card.order].full += `t${this.turn_count}: ${note}`;
+
+						if (this.in_progress) {
+							setTimeout(() => Utils.sendCmd('note', { tableID: this.tableID, order: card.order, note: this.notes[card.order].full }), Math.random() * 1000);
+						}
+					}
 				}
 			}
 
