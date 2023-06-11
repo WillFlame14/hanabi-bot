@@ -317,6 +317,20 @@ export function find_own_finesses(state, giver, target, suitIndex, rank) {
 					ignoreOrders.push(finesse.order);
 					finesses++;
 				}
+				else if (finesse?.rewinded && playableAway(state, finesse.possible[0].suitIndex, finesse.possible[0].rank) === 0) {
+					if (state.level < LEVEL.INTERMEDIATE_FINESSES) {
+						logger.warn(`blocked layered finesse at level ${state.level}`);
+						feasible = false;
+						break;
+					}
+
+					logger.info('found layered finesse in our hand');
+					connections.push({ type: 'finesse', reacting: hypo_state.ourPlayerIndex, card: finesse, hidden: true, self: true });
+
+					ignoreOrders.push(finesse.order);
+					next_rank--;
+					finesses++;
+				}
 				else {
 					feasible = false;
 					break;

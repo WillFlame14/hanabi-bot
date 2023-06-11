@@ -254,6 +254,27 @@ describe('layered finesse', () => {
         assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['y2'].map(expandShortCard));
     });
 
+    it('understands playing into a layered finesse', () => {
+        const state = setup(HGroup, [
+            ['xx', 'xx', 'xx', 'xx', 'xx'],
+            ['b5', 'p4', 'y2', 'g3', 'r3'],
+            ['r4', 'r4', 'g4', 'r5', 'b4']
+        ], 5);
+
+        // Cathy clues Bob yellow, touching y2.
+        state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
+
+        // Alice's slot 1 should be [y1].
+        assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][0]), ['y1'].map(expandShortCard));
+
+        // Alice plays slot 1, but it is actually g1!
+        state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.ALICE });
+        state.handle_action({ type: 'play', order: 4, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.GREEN, rank: 1 });
+
+        // Alice's slot 2 should be [y1] now.
+        assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['y1'].map(expandShortCard));
+    });
+
     it('understands a clandestine finesse', () => {
         const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

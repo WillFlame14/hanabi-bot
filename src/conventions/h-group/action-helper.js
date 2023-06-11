@@ -84,8 +84,8 @@ function find_unlock(state, target) {
  * @param {Clue[]} all_play_clues 		An array of all valid play clues that can be currently given.
  * @returns {PerformAction | undefined}	The play clue to give if it exists, otherwise undefined.
  */
-function find_play_over_save(state, target, all_play_clues, locked = false) {
-	/** @type {Clue[]} */
+function find_play_over_save(state, target, all_play_clues, locked) {
+	/** @type {{clue: Clue, playables: Card[]}[]} */
 	const play_clues = [];
 
 	for (const clue of all_play_clues) {
@@ -96,31 +96,30 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
 
 		const { playables } = clue.result;
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target).map(p => p.card);
-		const immediately_playable = target_cards.find(card => playableAway(state, card.suitIndex, card.rank) === 0);
+		const immediately_playable = target_cards.filter(card => playableAway(state, card.suitIndex, card.rank) === 0);
 
 		// The card can be played without any additional help
-		if (immediately_playable !== undefined) {
-			play_clues.push(clue);
+		if (immediately_playable.length > 0) {
+			play_clues.push({ clue, playables: immediately_playable });
 			continue;
 		}
 
 		// Try to see if any target card can be made playable by players between us and them, including themselves
 		for (const target_card of target_cards) {
 			const { suitIndex } = target_card;
-			let found = false;
-			let additional_help = 0;
+			let stackRank = state.play_stacks[suitIndex];
 
 			for (let i = 1; i <= state.numPlayers; i++) {
 				const nextPlayer = (state.ourPlayerIndex + i) % state.numPlayers;
-				const nextRank = state.play_stacks[suitIndex] + additional_help + 1;
+				const current_playables = playables.filter(({ playerIndex, card }) => playerIndex === nextPlayer && card.matches(suitIndex, stackRank + 1));
 
-				if (playables.find(({ playerIndex, card }) => playerIndex === nextPlayer && card.matches(suitIndex, nextRank))) {
+				if (current_playables.length > 0) {
 					if (nextPlayer === target) {
-						found = true;
+						play_clues.push({ clue, playables: current_playables.map(p => p.card) });
 						break;
 					}
 					else {
-						additional_help++;
+						stackRank++;
 						continue;
 					}
 				}
@@ -130,11 +129,6 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
 					break;
 				}
 			}
-
-			if (found) {
-				play_clues.push(clue);
-				break;
-			}
 		}
 	}
 
@@ -142,7 +136,11 @@ function find_play_over_save(state, target, all_play_clues, locked = false) {
 		return;
 	}
 
-	const { clue } = select_play_clue(play_clues);
+	// If there are clues that make the save target playable, we should prioritize those
+	const save_target = state.hands[target][find_chop(state.hands[target])];
+	const playable_saves = play_clues.filter(({ playables }) => playables.some(c => c.matches(save_target.suitIndex, save_target.rank)));
+
+	const { clue } = Utils.maxOn((playable_saves.length > 0) ? playable_saves : play_clues, ({ clue }) => find_clue_value(clue.result));
 
 	// Convert CLUE to ACTION
 	return Utils.clueToAction(clue, state.tableID);
@@ -189,10 +187,9 @@ export function order_1s(state, cards) {
  * @param {SaveClue[]} save_clues
  * @param {FixClue[][]} fix_clues
  * @param {Card[][]} playable_priorities
- * @returns {PerformAction[][]}
  */
 export function find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities) {
-	const urgent_actions = [[], [], [], [], [], [], [], [], []];
+	const urgent_actions = /** @type {PerformAction[][]} */ ([[], [], [], [], [], [], [], [], []]);
 
 	for (let i = 1; i < state.numPlayers; i++) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
@@ -220,7 +217,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 			}
 
 			// Try to give a play clue involving them
-			if (state.clue_tokens > 1) {
+			if (state.clue_tokens > 1 || save_clues[target]?.playable) {
 				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked(state));
 				if (play_over_save !== undefined) {
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
@@ -259,7 +256,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 
 					// Make sure the old chop is better than the new one
 					if (old_chop_value >= new_chop_value) {
-						urgent_actions[i === 1 ? 1 : 5].push({ tableId: state.tableID, type: ACTION.PLAY, target: ordered_1s[distance].order });
+						urgent_actions[i === 1 ? 1 : 5].push({ tableID: state.tableID, type: ACTION.PLAY, target: ordered_1s[distance].order });
 						continue;
 					}
 				}

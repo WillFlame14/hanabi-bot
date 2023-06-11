@@ -67,7 +67,14 @@ export function interpret_5cm(state, target) {
 		// However, this requires that there is some kind of finesse/prompt to prove it is not 5cm
 		if (card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5)) {
 			if (distance_from_chop === 1) {
-				logger.info(`5cm, saving ${Utils.logCard(state.hands[target][chopIndex])}`);
+				const saved_card = state.hands[target][chopIndex];
+
+				if (saved_card.possible.every(p => isTrash(state, target, p.suitIndex, p.rank, saved_card.order))) {
+					logger.info(`saved card ${Utils.logCard(saved_card)} has only trash possibilities, not 5cm`);
+					return false;
+				}
+
+				logger.info(`5cm, saving ${Utils.logCard(saved_card)}`);
 				state.hands[target][chopIndex].chop_moved = true;
 				return true;
 			}
