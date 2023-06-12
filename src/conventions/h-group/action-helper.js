@@ -5,6 +5,7 @@ import { handLoaded } from '../../basics/helper.js';
 import { card_value } from './clue-finder/clue-safe.js';
 import logger from '../../logger.js';
 import { playableAway, inStartingHand } from '../../basics/hanabi-util.js';
+import { cardTouched } from '../../variants.js';
 import * as Utils from '../../util.js';
 
 /**
@@ -26,7 +27,7 @@ import * as Utils from '../../util.js';
  */
 export function find_clue_value(clue_result) {
 	const { finesses, new_touched, playables, bad_touch, elim, remainder } = clue_result;
-	return 0.5*(finesses + new_touched + playables.length) + 0.01*elim - 1*bad_touch - 0.25*remainder;
+	return 0.5*(finesses + new_touched + playables.length) + 0.01*elim - 1*bad_touch - 0.2*remainder;
 }
 
 /**
@@ -82,21 +83,24 @@ function find_unlock(state, target) {
  * @param {State} state
  * @param {number} target 				The index of the player that needs a save clue.
  * @param {Clue[]} all_play_clues 		An array of all valid play clues that can be currently given.
+ * @param {boolean} locked 				Whether the target is locked
+ * @param {number} remainder_boost		The value of the new chop after the save clue.
  * @returns {PerformAction | undefined}	The play clue to give if it exists, otherwise undefined.
  */
-function find_play_over_save(state, target, all_play_clues, locked) {
+function find_play_over_save(state, target, all_play_clues, locked, remainder_boost) {
 	/** @type {{clue: Clue, playables: Card[]}[]} */
 	const play_clues = [];
 
 	for (const clue of all_play_clues) {
-		const clue_value = find_clue_value(clue.result);
+		const clue_value = find_clue_value(clue.result) + remainder_boost;
 		if (clue_value < (locked ? 0 : 1)) {
 			continue;
 		}
 
 		const { playables } = clue.result;
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target).map(p => p.card);
-		const immediately_playable = target_cards.filter(card => playableAway(state, card.suitIndex, card.rank) === 0);
+		const immediately_playable = target_cards.filter(card =>
+			playableAway(state, card.suitIndex, card.rank) === 0 && card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0));
 
 		// The card can be played without any additional help
 		if (immediately_playable.length > 0) {
@@ -218,7 +222,21 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 
 			// Try to give a play clue involving them
 			if (state.clue_tokens > 1 || save_clues[target]?.playable) {
-				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked(state));
+				let remainder_boost = 0;
+
+				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
+				if (save_clues[target] !== undefined) {
+					const saved_hand = Utils.objClone(state.hands[target]);
+					for (const card of saved_hand) {
+						if (cardTouched(card, state.suits, save_clues[target])) {
+							card.clued = true;
+						}
+					}
+					const new_chop = saved_hand[find_chop(saved_hand)];
+					remainder_boost = card_value(state, new_chop) * 0.2;
+				}
+
+				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked(state), remainder_boost);
 				if (play_over_save !== undefined) {
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
 					continue;

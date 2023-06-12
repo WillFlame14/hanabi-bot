@@ -1,3 +1,4 @@
+import { CLUE } from '../../../constants.js';
 import { cardCount } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
 import { find_prompt, find_finesse } from '../hanabi-logic.js';
@@ -78,7 +79,7 @@ function find_known_connecting(state, giver, target, playerIndex, suitIndex, ran
 	const playable_conns = find_playables(state, playerIndex, suitIndex, rank, ignoreOrders);
 
 	if (playable_conns.length !== 0) {
-		if (rank === 1) {
+		if (rank === 1 && playable_conns.some(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1))) {
 			const ordered_1s = order_1s(state, playable_conns);
 
 			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, reordering to oldest 1`);
@@ -178,8 +179,8 @@ export function find_connecting(state, giver, target, suitIndex, rank, ignoreOrd
 			// Clue giver cannot finesse/prompt themselves
 			continue;
 		}
-		else if (giver === state.ourPlayerIndex && playerIndex === target) {
-			// If we are giving the clue, the receiver will not be able to find known prompts/finesses in their hand (FIX. Why?)
+		else if (playerIndex === target && state.hypo_stacks.some(stack => stack + 1 === rank)) {
+			// Clue receiver will not find known prompts/finesses in their hand unless no identities are delayed playable
 			continue;
 		}
 		else {

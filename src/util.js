@@ -55,10 +55,6 @@ export function initConsole() {
 			process.exit();
 		}
 
-		if (globals.state === undefined) {
-			return;
-		}
-
 		if (key.sequence === '\x7F') {
 			key.sequence = '\b';
 		}
@@ -69,6 +65,12 @@ export function initConsole() {
 			case '\n': {
 				logger.info();
 				const parts = command.join('').split(' ');
+
+				if (parts[0] !== 'spectate' && globals.state === undefined) {
+					logger.error('No game specified. Try loading a replay or joining a game first.');
+					return;
+				}
+
 				const { state } = globals;
 
 				switch(parts[0]) {
@@ -121,6 +123,21 @@ export function initConsole() {
 						state.navigate(turn);
 						break;
 					}
+					case 'spectate':
+						if (parts.length < 2) {
+							logger.warn('Correct usage is "spectate <tableID> [shadowingPlayerIndex=-1]"');
+							break;
+						}
+
+						if (parts.length === 3 && isNaN(Number(parts[2]))) {
+							logger.warn('Please provide a valid shadowing player index.');
+						}
+
+						sendCmd('tableSpectate', { tableID: Number(parts[1]), shadowingPlayerIndex: Number(parts[2] ?? -1) });
+						break;
+					case 'unattend':
+						sendCmd('tableUnattend', { tableID: state.tableID });
+						break;
 				}
 				command = [];
 				break;

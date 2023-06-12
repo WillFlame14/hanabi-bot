@@ -147,10 +147,10 @@ export function take_action(state) {
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 	}
 
-	if (state.clue_tokens > 0 && best_play_clue !== undefined) {
+	if (state.clue_tokens > 0) {
 		for (let i = 5; i < 9; i++) {
 			// Give play clue (at correct priority level)
-			if (i === (state.clue_tokens > 1 ? 5 : 8)) {
+			if (i === (state.clue_tokens > 1 ? 5 : 8) && best_play_clue !== undefined) {
 				// -0.5 if 2 players (allows tempo clues to be given)
 				// -10 if endgame
 				const minimum_clue_value = 1 - (state.numPlayers === 2 ? 0.5 : 0) - (inEndgame(state) ? 10 : 0);

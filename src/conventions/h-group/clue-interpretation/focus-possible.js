@@ -151,7 +151,7 @@ function find_rank_focus(state, rank, action) {
 				}
 
 				connections = connections.concat(connecting);
-				already_connected = already_connected.concat(connections.map(conn => conn.card.order));
+				already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 
 				stack_rank++;
 				hypo_state.play_stacks[suitIndex]++;
