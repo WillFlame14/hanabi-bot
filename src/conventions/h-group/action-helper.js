@@ -233,7 +233,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 						}
 					}
 					const new_chop = saved_hand[find_chop(saved_hand)];
-					remainder_boost = card_value(state, new_chop) * 0.2;
+					remainder_boost = new_chop ? card_value(state, new_chop) * 0.2 : 0;
 				}
 
 				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked(state), remainder_boost);

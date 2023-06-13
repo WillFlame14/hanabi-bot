@@ -179,6 +179,10 @@ export function interpret_clue(state, action) {
 				let self = true;
 
 				for (const card of focused_card.inferred) {
+					if (isBasicTrash(state, card.suitIndex, card.rank)) {
+						continue;
+					}
+
 					const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank);
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('feasible?', feasible, 'blind plays', blind_plays);

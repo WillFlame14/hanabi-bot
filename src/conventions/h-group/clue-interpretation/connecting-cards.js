@@ -4,7 +4,7 @@ import { LEVEL } from '../h-constants.js';
 import { find_prompt, find_finesse } from '../hanabi-logic.js';
 import { order_1s } from '../action-helper.js';
 import { card_elim } from '../../../basics.js';
-import { playableAway } from '../../../basics/hanabi-util.js';
+import { isBasicTrash, playableAway } from '../../../basics/hanabi-util.js';
 import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 

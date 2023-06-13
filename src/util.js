@@ -138,6 +138,8 @@ export function initConsole() {
 					case 'unattend':
 						sendCmd('tableUnattend', { tableID: state.tableID });
 						break;
+					default:
+						logger.warn('Command not recognized.');
 				}
 				command = [];
 				break;

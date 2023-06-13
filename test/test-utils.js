@@ -16,6 +16,9 @@ export const PLAYER = /** @type {const} */ ({
 	EMILY: 4
 });
 
+const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
+const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
+
 /**
  * @template {import ('../src/basics/State.js').State} A
  * @param {{new(...args: any[]): A}} StateClass
@@ -23,8 +26,7 @@ export const PLAYER = /** @type {const} */ ({
  * @return {A}
  */
 export function setup(StateClass, hands, level) {
-	const playerNames = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'].slice(0, hands.length);
-	const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
+	const playerNames = names.slice(0, hands.length);
 
 	const state = new StateClass(-1, playerNames, 0, suits, false, level);
 	Utils.globalModify({state});
