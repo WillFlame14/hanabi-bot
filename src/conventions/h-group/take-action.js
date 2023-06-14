@@ -29,7 +29,7 @@ export function take_action(state) {
 
 	// Look for playables, trash and important discards in own hand
 	let playable_cards = find_playables(state.play_stacks, hand);
-	const trash_cards = find_known_trash(state, state.ourPlayerIndex).filter(c => c.clued);
+	let trash_cards = find_known_trash(state, state.ourPlayerIndex).filter(c => c.clued);
 
 	const discards = [];
 	for (const card of playable_cards) {
@@ -46,8 +46,9 @@ export function take_action(state) {
 		}
 	}
 
-	// Remove trash cards from playables
-	playable_cards = playable_cards.filter(pc => !trash_cards.some(sc => sc.order === pc.order));
+	// Remove trash cards from playables and discards from trash cards
+	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order));
+	trash_cards = trash_cards.filter(tc => !discards.some(dc => dc.order === tc.order));
 
 	if (playable_cards.length > 0) {
 		logger.info('playable cards', Utils.logHand(playable_cards));

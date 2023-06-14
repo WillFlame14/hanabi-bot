@@ -6,9 +6,9 @@ class Logger {
 		ERROR: 3
 	});
 	level = 1;
-	accumulate = false;
+	accumulateDepth = 0;
 
-	/** @type {{colour: string, args: string[]}[]} */
+	/** @type {{colour: string, args: string[]}[][]} */
 	buffer = [];
 
 	/**
@@ -29,8 +29,13 @@ class Logger {
 	}
 
 	log(colour, ...args) {
-		if (this.accumulate) {
-			this.buffer.push({ colour, args });
+		if (this.accumulateDepth > 0) {
+			// Failsafe
+			if (this.buffer[this.accumulateDepth].length > 1000 || this.accumulateDepth > 10) {
+				throw new Error('stop.');
+			}
+
+			this.buffer[this.accumulateDepth].push({ colour, args });
 		}
 		else {
 			let colour_code = '';
@@ -79,7 +84,10 @@ class Logger {
 	 * Logs can be printed or discarded using flush().
 	 */
 	collect() {
-		this.accumulate = true;
+		this.accumulateDepth++;
+		if (this.buffer[this.accumulateDepth] === undefined) {
+			this.buffer[this.accumulateDepth] = [];
+		}
 	}
 
 	/**
@@ -87,16 +95,14 @@ class Logger {
 	 * @param {boolean} print 	Whether to print the logs (true) or discard them (false).
 	 */
 	flush(print = true) {
-		this.accumulate = false;
-
+		this.accumulateDepth--;
 		if (print) {
-			for (const log of this.buffer) {
+			for (const log of this.buffer[this.accumulateDepth + 1]) {
 				const { colour, args } = log;
 				this.log(colour, ...args);
 			}
 		}
-
-		this.buffer = [];
+		this.buffer[this.accumulateDepth + 1] = [];
 	}
 }
 

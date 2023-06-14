@@ -134,7 +134,6 @@ export function interpret_discard(state, action, card) {
 					}
 				}
 				logger.warn(`couldn't find a valid target for sarcastic discard`);
-				state.early_game = false;
 			}
 		}
 	}

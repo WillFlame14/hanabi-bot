@@ -183,7 +183,11 @@ export function interpret_clue(state, action) {
 						continue;
 					}
 
-					const looksDirect = action.clue.type === CLUE.COLOUR || state.hypo_stacks.some(stack => stack + 1 === action.clue.value);
+					const looksDirect =
+						action.clue.type === CLUE.COLOUR ||										// Colour clue always looks direct
+						state.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
+						focus_possible.some(fp => fp.save);										// Looks like a save
+
 					const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect);
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('feasible?', feasible, 'blind plays', blind_plays);
@@ -213,7 +217,12 @@ export function interpret_clue(state, action) {
 		}
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!isBasicTrash(state, focused_card.suitIndex, focused_card.rank)) {
-			const { feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank);
+			const looksDirect =
+				action.clue.type === CLUE.COLOUR ||										// Colour clue always looks direct
+				state.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
+				focus_possible.some(fp => fp.save);										// Looks like a save
+
+			const { feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank, looksDirect);
 			if (feasible) {
 				all_connections.push({ connections, conn_suit: focused_card.suitIndex });
 			}

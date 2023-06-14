@@ -42,6 +42,7 @@ function find_colour_focus(state, suitIndex, action) {
 	let finesses = 0;
 
 	while (next_playable_rank < state.max_ranks[suitIndex]) {
+		// Note that a colour clue always looks direct
 		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, true, already_connected);
 		if (connecting.length === 0) {
 			break;
@@ -121,50 +122,11 @@ function find_rank_focus(state, rank, action) {
 
 	/** @type {FocusPossibility[]} */
 	let focus_possible = [];
-	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-		// Play clue
-		let stack_rank = state.play_stacks[suitIndex] + 1;
+	let looksSave = false;
 
-		/** @type {Connection[]} */
-		let connections = [];
-
-		if (rank === stack_rank) {
-			focus_possible.push({ suitIndex, rank, save: false, connections });
-		}
-		else if (rank > stack_rank) {
-			// Try looking for all connecting cards
-			const hypo_state = Utils.objClone(state);
-			let already_connected = [focused_card.order];
-
-			let finesses = 0;
-
-			while (stack_rank !== rank) {
-				const connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, state.hypo_stacks.some(stack => stack + 1 === rank), already_connected);
-				if (connecting.length === 0) {
-					break;
-				}
-
-				finesses += connecting.filter(conn => conn.type === 'finesse').length;
-				if (state.level === 1 && finesses === 2) {
-					logger.warn('blocked double finesse at level 1');
-					break;
-				}
-
-				connections = connections.concat(connecting);
-				already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
-
-				stack_rank++;
-				hypo_state.play_stacks[suitIndex]++;
-			}
-
-			// Connected cards can stack up to this rank
-			if (rank === stack_rank) {
-				focus_possible.push({ suitIndex, rank, save: false, connections });
-			}
-		}
-
-		// Save clue on chop
-		if (chop) {
+	// Save clue on chop
+	if (chop) {
+		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 			// Don't need to consider save on playable cards
 			if (playableAway(state, suitIndex, rank) === 0) {
 				continue;
@@ -186,6 +148,61 @@ function find_rank_focus(state, rank, action) {
 				}
 
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
+				looksSave = true;
+			}
+		}
+	}
+
+	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+		// Play clue
+		let next_rank = state.play_stacks[suitIndex] + 1;
+
+		/** @type {Connection[]} */
+		let connections = [];
+
+		if (rank === next_rank) {
+			focus_possible.push({ suitIndex, rank, save: false, connections });
+		}
+		else if (rank > next_rank) {
+			// Try looking for all connecting cards
+			const hypo_state = Utils.objClone(state);
+			let already_connected = [focused_card.order];
+
+			let finesses = 0;
+
+			let looksPlayable = state.hypo_stacks.some(stack => stack + 1 === next_rank);
+			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, (looksSave || looksPlayable), already_connected);
+
+			while (connecting.length !== 0) {
+				finesses += connecting.filter(conn => conn.type === 'finesse').length;
+				if (state.level === 1 && finesses === 2) {
+					logger.warn('blocked double finesse at level 1');
+					break;
+				}
+
+				if (connecting[0].type === 'finesse' && rank === next_rank) {
+					// Even if a finesse is possible, it might not be a finesse
+					focus_possible.push({ suitIndex, rank, save: false, connections: Utils.objClone(connections) });
+				}
+
+				connections = connections.concat(connecting);
+				already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
+
+				next_rank++;
+				hypo_state.play_stacks[suitIndex]++;
+
+				if (next_rank > rank) {
+					logger.warn('stacked beyond clued rank, deciding to ignore possibility');
+					break;
+				}
+
+				looksPlayable = state.hypo_stacks.some(stack => stack + 1 === next_rank);
+				connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, (looksSave || looksPlayable), already_connected);
+			}
+
+			// Connected cards can stack up to this rank
+			if (rank === next_rank) {
+				focus_possible.push({ suitIndex, rank, save: false, connections });
 			}
 		}
 	}

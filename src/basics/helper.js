@@ -140,7 +140,7 @@ export function find_known_trash(state, playerIndex) {
 	/** @type {(suitIndex: number, rank: number, order: number) => boolean} */
 	const visible_elsewhere = (suitIndex, rank, order) => {
 		// Visible in someone else's hand or visible in the same hand (but only one is trash)
-		return visibleFind(state, playerIndex, suitIndex, rank, { ignore: [playerIndex] }).some(c => c.clued && c.order !== order) ||
+		return visibleFind(state, playerIndex, suitIndex, rank, { ignore: [playerIndex] }).some(c => (c.clued || c.finessed) && c.order !== order) ||
 			visibleFind(state, playerIndex, suitIndex, rank).some(c => c.clued && c.order !== order && c.focused);
 	};
 

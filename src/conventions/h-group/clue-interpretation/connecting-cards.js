@@ -4,7 +4,7 @@ import { LEVEL } from '../h-constants.js';
 import { find_prompt, find_finesse } from '../hanabi-logic.js';
 import { order_1s } from '../action-helper.js';
 import { card_elim } from '../../../basics.js';
-import { isBasicTrash, playableAway } from '../../../basics/hanabi-util.js';
+import { playableAway } from '../../../basics/hanabi-util.js';
 import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
 
@@ -35,6 +35,7 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 			}
 
 			if (card.matches(suitIndex, rank, { symmetric: true, infer: true })) {
+				logger.info(`found known ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
 				return { type: 'known', reacting: playerIndex, card };
 			}
 		}
@@ -132,6 +133,13 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 	const connecting = find_known_connecting(state, giver, suitIndex, rank, ignoreOrders);
 	if (connecting) {
 		return [connecting];
+	}
+
+	// Do not consider unknown playables if the card is already gotten in the target's hand
+	// TODO: Maybe some version of this if it's found in non-prompt position in anyone else's hand?
+	if (state.hands[target].some(c => c.matches(suitIndex, rank) && (c.clued || c.finessed))) {
+		logger.info('clue looks like a self-prompt on target, killing');
+		return [];
 	}
 
 	// Only consider prompts/finesses if no connecting cards found
