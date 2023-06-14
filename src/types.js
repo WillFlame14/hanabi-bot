@@ -74,7 +74,7 @@ import { CLUE, ACTION } from './constants.js';
  * @property {number} [value]
  * 
  * @typedef Connection
- * @property {'known' | 'playable' | 'prompt' | 'finesse'} type
+ * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate'} type
  * @property {number} reacting
  * @property {Card} card
  * @property {boolean} [self]

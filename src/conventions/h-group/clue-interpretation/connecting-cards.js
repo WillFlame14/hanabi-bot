@@ -46,16 +46,26 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 		const playerIndex = (giver + i) % state.numPlayers;
 		const hand = state.hands[playerIndex];
 
-		if (playerIndex === giver) {
-			continue;
+		// Unknown playables that match
+		const playables = hand.filter(card =>
+			card.inferred.some(c => c.matches(suitIndex, rank)) &&
+			(card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0) || card.finessed)
+		);
+		const match = playables.find(card => card.matches(suitIndex, rank));
+
+		// More than 1 such playable and it could be duplicated in giver's hand - disallow hidden delayed play
+		if (playables.length > 1 && state.hands[giver].some(c => c.clued && c.inferred.some(inf => inf.matches(suitIndex, rank)))) {
+			if (match !== undefined) {
+				// Everyone other than giver will recognize this card as the connection - stop looking further
+				return { type: 'terminate', reacting: null, card: null };
+			}
+			logger.info(`disallowed hidden delayed play on ${Utils.logCard({ suitIndex, rank })}, could be duplicated in giver's hand`);
+			return;
 		}
 
-		const playable_conn = hand.find(card => card.matches(suitIndex, rank) &&
-			(card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0) || card.finessed));
-
-		if (playable_conn !== undefined) {
-			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, with inferences ${playable_conn.inferred.map(c => Utils.logCard(c)).join()}`);
-			return { type: 'playable', reacting: playerIndex, card: playable_conn };
+		if (match !== undefined) {
+			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, with inferences ${match.inferred.map(c => Utils.logCard(c)).join()}`);
+			return { type: 'playable', reacting: playerIndex, card: match };
 		}
 	}
 }
@@ -85,6 +95,11 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 
 		// Prompted card is delayed playable
 		if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank) {
+			// Could be duplicated in giver's hand - disallow hidden prompt
+			if (state.hands[giver].some(c => c.clued && c.inferred.some(inf => inf.matches(suitIndex, rank)))) {
+				logger.info(`disallowed hidden prompt on ${Utils.logCard(prompt)}, could be duplicated in giver's hand`);
+				return;
+			}
 			logger.info(`found playable prompt ${Utils.logCard(prompt)} in ${state.playerNames[playerIndex]}'s hand`);
 			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true };
 		}
@@ -105,6 +120,11 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 		}
 		// Finessed card is delayed playable
 		else if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
+			// Could be duplicated in giver's hand - disallow hidden prompt
+			if (state.hands[giver].some(c => c.clued && c.inferred.some(inf => inf.matches(suitIndex, rank)))) {
+				logger.info(`disallowed hidden finesse on ${Utils.logCard(finesse)}, could be duplicated in giver's hand`);
+				return;
+			}
 			logger.info(`found playable finesse ${Utils.logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand`);
 			return { type: 'finesse', reacting: playerIndex, card: finesse, hidden: true };
 		}
@@ -132,13 +152,16 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 
 	const connecting = find_known_connecting(state, giver, suitIndex, rank, ignoreOrders);
 	if (connecting) {
+		if (connecting.type === 'terminate') {
+			return [];
+		}
 		return [connecting];
 	}
 
 	// Do not consider unknown playables if the card is already gotten in the target's hand
 	// TODO: Maybe some version of this if it's found in non-prompt position in anyone else's hand?
 	if (state.hands[target].some(c => c.matches(suitIndex, rank) && (c.clued || c.finessed))) {
-		logger.info('clue looks like a self-prompt on target, killing');
+		logger.info(`connecting ${Utils.logCard({suitIndex, rank})} already gotten in target's hand, killing`);
 		return [];
 	}
 
