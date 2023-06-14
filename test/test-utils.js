@@ -25,7 +25,7 @@ const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
  * @param {string[][]} hands
  * @return {A}
  */
-export function setup(StateClass, hands, level) {
+export function setup(StateClass, hands, level = 1) {
 	const playerNames = names.slice(0, hands.length);
 
 	const state = new StateClass(-1, playerNames, 0, suits, false, level);

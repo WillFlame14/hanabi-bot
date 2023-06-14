@@ -50,6 +50,7 @@ export class State {
      * @param {string[]} playerNames
      * @param {number} ourPlayerIndex
      * @param {string[]} suits
+     * @param {boolean} in_progress
      */
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress) {
 		/** @type {number} */
@@ -219,6 +220,9 @@ export class State {
 		logger.wrapLevel(logger.LEVELS.ERROR, () => {
 			while (turn_count < turn - 1) {
 				const action = actionList[action_index];
+				if (action.type === 'clue' && action.mistake) {
+					action.mistake = false;
+				}
 				new_state.handle_action(action, true);
 				action_index++;
 
@@ -231,6 +235,9 @@ export class State {
 		// Log the previous turn and the 'turn' action leading to the desired turn
 		while (turn_count < turn) {
 			const action = actionList[action_index];
+			if (action.type === 'clue' && action.mistake) {
+				action.mistake = false;
+			}
 			new_state.handle_action(action);
 			action_index++;
 

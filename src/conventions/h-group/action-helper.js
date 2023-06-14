@@ -27,7 +27,10 @@ import * as Utils from '../../util.js';
  */
 export function find_clue_value(clue_result) {
 	const { finesses, new_touched, playables, bad_touch, elim, remainder } = clue_result;
-	return 0.5*(finesses + new_touched + playables.length) + 0.01*elim - 1*bad_touch - 0.2*remainder;
+
+	// Touching 1 card is much better than touching none, but touching more cards is only marginally better
+	const new_touched_value = (new_touched >= 1) ? 0.5 + 0.1 * (new_touched - 1) : 0;
+	return 0.5*(finesses + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch - 0.2*remainder;
 }
 
 /**
@@ -93,7 +96,10 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 
 	for (const clue of all_play_clues) {
 		const clue_value = find_clue_value(clue.result) + remainder_boost;
-		if (clue_value < (locked ? 0 : 1)) {
+
+		// Locked reduces needed clue value, only 1 clue token increases needed clue value
+		if (clue_value < (locked ? 0 : 1) + (state.clue_tokens === 1 ? 1 : 0)) {
+			logger.info('clue value', clue_value, 'skipping');
 			continue;
 		}
 
@@ -141,10 +147,11 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 	}
 
 	// If there are clues that make the save target playable, we should prioritize those
-	const save_target = state.hands[target][find_chop(state.hands[target])];
-	const playable_saves = play_clues.filter(({ playables }) => playables.some(c => c.matches(save_target.suitIndex, save_target.rank)));
+	// TODO: Consider adding this back?
+	// const save_target = state.hands[target][find_chop(state.hands[target])];
+	// const playable_saves = play_clues.filter(({ playables }) => playables.some(c => c.matches(save_target.suitIndex, save_target.rank)));
 
-	const { clue } = Utils.maxOn((playable_saves.length > 0) ? playable_saves : play_clues, ({ clue }) => find_clue_value(clue.result));
+	const { clue } = Utils.maxOn(play_clues, ({ clue }) => find_clue_value(clue.result));
 
 	// Convert CLUE to ACTION
 	return Utils.clueToAction(clue, state.tableID);
@@ -220,8 +227,8 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 				continue;
 			}
 
-			// Try to give a play clue involving them
-			if (state.clue_tokens > 1 || save_clues[target]?.playable) {
+			// Try to give a play clue involving them (2 players, too risky to try play over save at 1 clue)
+			if (state.clue_tokens >= (state.numPlayers > 2 ? 1 : 2)) {
 				let remainder_boost = 0;
 
 				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad

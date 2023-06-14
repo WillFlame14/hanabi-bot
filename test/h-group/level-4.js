@@ -101,6 +101,7 @@ describe('trash chop move', () => {
 		], 4);
 
 		state.play_stacks = [5, 1, 0, 2, 2];
+		state.hypo_stacks = [5, 1, 0, 2, 2];
 
 		const { play_clues, save_clues, fix_clues } = find_clues(state);
 		const playable_priorities = determine_playable_card(state, find_playables(state.play_stacks, state.hands[PLAYER.ALICE]));

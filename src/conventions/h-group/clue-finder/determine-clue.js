@@ -2,7 +2,7 @@ import { CLUE } from '../../../constants.js';
 import { card_value, clue_safe } from './clue-safe.js';
 import { determine_focus, find_chop, find_bad_touch } from '../hanabi-logic.js';
 import { cardTouched, isCluable } from '../../../variants.js';
-import { isBasicTrash, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
+import { isTrash } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import logger from '../../../logger.js';
 import * as Utils from '../../../util.js';
@@ -134,7 +134,7 @@ export function get_result(state, hypo_state, clue) {
 		const hypo_card = hypo_state.hands[target][i];
 
 		if (hypo_card.clued && hypo_card.inferred.length < old_card.inferred.length && hypo_card.matches_inferences()) {
-			if (hypo_card.newly_clued) {
+			if (hypo_card.newly_clued && !hypo_card.finessed) {
 				new_touched++;
 			}
 			elim++;

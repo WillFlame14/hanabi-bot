@@ -42,7 +42,7 @@ function find_colour_focus(state, suitIndex, action) {
 	let finesses = 0;
 
 	while (next_playable_rank < state.max_ranks[suitIndex]) {
-		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, already_connected);
+		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, true, already_connected);
 		if (connecting.length === 0) {
 			break;
 		}
@@ -139,7 +139,7 @@ function find_rank_focus(state, rank, action) {
 			let finesses = 0;
 
 			while (stack_rank !== rank) {
-				const connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, already_connected);
+				const connecting = find_connecting(hypo_state, giver, target, suitIndex, stack_rank, state.hypo_stacks.some(stack => stack + 1 === rank), already_connected);
 				if (connecting.length === 0) {
 					break;
 				}

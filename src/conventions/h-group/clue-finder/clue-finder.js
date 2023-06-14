@@ -59,9 +59,10 @@ function find_save(state, target, card) {
  * @param {number} target
  * @param {Card[]} saved_cards
  * @param {Card} trash_card
+ * @param {Clue[]} play_clues
  * @returns {SaveClue | undefined} The TCM if valid, otherwise undefined.
  */
-function find_tcm(state, target, saved_cards, trash_card) {
+function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 	logger.info(`attempting tcm with trash card ${Utils.logCard(trash_card)}, saved cards ${saved_cards.map(c => Utils.logCard(c)).join(',')}`);
 	const chop = saved_cards.at(-1);
 
@@ -71,6 +72,10 @@ function find_tcm(state, target, saved_cards, trash_card) {
 		(saved_cards.every(c => c.suitIndex === chop.suitIndex) || saved_cards.every(c => c.rank === chop.rank))
 	) {
 		logger.info('prefer direct save');
+		return;
+	}
+	else if (play_clues.some(clue => saved_cards.every(c => state.hands[target].clueTouched(state.suits, clue).some(card => card.order === c.order)))) {
+		logger.info('prefer play clue to save');
 		return;
 	}
 	else if (isTrash(state, state.ourPlayerIndex, chop.suitIndex, chop.rank, chop.order) ||
@@ -220,7 +225,7 @@ export function find_clues(state, options = {}) {
 					// Trash chop move (we only want to find the rightmost tcm)
 					if (!(card.clued || card.chop_moved) && cardIndex !== chopIndex && !found_tcm) {
 						const saved_cards = hand.slice(cardIndex + 1).filter(c => !(c.clued || c.chop_moved));
-						saves.push(find_tcm(state, target, saved_cards, card));
+						saves.push(find_tcm(state, target, saved_cards, card, play_clues[target]));
 
 						found_tcm = true;
 						logger.info('--------');

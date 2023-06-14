@@ -183,7 +183,8 @@ export function interpret_clue(state, action) {
 						continue;
 					}
 
-					const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank);
+					const looksDirect = action.clue.type === CLUE.COLOUR || state.hypo_stacks.some(stack => stack + 1 === action.clue.value);
+					const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect);
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('feasible?', feasible, 'blind plays', blind_plays);
 

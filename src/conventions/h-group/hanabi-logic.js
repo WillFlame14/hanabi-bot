@@ -37,24 +37,24 @@ export function find_chop(hand, options = {}) {
  * @param {number} rank
  * @param {string[]} suits 			All suits in the current game.
  * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
- * @returns {Card | undefined}	The prompted card, or undefined if no card is a valid prompt.
+ * @returns {Card}					The prompted card, or undefined if no card is a valid prompt.
  */
 export function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
-	for (const card of hand) {
+	return hand.find(card => {
 		const { clued, newly_clued, order, inferred, possible, clues } = card;
 		// Ignore unclued, newly clued, and known cards (also intentionally ignored cards)
 		if (!clued || newly_clued || possible.length === 1 || ignoreOrders.includes(order)) {
-			continue;
+			return false;
 		}
 
 		// Ignore cards that don't match the inference
 		if (!possible.some(p => p.matches(suitIndex, rank))) {
-			continue;
+			return false;
 		}
 
 		// Ignore cards that don't match and have information lock
 		if (inferred.length === 1 && !(inferred[0].suitIndex === suitIndex && inferred[0].rank === rank)) {
-			continue;
+			return false;
 		}
 
 		// A clue must match the card (or rainbow/omni connect)
@@ -62,10 +62,10 @@ export function find_prompt(hand, suitIndex, rank, suits, ignoreOrders = []) {
 			(clue.type === CLUE.COLOUR && (clue.value === suitIndex || ['Rainbow', 'Omni'].includes(suits[suitIndex]))) ||
 			(clue.type === CLUE.RANK && clue.value === rank))
 		) {
-			return card;
+			return true;
 		}
-	}
-	return;
+		return false;
+	});
 }
 
 /**
