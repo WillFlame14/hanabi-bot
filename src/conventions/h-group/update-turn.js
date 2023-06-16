@@ -1,7 +1,7 @@
 import { update_hypo_stacks } from '../../basics/helper.js';
 import { visibleFind } from '../../basics/hanabi-util.js';
-import logger from '../../logger.js';
-import * as Utils from '../../util.js';
+import logger from '../../tools/logger.js';
+import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -23,7 +23,7 @@ function remove_finesse(state, waiting_index) {
 		const card = state.hands[reacting].findOrder(connection.card.order);
 
 		if (card === undefined) {
-			logger.warn(`card ${Utils.logCard(connection.card)} with order ${connection.card.order} no longer exists in hand to cancel connection`);
+			logger.warn(`card ${logCard(connection.card)} with order ${connection.card.order} no longer exists in hand to cancel connection`);
 			continue;
 		}
 
@@ -37,7 +37,7 @@ function remove_finesse(state, waiting_index) {
 			card.old_inferred = undefined;
 		}
 		else {
-			logger.error(`no old inferences on card ${Utils.logCard(card)}! current inferences ${card.inferred.map(c => Utils.logCard(c))}`);
+			logger.error(`no old inferences on card ${logCard(card)}! current inferences ${card.inferred.map(c => logCard(c))}`);
 		}
 	}
 
@@ -69,8 +69,8 @@ export function update_turn(state, action) {
 	const demonstrated = [];
 
 	for (let i = 0; i < state.waiting_connections.length; i++) {
-		const { connections, focused_card, inference } = state.waiting_connections[i];
-		logger.info(`next conn ${Utils.logCard(connections[0].card)} for inference ${Utils.logCard(inference)}`);
+		const { connections, focused_card, inference, action_index } = state.waiting_connections[i];
+		logger.info(`next conn ${logCard(connections[0].card)} for inference ${logCard(inference)}`);
 		const { type, reacting, card: old_card } = connections[0];
 
 		// Card may have been updated, so need to find it again
@@ -89,22 +89,13 @@ export function update_turn(state, action) {
 						logger.info(`played into other finesse, continuing to wait`);
 					}
 					else {
-						logger.info(`Didn't play into finesse, removing inference ${Utils.logCard(inference)}`);
-
-						const action_index = card.reasoning.pop();
-						if (action_index !== undefined) {
-							state.rewind(action_index, { type: 'ignore', order: card.order, playerIndex: reacting });
-						}
-						else {
-							logger.warn(`no reasoning on card ${Utils.logCard(card)}`);
-						}
-
-						// Flag it to be removed
-						to_remove.push(i);
+						logger.info(`Didn't play into finesse, removing inference ${logCard(inference)}`);
+						state.rewind(action_index, { type: 'ignore', order: card.order, playerIndex: reacting });
+						return;
 					}
 				}
 				else if (state.last_actions[reacting].type === 'discard') {
-					logger.info(`Discarded with a waiting connection, removing inference ${Utils.logCard(inference)}`);
+					logger.info(`Discarded with a waiting connection, removing inference ${logCard(inference)}`);
 					remove_finesse(state, i);
 					to_remove.push(i);
 				}
@@ -112,7 +103,7 @@ export function update_turn(state, action) {
 			else {
 				// The card was played
 				if (state.last_actions[reacting].type === 'play') {
-					logger.info(`waiting card ${Utils.logCard(old_card)} played`);
+					logger.info(`waiting card ${logCard(old_card)} played`);
 					connections.shift();
 					if (connections.length === 0) {
 						to_remove.push(i);
@@ -131,7 +122,7 @@ export function update_turn(state, action) {
 				}
 				// The card was discarded and its copy is not visible
 				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.ourPlayerIndex, old_card.suitIndex, old_card.rank).length === 0) {
-					logger.info(`waiting card ${Utils.logCard(old_card)} discarded?? removing finesse`);
+					logger.info(`waiting card ${logCard(old_card)} discarded?? removing finesse`);
 					remove_finesse(state, i);
 
 					// Flag it to be removed
@@ -143,7 +134,7 @@ export function update_turn(state, action) {
 
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
 	for (const { card, inferences } of demonstrated) {
-		logger.info(`intersecting card ${Utils.logCard(card)} with inferences ${inferences.map(c => Utils.logCard(c)).join(',')}`);
+		logger.info(`intersecting card ${logCard(card)} with inferences ${inferences.map(c => logCard(c)).join(',')}`);
 		card.intersect('inferred', inferences);
 		// TODO: update hypo stacks?
 	}

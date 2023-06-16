@@ -1,5 +1,5 @@
 import { CLUE } from '../../../constants.js';
-import logger from '../../../logger.js';
+import logger from '../../../tools/logger.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State

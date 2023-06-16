@@ -1,5 +1,5 @@
 import { cardTouched } from '../variants.js';
-import logger from '../logger.js';
+import logger from '../tools/logger.js';
 
 /**
  * @typedef {import('./Card.js').Card} Card
@@ -30,8 +30,9 @@ export class Hand extends Array {
 	}
 
 	/**
-	 * Returns whether the hand is locked (i.e. every card is clued, chop moved, or an unplayable finesse).
-	 */
+     * Returns whether the hand is locked (i.e. every card is clued, chop moved, or an unplayable finesse).
+     * @param {import("./State.js").State} state
+     */
 	isLocked(state) {
 		return this.every(c => c.clued || c.chop_moved || (c.finessed && state.play_stacks[c.suitIndex] < c.rank));
 	}

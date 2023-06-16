@@ -6,7 +6,8 @@ dotenv.config();
 
 import { handle } from './command-handler.js';
 import { fetchVariants } from './variants.js';
-import * as Utils from './util.js';
+import { initConsole } from './tools/console.js';
+import * as Utils from './tools/util.js';
 
 /**
  * Logs in to hanab.live and returns the session cookie to authenticate future requests.
@@ -76,7 +77,7 @@ async function main() {
 
 	// Pass the websocket to utils
 	Utils.globalModify({ ws });
-	Utils.initConsole();
+	initConsole();
 
 	ws.on('open', () => console.log('Established websocket connection!'));
 	ws.on('error', (err) => console.log('Websocket error:', err));

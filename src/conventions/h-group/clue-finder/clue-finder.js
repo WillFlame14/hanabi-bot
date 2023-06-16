@@ -6,8 +6,9 @@ import { determine_clue, direct_clues, get_result } from './determine-clue.js';
 import { find_chop, stall_severity } from '../hanabi-logic.js';
 import { isBasicTrash, isCritical, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
-import logger from '../../../logger.js';
-import * as Utils from '../../../util.js';
+import logger from '../../../tools/logger.js';
+import { logCard, logClue } from '../../../tools/log.js';
+import * as Utils from '../../../tools/util.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -38,7 +39,7 @@ function find_save(state, target, card) {
 	}
 
 	if (isCritical(state, suitIndex, rank)) {
-		logger.warn('saving critical card', Utils.logCard(card));
+		logger.warn('saving critical card', logCard(card));
 		if (rank === 5) {
 			return { type: CLUE.RANK, value: 5, target, playable: false };
 		}
@@ -63,7 +64,7 @@ function find_save(state, target, card) {
  * @returns {SaveClue | undefined} The TCM if valid, otherwise undefined.
  */
 function find_tcm(state, target, saved_cards, trash_card, play_clues) {
-	logger.info(`attempting tcm with trash card ${Utils.logCard(trash_card)}, saved cards ${saved_cards.map(c => Utils.logCard(c)).join(',')}`);
+	logger.info(`attempting tcm with trash card ${logCard(trash_card)}, saved cards ${saved_cards.map(c => logCard(c)).join(',')}`);
 	const chop = saved_cards.at(-1);
 
 	// Colour or rank save (if possible) is preferred over trash chop move
@@ -90,7 +91,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 
 		return isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) ||					// Saving a trash card
 			saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order);	// Saving 2 of the same card
-	}).map(c => Utils.logCard(c));
+	}).map(c => logCard(c));
 
 	logger.info(`would save ${saved_trash.length === 0 ? 'no' : saved_trash.join()} trash`);
 
@@ -279,7 +280,7 @@ export function find_clues(state, options = {}) {
 				// Not a play clue
 				if (clue.result.playables.length === 0) {
 					if (cardIndex !== chopIndex) {
-						logger.info(`found clue ${Utils.logClue(clue)} that wasn't a save/tcm/5cm/play.`);
+						logger.info(`found clue ${logClue(clue)} that wasn't a save/tcm/5cm/play.`);
 					}
 					logger.info('--------');
 					continue;
@@ -303,13 +304,13 @@ export function find_clues(state, options = {}) {
 	const fix_clues = find_fix_clues(state, play_clues, save_clues, options);
 
 	if (play_clues.some(clues => clues.length > 0)) {
-		logger.info('found play clues', play_clues.map(clues => clues.map(clue => Utils.logClue(clue))).flat());
+		logger.info('found play clues', play_clues.map(clues => clues.map(clue => logClue(clue))).flat());
 	}
 	if (save_clues.some(clue => clue !== undefined)) {
-		logger.info('found save clues', save_clues.filter(clue => clue !== undefined).map(clue => Utils.logClue(clue)));
+		logger.info('found save clues', save_clues.filter(clue => clue !== undefined).map(clue => logClue(clue)));
 	}
 	if (fix_clues.some(clues => clues.length > 0)) {
-		logger.info('found fix clues', fix_clues.map(clues => clues.map(clue => Utils.logClue(clue))).flat());
+		logger.info('found fix clues', fix_clues.map(clues => clues.map(clue => logClue(clue))).flat());
 	}
 
 	return { play_clues, save_clues, fix_clues };

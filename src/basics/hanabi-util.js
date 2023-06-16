@@ -105,6 +105,10 @@ export function getPace(state) {
 	return currScore + state.cardsLeft + state.numPlayers - maxScore;
 }
 
+/**
+ * @param {import("./State.js").State} state
+ * @param {import("./Card.js").Card} card
+ */
 export function inStartingHand(state, card) {
 	return card.order < state.numPlayers * state.hands[0].length;
 }

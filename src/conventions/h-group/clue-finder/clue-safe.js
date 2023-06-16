@@ -2,8 +2,7 @@ import { CLUE } from '../../../constants.js';
 import { find_chop } from '../hanabi-logic.js';
 import { handLoaded } from '../../../basics/helper.js';
 import { isCritical, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
-import logger from '../../../logger.js';
-import * as Utils from '../../../util.js';
+import logger from '../../../tools/logger.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State

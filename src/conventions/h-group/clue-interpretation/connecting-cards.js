@@ -5,8 +5,10 @@ import { find_prompt, find_finesse } from '../hanabi-logic.js';
 import { order_1s } from '../action-helper.js';
 import { card_elim } from '../../../basics.js';
 import { playableAway } from '../../../basics/hanabi-util.js';
-import logger from '../../../logger.js';
-import * as Utils from '../../../util.js';
+
+import logger from '../../../tools/logger.js';
+import { logCard } from '../../../tools/log.js';
+import * as Utils from '../../../tools/util.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -35,7 +37,7 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 			}
 
 			if (card.matches(suitIndex, rank, { symmetric: true, infer: true })) {
-				logger.info(`found known ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
+				logger.info(`found known ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
 				return { type: 'known', reacting: playerIndex, card };
 			}
 		}
@@ -48,6 +50,7 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 
 		// Unknown playables that match
 		const playables = hand.filter(card =>
+			!ignoreOrders.includes(card.order) &&
 			card.inferred.some(c => c.matches(suitIndex, rank)) &&
 			(card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0) || card.finessed)
 		);
@@ -59,12 +62,12 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 				// Everyone other than giver will recognize this card as the connection - stop looking further
 				return { type: 'terminate', reacting: null, card: null };
 			}
-			logger.info(`disallowed hidden delayed play on ${Utils.logCard({ suitIndex, rank })}, could be duplicated in giver's hand`);
+			logger.info(`disallowed hidden delayed play on ${logCard({ suitIndex, rank })}, could be duplicated in giver's hand`);
 			return;
 		}
 
 		if (match !== undefined) {
-			logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, with inferences ${match.inferred.map(c => Utils.logCard(c)).join()}`);
+			logger.info(`found playable ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, with inferences ${match.inferred.map(c => logCard(c)).join()}`);
 			return { type: 'playable', reacting: playerIndex, card: match };
 		}
 	}
@@ -89,7 +92,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 	// Prompt takes priority over finesse
 	if (prompt !== undefined) {
 		if (prompt.matches(suitIndex, rank)) {
-			logger.info(`found prompt ${Utils.logCard(prompt)} in ${state.playerNames[playerIndex]}'s hand`);
+			logger.info(`found prompt ${logCard(prompt)} in ${state.playerNames[playerIndex]}'s hand`);
 			return { type: 'prompt', reacting: playerIndex, card: prompt };
 		}
 
@@ -97,14 +100,14 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 		if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank) {
 			// Could be duplicated in giver's hand - disallow hidden prompt
 			if (state.hands[giver].some(c => c.clued && c.inferred.some(inf => inf.matches(suitIndex, rank)))) {
-				logger.info(`disallowed hidden prompt on ${Utils.logCard(prompt)}, could be duplicated in giver's hand`);
+				logger.info(`disallowed hidden prompt on ${logCard(prompt)}, could be duplicated in giver's hand`);
 				return;
 			}
-			logger.info(`found playable prompt ${Utils.logCard(prompt)} in ${state.playerNames[playerIndex]}'s hand`);
+			logger.info(`found playable prompt ${logCard(prompt)} in ${state.playerNames[playerIndex]}'s hand`);
 			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true };
 		}
 		else {
-			logger.info(`wrong prompt on ${Utils.logCard(prompt)}`);
+			logger.info(`wrong prompt on ${logCard(prompt)}`);
 			return;
 		}
 	}
@@ -112,20 +115,20 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 		if (finesse.matches(suitIndex, rank)) {
 			// At level 1, only forward finesses are allowed.
 			if (state.level === 1 && !inBetween(state.numPlayers, playerIndex, giver, target)) {
-				logger.warn(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand, but not between giver and target`);
+				logger.warn(`found finesse ${logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand, but not between giver and target`);
 				return;
 			}
-			logger.info(`found finesse ${Utils.logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand`);
+			logger.info(`found finesse ${logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand`);
 			return { type: 'finesse', reacting: playerIndex, card: finesse };
 		}
 		// Finessed card is delayed playable
 		else if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
 			// Could be duplicated in giver's hand - disallow hidden prompt
 			if (state.hands[giver].some(c => c.clued && c.inferred.some(inf => inf.matches(suitIndex, rank)))) {
-				logger.info(`disallowed hidden finesse on ${Utils.logCard(finesse)}, could be duplicated in giver's hand`);
+				logger.info(`disallowed hidden finesse on ${logCard(finesse)}, could be duplicated in giver's hand`);
 				return;
 			}
-			logger.info(`found playable finesse ${Utils.logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand`);
+			logger.info(`found playable finesse ${logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand`);
 			return { type: 'finesse', reacting: playerIndex, card: finesse, hidden: true };
 		}
 	}
@@ -144,7 +147,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
  */
 export function find_connecting(state, giver, target, suitIndex, rank, looksDirect, ignoreOrders = []) {
 	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits[suitIndex], rank)) {
-		logger.info(`all ${Utils.logCard({suitIndex, rank})} in trash`);
+		logger.info(`all ${logCard({suitIndex, rank})} in trash`);
 		return [];
 	}
 
@@ -160,8 +163,11 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 
 	// Do not consider unknown playables if the card is already gotten in the target's hand
 	// TODO: Maybe some version of this if it's found in non-prompt position in anyone else's hand?
-	if (state.hands[target].some(c => c.matches(suitIndex, rank) && (c.clued || c.finessed))) {
-		logger.info(`connecting ${Utils.logCard({suitIndex, rank})} already gotten in target's hand, killing`);
+	const target_copy = state.hands[target].find(c => c.matches(suitIndex, rank) && (c.clued || c.finessed));
+	if (target_copy !== undefined) {
+		if (!ignoreOrders.includes(target_copy.order)) {
+			logger.info(`connecting ${logCard({suitIndex, rank})} already gotten in target's hand, killing`);
+		}
 		return [];
 	}
 
@@ -214,18 +220,18 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 			if (rank === 1 && playable_conns.every(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1))) {
 				const ordered_1s = order_1s(state, playable_conns);
 
-				logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in our hand, reordering to oldest 1`);
+				logger.info(`found playable ${logCard({suitIndex, rank})} in our hand, reordering to oldest 1`);
 				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: ordered_1s[0] }];
 			}
 			else {
 				const playable_conn = playable_conns[0];
-				logger.info(`found playable ${Utils.logCard({suitIndex, rank})} in our hand, with inferences ${playable_conn.inferred.map(c => Utils.logCard(c)).join()}`);
+				logger.info(`found playable ${logCard({suitIndex, rank})} in our hand, with inferences ${playable_conn.inferred.map(c => logCard(c)).join()}`);
 				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: playable_conn }];
 			}
 		}
 	}
 
-	logger.info(`couldn't find connecting ${Utils.logCard({suitIndex, rank})}`);
+	logger.info(`couldn't find connecting ${logCard({suitIndex, rank})}`);
 	return [];
 }
 
@@ -266,7 +272,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 	// Create hypothetical state where we have the missing cards (and others can elim from them)
 	const hypo_state = Utils.objClone(state);
 
-	logger.info('finding finesse for (potentially) clued card', Utils.logCard({suitIndex, rank}));
+	logger.info('finding finesse for (potentially) clued card', logCard({suitIndex, rank}));
 	const our_hand = hypo_state.hands[state.ourPlayerIndex];
 
 	/** @type {Connection[]} */
@@ -277,7 +283,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 
 	for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
 		if (hypo_state.discard_stacks[suitIndex][next_rank - 1] === cardCount(hypo_state.suits[suitIndex], next_rank)) {
-			logger.info(`impossible to find ${Utils.logCard({suitIndex, rank: next_rank})}, both cards in trash`);
+			logger.info(`impossible to find ${logCard({suitIndex, rank: next_rank})}, both cards in trash`);
 			feasible = false;
 			break;
 		}
@@ -320,7 +326,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 						break;
 					}
 
-					logger.info('found layered finesse in our hand - still searching for', Utils.logCard({ suitIndex, rank: next_rank}));
+					logger.info('found layered finesse in our hand - still searching for', logCard({ suitIndex, rank: next_rank}));
 					connections.push({ type: 'finesse', reacting: hypo_state.ourPlayerIndex, card: finesse, hidden: true, self: true });
 
 					ignoreOrders.push(finesse.order);

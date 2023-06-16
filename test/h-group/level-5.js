@@ -6,8 +6,7 @@ import { describe, it } from 'node:test';
 import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
-import * as Utils from '../../src/util.js';
-import logger from '../../src/logger.js';
+import logger from '../../src/tools/logger.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 
 logger.setLevel(logger.LEVELS.ERROR);

@@ -1,6 +1,6 @@
 import { getVariant } from './variants.js';
-import logger from './logger.js';
-import * as Utils from './util.js';
+import logger from './tools/logger.js';
+import * as Utils from './tools/util.js';
 
 import HGroup from './conventions/h-group.js';
 

@@ -17,6 +17,7 @@ export default class HGroup extends State {
      * @param {number} tableID
      * @param {string[]} playerNames
      * @param {number} ourPlayerIndex
+     * @param {boolean} in_progress
      * @param {string[]} suits
      */
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress, level = 1) {

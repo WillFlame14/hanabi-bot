@@ -1,8 +1,8 @@
 import { CLUE } from '../../constants.js';
 import { handLoaded } from '../../basics/helper.js';
 import { getPace, isTrash } from '../../basics/hanabi-util.js';
-import logger from '../../logger.js';
-import * as Utils from '../../util.js';
+import logger from '../../tools/logger.js';
+import { logHand } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -89,7 +89,7 @@ export function find_finesse(hand, ignoreOrders = []) {
  */
 export function determine_focus(hand, list, options = {}) {
 	const chopIndex = find_chop(hand);
-	logger.debug('determining focus with chopIndex', chopIndex, 'list', list, 'hand', Utils.logHand(hand));
+	logger.debug('determining focus with chopIndex', chopIndex, 'list', list, 'hand', logHand(hand));
 
 	// Chop card exists, check for chop focus
 	if (chopIndex !== -1 && list.includes(hand[chopIndex].order)) {
@@ -116,6 +116,9 @@ export function determine_focus(hand, list, options = {}) {
 			return { focused_card: card, chop: false };
 		}
 	}
+
+	logger.info('list', list, 'hand', logHand(hand));
+	throw new Error('no focus found');
 }
 
 /**

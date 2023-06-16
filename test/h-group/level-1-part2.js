@@ -7,8 +7,8 @@ import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../tes
 import HGroup from '../../src/conventions/h-group.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
-import * as Utils from '../../src/util.js';
-import logger from '../../src/logger.js';
+import * as Utils from '../../src/tools/util.js';
+import logger from '../../src/tools/logger.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 
 logger.setLevel(logger.LEVELS.ERROR);

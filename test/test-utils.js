@@ -1,4 +1,4 @@
-import * as Utils from '../src/util.js';
+import * as Utils from '../src/tools/util.js';
 
 export const COLOUR = /** @type {const} */ ({
 	RED: 0,

@@ -1,8 +1,7 @@
 import { Card } from '../../basics/Card.js';
-import { isBasicTrash } from '../../basics/hanabi-util.js';
-import { isSaved, isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
-import logger from '../../logger.js';
-import * as Utils from '../../util.js';
+import { isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
+import logger from '../../tools/logger.js';
+import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -35,7 +34,7 @@ function find_sarcastic(hand, suitIndex, rank) {
  * @param {number} rank
  */
 function undo_hypo_stacks(state, playerIndex, suitIndex, rank) {
-	logger.info(`${state.playerNames[playerIndex]} discarded useful card ${Utils.logCard({suitIndex, rank})}, setting hypo stack ${rank - 1}`);
+	logger.info(`${state.playerNames[playerIndex]} discarded useful card ${logCard({suitIndex, rank})}, setting hypo stack ${rank - 1}`);
 	if (state.hypo_stacks[suitIndex] >= rank) {
 		state.hypo_stacks[suitIndex] = rank - 1;
 	}
@@ -77,13 +76,13 @@ export function interpret_discard(state, action, card) {
 
 	// End early game?
 	if (state.early_game && !action.failed && !card.clued) {
-		logger.warn('ending early game from discard of', Utils.logCard(card));
+		logger.warn('ending early game from discard of', logCard(card));
 		state.early_game = false;
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
 	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order)))) {
-		logger.info('all inferences', card.inferred.map(c => Utils.logCard(c)));
+		logger.info('all inferences', card.inferred.map(c => logCard(c)));
 		const action_index = card.reasoning.pop();
 		if (action_index !== undefined && state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, card.finessed)) {
 			return;
@@ -124,7 +123,7 @@ export function interpret_discard(state, action, card) {
 						// The matching card must be the only possible option in the hand to be known sarcastic
 						if (sarcastic.length === 1) {
 							sarcastic[0].inferred = [new Card(suitIndex, rank)];
-							logger.info(`writing ${Utils.logCard({suitIndex, rank})} from sarcastic discard`);
+							logger.info(`writing ${logCard({suitIndex, rank})} from sarcastic discard`);
 						}
 						else {
 							apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);

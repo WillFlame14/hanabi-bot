@@ -6,8 +6,8 @@ import { describe, it } from 'node:test';
 import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../test-utils.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import HGroup from '../../src/conventions/h-group.js';
-import * as Utils from '../../src/util.js';
-import logger from '../../src/logger.js';
+import * as Utils from '../../src/tools/util.js';
+import logger from '../../src/tools/logger.js';
 
 import { order_1s } from '../../src/conventions/h-group/action-helper.js';
 
@@ -75,7 +75,6 @@ describe('playing 1s in the correct order', () => {
 
 		// Alice should continue playing slot 3 (not slot 2 as prompt).
 		const action = state.take_action(state);
-		console.log(Utils.logAction(action));
 		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.PLAY, target: 2 });
 	});
 });

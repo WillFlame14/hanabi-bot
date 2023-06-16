@@ -4,8 +4,9 @@ import { determine_focus, find_chop, find_bad_touch } from '../hanabi-logic.js';
 import { cardTouched, isCluable } from '../../../variants.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
-import logger from '../../../logger.js';
-import * as Utils from '../../../util.js';
+import logger from '../../../tools/logger.js';
+import { logCard, logClue } from '../../../tools/log.js';
+import * as Utils from '../../../tools/util.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -63,7 +64,7 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();
 
-	logger.highlight('green', `------- ENTERING HYPO ${Utils.logClue(clue)} --------`);
+	logger.highlight('green', `------- ENTERING HYPO ${logClue(clue)} --------`);
 
 	const hypo_state = state.simulate_clue(action, { enableLogs: true });
 
@@ -92,18 +93,18 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 	if (incorrect_card) {
 		let reason = '';
 		if (incorrect_card.reset) {
-			reason = `card ${Utils.logCard(incorrect_card)} lost all inferences and was reset`;
+			reason = `card ${logCard(incorrect_card)} lost all inferences and was reset`;
 		}
 		else if (!incorrect_card.matches_inferences()) {
-			reason = `card ${Utils.logCard(incorrect_card)} has inferences [${incorrect_card.inferred.map(c => Utils.logCard(c)).join(',')}], doesn't match`;
+			reason = `card ${logCard(incorrect_card)} has inferences [${incorrect_card.inferred.map(c => logCard(c)).join(',')}], doesn't match`;
 		}
 		else {
 			const not_trash_possibility = incorrect_card.possible.find(c => !isTrash(hypo_state, target, c.suitIndex, c.rank, incorrect_card.order));
 			if (not_trash_possibility !== undefined) {
-				reason = `card ${Utils.logCard(incorrect_card)} has ${not_trash_possibility} possibility not trash`;
+				reason = `card ${logCard(incorrect_card)} has ${not_trash_possibility} possibility not trash`;
 			}
 		}
-		logger.info(`${Utils.logClue(clue)} has incorrect interpretation, (${reason})`);
+		logger.info(`${logClue(clue)} has incorrect interpretation, (${reason})`);
 		return undefined;
 	}
 
@@ -208,7 +209,7 @@ export function get_result(state, hypo_state, clue) {
  * @returns {Clue}							The best clue (if valid), otherwise undefined.
  */
 export function determine_clue(state, target, target_card, options) {
-	logger.info('determining clue to target card', Utils.logCard(target_card));
+	logger.info('determining clue to target card', logCard(target_card));
 	const hand = state.hands[target];
 
 	// All play clues should be safe, but save clues may not be (e.g. crit 4, 5 of different colour needs to identify that 5 is a valid clue)
@@ -223,7 +224,7 @@ export function determine_clue(state, target, target_card, options) {
 
 		const { focused_card, chop } = determine_focus(hand, list, { beforeClue: true });
 		if (focused_card.order !== target_card.order) {
-			logger.info(`${Utils.logClue(clue)} focuses ${Utils.logCard(focused_card)} instead of ${Utils.logCard(target_card)}, ignoring`);
+			logger.info(`${logClue(clue)} focuses ${logCard(focused_card)} instead of ${logCard(target_card)}, ignoring`);
 			continue;
 		}
 
@@ -242,15 +243,15 @@ export function determine_clue(state, target, target_card, options) {
 		const { elim, new_touched, bad_touch, trash, finesses, playables, remainder } = get_result(state, hypo_state, clue);
 
 		const result_log = {
-			clue: Utils.logClue(clue),
+			clue: logClue(clue),
 			bad_touch,
 			trash,
-			interpret: interpret?.map(c => Utils.logCard(c)),
+			interpret: interpret?.map(c => logCard(c)),
 			elim,
 			new_touched,
 			finesses,
 			playables: playables.map(({ playerIndex, card }) => {
-				return { player: state.playerNames[playerIndex], card: Utils.logCard(card) };
+				return { player: state.playerNames[playerIndex], card: logCard(card) };
 			}),
 			remainder: chop ? remainder : 0 	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
 		};

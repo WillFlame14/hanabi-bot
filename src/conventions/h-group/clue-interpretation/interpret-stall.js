@@ -1,7 +1,7 @@
 import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
 import { determine_focus, stall_severity } from '../hanabi-logic.js';
-import logger from '../../../logger.js';
+import logger from '../../../tools/logger.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State

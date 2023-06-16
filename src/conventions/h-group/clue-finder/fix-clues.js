@@ -1,8 +1,8 @@
 import { LEVEL } from '../h-constants.js';
 import { direct_clues } from './determine-clue.js';
 import { isBasicTrash, isSaved, isTrash, playableAway } from '../../../basics/hanabi-util.js';
-import logger from '../../../logger.js';
-import * as Utils from '../../../util.js';
+import logger from '../../../tools/logger.js';
+import { logCard } from '../../../tools/log.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -49,7 +49,7 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 
 			if (card.inferred.length === 0) {
 				// TODO
-				logger.error(`card ${Utils.logCard(card)} order ${card.order} need fix??`);
+				logger.error(`card ${logCard(card)} order ${card.order} need fix??`);
 			}
 			else {
 				const seems_playable = card.inferred.every(p => {
@@ -69,13 +69,13 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 				let fix_criteria;
 				if (wrong_inference) {
 					fix_criteria = inference_corrected;
-					logger.info(`card ${Utils.logCard(card)} needs fix, wrong inferences ${card.inferred.map(c => Utils.logCard(c))}`);
+					logger.info(`card ${logCard(card)} needs fix, wrong inferences ${card.inferred.map(c => logCard(c))}`);
 				}
 				// We only want to give a fix clue to the player whose turn comes sooner
 				else if (unknown_duplicated && !duplicated_cards.some(c => c.matches(card.suitIndex, card.rank))) {
 					fix_criteria = duplication_known;
 					duplicated_cards.push(card);
-					logger.info(`card ${Utils.logCard(card)} needs fix, duplicated`);
+					logger.info(`card ${logCard(card)} needs fix, duplicated`);
 				}
 
 				// Card doesn't match any inferences and seems playable but isn't (need to fix)
@@ -96,7 +96,7 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 
 						if (fixed) {
 							// TODO: Find the highest value play clue
-							// logger.info(`found fix ${Utils.logClue(clue)} for card ${Utils.logCard(card)} to inferences [${card_after_cluing.inferred.map(c => Utils.logCard(c)).join(',')}]`);
+							// logger.info(`found fix ${logClue(clue)} for card ${logCard(card)} to inferences [${card_after_cluing.inferred.map(c => logCard(c)).join(',')}]`);
 							fix_clues[target].push(Object.assign({}, clue, { trash, urgent: seems_playable }));
 							found_clue = true;
 							break;

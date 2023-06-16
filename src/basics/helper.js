@@ -1,7 +1,7 @@
 import { cardTouched } from '../variants.js';
 import { isBasicTrash, visibleFind } from './hanabi-util.js';
-import logger from '../logger.js';
-import * as Utils from '../util.js';
+import logger from '../tools/logger.js';
+import { logCard } from '../tools/log.js';
 
 /**
  * @typedef {import('./State.js').State} State
@@ -82,7 +82,7 @@ export function bad_touch_possibilities(state, giver, target, prev_found = []) {
 
 			if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
 				if (!bad_touch.some(c => c.suitIndex === suitIndex && c.rank === rank)) {
-					logger.debug(`adding ${Utils.logCard({suitIndex, rank})} to bad touch via ${method} (slot ${j + 1} in ${state.playerNames[i]}'s hand)`);
+					logger.debug(`adding ${logCard({suitIndex, rank})} to bad touch via ${method} (slot ${j + 1} in ${state.playerNames[i]}'s hand)`);
 					bad_touch.push({suitIndex, rank});
 				}
 			}
@@ -149,7 +149,7 @@ export function find_known_trash(state, playerIndex) {
 
 		// Every possibility is trash or known duplicated somewhere
 		if (possibilities.every(c => isBasicTrash(state, c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
-			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => Utils.logCard(c)).join()}, results ${possibilities.map(c => isBasicTrash(state, c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
+			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => logCard(c)).join()}, results ${possibilities.map(c => isBasicTrash(state, c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
 			trash.push(card);
 		}
 	}
@@ -244,7 +244,7 @@ export function update_hypo_stacks(state) {
 						state.hypo_stacks[suitIndex] = rank;
 					}
 					else {
-						logger.error(`tried to add new playable card ${Utils.logCard(card)} but didn't match hypo stacks`);
+						logger.error(`tried to add new playable card ${logCard(card)} but didn't match hypo stacks`);
 						continue;
 					}
 

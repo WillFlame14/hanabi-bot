@@ -1,8 +1,7 @@
-import { CLUE, END_CONDITION } from'./constants.js';
-import { Card } from'./basics/Card.js';
-import logger from'./logger.js';
-import * as Basics from'./basics.js';
-import * as Utils from'./util.js';
+import * as Basics from './basics.js';
+import logger from './tools/logger.js';
+import { logAction, logCard, logPerformAction } from './tools/log.js';
+import * as Utils from './tools/util.js';
 
 /**
  * @typedef {import('./types.js').Action} Action
@@ -24,17 +23,8 @@ export function handle_action(action, catchup = false) {
 	switch(action.type) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
-			const { giver, target, list, clue } = action;
-			const [playerName, targetName] = [giver, target].map(index => this.playerNames[index]);
-			let clue_value;
-
-			if (clue.type === CLUE.COLOUR) {
-				clue_value = this.suits[clue.value].toLowerCase();
-			}
-			else {
-				clue_value = clue.value;
-			}
-			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} clues ${clue_value} to ${targetName}`);
+			const { giver, target, list } = action;
+			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
 			this.interpret_clue(this, action);
 			this.last_actions[giver] = action;
@@ -51,13 +41,12 @@ export function handle_action(action, catchup = false) {
 		}
 		case 'discard': {
 			// {type: 'discard', playerIndex: 2, order: 12, suitIndex: 0, rank: 3, failed: true}
-			const { order, playerIndex, rank, suitIndex, failed } = action;
+			const { order, playerIndex, rank, suitIndex } = action;
 			const card = this.hands[playerIndex].findOrder(order);
-			const playerName = this.playerNames[playerIndex];
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} ${failed ? 'bombs' : 'discards'} ${Utils.logCard(card)}`);
+			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
 			Basics.onDiscard(this, action);
 			this.interpret_discard(this, action, card);
@@ -70,25 +59,7 @@ export function handle_action(action, catchup = false) {
 			break;
 		}
 		case 'gameOver': {
-			const { endCondition, playerIndex } = action;
-
-			switch(endCondition) {
-				case END_CONDITION.NORMAL:
-					logger.highlight('redb', `Players score ${this.play_stacks.reduce((acc, stack) => acc += stack, 0)} points.`);
-					break;
-				case END_CONDITION.STRIKEOUT:
-					logger.highlight('redb', `Players lose!`);
-					break;
-				case END_CONDITION.TERMINATED:
-					logger.highlight('redb', `${this.playerNames[playerIndex]} terminated the game!`);
-					break;
-				case END_CONDITION.IDLE_TIMEOUT:
-					logger.highlight('redb', 'Players were idle for too long.');
-					break;
-				default:
-					logger.info('gameOver', action);
-					break;
-			}
+			logger.highlight('redb', logAction(action));
 			this.in_progress = false;
 			break;
 		}
@@ -104,7 +75,7 @@ export function handle_action(action, catchup = false) {
 				// Replaying a turn
 				else {
 					const suggested_action = this.take_action(this);
-					logger.highlight('cyan', 'Suggested action:', Utils.logAction(suggested_action));
+					logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
 				}
 			}
 
@@ -140,11 +111,10 @@ export function handle_action(action, catchup = false) {
 		case 'play': {
 			const { order, playerIndex, rank, suitIndex } = action;
 			const card = this.hands[playerIndex].findOrder(order);
-			const playerName = this.playerNames[playerIndex];
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			logger.highlight('yellowb', `Turn ${this.turn_count}: ${playerName} plays ${Utils.logCard(card)}`);
+			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
 			this.interpret_play(this, action);
 			this.last_actions[playerIndex] = Object.assign(action, { card });
@@ -157,7 +127,7 @@ export function handle_action(action, catchup = false) {
 			if (card === undefined) {
 				throw new Error('Could not find card to rewrite!');
 			}
-			logger.info(`identifying card with order ${order} as ${Utils.logCard({ suitIndex, rank })}`);
+			logger.info(`identifying card with order ${order} as ${logCard({ suitIndex, rank })}`);
 			Object.assign(card, { suitIndex, rank });
 			card.rewinded = true;
 			break;

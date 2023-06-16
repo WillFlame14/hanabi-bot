@@ -3,8 +3,8 @@ import { LEVEL } from './h-constants.js';
 import { find_chop } from './hanabi-logic.js';
 import { good_touch_elim, update_hypo_stacks } from '../../basics/helper.js';
 import { order_1s } from './action-helper.js';
-import logger from '../../logger.js';
 import * as Basics from '../../basics.js';
+import logger from '../../tools/logger.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -59,13 +59,12 @@ function check_ocm(state, action) {
 export function interpret_play(state, action) {
 	const { playerIndex, order, suitIndex, rank } = action;
 
-	// Now that we know about this card, rewind from the beginning
+	// Now that we know about this card, rewind from when the card was drawn
 	if (playerIndex === state.ourPlayerIndex) {
 		const card = state.hands[playerIndex].findOrder(order);
-		const action_index = card.reasoning[0];
-		if ((card.inferred.length !== 1 || !card.inferred[0].matches(suitIndex, rank)) && !card.rewinded && action_index !== undefined) {
+		if ((card.inferred.length !== 1 || !card.inferred[0].matches(suitIndex, rank)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
-			if (state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
+			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
 				return;
 			}
 		}

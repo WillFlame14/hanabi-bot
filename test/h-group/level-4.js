@@ -6,8 +6,8 @@ import { describe, it } from 'node:test';
 import { COLOUR, PLAYER, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
-import * as Utils from '../../src/util.js';
-import logger from '../../src/logger.js';
+import * as Utils from '../../src/tools/util.js';
+import logger from '../../src/tools/logger.js';
 
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 import { determine_playable_card, find_urgent_actions } from '../../src/conventions/h-group/action-helper.js';

@@ -2,8 +2,9 @@ import { Card } from './basics/Card.js';
 import { find_possibilities } from './basics/helper.js';
 import { visibleFind } from './basics/hanabi-util.js';
 import { cardCount } from './variants.js';
-import logger from './logger.js';
-import * as Utils from './util.js';
+import logger from './tools/logger.js';
+import { logCard } from './tools/log.js';
+import * as Utils from './tools/util.js';
 
 /**
  * @typedef {import('./basics/State.js').State} State
@@ -86,7 +87,8 @@ export function onDraw(state, action) {
 	const card = new Card(suitIndex, rank, {
 		order,
 		possible: Utils.objClone(state.all_possible[playerIndex]),
-		inferred: Utils.objClone(state.all_possible[playerIndex])
+		inferred: Utils.objClone(state.all_possible[playerIndex]),
+		drawn_index: state.actionList.length
 	});
 	state.hands[playerIndex].unshift(card);
 
@@ -160,12 +162,12 @@ export function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
 				}
 				// There is an extra inference somewhere, and not enough known cards
 				else if (inferred_count > total_count) {
-					logger.error(`inferred ${inferred_count} copies of ${Utils.logCard({suitIndex, rank})}`);
+					logger.error(`inferred ${inferred_count} copies of ${logCard({suitIndex, rank})}`);
 					// TODO: There was a lie somewhere, waiting for fix? Or can deduce from focus?
 					break;
 				}
 			}
-			logger.debug(`removing ${Utils.logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future possibilities`);
+			logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future possibilities`);
 		}
 	}
 }

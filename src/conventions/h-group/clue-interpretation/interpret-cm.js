@@ -1,8 +1,8 @@
 import { CLUE } from '../../../constants.js';
 import { find_chop } from '../hanabi-logic.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
-import logger from '../../../logger.js';
-import * as Utils from '../../../util.js';
+import logger from '../../../tools/logger.js';
+import { logCard } from '../../../tools/log.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -25,7 +25,7 @@ export function interpret_tcm(state, target) {
 		}
 	}
 
-	logger.info(`oldest trash card is ${Utils.logCard(state.hands[target][oldest_trash_index])}`);
+	logger.info(`oldest trash card is ${logCard(state.hands[target][oldest_trash_index])}`);
 
 	const cm_cards = [];
 
@@ -35,7 +35,7 @@ export function interpret_tcm(state, target) {
 
 		if (!card.clued) {
 			card.chop_moved = true;
-			cm_cards.push(Utils.logCard(card));
+			cm_cards.push(logCard(card));
 		}
 	}
 	logger.warn(cm_cards.length === 0 ? 'no cards to tcm' : `trash chop move on ${cm_cards.join(',')}`);
@@ -70,11 +70,11 @@ export function interpret_5cm(state, target) {
 				const saved_card = state.hands[target][chopIndex];
 
 				if (saved_card.possible.every(p => isTrash(state, target, p.suitIndex, p.rank, saved_card.order))) {
-					logger.info(`saved card ${Utils.logCard(saved_card)} has only trash possibilities, not 5cm`);
+					logger.info(`saved card ${logCard(saved_card)} has only trash possibilities, not 5cm`);
 					return false;
 				}
 
-				logger.info(`5cm, saving ${Utils.logCard(saved_card)}`);
+				logger.info(`5cm, saving ${logCard(saved_card)}`);
 				state.hands[target][chopIndex].chop_moved = true;
 				return true;
 			}

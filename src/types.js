@@ -84,6 +84,7 @@ import { CLUE, ACTION } from './constants.js';
  * @property {Connection[]} connections
  * @property {Card} focused_card
  * @property {{suitIndex: number, rank: number}} inference
+ * @property {number} action_index
  * 
  */
 

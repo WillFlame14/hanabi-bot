@@ -3,10 +3,12 @@ import { LEVEL } from './h-constants.js';
 import { find_chop } from './hanabi-logic.js';
 import { handLoaded } from '../../basics/helper.js';
 import { card_value } from './clue-finder/clue-safe.js';
-import logger from '../../logger.js';
 import { playableAway, inStartingHand } from '../../basics/hanabi-util.js';
 import { cardTouched } from '../../variants.js';
-import * as Utils from '../../util.js';
+
+import logger from '../../tools/logger.js';
+import { logClue } from '../../tools/log.js';
+import * as Utils from '../../tools/util.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -43,7 +45,7 @@ export function select_play_clue(play_clues) {
 
 	for (const clue of play_clues) {
 		const clue_value = find_clue_value(clue.result);
-		logger.info('clue', Utils.logClue(clue), 'value', clue_value);
+		logger.info('clue', logClue(clue), 'value', clue_value);
 
 		if (clue_value > best_clue_value) {
 			best_clue_value = clue_value;

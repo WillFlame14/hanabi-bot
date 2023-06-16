@@ -6,7 +6,8 @@ import { Hand } from './basics/Hand.js';
 
 import HGroup from './conventions/h-group.js';
 import { fetchVariants, getVariant } from './variants.js';
-import * as Utils from './util.js';
+import { initConsole } from './tools/console.js';
+import * as Utils from './tools/util.js';
 
 /**
  * @typedef {import('./types.js').Action} Action
@@ -47,7 +48,7 @@ const HAND_SIZE = [-1, -1, 5, 5, 4, 4, 3];
 async function main() {
 	const { id, level, index } = Utils.parse_args();
 	fetchVariants();
-	Utils.initConsole();
+	initConsole();
 
 	let game_data;
 
@@ -67,9 +68,11 @@ async function main() {
 
 	Utils.globalModify({state});
 
+	const handSize = HAND_SIZE[state.numPlayers] + (options.oneLessCard ? -1 : options.oneMoreCard ? 1 : 0);
+
 	// Draw cards in starting hands
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
-		for (let i = 0; i < HAND_SIZE[state.numPlayers]; i++) {
+		for (let i = 0; i < handSize; i++) {
 			const { suitIndex, rank } = playerIndex !== state.ourPlayerIndex ? deck[order] : { suitIndex: -1, rank: -1 };
 			state.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank }, true);
 			order++;

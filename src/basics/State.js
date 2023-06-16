@@ -2,8 +2,8 @@ import { Card } from './Card.js';
 import { Hand } from './Hand.js';
 import { handle_action } from '../action-handler.js';
 import { cardCount } from '../variants.js';
-import logger from '../logger.js';
-import * as Utils from '../util.js';
+import logger from '../tools/logger.js';
+import * as Utils from '../tools/util.js';
 
 /**
  * @typedef {import('../types.js').Action} Action
@@ -36,6 +36,8 @@ export class State {
 	last_actions = /** @type {(Action & {card?: Card})[]} */ ([]);
 
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
+
+	rewinds = 0;
 
 	/**
 	 * The orders of cards to ignore in the next play clue.
@@ -160,11 +162,15 @@ export class State {
      * @param {boolean} [mistake] 		Whether the target action was a mistake
      */
 	rewind(action_index, rewind_action, mistake = false) {
-		if (this.rewindDepth > 2) {
-			throw new Error('attempted to rewind too many times!');
+		this.rewinds++;
+		if (this.rewinds > 50) {
+			throw new Error('Attempted to rewind too many times!');
 		}
-		else if (action_index === undefined) {
-			logger.error('tried to rewind before any reasoning was done!');
+		if (this.rewindDepth > 2) {
+			throw new Error('Rewind depth went too deep!');
+		}
+		else if (action_index === undefined || (typeof action_index !== 'number') || action_index < 0 || action_index > this.actionList.length) {
+			logger.error(`Attempted to rewind to an invalid action index (${JSON.stringify(action_index)})!`);
 			return false;
 		}
 		this.rewindDepth++;
@@ -205,6 +211,10 @@ export class State {
 		return true;
 	}
 
+	/**
+	 * Navigates the state to the beginning of a particular turn. Must be in 'replay' mode.
+     * @param {number} turn
+     */
 	navigate(turn) {
 		logger.highlight('greenb', `------- NAVIGATING (turn ${turn}) -------`);
 

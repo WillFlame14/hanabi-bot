@@ -7,8 +7,9 @@ import { find_stall_clue } from './clue-finder/stall-clues.js';
 import { find_chop, inEndgame } from './hanabi-logic.js';
 import { find_playables, find_known_trash, handLoaded } from '../../basics/helper.js';
 import { getPace, visibleFind } from '../../basics/hanabi-util.js';
-import logger from '../../logger.js';
-import * as Utils from '../../util.js';
+import logger from '../../tools/logger.js';
+import { logCard, logClue, logHand } from '../../tools/log.js';
+import * as Utils from '../../tools/util.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -51,13 +52,13 @@ export function take_action(state) {
 	trash_cards = trash_cards.filter(tc => !discards.some(dc => dc.order === tc.order));
 
 	if (playable_cards.length > 0) {
-		logger.info('playable cards', Utils.logHand(playable_cards));
+		logger.info('playable cards', logHand(playable_cards));
 	}
 	if (trash_cards.length > 0) {
-		logger.info('trash cards', Utils.logHand(trash_cards));
+		logger.info('trash cards', logHand(trash_cards));
 	}
 	if (discards.length > 0) {
-		logger.info('discards', Utils.logHand(discards));
+		logger.info('discards', logHand(discards));
 	}
 
 	const playable_priorities = determine_playable_card(state, playable_cards);
@@ -82,7 +83,7 @@ export function take_action(state) {
 			}
 		}
 
-		logger.info(`best playable card is order ${best_playable_card.order}, inferences ${best_playable_card.inferred.map(c => Utils.logCard(c))}`);
+		logger.info(`best playable card is order ${best_playable_card.order}, inferences ${best_playable_card.inferred.map(c => logCard(c))}`);
 	}
 
 	// Playing into finesse/bluff
@@ -168,7 +169,7 @@ export function take_action(state) {
 					return Utils.clueToAction(best_play_clue, state.tableID);
 				}
 				else {
-					logger.info('clue too low value', Utils.logClue(best_play_clue), clue_value);
+					logger.info('clue too low value', logClue(best_play_clue), clue_value);
 				}
 			}
 

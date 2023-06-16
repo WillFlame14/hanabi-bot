@@ -7,8 +7,8 @@ import { ACTION } from '../../src/constants.js';
 import { COLOUR, PLAYER, setup, getRawInferences, expandShortCard } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
-import * as Utils from '../../src/util.js';
-import logger from '../../src/logger.js';
+import * as Utils from '../../src/tools/util.js';
+import logger from '../../src/tools/logger.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
