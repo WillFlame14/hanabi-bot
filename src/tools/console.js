@@ -3,9 +3,6 @@ import logger from './logger.js';
 import { logHand } from './log.js';
 import * as Utils from './util.js';
 
-/** @type {import('../basics/State.js').State} */
-const state = Utils.globals.state;
-
 /**
  * Initializes the console interactivity with the game state.
  */
@@ -33,11 +30,14 @@ export function initConsole() {
 				logger.info();
 				const parts = command.join('').split(' ');
 
-				if (parts[0] !== 'spectate' && state === undefined) {
+				if (parts[0] !== 'spectate' && Utils.globals.state === undefined) {
 					logger.error('No game specified. Try loading a replay or joining a game first.');
 					command = [];
 					return;
 				}
+
+				/** @type {import('../basics/State.js').State} */
+				const state = Utils.globals.state;
 
 				switch(parts[0]) {
 					case 'hand': {

@@ -3,6 +3,7 @@ import { determine_focus } from '../hanabi-logic.js';
 import { find_connecting } from './connecting-cards.js';
 import { isCritical, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
+import { logCard } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**

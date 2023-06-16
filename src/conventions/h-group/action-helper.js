@@ -101,7 +101,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 
 		// Locked reduces needed clue value, only 1 clue token increases needed clue value
 		if (clue_value < (locked ? 0 : 1) + (state.clue_tokens === 1 ? 1 : 0)) {
-			logger.info('clue value', clue_value, 'skipping');
+			logger.debug('clue value', clue_value, 'skipping');
 			continue;
 		}
 

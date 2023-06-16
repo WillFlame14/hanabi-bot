@@ -68,7 +68,7 @@ async function main() {
 
 	Utils.globalModify({state});
 
-	const handSize = HAND_SIZE[state.numPlayers] + (options.oneLessCard ? -1 : options.oneMoreCard ? 1 : 0);
+	const handSize = HAND_SIZE[state.numPlayers] + (options?.oneLessCard ? -1 : options?.oneMoreCard ? 1 : 0);
 
 	// Draw cards in starting hands
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
