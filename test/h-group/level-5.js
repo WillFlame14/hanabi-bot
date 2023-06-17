@@ -6,8 +6,9 @@ import { describe, it } from 'node:test';
 import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
-import logger from '../../src/tools/logger.js';
+import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
+import logger from '../../src/tools/logger.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -273,6 +274,19 @@ describe('layered finesse', () => {
 
 		// Alice's slot 2 should be [y1] now.
 		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['y1'].map(expandShortCard));
+	});
+
+	it('does not try giving layered finesses on the same card', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y1', 'y1', 'p1', 'r5', 'b4'],
+			['r2', 'y4', 'p2', 'g3', 'r3']
+		], 5);
+
+		const { play_clues } = find_clues(state);
+
+		// Purple does not work as a layered finesse
+		assert.equal(play_clues[PLAYER.CATHY].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.PURPLE), false);
 	});
 
 	it('understands a clandestine finesse', () => {

@@ -125,8 +125,7 @@ export function get_result(state, hypo_state, clue) {
 	const list = touch.map(c => c.order);
 
 	const { focused_card } = determine_focus(hand, list, { beforeClue: true });
-	const bad_touch_cards = find_bad_touch(state, touch.filter(c => !c.clued), focused_card.order);
-
+	const bad_touch_cards = find_bad_touch(hypo_state, touch.filter(c => !c.clued), focused_card.order);
 	let elim = 0, new_touched = 0, bad_touch = 0, trash = 0;
 
 	// Count the number of cards that have increased elimination (i.e. cards that were "filled in")

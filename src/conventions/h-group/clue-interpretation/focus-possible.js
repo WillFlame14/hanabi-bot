@@ -37,7 +37,7 @@ function find_colour_focus(state, suitIndex, action) {
 	let connections = [];
 
 	// Try looking for a connecting card (other than itself)
-	const hypo_state = Utils.objClone(state);
+	const hypo_state = state.minimalCopy();
 	let already_connected = [focused_card.order];
 
 	let finesses = 0;
@@ -71,7 +71,7 @@ function find_colour_focus(state, suitIndex, action) {
 		next_playable_rank++;
 
 		connections = connections.concat(connecting);
-		already_connected = already_connected.concat(connections.map(conn => conn.card.order));
+		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
 
 	// Our card could be the final rank that we can't find
@@ -169,7 +169,7 @@ function find_rank_focus(state, rank, action) {
 		}
 		else if (rank > next_rank) {
 			// Try looking for all connecting cards
-			const hypo_state = Utils.objClone(state);
+			const hypo_state = state.minimalCopy();
 			let already_connected = [focused_card.order];
 
 			let finesses = 0;

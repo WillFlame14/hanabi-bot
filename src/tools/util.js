@@ -73,7 +73,10 @@ export function sendCmd(command, arg) {
  * @param {T} obj
  * @returns {T}
  */
-export function objClone(obj) {
+export function objClone(obj, depth = 0) {
+	if (depth > 15) {
+		throw new Error('Maximum recursion depth reached.');
+	}
 	if (typeof obj === 'object') {
 		if (obj instanceof Card) {
 			return /** @type {T} */ (obj.clone());
@@ -84,7 +87,7 @@ export function objClone(obj) {
 		else {
 			const new_obj = {};
 			for (const [name, value] of Object.entries(obj)) {
-					new_obj[name] = objClone(value);
+				new_obj[name] = objClone(value, depth + 1);
 			}
 			return /** @type {T} */ (new_obj);
 		}

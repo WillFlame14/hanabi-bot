@@ -152,6 +152,7 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 	}
 
 	ignoreOrders = ignoreOrders.concat(state.next_ignore);
+	logger.info('ignoreOrders', state.next_ignore);
 
 	const connecting = find_known_connecting(state, giver, suitIndex, rank, ignoreOrders);
 	if (connecting) {
@@ -161,14 +162,12 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 		return [connecting];
 	}
 
-	// Do not consider unknown playables if the card is already gotten in the target's hand
+	// Do not consider unknown playables if the card is already gotten in the target's hand (?)
 	// TODO: Maybe some version of this if it's found in non-prompt position in anyone else's hand?
-	const target_copy = state.hands[target].find(c => c.matches(suitIndex, rank) && (c.clued || c.finessed));
+	const target_copy = state.hands[target].find(c => c.matches(suitIndex, rank) && ((c.clued && !c.newly_clued) || c.finessed) && !ignoreOrders.includes(c.order));
 	if (target_copy !== undefined) {
-		if (!ignoreOrders.includes(target_copy.order)) {
-			logger.info(`connecting ${logCard({suitIndex, rank})} already gotten in target's hand, killing`);
-		}
-		return [];
+		logger.warn(`connecting ${logCard({suitIndex, rank})} already gotten in target's hand, will look confusing`);
+		// return [{ type: 'terminate', reacting: null, card: null }];
 	}
 
 	// Only consider prompts/finesses if no connecting cards found
@@ -181,19 +180,21 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 		}
 		else {
 			const connections = [];
+			const hypo_state = state.minimalCopy();
 			const newIgnoreOrders = ignoreOrders.slice();
 
 			logger.collect();
 
-			let connecting = find_unknown_connecting(state, giver, target, playerIndex, suitIndex, rank, newIgnoreOrders);
+			let connecting = find_unknown_connecting(hypo_state, giver, target, playerIndex, suitIndex, rank, newIgnoreOrders);
 
 			// If the connection is hidden, that player must have the actual card playable in order for the layer to work.
 			// Thus, we keep searching for unknown connections in their hand until we find a non-hidden connection.
 			while (connecting?.hidden) {
 				connections.push(connecting);
 				newIgnoreOrders.push(connecting.card.order);
+				hypo_state.play_stacks[connecting.card.suitIndex]++;
 
-				connecting = find_unknown_connecting(state, giver, target, playerIndex, suitIndex, rank, newIgnoreOrders);
+				connecting = find_unknown_connecting(hypo_state, giver, target, playerIndex, suitIndex, rank, newIgnoreOrders);
 			}
 
 			if (connecting) {
@@ -270,7 +271,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 	}
 
 	// Create hypothetical state where we have the missing cards (and others can elim from them)
-	const hypo_state = Utils.objClone(state);
+	const hypo_state = state.minimalCopy();
 
 	logger.info('finding finesse for (potentially) clued card', logCard({suitIndex, rank}));
 	const our_hand = hypo_state.hands[state.ourPlayerIndex];

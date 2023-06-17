@@ -85,7 +85,6 @@ function apply_good_touch(state, action) {
 export function interpret_clue(state, action) {
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
 	const fix = apply_good_touch(state, action);
-
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
 	if (chop) {

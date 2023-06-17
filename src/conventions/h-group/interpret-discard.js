@@ -104,8 +104,8 @@ export function interpret_discard(state, action, card) {
 				const sarcastic = find_sarcastic(state.hands[state.ourPlayerIndex], suitIndex, rank);
 
 				if (sarcastic.length === 1) {
-					const action_index = sarcastic[0].reasoning.pop();
-					if (action_index !== undefined && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank })) {
+					const action_index = sarcastic[0].drawn_index;
+					if (!sarcastic[0].rewinded && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank })) {
 						return;
 					}
 				}

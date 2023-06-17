@@ -20,7 +20,6 @@ export class State {
 	clue_tokens = 8;
 	strikes = 0;
 	early_game = true;
-	rewindDepth = 0;
 	in_progress = false;
 
 	hands = /** @type {Hand[]} */ ([]);
@@ -38,6 +37,8 @@ export class State {
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
 
 	rewinds = 0;
+	rewindDepth = 0;
+	copyDepth = 0;
 
 	/**
 	 * The orders of cards to ignore in the next play clue.
@@ -105,6 +106,23 @@ export class State {
 	createBlank() {
 		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress);
 		newState.notes = this.notes;
+		return newState;
+	}
+
+	minimalCopy() {
+		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress);
+
+		if (this.copyDepth > 5) {
+			throw new Error('recursive depth reached.');
+		}
+
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands',
+			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore'];
+
+		for (const property of minimalProps) {
+			newState[property] = Utils.objClone(newState[property]);
+		}
+		newState.copyDepth = this.copyDepth + 1;
 		return newState;
 	}
 
@@ -274,7 +292,7 @@ export class State {
      * @param {{simulatePlayerIndex?: number, enableLogs?: boolean}} options
      */
 	simulate_clue(action, options = {}) {
-		const hypo_state = Utils.objClone(this);
+		const hypo_state = this.minimalCopy();
 
 		if (options.simulatePlayerIndex !== undefined) {
 			hypo_state.ourPlayerIndex = options.simulatePlayerIndex;

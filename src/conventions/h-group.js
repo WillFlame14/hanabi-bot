@@ -4,6 +4,7 @@ import { interpret_discard } from './h-group/interpret-discard.js';
 import { interpret_play } from './h-group/interpret-play.js';
 import { take_action } from './h-group/take-action.js';
 import { update_turn } from './h-group/update-turn.js';
+import * as Utils from '../tools/util.js';
 
 /** @extends State */
 export default class HGroup extends State {
@@ -30,5 +31,22 @@ export default class HGroup extends State {
 		const blank = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress, this.level);
 		blank.notes = this.notes;
 		return blank;
+	}
+
+	minimalCopy() {
+		const newState = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress, this.level);
+
+		if (this.copyDepth > 3) {
+			throw new Error('Maximum recursive depth reached.');
+		}
+
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands',
+			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore'];
+
+		for (const property of minimalProps) {
+			newState[property] = Utils.objClone(this[property]);
+		}
+		newState.copyDepth = this.copyDepth + 1;
+		return newState;
 	}
 }
