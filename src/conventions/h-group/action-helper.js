@@ -325,7 +325,7 @@ export function determine_playable_card(state, playable_cards) {
 	for (const card of playable_cards) {
 		const possibilities = card.inferred.length > 0 ? card.inferred : card.possible;
 
-		// Blind play
+		// Part of a finesse
 		if (card.finessed) {
 			priorities[0].push(card);
 			continue;
@@ -383,6 +383,17 @@ export function determine_playable_card(state, playable_cards) {
 			min_rank = rank;
 		}
 	}
+
+	// Speed-up clues first, then oldest finesse to newest
+	priorities[0].sort((c1, c2) => {
+		if (c1.hidden && !c2.hidden) {
+			return 1;
+		}
+		else if (!c1.hidden && c2.hidden) {
+			return -1;
+		}
+		return c1.finesse_index - c2.finesse_index;
+	});
 
 	return priorities;
 }

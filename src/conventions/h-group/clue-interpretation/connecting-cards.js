@@ -5,6 +5,7 @@ import { find_prompt, find_finesse } from '../hanabi-logic.js';
 import { order_1s } from '../action-helper.js';
 import { card_elim } from '../../../basics.js';
 import { playableAway } from '../../../basics/hanabi-util.js';
+import { cardTouched } from '../../../variants.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
@@ -36,7 +37,7 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 				continue;
 			}
 
-			if (card.matches(suitIndex, rank, { symmetric: true, infer: true })) {
+			if (card.matches(suitIndex, rank, { symmetric: true, infer: true }) && (card.identity() === undefined || card.matches(suitIndex, rank))) {
 				logger.info(`found known ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
 				return { type: 'known', reacting: playerIndex, card };
 			}
@@ -67,6 +68,10 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 		}
 
 		if (match !== undefined) {
+			if (match.hidden) {
+				logger.info(`disallowed hidden connecting card ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
+				return { type: 'terminate', reacting: null, card: null };
+			}
 			logger.info(`found playable ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, with inferences ${match.inferred.map(c => logCard(c)).join()}`);
 			return { type: 'playable', reacting: playerIndex, card: match };
 		}
@@ -150,9 +155,6 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 		logger.info(`all ${logCard({suitIndex, rank})} in trash`);
 		return [];
 	}
-
-	ignoreOrders = ignoreOrders.concat(state.next_ignore);
-	logger.info('ignoreOrders', state.next_ignore);
 
 	const connecting = find_known_connecting(state, giver, suitIndex, rank, ignoreOrders);
 	if (connecting) {
@@ -273,7 +275,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 	// Create hypothetical state where we have the missing cards (and others can elim from them)
 	const hypo_state = state.minimalCopy();
 
-	logger.info('finding finesse for (potentially) clued card', logCard({suitIndex, rank}));
+	logger.info('finding finesse for', (target === state.ourPlayerIndex ? 'potential' : 'visible'), logCard({suitIndex, rank}));
 	const our_hand = hypo_state.hands[state.ourPlayerIndex];
 
 	/** @type {Connection[]} */
@@ -290,14 +292,15 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 		}
 
 		// First, see if someone else has the connecting card
-		const other_connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
+		const currIgnoreOrders = ignoreOrders.concat(state.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1] ?? []);
+		const other_connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, currIgnoreOrders);
 		if (other_connecting.length > 0) {
 			connections = connections.concat(other_connecting);
 			ignoreOrders = ignoreOrders.concat(other_connecting.map(conn => conn.card.order));
 		}
 		else {
 			// Otherwise, try to find prompt in our hand
-			const prompt = find_prompt(our_hand, suitIndex, next_rank, hypo_state.suits, ignoreOrders);
+			const prompt = find_prompt(our_hand, suitIndex, next_rank, hypo_state.suits, currIgnoreOrders);
 			logger.debug('prompt in slot', prompt ? our_hand.findIndex(c => c.order === prompt.order) + 1 : '-1');
 			if (prompt !== undefined) {
 				if (state.level === 1 && finesses >= 1) {
@@ -311,13 +314,12 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 
 				// Assume this is actually the card
 				prompt.intersect('inferred', [{suitIndex, rank: next_rank}]);
-				prompt.intersect('possible', [{suitIndex, rank: next_rank}]);
 				card_elim(hypo_state, suitIndex, next_rank);
 				ignoreOrders.push(prompt.order);
 			}
 			else {
 				// Otherwise, try to find finesse in our hand
-				const finesse = find_finesse(our_hand, ignoreOrders);
+				let finesse = find_finesse(our_hand, currIgnoreOrders);
 				logger.debug('finesse in slot', finesse ? our_hand.findIndex(c => c.order === finesse.order) + 1 : '-1');
 
 				if (finesse?.rewinded && playableAway(state, finesse.suitIndex, finesse.rank) === 0) {
@@ -328,7 +330,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 					}
 
 					logger.info('found layered finesse in our hand - still searching for', logCard({ suitIndex, rank: next_rank}));
-					connections.push({ type: 'finesse', reacting: hypo_state.ourPlayerIndex, card: finesse, hidden: true, self: true });
+					connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, hidden: true, self: true });
 
 					ignoreOrders.push(finesse.order);
 					next_rank--;
@@ -341,12 +343,39 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 						break;
 					}
 
+					// We have some information about the next finesse
+					if (state.next_finesse.length > 0) {
+						for (const action of state.next_finesse) {
+							let index = our_hand.findIndex(c => c.order === find_finesse(our_hand, currIgnoreOrders).order);
+							const { list, clue } = action;
+
+							// Touching a matching card to the finesse - all untouched cards are layered
+							// Touching a non-matching card - all touched cards are layered
+							const matching = cardTouched({suitIndex, rank: next_rank}, state.suits, clue);
+							let touched = list.includes(our_hand[index].order);
+
+							while ((matching ? !touched : touched) && index < our_hand.length) {
+								logger.info('adding layered finesse in our hand in slot', index + 1);
+								connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: our_hand[index], hidden: true, self: true });
+
+								const playable_identities = hypo_state.hypo_stacks.map((stack_rank, index) => { return { suitIndex: index, rank: stack_rank + 1 }; });
+								our_hand[index].intersect('inferred', playable_identities);
+
+								ignoreOrders.push(our_hand[index].order);
+								currIgnoreOrders.push(our_hand[index].order);
+								index++;
+								touched = list.includes(our_hand[index].order);
+							}
+						}
+						// Assume next card is the finesse target
+						finesse = find_finesse(our_hand, currIgnoreOrders);
+					}
+
 					logger.info('found finesse in our hand');
-					connections.push({ type: 'finesse', reacting: hypo_state.ourPlayerIndex, card: finesse, self: true });
+					connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, self: true });
 
 					// Assume this is actually the card
 					finesse.intersect('inferred', [{suitIndex, rank: next_rank}]);
-					finesse.intersect('possible', [{suitIndex, rank: next_rank}]);
 					card_elim(hypo_state, suitIndex, next_rank);
 					ignoreOrders.push(finesse.order);
 					finesses++;

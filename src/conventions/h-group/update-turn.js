@@ -69,9 +69,9 @@ export function update_turn(state, action) {
 	const demonstrated = [];
 
 	for (let i = 0; i < state.waiting_connections.length; i++) {
-		const { connections, focused_card, inference, action_index } = state.waiting_connections[i];
-		logger.info(`next conn ${logCard(connections[0].card)} for inference ${logCard(inference)}`);
-		const { type, reacting, card: old_card } = connections[0];
+		const { connections, conn_index = 0, focused_card, inference, action_index, ambiguousPassback } = state.waiting_connections[i];
+		const { type, reacting, card: old_card } = connections[conn_index];
+		logger.info(`waiting for connecting ${logCard(connections[conn_index].card)} (${state.playerNames[reacting]}) for inference ${logCard(inference)}`);
 
 		// Card may have been updated, so need to find it again
 		const card = state.hands[reacting].findOrder(old_card.order);
@@ -82,20 +82,25 @@ export function update_turn(state, action) {
 			if (card !== undefined) {
 				// Didn't play into finesse
 				if (type === 'finesse') {
-					if (state.play_stacks[card.suitIndex] + 1 !== card.rank) {
-						logger.info(`didn't play into unplayable finesse`);
+					if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
+						logger.info(`${state.playerNames[reacting]} didn't play into unplayable finesse`);
 					}
 					else if (state.last_actions[reacting].card?.finessed) {
-						logger.info(`played into other finesse, continuing to wait`);
+						logger.info(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
+					}
+					else if (connections.filter((conn, index) => index >= conn_index && !conn.hidden && conn.reacting === reacting).length > 1 && !ambiguousPassback) {
+						logger.warn(`${state.playerNames[reacting]} didn't play into finesse but they need to play multiple non-hidden cards, passing back`);
+						state.waiting_connections[i].ambiguousPassback = true;
 					}
 					else {
-						logger.info(`Didn't play into finesse, removing inference ${logCard(inference)}`);
-						state.rewind(action_index, { type: 'ignore', order: card.order, playerIndex: reacting });
+						logger.info(`${state.playerNames[reacting]} didn't play into finesse, removing inference ${logCard(inference)}`);
+						const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
+						state.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects });
 						return;
 					}
 				}
 				else if (state.last_actions[reacting].type === 'discard') {
-					logger.info(`Discarded with a waiting connection, removing inference ${logCard(inference)}`);
+					logger.info(`${state.playerNames[reacting]} discarded with a waiting connection, removing inference ${logCard(inference)}`);
 					remove_finesse(state, i);
 					to_remove.push(i);
 				}
@@ -104,8 +109,9 @@ export function update_turn(state, action) {
 				// The card was played
 				if (state.last_actions[reacting].type === 'play') {
 					logger.info(`waiting card ${logCard(old_card)} played`);
-					connections.shift();
-					if (connections.length === 0) {
+
+					state.waiting_connections[i].conn_index = conn_index + 1;
+					if (state.waiting_connections[i].conn_index === connections.length) {
 						to_remove.push(i);
 					}
 

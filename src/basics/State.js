@@ -7,6 +7,7 @@ import * as Utils from '../tools/util.js';
 
 /**
  * @typedef {import('../types.js').Action} Action
+ * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').ClueAction} ClueAction
  * @typedef {import('../types.js').DiscardAction} DiscardAction
  * @typedef {import('../types.js').TurnAction} TurnAction
@@ -42,9 +43,14 @@ export class State {
 
 	/**
 	 * The orders of cards to ignore in the next play clue.
-	 * @type {number[]}
+	 * @type {number[][]}
 	 */
 	next_ignore = [];
+	/**
+	 * Information about the next finesse that reveals hidden layers.
+	 * @type {{ list: number[], clue: BaseClue }[]}
+	 */
+	next_finesse = [];
 
 	handle_action = handle_action;
 
@@ -195,7 +201,11 @@ export class State {
 
 		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
 		pivotal_action.mistake = mistake || this.rewindDepth > 1;
-		logger.warn(`Rewinding to before ${JSON.stringify(pivotal_action)} to insert ${JSON.stringify(rewind_action)}`);
+
+		if (Utils.objEquals(pivotal_action, rewind_action) || Utils.objEquals(this.actionList[action_index - 1], rewind_action)) {
+			throw new Error('Attempted to rewind an action that was already rewinded!');
+		}
+		logger.highlight('cyan', `Rewinding to insert ${JSON.stringify(rewind_action)}`);
 
 		const new_state = this.createBlank();
 		const history = this.actionList.slice(0, action_index);
@@ -213,13 +223,15 @@ export class State {
 
 		logger.wrapLevel(logger.LEVELS.ERROR, () => {
 			// Redo all the following actions
-			const future = this.actionList.slice(action_index + 1);
+			const future = this.actionList.slice(action_index + 1, -1);
 			for (const action of future) {
 				new_state.handle_action(action, true);
 			}
 		});
 
 		logger.highlight('green', '------- REWIND COMPLETE -------');
+
+		new_state.handle_action(this.actionList.at(-1));
 
 		// Overwrite state
 		Object.assign(this, new_state);
@@ -240,7 +252,7 @@ export class State {
 		Utils.globalModify({ state: new_state });
 
 		// Remove special actions from the action list (they will be added back in when rewinding)
-		const actionList = this.actionList.filter(action => action.type !== 'identify' && action.type !== 'ignore');
+		const actionList = this.actionList.filter(action => !['identify', 'ignore', 'finesse'].includes(action.type));
 
 		let turn_count = 0, action_index = 0;
 

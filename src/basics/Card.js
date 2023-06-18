@@ -15,6 +15,7 @@ export class Card {
 	rank = -1;			// The rank of the card
 	order = -1;			// The ordinal number of the card
 
+
 	clues = /** @type {BaseClue[]} */ ([]);			// List of clues that have touched this card
 	possible = /** @type {Card[]} */ ([]);						// All possibilities of the card (from positive/negative information)
 	inferred = /** @type {Card[]} */ ([]);						// All inferences of the card (from conventions)
@@ -29,8 +30,10 @@ export class Card {
 	reset = false;			// Whether the card has previously lost all inferences
 	chop_when_first_clued = false;
 	superposition = false;	// Whether the card is currently in a superposition
-	drawn_index = -1;
+	hidden = false;
 
+	drawn_index = -1;	// Action index of when the card was drawn
+	finesse_index = -1;	// Action index of when the card was finessed
 	reasoning = /** @type {number[]} */ ([]);		// The action indexes of when the card's possibilities/inferences were updated
 	reasoning_turn = /** @type {number[]} */ ([]);	// The game turns of when the card's possibilities/inferences were updated
 	rewinded = false;								// Whether the card has ever been rewinded

@@ -25,7 +25,7 @@ import * as Utils from '../../../tools/util.js';
  * Given a clue, recursively applies good touch principle to the target's hand.
  * @param {State} state
  * @param {ClueAction} action
- * @returns {boolean} Whether the clue was a fix clue or not.
+ * @returns {{fix?: boolean, layered_reveal?: boolean}} Possible results of the clue.
  */
 function apply_good_touch(state, action) {
 	const { giver, list, target } = action;
@@ -35,6 +35,18 @@ function apply_good_touch(state, action) {
 	const had_inferences = state.hands[target].filter(card => card.inferred.length > 0).map(card => card.order);
 
 	Basics.onClue(state, action);
+
+	// Check if a layered finesse was revealed on us
+	if (target === state.ourPlayerIndex) {
+		for (const card of state.hands[target]) {
+			if (card.finessed && had_inferences.includes(card.order) && card.inferred.length === 0) {
+				const action_index = list.includes(card.order) ? card.reasoning.at(-2) : card.reasoning.pop();
+				if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue })) {
+					return { layered_reveal: true };
+				}
+			}
+		}
+	}
 
 	// Touched cards should also obey good touch principle
 	let bad_touch = bad_touch_possibilities(state, giver, target);
@@ -74,7 +86,7 @@ function apply_good_touch(state, action) {
 	while (bad_touch_len !== bad_touch.length);
 
 	logger.debug('bad touch', bad_touch.map(c => logCard(c)).join(','));
-	return fix;
+	return { fix };
 }
 
 /**
@@ -84,7 +96,13 @@ function apply_good_touch(state, action) {
  */
 export function interpret_clue(state, action) {
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
-	const fix = apply_good_touch(state, action);
+	const { fix, layered_reveal } = apply_good_touch(state, action);
+
+	// Rewind occurred, this action will be completed as a result of it
+	if (layered_reveal) {
+		return;
+	}
+
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
 	if (chop) {
@@ -266,8 +284,8 @@ export function interpret_clue(state, action) {
 				// Add inference to focused card
 				focused_card.union('inferred', [new Card(conn_suit, inference_rank)]);
 
-				// Only one set of connections, so can elim safely
-				if (all_connections.length === 1) {
+				// Only one set of connections (and without prompt/finesse), so can elim safely
+				if (all_connections.length === 1 && (connections.length === 0 || !['prompt', 'finesse'].includes(connections[0].type))) {
 					team_elim(state, focused_card, giver, target, conn_suit, inference_rank);
 				}
 				// Multiple possible sets, we need to wait for connections
@@ -323,21 +341,42 @@ function team_elim(state, focused_card, giver, target, suitIndex, rank) {
  */
 function assign_connections(state, connections, suitIndex) {
 	let next_rank = state.play_stacks[suitIndex] + 1;
-	for (const connection of connections) {
-		const { type, reacting, self, hidden } = connection;
-		// The connections can be cloned, so need to modify the card directly
-		const card = state.hands[reacting].findOrder(connection.card.order);
+	const hypo_stacks = state.hypo_stacks.slice();
 
-		logger.info(`connecting on ${logCard(card)} order ${card.order} type ${type}`);
+	for (const connection of connections) {
+		const { type, reacting, self, hidden, card: conn_card } = connection;
+		// The connections can be cloned, so need to modify the card directly
+		const card = state.hands[reacting].findOrder(conn_card.order);
+
+		logger.info(`connecting on ${logCard(conn_card)} order ${card.order} type ${type}`);
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		card.old_inferred = Utils.objClone(card.inferred);
 
 		if (type === 'finesse') {
 			card.finessed = true;
+			card.finesse_index = state.actionList.length;
+			card.hidden = hidden;
 		}
 
-		if (!hidden) {
+		if (hidden) {
+			const playable_identities = hypo_stacks.map((stack_rank, index) => { return { suitIndex: index, rank: stack_rank + 1 }});
+			card.intersect('inferred', playable_identities);
+
+			if (card.identity() !== undefined) {
+				const { suitIndex: suitIndex2, rank: rank2 } = card.identity();
+				if (hypo_stacks[suitIndex2] + 1 !== rank2) {
+					logger.warn('trying to connect', logCard({ suitIndex: suitIndex2, rank: rank2 }), 'but hypo stacks at', hypo_stacks[suitIndex2]);
+				}
+				hypo_stacks[suitIndex2] = rank2;
+			}
+		}
+		else {
+			if (hypo_stacks[suitIndex] + 1 !== next_rank) {
+				logger.warn('trying to connect', logCard({ suitIndex, rank: next_rank }), 'but hypo stacks at', hypo_stacks[suitIndex]);
+			}
+			hypo_stacks[suitIndex] = next_rank;
+
 			// There are multiple possible connections on this card
 			if (card.superposition) {
 				card.union('inferred', [new Card(suitIndex, next_rank)]);

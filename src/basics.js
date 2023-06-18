@@ -111,6 +111,7 @@ export function onPlay(state, action) {
 	state.hands[playerIndex].removeOrder(order);
 
 	state.play_stacks[suitIndex] = rank;
+	card_elim(state, suitIndex, rank);
 
 	// Get a clue token back for playing a 5
 	if (rank === 5 && state.clue_tokens < 8) {

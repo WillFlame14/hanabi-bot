@@ -37,6 +37,7 @@ export function handle_action(action, catchup = false) {
 
 			// Clear the list of ignored cards
 			this.next_ignore = [];
+			this.next_finesse = [];
 			break;
 		}
 		case 'discard': {
@@ -68,17 +69,6 @@ export function handle_action(action, catchup = false) {
 			const { currentPlayerIndex, num } = action;
 			this.turn_count = num + 1;
 
-			if (currentPlayerIndex === this.ourPlayerIndex && !catchup) {
-				if (this.in_progress) {
-					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
-				}
-				// Replaying a turn
-				else {
-					const suggested_action = this.take_action(this);
-					logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
-				}
-			}
-
 			// Update notes on cards
 			for (const card of this.hands[this.ourPlayerIndex]) {
 				if (card.clued || card.finessed || card.chop_moved) {
@@ -106,6 +96,17 @@ export function handle_action(action, catchup = false) {
 			}
 
 			this.update_turn(this, action);
+
+			if (currentPlayerIndex === this.ourPlayerIndex && !catchup) {
+				if (this.in_progress) {
+					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
+				}
+				// Replaying a turn
+				else {
+					const suggested_action = this.take_action(this);
+					logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
+				}
+			}
 			break;
 		}
 		case 'play': {
@@ -133,15 +134,20 @@ export function handle_action(action, catchup = false) {
 			break;
 		}
 		case 'ignore': {
-			const { order, playerIndex } = action;
+			const { playerIndex, conn_index } = action;
 
-			const card = this.hands[playerIndex].findOrder(order);
-			if (card === undefined) {
-				throw new Error('Could not find card to ignore!');
+			if (this.next_ignore[conn_index] === undefined) {
+				this.next_ignore[conn_index] = [];
 			}
 
-			this.next_ignore.push(card.order);
+			for (const card of this.hands[playerIndex]) {
+				this.next_ignore[conn_index].push(card.order);
+			}
 			break;
+		}
+		case 'finesse':  {
+			const { list, clue } = action;
+			this.next_finesse.push({ list, clue });
 		}
 		default:
 			break;

@@ -56,7 +56,8 @@ import { CLUE, ACTION } from './constants.js';
  * @typedef {CardAction & {type: 'draw'}} DrawAction
  * @typedef {CardAction & {type: 'play'}} PlayAction
  * @typedef {CardAction & {type: 'identify'}} IdentifyAction
- * @typedef {{type: 'ignore', playerIndex: number, order: number}} IgnoreAction
+ * @typedef {{type: 'ignore', playerIndex: number, conn_index: number}} IgnoreAction
+ * @typedef {{type: 'finesse', list: number[], clue: BaseClue}} FinesseAction
  * @typedef {CardAction & {type: 'discard', failed: boolean}} DiscardAction
  * 
  * @typedef GameOverAction
@@ -65,7 +66,7 @@ import { CLUE, ACTION } from './constants.js';
  * @property {number}       playerIndex
  * @property {any}          votes
  * 
- * @typedef {StatusAction | TurnAction | ClueAction | DrawAction | DiscardAction | PlayAction | GameOverAction | IdentifyAction | IgnoreAction} Action
+ * @typedef {StatusAction | TurnAction | ClueAction | DrawAction | DiscardAction | PlayAction | GameOverAction | IdentifyAction | IgnoreAction | FinesseAction} Action
  * 
  * @typedef PerformAction
  * @property {number} tableID
@@ -82,9 +83,11 @@ import { CLUE, ACTION } from './constants.js';
  * 
  * @typedef WaitingConnection
  * @property {Connection[]} connections
+ * @property {number} [conn_index]
  * @property {Card} focused_card
  * @property {{suitIndex: number, rank: number}} inference
  * @property {number} action_index
+ * @property {boolean} [ambiguousPassback]
  * 
  */
 

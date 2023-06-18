@@ -176,7 +176,7 @@ export function good_touch_elim(hand, cards, options = {}) {
 			continue;
 		}
 
-		if ((card.clued || card.chop_moved) && (options.hard || card.inferred.length > 1)) {
+		if ((card.clued || card.chop_moved || card.finessed) && (options.hard || card.inferred.length > 1)) {
 			card.subtract('inferred', cards);
 
 			if (card.inferred.length === 0) {

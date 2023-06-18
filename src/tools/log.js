@@ -21,11 +21,11 @@ export function logCard(card) {
 	if (card.suitIndex !== -1) {
 		({ suitIndex, rank } = card);
 	}
-	else if (card?.possible.length === 1) {
+	else if (card?.possible?.length === 1) {
 		({ suitIndex, rank } = card.possible[0]);
 		append = '(known)';
 	}
-	else if (card?.inferred.length === 1) {
+	else if (card?.inferred?.length === 1) {
 		({ suitIndex, rank } = card.inferred[0]);
 		append = '(inferred)';
 	}
@@ -49,7 +49,7 @@ export function logHand(hand) {
 
 		/** @type {string[]} */
 		new_card.flags = [];
-		for (const flag of ['clued', 'newly_clued', 'prompted', 'finessed', 'chop_moved', 'rewinded']) {
+		for (const flag of ['clued', 'newly_clued', 'prompted', 'finessed', 'chop_moved', 'rewinded', 'hidden']) {
 			if (card[flag]) {
 				new_card.flags.push(flag);
 			}
