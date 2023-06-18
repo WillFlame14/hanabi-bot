@@ -168,8 +168,8 @@ export function objEquals(obj1, obj2) {
 				return false;
 			}
 		}
-		else {
-			return val1 === val2;
+		else if (val1 !== val2) {
+			return false;
 		}
 	}
 	return true;

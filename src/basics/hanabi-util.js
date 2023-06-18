@@ -67,7 +67,9 @@ export function isBasicTrash(state, suitIndex, rank) {
  */
 export function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, options = {}) {
 	return visibleFind(state, inferringPlayerIndex, suitIndex, rank, options).some(c => {
-		return c.order !== order && (c.finessed || c.clued || (options.ignoreCM ? false : c.chop_moved));
+		return c.order !== order &&
+			(c.finessed || c.clued || (options.ignoreCM ? false : c.chop_moved)) &&
+			(c.identity() === undefined || c.matches(suitIndex, rank));         // If we know the card's identity, it must match
 	});
 }
 

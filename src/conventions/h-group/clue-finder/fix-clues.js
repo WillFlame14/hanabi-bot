@@ -1,6 +1,6 @@
 import { LEVEL } from '../h-constants.js';
 import { direct_clues } from './determine-clue.js';
-import { isBasicTrash, isSaved, isTrash, playableAway } from '../../../basics/hanabi-util.js';
+import { isBasicTrash, isSaved, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
 
@@ -63,8 +63,11 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 				const wrong_inference = !card.matches_inferences() && playableAway(state, card.suitIndex, card.rank) !== 0;
 
 				// We don't need to fix duplicated cards where we hold one copy, since we can just sarcastic discard
-				const unknown_duplicated = card.clued && card.inferred.length > 1 &&
-					isSaved(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order, { ignore: [state.ourPlayerIndex], ignoreCM: true });
+				const duplicate = visibleFind(state, state.ourPlayerIndex, card.suitIndex, card.rank, { ignore: [state.ourPlayerIndex] }).find(c => {
+					return c.order !== card.order && (c.finessed || c.clued);
+				});
+
+				const unknown_duplicated = card.clued && card.inferred.length > 1 && duplicate !== undefined;
 
 				let fix_criteria;
 				if (wrong_inference) {
@@ -73,9 +76,25 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 				}
 				// We only want to give a fix clue to the player whose turn comes sooner
 				else if (unknown_duplicated && !duplicated_cards.some(c => c.matches(card.suitIndex, card.rank))) {
-					fix_criteria = duplication_known;
-					duplicated_cards.push(card);
-					logger.info(`card ${logCard(card)} needs fix, duplicated`);
+					const matching_connection = state.waiting_connections.find(({ connections }) => connections.some(conn => conn.card.order === duplicate.order));
+					let needs_fix = true;
+
+					if (matching_connection !== undefined) {
+						const { connections, conn_index } = matching_connection;
+						const connection_index = connections.findIndex(conn => conn.card.order === duplicate.order);
+						logger.info(connections, conn_index, connection_index);
+						// The card is part of a finesse connection that hasn't been played yet
+						if (conn_index <= connection_index) {
+							logger.warn(`duplicate ${logCard(card)} part of a finesse, not giving fix yet`);
+							needs_fix = false;
+						}
+					}
+
+					if (needs_fix) {
+						fix_criteria = duplication_known;
+						duplicated_cards.push(card);
+						logger.info(`card ${logCard(card)} needs fix, duplicated`);
+					}
 				}
 
 				// Card doesn't match any inferences and seems playable but isn't (need to fix)

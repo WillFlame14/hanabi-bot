@@ -90,7 +90,10 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		const {suitIndex, rank, order} = card;
 
 		return isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) ||					// Saving a trash card
-			saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order);	// Saving 2 of the same card
+			saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order) ||	// Saving 2 of the same card
+			state.hands.some((hand, index) =>
+				hand.findCards(suitIndex, rank, { infer: index === state.ourPlayerIndex }).some(c =>
+					c.order !== order && hand[find_chop(hand)].order !== order));		// Saving a copy of a visible card that isn't on chop
 	}).map(c => logCard(c));
 
 	logger.info(`would save ${saved_trash.length === 0 ? 'no' : saved_trash.join()} trash`);

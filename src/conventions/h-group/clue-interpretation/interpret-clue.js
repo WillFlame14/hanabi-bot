@@ -122,6 +122,8 @@ export function interpret_clue(state, action) {
 		if (focused_card.inferred.length === 1) {
 			const { suitIndex, rank } = focused_card.inferred[0];
 			update_hypo_stacks(state);
+
+			// TODO: Revise, should we always hard elim?
 			team_elim(state, focused_card, giver, target, suitIndex, rank);
 		}
 		return;
@@ -159,7 +161,7 @@ export function interpret_clue(state, action) {
 			save,
 			conn: connections.map(({ type, reacting, card }) => {
 				return JSON.stringify({ type, reacting: state.playerNames[reacting], card: logCard(card) });
-				})
+			})
 		};
 	}));
 

@@ -202,10 +202,10 @@ export class State {
 		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
 		pivotal_action.mistake = mistake || this.rewindDepth > 1;
 
-		if (Utils.objEquals(pivotal_action, rewind_action) || Utils.objEquals(this.actionList[action_index - 1], rewind_action)) {
-			throw new Error('Attempted to rewind an action that was already rewinded!');
-		}
 		logger.highlight('cyan', `Rewinding to insert ${JSON.stringify(rewind_action)}`);
+		if (Utils.objEquals(pivotal_action, rewind_action) || Utils.objEquals(this.actionList[action_index - 1], rewind_action)) {
+			throw new Error(`Attempted to rewind ${JSON.stringify(rewind_action)} that was already rewinded!`);
+		}
 
 		const new_state = this.createBlank();
 		const history = this.actionList.slice(0, action_index);

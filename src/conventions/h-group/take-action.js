@@ -8,7 +8,7 @@ import { find_chop, inEndgame } from './hanabi-logic.js';
 import { find_playables, find_known_trash, handLoaded } from '../../basics/helper.js';
 import { getPace, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
-import { logCard, logClue, logHand } from '../../tools/log.js';
+import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
 
 /**
@@ -65,7 +65,7 @@ export function take_action(state) {
 	const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
 
 	if (urgent_actions.some(actions => actions.length > 0)) {
-		logger.info('all urgent actions', urgent_actions.map((actions, index) => actions.map(action => { return { [index]: action }; })).flat());
+		logger.info('all urgent actions', urgent_actions.map((actions, index) => actions.map(action => { return { [index]: logPerformAction(action) }; })).flat());
 	}
 
 	const priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
