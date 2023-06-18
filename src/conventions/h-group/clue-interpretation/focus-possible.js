@@ -45,7 +45,7 @@ function find_colour_focus(state, suitIndex, action) {
 	while (next_playable_rank < state.max_ranks[suitIndex]) {
 		// Note that a colour clue always looks direct
 		const ignoreOrders = already_connected.concat(state.next_ignore[next_playable_rank - state.play_stacks[suitIndex] - 1] ?? []);
-		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, true, ignoreOrders);
+		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, focused_card.newly_clued, ignoreOrders);
 		if (connecting.length === 0) {
 			break;
 		}
@@ -177,7 +177,8 @@ function find_rank_focus(state, rank, action) {
 
 			let looksPlayable = state.hypo_stacks.some(stack => stack + 1 === next_rank);
 			let ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, (looksSave || looksPlayable), ignoreOrders);
+			const looksDirect = focused_card.newly_clued && (looksSave || looksPlayable);
+			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 
 			while (connecting.length !== 0) {
 				finesses += connecting.filter(conn => conn.type === 'finesse').length;
@@ -204,7 +205,7 @@ function find_rank_focus(state, rank, action) {
 
 				looksPlayable = state.hypo_stacks.some(stack => stack + 1 === next_rank);
 				ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-				connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, (looksSave || looksPlayable), ignoreOrders);
+				connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 			}
 
 			// Connected cards can stack up to this rank

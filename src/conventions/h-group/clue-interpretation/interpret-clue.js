@@ -185,8 +185,9 @@ export function interpret_clue(state, action) {
 				if (matched_inferences.length === 1 && (connections.length === 0 || !['prompt', 'finesse'].includes(connections[0].type))) {
 					team_elim(state, focused_card, giver, target, suitIndex, rank);
 				}
+
 				// Multiple inferences, we need to wait for connections
-				else if (connections.length > 0/* && !connections[0].self*/) {
+				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
 					state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank }, action_index: this.actionList.length - 1 });
 				}
 			}
@@ -213,9 +214,10 @@ export function interpret_clue(state, action) {
 					}
 
 					const looksDirect =
+						focused_card.newly_clued && (											// Focus must be newly clued
 						action.clue.type === CLUE.COLOUR ||										// Colour clue always looks direct
 						state.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
-						focus_possible.some(fp => fp.save);										// Looks like a save
+						focus_possible.some(fp => fp.save));									// Looks like a save
 
 					const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect);
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
@@ -247,9 +249,10 @@ export function interpret_clue(state, action) {
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!isBasicTrash(state, focused_card.suitIndex, focused_card.rank)) {
 			const looksDirect =
+				focused_card.newly_clued && (											// Focused card must be newly clued
 				action.clue.type === CLUE.COLOUR ||										// Colour clue always looks direct
 				state.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
-				focus_possible.some(fp => fp.save);										// Looks like a save
+				focus_possible.some(fp => fp.save));									// Looks like a save
 
 			const { feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank, looksDirect);
 			if (feasible) {
@@ -290,8 +293,9 @@ export function interpret_clue(state, action) {
 				if (all_connections.length === 1 && (connections.length === 0 || !['prompt', 'finesse'].includes(connections[0].type))) {
 					team_elim(state, focused_card, giver, target, conn_suit, inference_rank);
 				}
+
 				// Multiple possible sets, we need to wait for connections
-				else if (connections.length > 0) {
+				if (connections.length > 0  && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
 					const inference = { suitIndex: conn_suit, rank: inference_rank };
 					state.waiting_connections.push({ connections, focused_card, inference, action_index: this.actionList.length - 1  });
 				}

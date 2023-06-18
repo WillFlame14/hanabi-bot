@@ -168,7 +168,7 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 	// TODO: Maybe some version of this if it's found in non-prompt position in anyone else's hand?
 	const target_copy = state.hands[target].find(c => c.matches(suitIndex, rank) && ((c.clued && !c.newly_clued) || c.finessed) && !ignoreOrders.includes(c.order));
 	if (target_copy !== undefined) {
-		logger.warn(`connecting ${logCard({suitIndex, rank})} already gotten in target's hand, will look confusing`);
+		logger.warn(`connecting ${logCard({suitIndex, rank})} gotten in target's hand, might look confusing`);
 		// return [{ type: 'terminate', reacting: null, card: null }];
 	}
 
