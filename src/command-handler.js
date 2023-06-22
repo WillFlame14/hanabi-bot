@@ -102,16 +102,15 @@ export const handle = {
 			else if (data.msg.startsWith('/settings')) {
 				assignSettings(data, true);
 			}
+			else if (data.msg.startsWith('/terminate')) {
+				Utils.sendCmd('terminateTable', { tableID: state.tableID });
+			}
 		}
 	},
 	// Received when an action is taken in the current active game
 	gameAction: (data, catchup = false) => {
 		const { action } = data;
 		state.handle_action(action, catchup);
-
-		if (action.type === 'gameOver') {
-			gameStarted = false;
-		}
 	},
 	// Received at the beginning of the game, as a list of all actions that have happened so far
 	gameActionList: (data) => {
@@ -183,7 +182,7 @@ function assignSettings(data, priv) {
 	const reply = priv ? (msg) => Utils.sendPM(data.who, msg) : (msg) => Utils.sendChat(state.tableID, msg);
 
 	if (parts.length > 1) {
-		if (gameStarted) {
+		if (state.in_progress) {
 			reply('Settings cannot be modified in the middle of a game.');
 		}
 		else {

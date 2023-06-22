@@ -21,6 +21,19 @@ import * as Utils from '../../../tools/util.js';
  * @typedef {import('../../../types.js').Connection} Connection
  */
 
+function infer_elim(state, playerIndex, suitIndex, rank) {
+	// We just learned about the card
+	if (playerIndex === state.ourPlayerIndex) {
+		for (let i = 0; i < state.numPlayers; i++) {
+			Basics.card_elim(state, i, suitIndex, rank);
+		}
+	}
+	// Everyone already knew about the card except the person who drew it
+	else {
+		Basics.card_elim(state, playerIndex, suitIndex, rank);
+	}
+}
+
 /**
  * Given a clue, recursively applies good touch principle to the target's hand.
  * @param {State} state
@@ -32,14 +45,27 @@ function apply_good_touch(state, action) {
 	let fix = false;
 
 	// Keep track of all cards that previously had inferences (i.e. not known trash)
-	const had_inferences = state.hands[target].filter(card => card.inferred.length > 0).map(card => card.order);
+	const had_inferences = state.hands[target].filter(card => card.inferred.length > 0).map(card => {
+		return { inferences: card.inferred.length, order: card.order };
+	});
 
 	Basics.onClue(state, action);
+
+	// Check all cards if inferences were reduced to 1 and elim if so (unless basics already performed elim)
+	for (const card of state.hands[target]) {
+		if (card.inferred.length === 1 && card.possible.length > 1) {
+			const old_card = had_inferences.find(({ order }) => order === card.order);
+
+			if (old_card.inferences > 1) {
+				infer_elim(state, target, card.inferred[0].suitIndex, card.inferred[0].rank);
+			}
+		}
+	}
 
 	// Check if a layered finesse was revealed on us
 	if (target === state.ourPlayerIndex) {
 		for (const card of state.hands[target]) {
-			if (card.finessed && had_inferences.includes(card.order) && card.inferred.length === 0) {
+			if (card.finessed && had_inferences.some(({ order }) => order === card.order) && card.inferred.length === 0) {
 				const action_index = list.includes(card.order) ? card.reasoning.at(-2) : card.reasoning.pop();
 				if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue })) {
 					return { layered_reveal: true };
@@ -58,12 +84,16 @@ function apply_good_touch(state, action) {
 		for (const card of state.hands[target]) {
 			if (card.inferred.length > 1 && (card.clued || card.chop_moved)) {
 				card.subtract('inferred', bad_touch);
+
+				if (card.inferred.length === 1) {
+					infer_elim(state, target, card.inferred[0].suitIndex, card.inferred[0].rank)
+				}
 			}
 
 			// Check for fix on retouched cards
 			if (list.includes(card.order) && !card.newly_clued) {
 				// Lost all inferences, revert to good touch principle (must not have been known trash)
-				if (card.inferred.length === 0 && had_inferences.includes(card.order) && !card.reset) {
+				if (card.inferred.length === 0 && had_inferences.some(({ order }) => order === card.order) && !card.reset) {
 					fix = true;
 					card.inferred = Utils.objClone(card.possible);
 					card.subtract('inferred', bad_touch);

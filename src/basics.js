@@ -23,6 +23,8 @@ export function onClue(state, action) {
 	const new_possible = find_possibilities(clue, state.suits);
 
 	for (const card of state.hands[target]) {
+		const previously_unknown = card.possible.length > 1;
+
 		if (list.includes(card.order)) {
 			const inferences_before = card.inferred.length;
 			card.intersect('possible', new_possible);
@@ -43,9 +45,11 @@ export function onClue(state, action) {
 			card.subtract('inferred', new_possible);
 		}
 
-		// Eliminate in own hand (no one has eliminated this card yet since we just learned about it)
-		if (card.possible.length === 1) {
-			card_elim(state, card.possible[0].suitIndex, card.possible[0].rank);
+		// If card is now definitely known to everyone and wasn't previously - eliminate
+		if (previously_unknown && card.possible.length === 1) {
+			for (let i = 0; i < state.numPlayers; i++) {
+				card_elim(state, i, card.possible[0].suitIndex, card.possible[0].rank);
+			}
 		}
 	}
 
@@ -61,7 +65,11 @@ export function onDiscard(state, action) {
 	state.hands[playerIndex].removeOrder(order);
 
 	state.discard_stacks[suitIndex][rank - 1]++;
-	card_elim(state, suitIndex, rank);
+
+	// Card is now definitely known to everyone - eliminate
+	for (let i = 0; i < state.numPlayers; i++) {
+		card_elim(state, i, suitIndex, rank);
+	}
 
 	// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
 	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits[suitIndex], rank) && state.max_ranks[suitIndex] > rank - 1) {
@@ -87,14 +95,18 @@ export function onDraw(state, action) {
 	const card = new Card(suitIndex, rank, {
 		order,
 		possible: Utils.objClone(state.all_possible[playerIndex]),
-		inferred: Utils.objClone(state.all_possible[playerIndex]),
+		inferred: Utils.objClone(state.all_inferred[playerIndex]),
 		drawn_index: state.actionList.length
 	});
 	state.hands[playerIndex].unshift(card);
 
-	// Don't eliminate if we drew the card (since we don't know what it is)
-	if (playerIndex !== state.ourPlayerIndex) {
-		card_elim(state, suitIndex, rank, [playerIndex]);
+	// If we know its identity, everyone elims except the player who drew the card
+	if (card.identity() !== undefined) {
+		for (let i = 0; i < state.numPlayers; i++) {
+			if (i !== playerIndex) {
+				card_elim(state, i, suitIndex, rank);
+			}
+		}
 	}
 
 	state.cardsLeft--;
@@ -111,7 +123,11 @@ export function onPlay(state, action) {
 	state.hands[playerIndex].removeOrder(order);
 
 	state.play_stacks[suitIndex] = rank;
-	card_elim(state, suitIndex, rank);
+
+	// Card is now definitely known to everyone - eliminate
+	for (let i = 0; i < state.numPlayers; i++) {
+		card_elim(state, i, suitIndex, rank);
+	}
 
 	// Get a clue token back for playing a 5
 	if (rank === 5 && state.clue_tokens < 8) {
@@ -125,7 +141,7 @@ export function onPlay(state, action) {
  * @param {number} rank
  * @param {number[]} [ignorePlayerIndexes]
  */
-export function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
+export function card_elim_old(state, suitIndex, rank, ignorePlayerIndexes = []) {
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
 		if (ignorePlayerIndexes.includes(playerIndex)) {
 			continue;
@@ -172,3 +188,63 @@ export function card_elim(state, suitIndex, rank, ignorePlayerIndexes = []) {
 		}
 	}
 }
+
+/**
+ * @param {State} state
+ * @param {number} playerIndex 		The index of the player performing elimination.
+ * @param {number} suitIndex 		The suitIndex of the identity to be eliminated.
+ * @param {number} rank 			The rank of the identity to be eliminated.
+ */
+export function card_elim(state, playerIndex, suitIndex, rank) {
+	// Skip if already eliminated
+	if (!state.all_possible[playerIndex].some(c => c.matches(suitIndex, rank))) {
+		return;
+	}
+
+	const base_count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0);
+	const certain_cards = visibleFind(state, playerIndex, suitIndex, rank, { infer: false });
+	const total_count = cardCount(state.suits[suitIndex], rank);
+
+	// All cards are known accounted for
+	if (base_count + certain_cards.length === total_count) {
+		// Remove it from the list of future possibilities (and inferences)
+		state.all_possible[playerIndex] = state.all_possible[playerIndex].filter(c => !c.matches(suitIndex, rank));
+		state.all_inferred[playerIndex] = state.all_inferred[playerIndex].filter(c => !c.matches(suitIndex, rank));
+
+		for (const card of state.hands[playerIndex]) {
+			if (card.possible.length > 1 && !certain_cards.some(c => c.order === card.order)) {
+				card.subtract('possible', [{suitIndex, rank}]);
+				card.subtract('inferred', [{suitIndex, rank}]);
+
+				// Card can be further eliminated
+				if (card.inferred.length === 1 || card.possible.length === 1) {
+					const { suitIndex: suitIndex2, rank: rank2 } = card.identity({ symmetric: true, infer: true });
+					for (let i = 0; i < state.numPlayers; i++) {
+						card_elim(state, i, suitIndex2, rank2);
+					}
+				}
+			}
+		}
+		logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future possibilities`);
+	}
+	else {
+		// Skip if already eliminated
+		if (!state.all_inferred[playerIndex].some(c => c.matches(suitIndex, rank))) {
+			return;
+		}
+
+		const inferred_cards = visibleFind(state, playerIndex, suitIndex, rank, { infer: true });
+		if (base_count + inferred_cards.length === total_count) {
+			// Remove it from the list of future inferences
+			state.all_inferred[playerIndex] = state.all_inferred[playerIndex].filter(c => !c.matches(suitIndex, rank));
+
+			for (const card of state.hands[playerIndex]) {
+				if (!inferred_cards.some(c => c.order === card.order)) {
+					card.subtract('inferred', [{suitIndex, rank}]);
+				}
+			}
+			logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future inferences`);
+		}
+	}
+}
+

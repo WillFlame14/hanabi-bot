@@ -31,6 +31,7 @@ export class State {
 	max_ranks = /** @type {number[]} */ ([]);
 
 	all_possible = /** @type {Card[][]} */ ([]);
+	all_inferred = /** @type {Card[][]} */ ([]);
 
 	actionList = /** @type {Action[]} */ ([]);
 	last_actions = /** @type {(Action & {card?: Card})[]} */ ([]);
@@ -103,6 +104,7 @@ export class State {
 		for (let i = 0; i < this.numPlayers; i++) {
 			this.hands.push(new Hand());
 			this.all_possible.push(Utils.objClone(all_possible));
+			this.all_inferred.push(Utils.objClone(all_possible));
 		}
 	}
 

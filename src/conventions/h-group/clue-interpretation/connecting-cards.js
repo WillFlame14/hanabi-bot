@@ -215,6 +215,7 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
 	if (giver !== state.ourPlayerIndex) {
 		const playable_conns = state.hands[state.ourPlayerIndex].filter(card =>
+				!ignoreOrders.includes(card.order) &&
 				card.inferred.some(inf => inf.matches(suitIndex, rank)) &&					// At least one inference must match
 				(card.identity() === undefined || card.matches(suitIndex, rank)) &&			// If we know the card (from a rewind), it must match
 				(card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0) || card.finessed));	// Must be playable
@@ -314,7 +315,9 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 
 				// Assume this is actually the card
 				prompt.intersect('inferred', [{suitIndex, rank: next_rank}]);
-				card_elim(hypo_state, suitIndex, next_rank);
+				for (let i = 0; i < state.numPlayers; i++) {
+					card_elim(hypo_state, i, suitIndex, next_rank);
+				}
 				ignoreOrders.push(prompt.order);
 			}
 			else {
@@ -376,7 +379,9 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 
 					// Assume this is actually the card
 					finesse.intersect('inferred', [{suitIndex, rank: next_rank}]);
-					card_elim(hypo_state, suitIndex, next_rank);
+					for (let i = 0; i < state.numPlayers; i++) {
+						card_elim(hypo_state, i, suitIndex, next_rank);
+					}
 					ignoreOrders.push(finesse.order);
 					finesses++;
 				}
