@@ -68,7 +68,7 @@ export function take_action(state) {
 		logger.info('all urgent actions', urgent_actions.map((actions, index) => actions.map(action => { return { [index]: logPerformAction(action) }; })).flat());
 	}
 
-	const priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
+	let priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 
 	/** @type {Card} */
 	let best_playable_card;
@@ -83,7 +83,28 @@ export function take_action(state) {
 			}
 		}
 
-		logger.info(`best playable card is order ${best_playable_card.order}, inferences ${best_playable_card.inferred.map(c => logCard(c))}`);
+		if (state.level >= LEVEL.INTERMEDIATE_FINESSES) {
+			while (priority === 0 && hand.some(c => c.finessed && c.finesse_index < best_playable_card.finesse_index)) {
+				logger.warn('older finesse could be layered, unable to play newer finesse', logCard(best_playable_card));
+
+				// Remove from playable cards
+				playable_priorities[priority].splice(playable_priorities[priority].findIndex(c => c.order === best_playable_card.order), 1);
+				playable_cards.splice(playable_cards.findIndex(c => c.order === best_playable_card.order), 1);
+
+				// Find new best playable card
+				priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
+				if (priority !== -1) {
+					best_playable_card = playable_priorities[priority][0];
+				}
+				else {
+					best_playable_card = undefined;
+				}
+			}
+		}
+
+		if (priority !== -1) {
+			logger.info(`best playable card is order ${best_playable_card.order}, inferences ${best_playable_card.inferred.map(c => logCard(c))}`);
+		}
 	}
 
 	// Playing into finesse/bluff

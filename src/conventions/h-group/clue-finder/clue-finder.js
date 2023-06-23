@@ -35,7 +35,13 @@ function find_save(state, target, card) {
 
 	// Save a delayed playable card that isn't visible somewhere else
 	if (state.hypo_stacks[suitIndex] + 1 === rank && visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
-		return Object.assign(determine_clue(state, target, card, { save: true }), { playable: true });
+		const save_clue = determine_clue(state, target, card, { save: true });
+
+		if (save_clue === undefined) {
+			logger.error(`unable to find save clue for ${logCard(card)}!`);
+			return;
+		}
+		return Object.assign(save_clue, { playable: true });
 	}
 
 	if (isCritical(state, suitIndex, rank)) {
@@ -45,7 +51,13 @@ function find_save(state, target, card) {
 		}
 		else {
 			// The card is on chop, so it can always be focused
-			return Object.assign(determine_clue(state, target, card, { save: true }), { playable: false });
+			const save_clue = determine_clue(state, target, card, { save: true });
+
+			if (save_clue === undefined) {
+				logger.error(`unable to find save clue for ${logCard(card)}!`);
+				return;
+			}
+			return Object.assign(save_clue, { playable: false });
 		}
 	}
 	else if (save2(state, target, card) && clue_safe(state, { type: CLUE.RANK, value: 2 , target })) {
