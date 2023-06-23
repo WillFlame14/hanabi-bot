@@ -139,8 +139,9 @@ function find_rank_focus(state, rank, action) {
 				continue;
 			}
 
+			// Looks like a 2 save on any 2 not known to target
 			const save2 = rank === 2 &&
-				visibleFind(state, giver, suitIndex, 2).filter(c => c.order !== focused_card.order).length === 0;
+				visibleFind(state, target, suitIndex, 2, { infer: [target, giver, state.ourPlayerIndex] }).filter(c => c.order !== focused_card.order).length === 0;
 
 			// Critical save or 2 save
 			if (isCritical(state, suitIndex, rank) || save2) {

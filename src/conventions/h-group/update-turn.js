@@ -69,9 +69,9 @@ export function update_turn(state, action) {
 	const demonstrated = [];
 
 	for (let i = 0; i < state.waiting_connections.length; i++) {
-		const { connections, conn_index = 0, focused_card, inference, action_index, ambiguousPassback } = state.waiting_connections[i];
+		const { connections, conn_index = 0, focused_card, inference, giver, action_index, ambiguousPassback } = state.waiting_connections[i];
 		const { type, reacting, card: old_card } = connections[conn_index];
-		logger.info(`waiting for connecting ${logCard(connections[conn_index].card)} (${state.playerNames[reacting]}) for inference ${logCard(inference)}`);
+		logger.info(`waiting for connecting ${logCard(old_card)} (${state.playerNames[reacting]}) for inference ${logCard(inference)}`);
 
 		// Card may have been updated, so need to find it again
 		const card = state.hands[reacting].findOrder(old_card.order);
@@ -133,6 +133,34 @@ export function update_turn(state, action) {
 
 					// Flag it to be removed
 					to_remove.push(i);
+				}
+			}
+		}
+		// Check if giver played card that matches next connection
+		else if (lastPlayerIndex === giver) {
+			const last_action = state.last_actions[giver];
+
+			if (last_action.type === 'play') {
+				const { suitIndex, rank } = last_action;
+
+				if (old_card.matches(suitIndex, rank, { infer: true }) && card.finessed) {
+					logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`)
+					// Advance connection
+					state.waiting_connections[i].conn_index = conn_index + 1;
+					if (state.waiting_connections[i].conn_index === connections.length) {
+						to_remove.push(i);
+					}
+
+					// Remove finesse
+					if (card.old_inferred !== undefined) {
+						// Restore old inferences
+						card.inferred = card.old_inferred;
+						card.old_inferred = undefined;
+					}
+					else {
+						logger.error(`no old inferences on card ${logCard(card)}! current inferences ${card.inferred.map(c => logCard(c))}`);
+					}
+					card.finessed = false;
 				}
 			}
 		}

@@ -137,60 +137,6 @@ export function onPlay(state, action) {
 
 /**
  * @param {State} state
- * @param {number} suitIndex
- * @param {number} rank
- * @param {number[]} [ignorePlayerIndexes]
- */
-export function card_elim_old(state, suitIndex, rank, ignorePlayerIndexes = []) {
-	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
-		if (ignorePlayerIndexes.includes(playerIndex)) {
-			continue;
-		}
-
-		// Skip if already eliminated
-		if (!state.all_possible[playerIndex].some(c => c.matches(suitIndex, rank))) {
-			continue;
-		}
-
-		const base_count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0);
-		const certain_count = base_count + visibleFind(state, playerIndex, suitIndex, rank, { infer: false }).length;
-		const inferred_count = base_count + visibleFind(state, playerIndex, suitIndex, rank).length;
-		const total_count = cardCount(state.suits[suitIndex], rank);
-
-		// Note that inferred_count >= certain_count.
-		// If all copies of a card are already visible (or there exist too many copies)
-		if (inferred_count >= total_count) {
-			// Remove it from the list of future possibilities
-			state.all_possible[playerIndex] = state.all_possible[playerIndex].filter(c => !c.matches(suitIndex, rank));
-
-			for (const card of state.hands[playerIndex]) {
-				// All cards are known accounted for, so eliminate on all cards that are not known
-				if (certain_count === total_count) {
-					if (!card.matches(suitIndex, rank, { symmetric: true })) {
-						card.subtract('possible', [{suitIndex, rank}]);
-						card.subtract('inferred', [{suitIndex, rank}]);
-					}
-				}
-				// All cards are inferred accounted for, so eliminate on all cards that are not inferred
-				else if (inferred_count === total_count) {
-					if (!card.matches(suitIndex, rank, { symmetric: true, infer: true })) {
-						card.subtract('inferred', [{suitIndex, rank}]);
-					}
-				}
-				// There is an extra inference somewhere, and not enough known cards
-				else if (inferred_count > total_count) {
-					logger.error(`inferred ${inferred_count} copies of ${logCard({suitIndex, rank})}`);
-					// TODO: There was a lie somewhere, waiting for fix? Or can deduce from focus?
-					break;
-				}
-			}
-			logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future possibilities`);
-		}
-	}
-}
-
-/**
- * @param {State} state
  * @param {number} playerIndex 		The index of the player performing elimination.
  * @param {number} suitIndex 		The suitIndex of the identity to be eliminated.
  * @param {number} rank 			The rank of the identity to be eliminated.
@@ -202,7 +148,7 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 	}
 
 	const base_count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0);
-	const certain_cards = visibleFind(state, playerIndex, suitIndex, rank, { infer: false });
+	const certain_cards = visibleFind(state, playerIndex, suitIndex, rank, { infer: [] });
 	const total_count = cardCount(state.suits[suitIndex], rank);
 
 	// All cards are known accounted for
@@ -233,7 +179,7 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 			return;
 		}
 
-		const inferred_cards = visibleFind(state, playerIndex, suitIndex, rank, { infer: true });
+		const inferred_cards = visibleFind(state, playerIndex, suitIndex, rank);
 		if (base_count + inferred_cards.length === total_count) {
 			// Remove it from the list of future inferences
 			state.all_inferred[playerIndex] = state.all_inferred[playerIndex].filter(c => !c.matches(suitIndex, rank));

@@ -170,7 +170,7 @@ export function interpret_clue(state, action) {
 	if (state.level >= LEVEL.BASIC_CM) {
 		// Trash chop move
 		if (focused_card.newly_clued &&
-			focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: false })) &&
+			focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: [] })) &&
 			!(focused_card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0))
 		) {
 			interpret_tcm(state, target);
@@ -218,7 +218,7 @@ export function interpret_clue(state, action) {
 
 				// Multiple inferences, we need to wait for connections
 				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
-					state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank }, action_index: this.actionList.length - 1 });
+					state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank }, giver, action_index: this.actionList.length - 1 });
 				}
 			}
 		}
@@ -327,7 +327,7 @@ export function interpret_clue(state, action) {
 				// Multiple possible sets, we need to wait for connections
 				if (connections.length > 0  && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
 					const inference = { suitIndex: conn_suit, rank: inference_rank };
-					state.waiting_connections.push({ connections, focused_card, inference, action_index: this.actionList.length - 1  });
+					state.waiting_connections.push({ connections, focused_card, inference, giver, action_index: this.actionList.length - 1  });
 				}
 			}
 

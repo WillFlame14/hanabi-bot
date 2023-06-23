@@ -1,6 +1,7 @@
 // @ts-nocheck
 
 import { CLUE, ACTION } from './constants.js';
+import { Card } from './basics/Card.js';
 
 /**
  * @typedef BasicCard
@@ -83,6 +84,7 @@ import { CLUE, ACTION } from './constants.js';
  * 
  * @typedef WaitingConnection
  * @property {Connection[]} connections
+ * @property {number} giver
  * @property {number} [conn_index]
  * @property {Card} focused_card
  * @property {{suitIndex: number, rank: number}} inference
