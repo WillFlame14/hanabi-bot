@@ -324,15 +324,16 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 				let finesse = find_finesse(our_hand, currIgnoreOrders);
 				logger.debug('finesse in slot', finesse ? our_hand.findIndex(c => c.order === finesse.order) + 1 : '-1');
 
-				if (finesse?.rewinded && playableAway(state, finesse.suitIndex, finesse.rank) === 0) {
+				if (finesse?.rewinded && playableAway(hypo_state, finesse.suitIndex, finesse.rank) === 0) {
 					if (state.level < LEVEL.INTERMEDIATE_FINESSES) {
 						logger.warn(`blocked layered finesse at level ${state.level}`);
 						feasible = false;
 						break;
 					}
 
-					logger.info('found layered finesse in our hand - still searching for', logCard({ suitIndex, rank: next_rank}));
+					logger.info('found layered finesse', logCard(finesse), 'in our hand - still searching for', logCard({ suitIndex, rank: next_rank}));
 					connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, hidden: true, self: true });
+					hypo_state.play_stacks[finesse.suitIndex]++;
 
 					ignoreOrders.push(finesse.order);
 					next_rank--;
