@@ -11,7 +11,6 @@ import logger from '../../src/tools/logger.js';
 
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 import { determine_playable_card, find_urgent_actions } from '../../src/conventions/h-group/action-helper.js';
-import { find_playables } from '../../src/basics/helper.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -104,7 +103,7 @@ describe('trash chop move', () => {
 		state.hypo_stacks = [5, 1, 0, 2, 2];
 
 		const { play_clues, save_clues, fix_clues } = find_clues(state);
-		const playable_priorities = determine_playable_card(state, find_playables(state.play_stacks, state.hands[PLAYER.ALICE]));
+		const playable_priorities = determine_playable_card(state, state.hands[PLAYER.ALICE].find_playables());
 		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
 		assert.deepEqual(urgent_actions[1], []);
 		assert.deepEqual(Utils.objPick(urgent_actions[2][0], ['type', 'value']), { type: ACTION.COLOUR, value: 1 });

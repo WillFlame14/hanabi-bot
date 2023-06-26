@@ -309,15 +309,31 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 					break;
 				}
 
-				logger.info('found prompt in our hand');
-				connections.push({ type: 'prompt', reacting: hypo_state.ourPlayerIndex, card: prompt, self: true });
+				if (prompt?.rewinded && playableAway(hypo_state, prompt.suitIndex, prompt.rank) === 0) {
+					if (state.level < LEVEL.INTERMEDIATE_FINESSES) {
+						logger.warn(`blocked layered finesse at level ${state.level}`);
+						feasible = false;
+						break;
+					}
 
-				// Assume this is actually the card
-				prompt.intersect('inferred', [{suitIndex, rank: next_rank}]);
-				for (let i = 0; i < state.numPlayers; i++) {
-					card_elim(hypo_state, i, suitIndex, next_rank);
+					logger.info('found hidden prompt', logCard(prompt), 'in our hand - still searching for', logCard({ suitIndex, rank: next_rank}));
+					connections.push({ type: 'known', reacting: state.ourPlayerIndex, card: prompt, hidden: true, self: true });
+					hypo_state.play_stacks[prompt.suitIndex]++;
+
+					ignoreOrders.push(prompt.order);
+					next_rank--;
 				}
-				ignoreOrders.push(prompt.order);
+				else {
+					logger.info('found prompt in our hand');
+					connections.push({ type: 'prompt', reacting: hypo_state.ourPlayerIndex, card: prompt, self: true });
+
+					// Assume this is actually the card
+					prompt.intersect('inferred', [{suitIndex, rank: next_rank}]);
+					for (let i = 0; i < state.numPlayers; i++) {
+						card_elim(hypo_state, i, suitIndex, next_rank);
+					}
+					ignoreOrders.push(prompt.order);
+				}
 			}
 			else {
 				// Otherwise, try to find finesse in our hand

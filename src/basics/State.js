@@ -102,7 +102,7 @@ export class State {
 		}
 
 		for (let i = 0; i < this.numPlayers; i++) {
-			this.hands.push(new Hand());
+			this.hands.push(new Hand(this, i));
 			this.all_possible.push(Utils.objClone(all_possible));
 			this.all_inferred.push(Utils.objClone(all_possible));
 		}
@@ -117,18 +117,28 @@ export class State {
 		return newState;
 	}
 
+	/**
+	 * Returns a copy of the state with only minimal properties (cheaper than cloning).
+	 */
 	minimalCopy() {
 		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress);
 
-		if (this.copyDepth > 5) {
-			throw new Error('recursive depth reached.');
+		if (this.copyDepth > 3) {
+			throw new Error('Maximum recursive depth reached.');
 		}
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands',
-			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore'];
+			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'cardsLeft'];
 
 		for (const property of minimalProps) {
-			newState[property] = Utils.objClone(newState[property]);
+			newState[property] = Utils.objClone(this[property]);
+
+			// Rewrite reference to state in new hands
+			if (property === 'hands') {
+				for (const hand of newState.hands) {
+					hand.state = newState;
+				}
+			}
 		}
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;
@@ -306,7 +316,7 @@ export class State {
      * @param {{simulatePlayerIndex?: number, enableLogs?: boolean}} options
      */
 	simulate_clue(action, options = {}) {
-		const hypo_state = this.minimalCopy();
+		const hypo_state = /** @type {this} */ (this.minimalCopy());
 
 		if (options.simulatePlayerIndex !== undefined) {
 			hypo_state.ourPlayerIndex = options.simulatePlayerIndex;

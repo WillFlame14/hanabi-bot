@@ -1,12 +1,11 @@
 import { CLUE } from '../../../constants.js';
+import { Card } from '../../../basics/Card.js';
 import { find_chop } from '../hanabi-logic.js';
-import { handLoaded } from '../../../basics/helper.js';
 import { isCritical, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
- * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').BasicCard} BasicCard
  */
@@ -19,7 +18,7 @@ import logger from '../../../tools/logger.js';
 export function clue_safe(state, clue) {
 	const { target } = clue;
 
-	const list = state.hands[target].clueTouched(state.suits, clue).map(c => c.order);
+	const list = state.hands[target].clueTouched(clue).map(c => c.order);
 	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });	//, { simulatePlayerIndex: target });
 
 	let next_unoccupied = (state.ourPlayerIndex + 1) % state.numPlayers;
@@ -40,7 +39,7 @@ export function clue_safe(state, clue) {
 		}
 
 		// Dangerous and not loaded, clue is not fine
-		if (!handLoaded(hypo_state, next_unoccupied)) {
+		if (!hypo_state.hands[next_unoccupied].isLoaded()) {
 			logger.warn(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop and not loaded`);
 			return false;
 		}
@@ -90,6 +89,11 @@ function unique2(state, card) {
  */
 export function card_value(state, card) {
 	const { suitIndex, rank } = card;
+
+	// Unknown card in our hand, return average of possibilities
+	if (suitIndex === -1 && card instanceof Card) {
+		return card.possible.reduce((sum, curr) => sum += card_value(state, curr), 0) / card.possible.length;
+	}
 
 	// Basic trash, saved already, duplicate visible
 	if (isTrash(state, state.ourPlayerIndex, suitIndex, rank) || visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length > 1) {

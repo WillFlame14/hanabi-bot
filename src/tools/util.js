@@ -1,10 +1,10 @@
-import { Card } from '../basics/Card.js';
 import { ACTION } from '../constants.js';
+import { Card } from '../basics/Card.js';
+import { Hand } from '../basics/Hand.js';
 import logger from './logger.js';
 
 /**
  * @typedef {import('../basics/State.js').State} State
- * @typedef {import('../basics/Hand.js').Hand} Hand
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').PerformAction} PerformAction
@@ -78,7 +78,7 @@ export function objClone(obj, depth = 0) {
 		throw new Error('Maximum recursion depth reached.');
 	}
 	if (typeof obj === 'object') {
-		if (obj instanceof Card) {
+		if (obj instanceof Card || obj instanceof Hand) {
 			return /** @type {T} */ (obj.clone());
 		}
 		else if (Array.isArray(obj)) {

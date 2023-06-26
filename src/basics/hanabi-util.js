@@ -108,7 +108,7 @@ export function getPace(state) {
 }
 
 /**
- * @param {import("./State.js").State} state
+ * @param {State} state
  * @param {import("./Card.js").Card} card
  */
 export function inStartingHand(state, card) {

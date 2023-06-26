@@ -1,5 +1,4 @@
 import { CLUE } from '../../constants.js';
-import { handLoaded } from '../../basics/helper.js';
 import { getPace, isTrash } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
 import { logHand } from '../../tools/log.js';
@@ -176,8 +175,11 @@ export function stall_severity(state, giver) {
 	if (state.clue_tokens === 7 && state.turn_count !== 1) {
 		return 4;
 	}
-	if (state.hands[giver].isLocked(state) && !handLoaded(state, giver)) {
+	if (state.hands[giver].isLocked()) {
 		return 3;
+	}
+	if (inEndgame(state)) {
+		return 1.5;
 	}
 	if (state.early_game) {
 		return 1;
@@ -191,4 +193,15 @@ export function stall_severity(state, giver) {
  */
 export function inEndgame(state) {
 	return getPace(state) < state.numPlayers;
+}
+
+/**
+ * Returns the current minimum clue value.
+ * @param  {State} state
+ * @return {number}
+ */
+export function minimum_clue_value(state) {
+	// -0.5 if 2 players (allows tempo clues to be given)
+	// -10 if endgame
+	return 1 - (state.numPlayers === 2 ? 0.5 : 0) - (inEndgame(state) ? 10 : 0);
 }

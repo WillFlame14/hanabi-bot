@@ -3,9 +3,7 @@ import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
 import { select_play_clue, find_urgent_actions, determine_playable_card, order_1s } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { find_stall_clue } from './clue-finder/stall-clues.js';
-import { find_chop, inEndgame } from './hanabi-logic.js';
-import { find_playables, find_known_trash, handLoaded } from '../../basics/helper.js';
+import { find_chop, inEndgame, minimum_clue_value } from './hanabi-logic.js';
 import { getPace, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
@@ -26,11 +24,11 @@ import * as Utils from '../../tools/util.js';
 export function take_action(state) {
 	const { tableID } = state;
 	const hand = state.hands[state.ourPlayerIndex];
-	const { play_clues, save_clues, fix_clues } = find_clues(state);
+	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(state);
 
 	// Look for playables, trash and important discards in own hand
-	let playable_cards = find_playables(state.play_stacks, hand);
-	let trash_cards = find_known_trash(state, state.ourPlayerIndex).filter(c => c.clued);
+	let playable_cards = hand.find_playables();
+	let trash_cards = state.hands[state.ourPlayerIndex].find_known_trash().filter(c => c.clued);
 
 	const discards = [];
 	for (const card of playable_cards) {
@@ -156,10 +154,10 @@ export function take_action(state) {
 		return urgent_actions[4][0];
 	}
 
-	// Forced discard if next player is locked without a playable or trash card
+	// Forced discard if next player is locked
 	// TODO: Anxiety play
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-	if (state.clue_tokens === 0 && state.hands[nextPlayerIndex].isLocked(state) && !handLoaded(state, nextPlayerIndex)) {
+	if (state.clue_tokens === 0 && state.hands[nextPlayerIndex].isLocked()) {
 		discard_chop(hand, tableID);
 	}
 
@@ -182,15 +180,12 @@ export function take_action(state) {
 		for (let i = 5; i < 9; i++) {
 			// Give play clue (at correct priority level)
 			if (i === (state.clue_tokens > 1 ? 5 : 8) && best_play_clue !== undefined) {
-				// -0.5 if 2 players (allows tempo clues to be given)
-				// -10 if endgame
-				const minimum_clue_value = 1 - (state.numPlayers === 2 ? 0.5 : 0) - (inEndgame(state) ? 10 : 0);
-
-				if (clue_value >= minimum_clue_value) {
+				if (clue_value >= minimum_clue_value(state)) {
 					return Utils.clueToAction(best_play_clue, state.tableID);
 				}
 				else {
 					logger.info('clue too low value', logClue(best_play_clue), clue_value);
+					stall_clues[1].push(best_play_clue);
 				}
 			}
 
@@ -213,31 +208,37 @@ export function take_action(state) {
 		return urgent_actions[8][0];
 	}
 
+	const best_stall_severity = stall_clues.findIndex(clues => clues.length > 0);
+
 	// Stalling situations
-	if (state.clue_tokens > 0) {
-		// 8 clues
+	if (state.clue_tokens > 0 && best_stall_severity !== -1) {
+		const best_stall_clue = Utils.clueToAction(stall_clues[best_stall_severity][0], state.tableID);
+
+		// 8 clues or locked hand
 		if (state.clue_tokens === 8) {
-			return Utils.clueToAction(find_stall_clue(state, 4, best_play_clue), state.tableID);
+			return best_stall_clue;
 		}
 
 		// Locked hand
-		if (state.hands[state.ourPlayerIndex].isLocked(state)) {
-			return Utils.clueToAction(find_stall_clue(state, 3, best_play_clue), state.tableID);
+		if (state.hands[state.ourPlayerIndex].isLocked()) {
+			return best_stall_clue;
 		}
 
 		// Endgame (and stalling is effective)
 		if (inEndgame(state) && state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index])) {
-			return Utils.clueToAction(find_stall_clue(state, 2, best_play_clue), state.tableID);
+			logger.info('endgame stall');
+			return best_stall_clue;
 		}
 
 		// Early game
-		if (state.early_game) {
-			const clue = find_stall_clue(state, 1, best_play_clue);
-
-			if (clue !== undefined) {
-				return Utils.clueToAction(clue, state.tableID);
-			}
+		if (state.early_game && best_stall_severity === 0) {
+			return best_stall_clue;
 		}
+	}
+
+	// Discarding known trash is still preferable to chop
+	if (trash_cards.length > 0) {
+		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 	}
 
 	return discard_chop(hand, tableID);

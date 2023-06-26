@@ -116,13 +116,14 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
  * @param  {State} state
  * @param  {State} hypo_state
  * @param  {Clue} clue
+ * @param  {{touch?: Card[], list?: number[]}} provisions 	Provided 'touch' and 'list' variables if clued in our hand.
  */
-export function get_result(state, hypo_state, clue) {
+export function get_result(state, hypo_state, clue, provisions = {}) {
 	const { target } = clue;
 	const hand = state.hands[target];
 
-	const touch = hand.clueTouched(state.suits, clue);
-	const list = touch.map(c => c.order);
+	const touch = provisions.touch ?? hand.clueTouched(clue);
+	const list = provisions.list ?? touch.map(c => c.order);
 
 	const { focused_card } = determine_focus(hand, list, { beforeClue: true });
 	const bad_touch_cards = find_bad_touch(hypo_state, touch.filter(c => !c.clued), focused_card.order);
@@ -137,7 +138,9 @@ export function get_result(state, hypo_state, clue) {
 			if (hypo_card.newly_clued && !hypo_card.finessed) {
 				new_touched++;
 			}
-			elim++;
+			else if (list.includes(hypo_card.order)) {
+				elim++;
+			}
 		}
 	}
 
@@ -214,11 +217,11 @@ export function determine_clue(state, target, target_card, options) {
 	// All play clues should be safe, but save clues may not be (e.g. crit 4, 5 of different colour needs to identify that 5 is a valid clue)
 	const possible_clues = direct_clues(state, target, target_card, options).filter(clue => options.save ? true : clue_safe(state, clue));
 
-	/** @type {ClueResult[]} */
+	/** @type {{ clue: Clue, result: ClueResult}[]} */
 	const results = [];
 
 	for (const clue of possible_clues) {
-		const touch = hand.clueTouched(state.suits, clue);
+		const touch = hand.clueTouched(clue);
 		const list = touch.map(c => c.order);
 
 		const { focused_card, chop } = determine_focus(hand, list, { beforeClue: true });
@@ -256,15 +259,14 @@ export function determine_clue(state, target, target_card, options) {
 		};
 		logger.info('result,', JSON.stringify(result_log));
 
-		results.push({ clue, touch, interpret, elim, new_touched, bad_touch, trash, finesses, playables, remainder: chop ? remainder: 0 });
+		results.push({ clue, result: { elim, new_touched, bad_touch, trash, finesses, playables, remainder: chop ? remainder: 0 } });
 	}
 
 	if (results.length === 0) {
 		return;
 	}
 
-	const best_result = Utils.maxOn(results, find_clue_value);
-	const { clue } = best_result;
+	const { clue, result: best_result } = Utils.maxOn(results, ({ result }) => find_clue_value(result));
 
 	// Change type from CLUE to ACTION
 	return { type: clue.type, value: clue.value, target: clue.target, result: best_result };

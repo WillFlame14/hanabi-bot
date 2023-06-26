@@ -41,10 +41,17 @@ export default class HGroup extends State {
 		}
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands',
-			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore'];
+			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'cardsLeft'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
+
+			// Rewrite reference to state in new hands
+			if (property === 'hands') {
+				for (const hand of newState.hands) {
+					hand.state = newState;
+				}
+			}
 		}
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;

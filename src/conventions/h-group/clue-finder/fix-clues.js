@@ -107,7 +107,7 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 					// Go through all other clues to see if one fixes
 					for (const clue of other_clues) {
 						// The clue cannot touch the fixed card or it will look like just a fix
-						if (hand.clueTouched(state.suits, clue).some(c => c.order === card.order)) {
+						if (hand.clueTouched(clue).some(c => c.order === card.order)) {
 							continue;
 						}
 

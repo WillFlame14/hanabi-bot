@@ -41,13 +41,13 @@ function find_save(state, target, card) {
 			logger.error(`unable to find save clue for ${logCard(card)}!`);
 			return;
 		}
-		return Object.assign(save_clue, { playable: true });
+		return Object.assign(save_clue, { playable: true, cm: false });
 	}
 
 	if (isCritical(state, suitIndex, rank)) {
 		logger.warn('saving critical card', logCard(card));
 		if (rank === 5) {
-			return { type: CLUE.RANK, value: 5, target, playable: false };
+			return { type: CLUE.RANK, value: 5, target, playable: false, cm: false };
 		}
 		else {
 			// The card is on chop, so it can always be focused
@@ -57,11 +57,11 @@ function find_save(state, target, card) {
 				logger.error(`unable to find save clue for ${logCard(card)}!`);
 				return;
 			}
-			return Object.assign(save_clue, { playable: false });
+			return Object.assign(save_clue, { playable: false, cm: false });
 		}
 	}
 	else if (save2(state, target, card) && clue_safe(state, { type: CLUE.RANK, value: 2 , target })) {
-		return { type: CLUE.RANK, value: 2, target, playable: false };
+		return { type: CLUE.RANK, value: 2, target, playable: false, cm: false };
 	}
 	return;
 }
@@ -87,7 +87,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		logger.info('prefer direct save');
 		return;
 	}
-	else if (play_clues.some(clue => saved_cards.every(c => state.hands[target].clueTouched(state.suits, clue).some(card => card.order === c.order)))) {
+	else if (play_clues.some(clue => saved_cards.every(c => state.hands[target].clueTouched(clue).some(card => card.order === c.order)))) {
 		logger.info('prefer play clue to save');
 		return;
 	}
@@ -134,7 +134,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		});
 
 		if (tcm !== undefined) {
-			return { type: tcm.type, value: tcm.value, target, playable: false };
+			return { type: tcm.type, value: tcm.value, target, playable: false, cm: true };
 		}
 	}
 	return;
@@ -169,13 +169,13 @@ function find_5cm(state, target, chop, cardIndex) {
 	// 5cm to lock for unique 2 or critical
 	if (new_chop === undefined) {
 		if (card_value(state, chop) >= 4) {
-			return { type: CLUE.RANK, value: 5, target, playable: false };
+			return { type: CLUE.RANK, value: 5, target, playable: false, cm: true };
 		}
 	}
 	else {
 		// 5cm if new chop is less valuable than old chop
 		if (card_value(state, chop) >= card_value(state, new_chop)) {
-			return { type: CLUE.RANK, value: 5, target, playable: false };
+			return { type: CLUE.RANK, value: 5, target, playable: false, cm: true};
 		}
 	}
 
@@ -198,6 +198,8 @@ export function find_clues(state, options = {}) {
 	const play_clues = [];
 	/** @type SaveClue[] */
 	const save_clues = [];
+	/** @type Clue[][] */
+	const stall_clues = [[], [], [], []];
 
 	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
@@ -292,25 +294,44 @@ export function find_clues(state, options = {}) {
 			// Play clue
 			const clue = determine_clue(state, target, card, { excludeRank: interpreted_5cm });
 			if (clue !== undefined) {
-				// Not a play clue
-				if (clue.result.playables.length === 0) {
-					if (cardIndex !== chopIndex) {
-						logger.info(`found clue ${logClue(clue)} that wasn't a save/tcm/5cm/play.`);
-					}
-					logger.info('--------');
-					continue;
-				}
+				const { playables, elim, new_touched } = clue.result;
 
-				play_clues[target].push(clue);
+				if (playables.length > 0) {
+					play_clues[target].push(clue);
+				}
+				// Stall clues
+				else if (severity > 0) {
+					if (clue.type === CLUE.RANK && clue.value === 5) {
+						logger.info('5 stall', logClue(clue));
+						stall_clues[0].push(clue);
+					}
+					else if (cardIndex === chopIndex && chopIndex !== 0) {
+						logger.info('locked hand save', logClue(clue));
+						stall_clues[2].push(clue);
+					}
+					else if (new_touched === 0) {
+						if (elim > 0) {
+							logger.info('fill in', logClue(clue));
+							stall_clues[2].push(clue);
+						}
+						else {
+							logger.info('hard burn', logClue(clue));
+							stall_clues[3].push(clue);
+						}
+					}
+					else {
+						logger.info('unknown valid clue??', logClue(clue));
+					}
+				}
 			}
 			logger.info('--------');
 		}
 
 		save_clues[target] = Utils.maxOn(saves.filter(c => c !== undefined), (save_clue) => {
 			const { type, value, target } = save_clue;
-			const list = state.hands[target].clueTouched(state.suits, save_clue).map(c => c.order);
+			const list = state.hands[target].clueTouched(save_clue).map(c => c.order);
 			const hypo_state = state.simulate_clue({ type: 'clue', clue: { type, value }, giver: state.ourPlayerIndex, target, list });
-			const result = /** @type {ClueResult} */ (get_result(state, hypo_state, save_clue));
+			const result = get_result(state, hypo_state, save_clue);
 
 			return find_clue_value(result);
 		});
@@ -327,6 +348,9 @@ export function find_clues(state, options = {}) {
 	if (fix_clues.some(clues => clues.length > 0)) {
 		logger.info('found fix clues', fix_clues.map(clues => clues.map(clue => logClue(clue))).flat());
 	}
+	if (stall_clues.some(clues => clues.length > 0)) {
+		logger.info('found stall clues', stall_clues.map(clues => clues.map(clue => logClue(clue))).flat());
+	}
 
-	return { play_clues, save_clues, fix_clues };
+	return { play_clues, save_clues, fix_clues, stall_clues };
 }

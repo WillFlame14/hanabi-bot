@@ -21,6 +21,13 @@ import * as Utils from '../../../tools/util.js';
  * @typedef {import('../../../types.js').Connection} Connection
  */
 
+
+/**
+ * @param {State} state
+ * @param {number} playerIndex
+ * @param {number} suitIndex
+ * @param {number} rank
+ */
 function infer_elim(state, playerIndex, suitIndex, rank) {
 	// We just learned about the card
 	if (playerIndex === state.ourPlayerIndex) {
@@ -125,6 +132,8 @@ function apply_good_touch(state, action) {
  * @param {ClueAction} action
  */
 export function interpret_clue(state, action) {
+	const prev_state = state.minimalCopy();
+
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
 	const { fix, layered_reveal } = apply_good_touch(state, action);
 
@@ -160,7 +169,7 @@ export function interpret_clue(state, action) {
 	}
 
 	// Check if the giver was in a stalling situation
-	if (!ignoreStall && stalling_situation(state, action)) {
+	if (!ignoreStall && stalling_situation(state, action, prev_state)) {
 		logger.info('stalling situation');
 		update_hypo_stacks(state);
 		return;

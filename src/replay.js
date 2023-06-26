@@ -79,7 +79,7 @@ async function main() {
 		}
 	}
 
-	let currentPlayerIndex = 0, turn = 0, final_turn;
+	let currentPlayerIndex = 0, turn = 0;
 
 	// Take actions
 	for (const action of actions) {
@@ -92,10 +92,6 @@ async function main() {
 			const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
 			state.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank }, true);
 			order++;
-
-			if (order === deck.length) {
-				final_turn = turn + state.numPlayers;
-			}
 		}
 
 		if (action.type === ACTION.PLAY && state.strikes === 3) {
@@ -105,10 +101,19 @@ async function main() {
 		turn++;
 	}
 
-	const max_score_achieved = state.play_stacks.reduce((acc, stack) => acc += stack) === state.max_ranks.reduce((acc, stack) => acc += stack);
-	if (turn === final_turn + 1 || max_score_achieved) {
+	if (actions.at(-1).type !== 'gameOver') {
 		state.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.NORMAL, votes: -1 });
 	}
+}
+
+/**
+ * [get_own_hand description]
+ * @param  {State} state
+ * @param  {BasicCard[]} deck
+ */
+function get_own_hand(state, deck) {
+	const ind = state.ourPlayerIndex;
+	return new Hand(state, ind, ...state.hands[ind].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order })))
 }
 
 /**
@@ -139,19 +144,15 @@ function parse_action(state, action, playerIndex, deck) {
 		}
 		case ACTION.RANK: {
 			const clue = { type: CLUE.RANK, value };
-			const hand = target === state.ourPlayerIndex ?
-				new Hand(...state.hands[target].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order }))) :
-				state.hands[target];
-			const list = hand.clueTouched(state.suits, clue).map(c => c.order);
+			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
+			const list = hand.clueTouched(clue).map(c => c.order);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
 		case ACTION.COLOUR: {
 			const clue = { type: CLUE.COLOUR, value };
-			const hand = target === state.ourPlayerIndex ?
-				new Hand(...state.hands[target].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order }))) :
-				state.hands[target];
-			const list = hand.clueTouched(state.suits, clue).map(c => c.order);
+			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
+			const list = hand.clueTouched(clue).map(c => c.order);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
