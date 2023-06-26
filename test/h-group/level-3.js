@@ -73,9 +73,8 @@ describe('playing 1s in the correct order', () => {
 		// Cathy clues Bob red, touching r2 and r5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [6, 8], target: PLAYER.BOB });
 
-		// Alice should continue playing slot 3 (not slot 2 as prompt).
-		const action = state.take_action(state);
-		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.PLAY, target: 2 });
+		// Alice's slot 2 should still be any 1 (not prompted to be r1).
+		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
 	});
 });
 

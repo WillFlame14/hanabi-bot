@@ -234,15 +234,18 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 
 				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
 				// Prioritize cm-type saves over plays?
-				if (save_clues[target] !== undefined && !save_clues[target].cm) {
+				if (save_clues[target] !== undefined) {
 					const saved_hand = Utils.objClone(state.hands[target]);
 					for (const card of saved_hand) {
 						if (cardTouched(card, state.suits, save_clues[target])) {
 							card.clued = true;
 						}
+						else if (save_clues[target].cm.some(c => c.order === card.order)) {
+							card.chop_moved = true;
+						}
 					}
 					const new_chop = saved_hand[find_chop(saved_hand)];
-					remainder_boost = new_chop ? card_value(state, new_chop) * 0.2 : 0;
+					remainder_boost = new_chop ? card_value(state, new_chop) * 0.2 : 3;
 				}
 
 				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked(), remainder_boost);

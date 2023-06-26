@@ -134,7 +134,7 @@ export function get_result(state, hypo_state, clue, provisions = {}) {
 		const old_card = state.hands[target][i];
 		const hypo_card = hypo_state.hands[target][i];
 
-		if (hypo_card.clued && hypo_card.inferred.length < old_card.inferred.length && hypo_card.matches_inferences()) {
+		if (hypo_card.clued && hypo_card.possible.length < old_card.possible.length && hypo_card.matches_inferences()) {
 			if (hypo_card.newly_clued && !hypo_card.finessed) {
 				new_touched++;
 			}

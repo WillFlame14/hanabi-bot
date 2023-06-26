@@ -148,6 +148,7 @@ export function handle_action(action, catchup = false) {
 		case 'finesse':  {
 			const { list, clue } = action;
 			this.next_finesse.push({ list, clue });
+			break;
 		}
 		default:
 			break;

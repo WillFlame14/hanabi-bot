@@ -41,13 +41,13 @@ function find_save(state, target, card) {
 			logger.error(`unable to find save clue for ${logCard(card)}!`);
 			return;
 		}
-		return Object.assign(save_clue, { playable: true, cm: false });
+		return Object.assign(save_clue, { playable: true, cm: [] });
 	}
 
 	if (isCritical(state, suitIndex, rank)) {
 		logger.warn('saving critical card', logCard(card));
 		if (rank === 5) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: false };
+			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [] };
 		}
 		else {
 			// The card is on chop, so it can always be focused
@@ -57,11 +57,11 @@ function find_save(state, target, card) {
 				logger.error(`unable to find save clue for ${logCard(card)}!`);
 				return;
 			}
-			return Object.assign(save_clue, { playable: false, cm: false });
+			return Object.assign(save_clue, { playable: false, cm: [] });
 		}
 	}
 	else if (save2(state, target, card) && clue_safe(state, { type: CLUE.RANK, value: 2 , target })) {
-		return { type: CLUE.RANK, value: 2, target, playable: false, cm: false };
+		return { type: CLUE.RANK, value: 2, target, playable: false, cm: [] };
 	}
 	return;
 }
@@ -134,7 +134,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		});
 
 		if (tcm !== undefined) {
-			return { type: tcm.type, value: tcm.value, target, playable: false, cm: true };
+			return { type: tcm.type, value: tcm.value, target, playable: false, cm: saved_cards };
 		}
 	}
 	return;
@@ -169,13 +169,13 @@ function find_5cm(state, target, chop, cardIndex) {
 	// 5cm to lock for unique 2 or critical
 	if (new_chop === undefined) {
 		if (card_value(state, chop) >= 4) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: true };
+			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop] };
 		}
 	}
 	else {
 		// 5cm if new chop is less valuable than old chop
 		if (card_value(state, chop) >= card_value(state, new_chop)) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: true};
+			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop] };
 		}
 	}
 

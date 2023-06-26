@@ -14,10 +14,11 @@ import logger from '../../../tools/logger.js';
  * Returns whether a clue could be a stall or not, given the severity level.
  * @param {State} state
  * @param {ClueAction} action
+ * @param {number} giver
  * @param {number} severity
  * @param {State} prev_state
  */
-function isStall(state, action, severity, prev_state) {
+function isStall(state, action, giver, severity, prev_state) {
 	const { clue, list, target } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], list);
 	const hand = state.hands[target];
@@ -33,8 +34,9 @@ function isStall(state, action, severity, prev_state) {
 	const { new_touched, elim } = clue_result;
 
 	if (severity >= 2) {
-		// 5 Stall was available
-		if (hand.some(c => c.rank === 5 && !c.clued)) {
+		// 5 Stall was available on someone other than giver
+		// Note: target won't be able to tell if there was a 5 in their hand, but we could potentially prove it via a finesse
+		if (state.hands.some((hand, index) => index !== giver && hand.some(c => c.rank === 5 && !c.clued))) {
 			logger.info('5 stall was available but not given, so must not be stall');
 			return false;
 		}
@@ -46,8 +48,8 @@ function isStall(state, action, severity, prev_state) {
 		}
 
 		// Tempo clue given
-		if (find_clue_value(clue_result) < minimum_clue_value(state)) {
-			logger.info('tempo clue stall!');
+		if (clue_result.playables.length > 0 && find_clue_value(clue_result) < minimum_clue_value(state)) {
+			logger.info('tempo clue stall! value', find_clue_value(clue_result));
 			return true;
 		}
 
@@ -103,7 +105,7 @@ export function stalling_situation(state, action, prev_state) {
 
 	// Check at the very end - only if the conditions are right for a stall, then see if a play/save could have been given
 	// TODO: Add this back in. For now, it's causing a large number of infinite loops and isn't even correct most of the time.
-	if (isStall(state, action, severity, prev_state)) {
+	if (isStall(state, action, giver, severity, prev_state)) {
 		/*const { play_clues, save_clues } = find_clues(state, { ignorePlayerIndex: giver, ignoreCM: true });
 
 		// There was a play (no bad touch, not tempo) or save available

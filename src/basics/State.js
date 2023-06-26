@@ -219,6 +219,8 @@ export class State {
 			throw new Error(`Attempted to rewind ${JSON.stringify(rewind_action)} that was already rewinded!`);
 		}
 
+		logger.highlight('green', '------- STARTING REWIND -------');
+
 		const new_state = this.createBlank();
 		const history = this.actionList.slice(0, action_index);
 
@@ -233,13 +235,11 @@ export class State {
 		new_state.handle_action(rewind_action, true);
 		new_state.handle_action(pivotal_action, true);
 
-		logger.wrapLevel(logger.LEVELS.ERROR, () => {
-			// Redo all the following actions
-			const future = this.actionList.slice(action_index + 1, -1);
-			for (const action of future) {
-				new_state.handle_action(action, true);
-			}
-		});
+		// Redo all the following actions
+		const future = this.actionList.slice(action_index + 1, -1);
+		for (const action of future) {
+			new_state.handle_action(action, true);
+		}
 
 		logger.highlight('green', '------- REWIND COMPLETE -------');
 

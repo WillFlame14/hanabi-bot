@@ -113,7 +113,7 @@ async function main() {
  */
 function get_own_hand(state, deck) {
 	const ind = state.ourPlayerIndex;
-	return new Hand(state, ind, ...state.hands[ind].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order })))
+	return new Hand(state, ind, ...state.hands[ind].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order })));
 }
 
 /**

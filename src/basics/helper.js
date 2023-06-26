@@ -1,5 +1,5 @@
 import { cardTouched } from '../variants.js';
-import { isBasicTrash, visibleFind } from './hanabi-util.js';
+import { isBasicTrash } from './hanabi-util.js';
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
 

@@ -13,7 +13,7 @@ import { Card } from './basics/Card.js';
  * @property {number} value
  * 
  * @typedef {BaseClue & {target: number, result?: ClueResult}} Clue
- * @typedef {Clue & {playable: boolean, cm: boolean}} SaveClue
+ * @typedef {Clue & {playable: boolean, cm: Card[]}} SaveClue
  * @typedef {Clue & {urgent: boolean, trash: boolean}} FixClue
  * 
  * @typedef ClueResult

@@ -80,6 +80,11 @@ export function update_turn(state, action) {
 		if (reacting === lastPlayerIndex) {
 			// They still have the card
 			if (card !== undefined) {
+				if (reacting === state.ourPlayerIndex) {
+					// We didn't play for some reason, but we trust ourselves
+					continue;
+				}
+
 				// Didn't play into finesse
 				if (type === 'finesse') {
 					if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
@@ -144,7 +149,7 @@ export function update_turn(state, action) {
 				const { suitIndex, rank } = last_action;
 
 				if (old_card.matches(suitIndex, rank, { infer: true }) && card.finessed) {
-					logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`)
+					logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`);
 					// Advance connection
 					state.waiting_connections[i].conn_index = conn_index + 1;
 					if (state.waiting_connections[i].conn_index === connections.length) {

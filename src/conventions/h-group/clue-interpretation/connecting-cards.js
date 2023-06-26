@@ -9,7 +9,6 @@ import { cardTouched } from '../../../variants.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
-import * as Utils from '../../../tools/util.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -311,7 +310,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 
 				if (prompt?.rewinded && playableAway(hypo_state, prompt.suitIndex, prompt.rank) === 0) {
 					if (state.level < LEVEL.INTERMEDIATE_FINESSES) {
-						logger.warn(`blocked layered finesse at level ${state.level}`);
+						logger.warn(`blocked hidden finesse at level ${state.level}`);
 						feasible = false;
 						break;
 					}
@@ -323,7 +322,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 					ignoreOrders.push(prompt.order);
 					next_rank--;
 				}
-				else {
+				else if (prompt.identity() === undefined || prompt.matches(suitIndex, next_rank)) {
 					logger.info('found prompt in our hand');
 					connections.push({ type: 'prompt', reacting: hypo_state.ourPlayerIndex, card: prompt, self: true });
 
@@ -355,7 +354,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 					next_rank--;
 					finesses++;
 				}
-				else if (finesse?.inferred.some(p => p.matches(suitIndex, next_rank))) {
+				else if (finesse?.inferred.some(p => p.matches(suitIndex, next_rank)) && (finesse.identity() === undefined || finesse.matches(suitIndex, next_rank))) {
 					if (state.level === 1 && ignoreOrders.length >= 1) {
 						logger.warn(`blocked ${finesses >= 1 ? 'double finesse' : 'prompt + finesse'} at level 1`);
 						feasible = false;

@@ -86,6 +86,7 @@ function unique2(state, card) {
  * TODO: Improve general algorithm. (e.g. having clued cards of a suit makes it better, a dead suit is worse)
  * @param  {State} state
  * @param  {BasicCard} card
+ * @returns {number}
  */
 export function card_value(state, card) {
 	const { suitIndex, rank } = card;

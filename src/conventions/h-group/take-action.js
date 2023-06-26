@@ -8,6 +8,7 @@ import { getPace, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
+import { card_value } from './clue-finder/clue-safe.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -77,7 +78,38 @@ export function take_action(state) {
 		if (best_playable_card.clues.length > 0 && best_playable_card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
 			const ordered_1s = order_1s(state, playable_cards);
 			if (ordered_1s.length > 0) {
-				best_playable_card = ordered_1s[0];
+				let best_ocm_index = 0, best_ocm_value = -0.1;
+
+				// Try to find a non-negative value OCM
+				for (let i = 1; i < ordered_1s.length; i++) {
+					const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
+
+					if (playerIndex === state.ourPlayerIndex) {
+						break;
+					}
+
+					const old_chop_index = find_chop(state.hands[playerIndex]);
+					// Player is locked, OCM is meaningless
+					if (old_chop_index === -1) {
+						continue;
+					}
+					const old_chop_value = card_value(state, state.hands[playerIndex][old_chop_index]);
+
+					const newHand = state.hands[playerIndex].clone();
+					newHand[old_chop_index].chop_moved = true;
+					const new_chop_index = find_chop(newHand);
+
+					// OCM to lock for unique 2 or criticals
+					const new_chop_value = new_chop_index !== -1 ? card_value(state, newHand[new_chop_index]) : 3.5;
+
+					const ocm_value = old_chop_value - new_chop_value;
+
+					if (ocm_value > best_ocm_value) {
+						best_ocm_index = i;
+						best_ocm_value = ocm_value;
+					}
+				}
+				best_playable_card = ordered_1s[best_ocm_index];
 			}
 		}
 

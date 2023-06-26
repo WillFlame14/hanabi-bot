@@ -116,7 +116,7 @@ export function determine_focus(hand, list, options = {}) {
 		}
 	}
 
-	logger.info('list', list, 'hand', logHand(hand));
+	console.log('list', list, 'hand', logHand(hand));
 	throw new Error('No focus found!');
 }
 
