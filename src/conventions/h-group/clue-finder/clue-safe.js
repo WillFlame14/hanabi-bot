@@ -128,6 +128,11 @@ export function save2(state, target, card) {
 	return unique2(state, card) && clue_safe(state, clue);
 }
 
+/**
+ * Checks if a player's chop is safe after a clue, according to us.
+ * @param {State} state
+ * @param {number} playerIndex
+ */
 export function chopUnsafe(state, playerIndex) {
 	// Note that chop will be undefined if the entire hand is clued
 	const hand = state.hands[playerIndex];

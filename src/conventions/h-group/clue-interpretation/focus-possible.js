@@ -45,7 +45,7 @@ function find_colour_focus(state, suitIndex, action) {
 	while (next_playable_rank < state.max_ranks[suitIndex]) {
 		// Note that a colour clue always looks direct
 		const ignoreOrders = already_connected.concat(state.next_ignore[next_playable_rank - state.play_stacks[suitIndex] - 1] ?? []);
-		const looksDirect = focused_card.identity({ symmetric: true}) === undefined;
+		const looksDirect = focused_card.identity({ symmetric: true }) === undefined;
 		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, looksDirect, ignoreOrders);
 		if (connecting.length === 0) {
 			break;
@@ -141,8 +141,8 @@ function find_rank_focus(state, rank, action) {
 			}
 
 			// Looks like a 2 save on any 2 not known to target
-			const save2 = rank === 2 &&
-				visibleFind(state, target, suitIndex, 2, { infer: [target, giver, state.ourPlayerIndex] }).filter(c => c.order !== focused_card.order).length === 0;
+			const find_opts = { infer: [target, giver, state.ourPlayerIndex], symmetric: [target, giver] };
+			const save2 = rank === 2 && visibleFind(state, target, suitIndex, 2, find_opts).filter(c => c.order !== focused_card.order).length === 0;
 
 			// Critical save or 2 save
 			if (isCritical(state, suitIndex, rank) || save2) {
@@ -177,9 +177,9 @@ function find_rank_focus(state, rank, action) {
 
 			let finesses = 0;
 
-			let looksPlayable = state.hypo_stacks.some(stack => stack + 1 === next_rank);
+			const looksPlayable = state.hypo_stacks.some(stack => stack + 1 === rank);
 			let ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-			const looksDirect = focused_card.identity({ symmetric: true }) === undefined && (looksSave || looksPlayable);
+			let looksDirect = focused_card.identity({ symmetric: true }) === undefined && (looksSave || looksPlayable);
 			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 
 			while (connecting.length !== 0) {
@@ -189,9 +189,14 @@ function find_rank_focus(state, rank, action) {
 					break;
 				}
 
-				if (connecting[0].type === 'finesse' && rank === next_rank) {
-					// Even if a finesse is possible, it might not be a finesse
-					focus_possible.push({ suitIndex, rank, save: false, connections: Utils.objClone(connections) });
+				if (connecting[0].type === 'finesse') {
+					// A finesse proves that this is not direct
+					looksDirect = focused_card.identity({ symmetric: true }) === undefined && looksSave;
+
+					if (rank === next_rank) {
+						// Even if a finesse is possible, it might not be a finesse
+						focus_possible.push({ suitIndex, rank, save: false, connections: Utils.objClone(connections) });
+					}
 				}
 
 				connections = connections.concat(connecting);
@@ -205,7 +210,6 @@ function find_rank_focus(state, rank, action) {
 					break;
 				}
 
-				looksPlayable = state.hypo_stacks.some(stack => stack + 1 === next_rank);
 				ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
 				connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 			}

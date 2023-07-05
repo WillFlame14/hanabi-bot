@@ -1,5 +1,6 @@
 import { cardTouched } from '../variants.js';
 import { isBasicTrash } from './hanabi-util.js';
+import * as Basics from '../basics.js';
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
 
@@ -57,7 +58,7 @@ export function bad_touch_possibilities(state, giver, target, prev_found = []) {
 
 		for (let j = 0; j < hand.length; j++) {
 			const card = hand[j];
-			if (!card.clued) {
+			if (!(card.clued || card.finessed)) {
 				continue;
 			}
 
@@ -68,7 +69,7 @@ export function bad_touch_possibilities(state, giver, target, prev_found = []) {
 					({suitIndex, rank} = card.possible[0]);
 					method = 'elim';
 				}
-				else if (card.inferred.length === 1 && card.matches(suitIndex, rank, { infer: true })) {
+				else if (card.inferred.length === 1 && card.matches(card.inferred[0].suitIndex, card.inferred[0].rank, { infer: true })) {
 					({suitIndex, rank} = card.inferred[0]);
 					method = 'inference';
 				}
@@ -93,24 +94,63 @@ export function bad_touch_possibilities(state, giver, target, prev_found = []) {
 }
 
 /**
- * @param {Hand} hand
- * @param {BasicCard[]} cards
+ * @param {State} state
+ * @param {number} playerIndex
+ * @param {number} suitIndex
+ * @param {number} rank
  * @param {{ignore?: number[], hard?: boolean}} options
  */
-export function good_touch_elim(hand, cards, options = {}) {
-	for (const card of hand) {
+export function recursive_elim(state, playerIndex, suitIndex, rank, options = {}) {
+	let additional_elims = good_touch_elim(state, playerIndex, suitIndex, rank, options);
+	let elim_index = 0;
+
+	// No ignoring on recursive elims
+	options.ignore = undefined;
+
+	while (elim_index < additional_elims.length) {
+		const { suitIndex, rank } = additional_elims[elim_index];
+
+		for (let i = 0; i < state.numPlayers; i++) {
+			const extra_card_elims = Basics.card_elim(state, playerIndex, suitIndex, rank);
+			const extra_gtp_elims = good_touch_elim(state, playerIndex, suitIndex, rank, options);
+
+			additional_elims = additional_elims.concat(extra_card_elims.concat(extra_gtp_elims));
+		}
+		elim_index++;
+	}
+}
+
+/**
+ * @param {State} state
+ * @param {number} playerIndex
+ * @param {number} suitIndex
+ * @param {number} rank
+ * @param {{ignore?: number[], hard?: boolean}} options
+ */
+export function good_touch_elim(state, playerIndex, suitIndex, rank, options = {}) {
+	const new_elims = [];
+
+	for (const card of state.hands[playerIndex]) {
 		if (options.ignore?.includes(card.order)) {
 			continue;
 		}
 
 		if ((card.clued || card.chop_moved || card.finessed) && (options.hard || card.inferred.length > 1)) {
-			card.subtract('inferred', cards);
+			const pre_inferences = card.inferred.length;
+
+			card.subtract('inferred', [{suitIndex, rank}]);
 
 			if (card.inferred.length === 0) {
 				card.reset = true;
 			}
+			// Newly eliminated
+			else if (card.inferred.length === 1 && pre_inferences > 1) {
+				new_elims.push(card.inferred[0]);
+			}
 		}
 	}
+
+	return new_elims;
 }
 
 /**

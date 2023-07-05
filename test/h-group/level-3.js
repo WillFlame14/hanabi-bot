@@ -59,7 +59,7 @@ describe('playing 1s in the correct order', () => {
 		assert.deepEqual(Array.from(ordered_1s), [0, 10, 3]);
 	});
 
-	it ('does not prompt playable 1s', () => {
+	it('does not prompt playable 1s', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b2', 'r2', 'g3', 'r5', 'b3'],

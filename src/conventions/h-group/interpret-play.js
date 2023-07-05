@@ -1,7 +1,7 @@
 import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
 import { find_chop } from './hanabi-logic.js';
-import { good_touch_elim, update_hypo_stacks } from '../../basics/helper.js';
+import { recursive_elim, update_hypo_stacks } from '../../basics/helper.js';
 import { order_1s } from './action-helper.js';
 import * as Basics from '../../basics.js';
 import logger from '../../tools/logger.js';
@@ -77,8 +77,8 @@ export function interpret_play(state, action) {
 	Basics.onPlay(this, action);
 
 	// Apply good touch principle on remaining possibilities
-	for (const hand of this.hands) {
-		good_touch_elim(hand, [{suitIndex, rank}], { hard: true });
+	for (let i = 0; i < state.numPlayers; i++) {
+		recursive_elim(state, playerIndex, suitIndex, rank);
 	}
 
 	// Update hypo stacks

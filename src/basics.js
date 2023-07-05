@@ -140,16 +140,19 @@ export function onPlay(state, action) {
  * @param {number} playerIndex 		The index of the player performing elimination.
  * @param {number} suitIndex 		The suitIndex of the identity to be eliminated.
  * @param {number} rank 			The rank of the identity to be eliminated.
+ * @returns {Card[]}				Any additional recursive eliminations performed.
  */
 export function card_elim(state, playerIndex, suitIndex, rank) {
 	// Skip if already eliminated
 	if (!state.all_possible[playerIndex].some(c => c.matches(suitIndex, rank))) {
-		return;
+		return [];
 	}
 
 	const base_count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0);
 	const certain_cards = visibleFind(state, playerIndex, suitIndex, rank, { infer: [] });
 	const total_count = cardCount(state.suits[suitIndex], rank);
+
+	let new_elims = [];
 
 	// All cards are known accounted for
 	if (base_count + certain_cards.length === total_count) {
@@ -165,32 +168,59 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 				// Card can be further eliminated
 				if (card.inferred.length === 1 || card.possible.length === 1) {
 					const { suitIndex: suitIndex2, rank: rank2 } = card.identity({ symmetric: true, infer: true });
+					new_elims.push({ suitIndex: suitIndex2, rank: rank2 });
+
 					for (let i = 0; i < state.numPlayers; i++) {
-						card_elim(state, i, suitIndex2, rank2);
+						const recursive_elims = card_elim(state, i, suitIndex2, rank2).filter(c => !new_elims.some(elim => elim.suitIndex === c.suitIndex && elim.rank ===  c.rank));
+						new_elims = new_elims.concat(recursive_elims);
 					}
 				}
 			}
 		}
 		logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future possibilities`);
+		return new_elims;
 	}
 	else {
 		// Skip if already eliminated
 		if (!state.all_inferred[playerIndex].some(c => c.matches(suitIndex, rank))) {
-			return;
+			return [];
 		}
 
 		const inferred_cards = visibleFind(state, playerIndex, suitIndex, rank);
-		if (base_count + inferred_cards.length === total_count) {
+
+		if (base_count + inferred_cards.length >= total_count) {
+			if (base_count + inferred_cards.length > total_count) {
+				logger.warn(`inferring ${base_count + inferred_cards.length} copies of ${logCard({suitIndex, rank})}, eliminating anyways`);
+			}
+
 			// Remove it from the list of future inferences
 			state.all_inferred[playerIndex] = state.all_inferred[playerIndex].filter(c => !c.matches(suitIndex, rank));
 
 			for (const card of state.hands[playerIndex]) {
-				if (!inferred_cards.some(c => c.order === card.order)) {
+				if (card.inferred.length > 1 && !inferred_cards.some(c => c.order === card.order)) {
 					card.subtract('inferred', [{suitIndex, rank}]);
+
+					// Card can be further eliminated
+					if (card.inferred.length === 1) {
+						if (card.identity() !== undefined && !card.matches(suitIndex, rank)) {
+							logger.warn(`incorrectly trying to elim card ${logCard(card)} as ${logCard({suitIndex, rank})}!`);
+							continue;
+						}
+
+						const { suitIndex: suitIndex2, rank: rank2 } = card.inferred[0];
+						new_elims.push({ suitIndex: suitIndex2, rank: rank2 });
+
+						for (let i = 0; i < state.numPlayers; i++) {
+							const recursive_elims = card_elim(state, i, suitIndex2, rank2).filter(c => !new_elims.some(elim => elim.suitIndex === c.suitIndex && elim.rank ===  c.rank));
+							new_elims = new_elims.concat(recursive_elims);
+						}
+					}
 				}
 			}
 			logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future inferences`);
+			return new_elims;
 		}
 	}
+	return [];
 }
 

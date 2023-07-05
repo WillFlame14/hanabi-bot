@@ -4,7 +4,7 @@ import { cardCount } from '../variants.js';
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Card.js').Card} Card
  * 
- * @typedef {{symmetric?: boolean, infer?: number[], ignore?: number[]}} FindOptions
+ * @typedef {{symmetric?: number[], infer?: number[], ignore?: number[]}} FindOptions
  * The 'ignore' option can store an array of player indexes whose hands should be ignored during search.
  * 
  * The 'symmetric' and 'infer' options are for card identification (see Card.identity() for more details).
@@ -30,7 +30,7 @@ export function visibleFind(state, inferringPlayerIndex, suitIndex, rank, option
 		const hand = state.hands[i];
 		const find_options = {
 			infer: (options.infer ?? [inferringPlayerIndex, state.ourPlayerIndex]).includes(i),
-			symmetric: i === inferringPlayerIndex
+			symmetric: (options.symmetric ?? [inferringPlayerIndex]).includes(i)
 		};
 		found = found.concat(hand.findCards(suitIndex, rank, find_options));
 	}

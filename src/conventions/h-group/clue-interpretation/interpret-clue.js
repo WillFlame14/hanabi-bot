@@ -6,7 +6,7 @@ import { stalling_situation } from './interpret-stall.js';
 import { determine_focus } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { find_own_finesses } from './connecting-cards.js';
-import { bad_touch_possibilities, update_hypo_stacks, good_touch_elim } from '../../../basics/helper.js';
+import { bad_touch_possibilities, update_hypo_stacks, recursive_elim } from '../../../basics/helper.js';
 import { isBasicTrash, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import { cardCount } from '../../../variants.js';
 
@@ -358,8 +358,6 @@ export function interpret_clue(state, action) {
  */
 function team_elim(state, focused_card, giver, target, suitIndex, rank) {
 	for (let i = 0; i < state.numPlayers; i++) {
-		const hand = state.hands[i];
-
 		// Giver cannot elim own cards unless all identities can be seen
 		if (i === giver) {
 			const count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0) + visibleFind(state, giver, suitIndex, rank).length;
@@ -371,7 +369,7 @@ function team_elim(state, focused_card, giver, target, suitIndex, rank) {
 		// Target can elim only if inference is known, everyone else can elim
 		if (i !== target || focused_card.inferred.length === 1) {
 			// Don't elim on the focused card
-			good_touch_elim(hand, [{ suitIndex, rank }], {ignore: [focused_card.order], hard: true});
+			recursive_elim(state, i, suitIndex, rank, {ignore: [focused_card.order]});
 		}
 	}
 }
