@@ -61,5 +61,5 @@ export function expandShortCard(short) {
  * @param  {import('../src/basics/Card.js').Card} card [description]
  */
 export function getRawInferences(card) {
-	return card.inferred.map(c => Utils.objPick(c, ['suitIndex', 'rank']));
+	return card.inferred.map(c => c.raw());
 }

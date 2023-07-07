@@ -1,5 +1,7 @@
 import { cardTouched } from '../variants.js';
 import { isBasicTrash, visibleFind } from './hanabi-util.js';
+import * as Basics from '../basics.js';
+
 import { logCard } from '../tools/log.js';
 import logger from '../tools/logger.js';
 
@@ -7,7 +9,9 @@ import logger from '../tools/logger.js';
  * @typedef {import("./State.js").State} State
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').MatchOptions} MatchOptions
+ * @typedef {import('../types.js').BasicCard} BasicCard
  * @typedef {import('../types.js').BaseClue} BaseClue
+ * @typedef {import('../types.js').Link} Link
  */
 
 /**
@@ -16,6 +20,9 @@ import logger from '../tools/logger.js';
  */
 export class Hand extends Array {
 	playerIndex = -1;
+
+	/** @type {Link[]} */
+	links = [];
 
 	/**
 	 * @param {State} state
@@ -101,7 +108,20 @@ export class Hand extends Array {
 		const playables = [];
 		const { play_stacks: stacks } = this.state;
 
+		const linked_orders = new Set();
+
+		for (const { cards, identities } of this.links) {
+			// We aren't sure about the identities of these cards - at least one is bad touched
+			if (cards.length > identities.length) {
+				cards.forEach(c => linked_orders.add(c.order));
+			}
+		}
+
 		for (const card of this) {
+			if (linked_orders.has(card.order)) {
+				continue;
+			}
+
 			let playable = true;
 
 			// Card is probably trash
@@ -154,5 +174,65 @@ export class Hand extends Array {
 			}
 		}
 		return trash;
+	}
+
+	/**
+	 * Finds good touch (non-promised) links in the hand.
+	 */
+	find_links() {
+		for (const card of this) {
+			// Already in a link, ignore
+			if (this.links.some(({cards}) => cards.some(c => c.order === card.order))) {
+				continue;
+			}
+
+			// We know what this card is
+			if (card.identity() !== undefined) {
+				continue;
+			}
+
+			// Card has no inferences
+			if (card.inferred.length === 0) {
+				continue;
+			}
+
+			// Find all unknown cards with the same inferences
+			const linked_cards = Array.from(this.filter(c =>
+				card.identity() === undefined &&
+				card.inferred.length === c.inferred.length &&
+				c.inferred.every(({suitIndex, rank}) => card.inferred.some(inf2 => inf2.matches(suitIndex, rank)))
+			));
+
+			// We have enough inferred cards to eliminate elsewhere
+			// TODO: Sudoku elim from this
+			if (linked_cards.length > card.inferred.length) {
+				logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(inf => logCard(inf)));
+
+				this.links.push({ cards: linked_cards, identities: card.inferred.map(c => c.raw()), promised: false });
+			}
+		}
+	}
+
+	/**
+	 * Refreshes the array of links based on new information (if any).
+	 */
+	refresh_links() {
+		// Get the link indices that we need to redo (after learning new things about them)
+		const redo_elim_indices = this.links.map(({cards, identities}, index) =>
+			// The card is globally known or an identity is no longer possible
+			cards.some(c => c.identity({ symmetric: true }) || identities.some(id => !c.possible.some(p => p.matches(id.suitIndex, id.rank)))) ? index : -1
+		).filter(index => index !== -1);
+
+		// Try eliminating all the identities again
+		const redo_elim_ids = redo_elim_indices.map(index => this.links[index].identities).flat();
+
+		// Clear links that we're redoing
+		this.links = this.links.filter((_, index) => !redo_elim_indices.includes(index));
+
+		for (const id of redo_elim_ids) {
+			Basics.card_elim(this.state, this.playerIndex, id.suitIndex, id.rank);
+		}
+
+		this.find_links();
 	}
 }

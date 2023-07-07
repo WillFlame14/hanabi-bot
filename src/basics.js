@@ -49,6 +49,7 @@ export function onClue(state, action) {
 		if (previously_unknown && card.possible.length === 1) {
 			for (let i = 0; i < state.numPlayers; i++) {
 				card_elim(state, i, card.possible[0].suitIndex, card.possible[0].rank);
+				state.hands[i].refresh_links();
 			}
 		}
 	}
@@ -69,6 +70,7 @@ export function onDiscard(state, action) {
 	// Card is now definitely known to everyone - eliminate
 	for (let i = 0; i < state.numPlayers; i++) {
 		card_elim(state, i, suitIndex, rank);
+		state.hands[i].refresh_links();
 	}
 
 	// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
@@ -105,6 +107,7 @@ export function onDraw(state, action) {
 		for (let i = 0; i < state.numPlayers; i++) {
 			if (i !== playerIndex) {
 				card_elim(state, i, suitIndex, rank);
+				state.hands[i].refresh_links();
 			}
 		}
 	}
@@ -127,6 +130,7 @@ export function onPlay(state, action) {
 	// Card is now definitely known to everyone - eliminate
 	for (let i = 0; i < state.numPlayers; i++) {
 		card_elim(state, i, suitIndex, rank);
+		state.hands[i].refresh_links();
 	}
 
 	// Get a clue token back for playing a 5
@@ -178,7 +182,6 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 			}
 		}
 		logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future possibilities`);
-		return new_elims;
 	}
 	else {
 		// Skip if already eliminated
@@ -186,18 +189,35 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 			return [];
 		}
 
-		const inferred_cards = visibleFind(state, playerIndex, suitIndex, rank);
+		let inferred_cards = visibleFind(state, playerIndex, suitIndex, rank);
+		let focus_elim = false;
 
 		if (base_count + inferred_cards.length >= total_count) {
 			if (base_count + inferred_cards.length > total_count) {
-				logger.warn(`inferring ${base_count + inferred_cards.length} copies of ${logCard({suitIndex, rank})}, eliminating anyways`);
+				logger.warn(`inferring ${base_count + inferred_cards.length} copies of ${logCard({suitIndex, rank})}`);
+
+				const initial_focus = inferred_cards.filter(card => card.focused);
+
+				if (base_count + 1 === total_count && initial_focus.length === 1) {
+					logger.info('eliminating from focus!');
+					inferred_cards = initial_focus;
+					focus_elim = true;
+				}
+				else {
+					const new_link = { cards: inferred_cards, identities: [{ suitIndex, rank }], promised: false };
+
+					// Don't add duplicates of the same link
+					if (!state.hands[playerIndex].links.some(link => JSON.stringify(link) === JSON.stringify(new_link))) {
+						state.hands[playerIndex].links.push(new_link);
+					}
+				}
 			}
 
 			// Remove it from the list of future inferences
 			state.all_inferred[playerIndex] = state.all_inferred[playerIndex].filter(c => !c.matches(suitIndex, rank));
 
 			for (const card of state.hands[playerIndex]) {
-				if (card.inferred.length > 1 && !inferred_cards.some(c => c.order === card.order)) {
+				if ((card.inferred.length > 1 || focus_elim) && !inferred_cards.some(c => c.order === card.order)) {
 					card.subtract('inferred', [{suitIndex, rank}]);
 
 					// Card can be further eliminated
@@ -218,9 +238,7 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 				}
 			}
 			logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future inferences`);
-			return new_elims;
 		}
 	}
-	return [];
+	return new_elims;
 }
-

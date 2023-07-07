@@ -104,15 +104,12 @@ export function recursive_elim(state, playerIndex, suitIndex, rank, options = {}
 	let additional_elims = good_touch_elim(state, playerIndex, suitIndex, rank, options);
 	let elim_index = 0;
 
-	// No ignoring on recursive elims
-	options.ignore = undefined;
-
 	while (elim_index < additional_elims.length) {
 		const { suitIndex, rank } = additional_elims[elim_index];
 
 		for (let i = 0; i < state.numPlayers; i++) {
 			const extra_card_elims = Basics.card_elim(state, playerIndex, suitIndex, rank);
-			const extra_gtp_elims = good_touch_elim(state, playerIndex, suitIndex, rank, options);
+			const extra_gtp_elims = good_touch_elim(state, playerIndex, suitIndex, rank);		// No ignoring or hard elims when recursing
 
 			additional_elims = additional_elims.concat(extra_card_elims.concat(extra_gtp_elims));
 		}

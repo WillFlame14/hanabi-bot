@@ -78,6 +78,7 @@ import { Card } from './basics/Card.js';
  * @property {Card} card
  * @property {boolean} [self]
  * @property {boolean} [hidden]
+ * @property {boolean} [known]
  * 
  * @typedef WaitingConnection
  * @property {Connection[]} connections
@@ -88,6 +89,10 @@ import { Card } from './basics/Card.js';
  * @property {number} action_index
  * @property {boolean} [ambiguousPassback]
  * 
+ * @typedef Link
+ * @property {Card[]} cards
+ * @property {BasicCard[]} identities
+ * @property {boolean} promised
  */
 
 export {};

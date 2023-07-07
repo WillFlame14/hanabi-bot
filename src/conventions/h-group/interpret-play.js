@@ -3,6 +3,7 @@ import { LEVEL } from './h-constants.js';
 import { find_chop } from './hanabi-logic.js';
 import { recursive_elim, update_hypo_stacks } from '../../basics/helper.js';
 import { order_1s } from './action-helper.js';
+
 import * as Basics from '../../basics.js';
 import logger from '../../tools/logger.js';
 
@@ -80,6 +81,9 @@ export function interpret_play(state, action) {
 	for (let i = 0; i < state.numPlayers; i++) {
 		recursive_elim(state, playerIndex, suitIndex, rank);
 	}
+
+	// Resolve any links after playing
+	state.hands[playerIndex].refresh_links();
 
 	// Update hypo stacks
 	update_hypo_stacks(this);

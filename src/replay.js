@@ -56,15 +56,20 @@ async function main() {
 		game_data = await fetchReplay(id);
 	}
 	catch (err) {
-		console.error(err);
-		return;
+		throw new Error(err);
 	}
 
 	let order = 0;
 
 	const { players, deck, actions, options } = game_data;
 	const variant = await getVariant(options?.variant ?? 'No Variant');
-	const state = new HGroup(Number(id), players, Number(index ?? 0), variant.suits, false, Number(level ?? 1));
+	const ourPlayerIndex = Number(index ?? 0);
+
+	if (ourPlayerIndex < 0 || ourPlayerIndex >= players.length) {
+		throw new Error(`Replay only has ${players.length} players!`);
+	}
+
+	const state = new HGroup(Number(id), players, ourPlayerIndex, variant.suits, false, Number(level ?? 1));
 
 	Utils.globalModify({state});
 

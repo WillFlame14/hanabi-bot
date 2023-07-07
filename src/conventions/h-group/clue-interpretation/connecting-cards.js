@@ -71,7 +71,7 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 				logger.warn(`hidden connecting card ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, might be confusing`);
 			}
 			logger.info(`found playable ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, with inferences ${match.inferred.map(c => logCard(c)).join()}`);
-			return { type: 'playable', reacting: playerIndex, card: match };
+			return { type: 'playable', reacting: playerIndex, card: match, known: playables.length === 1 };
 		}
 	}
 }
@@ -223,12 +223,12 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 				const ordered_1s = order_1s(state, playable_conns);
 
 				logger.info(`found playable ${logCard({suitIndex, rank})} in our hand, reordering to oldest 1`);
-				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: ordered_1s[0] }];
+				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: ordered_1s[0], known: playable_conns.length === 1 }];
 			}
 			else {
 				const playable_conn = playable_conns[0];
 				logger.info(`found playable ${logCard({suitIndex, rank})} in our hand, with inferences ${playable_conn.inferred.map(c => logCard(c)).join()}`);
-				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: playable_conn }];
+				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: playable_conn, known: playable_conns.length === 1 }];
 			}
 		}
 	}
@@ -395,6 +395,13 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 						}
 						// Assume next card is the finesse target
 						finesse = find_finesse(our_hand, currIgnoreOrders);
+
+						// Layered finesse is imposible
+						if (finesse === undefined) {
+							logger.info(`couldn't find a valid finesse target after layers!`);
+							feasible = false;
+							break;
+						}
 					}
 
 					logger.info('found finesse in our hand');

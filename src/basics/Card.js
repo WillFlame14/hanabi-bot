@@ -71,6 +71,10 @@ export class Card {
 		return new_card;
 	}
 
+	raw() {
+		return { suitIndex: this.suitIndex, rank: this.rank };
+	}
+
 	/**
 	 * Returns the identity of the card (if known/inferred).
 	 * 
