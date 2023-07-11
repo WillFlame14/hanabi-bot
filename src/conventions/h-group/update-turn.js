@@ -1,3 +1,4 @@
+import { Card } from '../../basics/Card.js';
 import { update_hypo_stacks } from '../../basics/helper.js';
 import { visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
@@ -5,7 +6,6 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
- * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').TurnAction} TurnAction
  */
 
@@ -90,7 +90,7 @@ export function update_turn(state, action) {
 					if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
 						logger.info(`${state.playerNames[reacting]} didn't play into unplayable finesse`);
 					}
-					else if (state.last_actions[reacting].card?.finessed) {
+					else if (state.last_actions[reacting].type === 'play' && state.last_actions[reacting].card?.finessed) {
 						logger.info(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
 					}
 					else if (connections.filter((conn, index) => index >= conn_index && !conn.hidden && conn.reacting === reacting).length > 1 && !ambiguousPassback) {
@@ -174,9 +174,17 @@ export function update_turn(state, action) {
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
 	for (const { card, inferences } of demonstrated) {
 		logger.info(`intersecting card ${logCard(card)} with inferences ${inferences.map(c => logCard(c)).join(',')}`);
-		card.intersect('inferred', inferences);
+		if (!card.superposition) {
+			card.intersect('inferred', inferences);
+			card.superposition = true;
+		}
+		else {
+			card.union('inferred', inferences);
+		}
 		// TODO: update hypo stacks?
 	}
+
+	demonstrated.forEach(({card}) => card.superposition = false);
 
 	// Filter out connections that have been removed
 	state.waiting_connections = state.waiting_connections.filter((_, i) => !to_remove.includes(i));

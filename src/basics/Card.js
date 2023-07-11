@@ -141,12 +141,12 @@ export class Card {
 	/**
 	 * Sets the inferences/possibilities to the union of the existing field and the provided array of cards.
      * @param {'possible' | 'inferred'} type
-     * @param {Card[]} cards
+     * @param {BasicCard[]} cards
      */
 	union(type, cards) {
-		for (const card of cards) {
-			if (!this[type].some(c => c.matches(card.suitIndex, card.rank))) {
-				this[type].push(card);
+		for (const { suitIndex, rank } of cards) {
+			if (!this[type].some(c => c.matches(suitIndex, rank))) {
+				this[type].push(new Card(suitIndex, rank));
 			}
 		}
 	}

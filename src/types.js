@@ -53,7 +53,7 @@ import { Card } from './basics/Card.js';
  * 
  * @typedef {CardAction & {type: 'draw'}} DrawAction
  * @typedef {CardAction & {type: 'play'}} PlayAction
- * @typedef {CardAction & {type: 'identify'}} IdentifyAction
+ * @typedef {CardAction & {type: 'identify', infer?: boolean}} IdentifyAction
  * @typedef {{type: 'ignore', playerIndex: number, conn_index: number}} IgnoreAction
  * @typedef {{type: 'finesse', list: number[], clue: BaseClue}} FinesseAction
  * @typedef {CardAction & {type: 'discard', failed: boolean}} DiscardAction

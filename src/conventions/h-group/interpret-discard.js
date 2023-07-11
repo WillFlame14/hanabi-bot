@@ -90,7 +90,9 @@ export function interpret_discard(state, action, card) {
 	}
 
 	// Discarding a useful card
-	if ((card.clued || card.chop_moved || card.finessed) && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
+	// Note: we aren't including chop moved and finessed cards here since those can be asymmetric.
+	// Discarding with a finesse will trigger the waiting connection to resolve.
+	if (card.clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
 		logger.warn('discarded useful card!');
 		const duplicates = visibleFind(state, playerIndex, suitIndex, rank);
 
@@ -105,7 +107,7 @@ export function interpret_discard(state, action, card) {
 
 				if (sarcastic.length === 1) {
 					const action_index = sarcastic[0].drawn_index;
-					if (!sarcastic[0].rewinded && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank })) {
+					if (!sarcastic[0].rewinded && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank, infer: true })) {
 						return;
 					}
 				}
