@@ -169,12 +169,12 @@ export function order_1s(state, cards) {
 	return unknown_1s.sort((c1, c2) => {
 		const [c1_start, c2_start] = [c1, c2].map(c => inStartingHand(state, c));
 		// c1 is chop focus
-		if (c1_start && c1.chop_when_first_clued) {
+		if (c1.chop_when_first_clued) {
 			return -1;
 		}
 
 		// c2 is chop focus
-		if (c2_start && c2.chop_when_first_clued) {
+		if (c2.chop_when_first_clued) {
 			return 1;
 		}
 

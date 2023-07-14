@@ -4,7 +4,7 @@ import { LEVEL } from './h-constants.js';
 import { select_play_clue, find_urgent_actions, determine_playable_card, order_1s } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { find_chop, inEndgame, minimum_clue_value } from './hanabi-logic.js';
-import { getPace, visibleFind } from '../../basics/hanabi-util.js';
+import { getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
@@ -104,7 +104,9 @@ export function take_action(state) {
 
 					const ocm_value = old_chop_value - new_chop_value;
 
-					if (ocm_value > best_ocm_value) {
+					const { suitIndex, rank, order } = state.hands[playerIndex][old_chop_index];
+
+					if (!isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) && ocm_value > best_ocm_value) {
 						best_ocm_index = i;
 						best_ocm_value = ocm_value;
 					}

@@ -21,3 +21,5 @@ export const END_CONDITION = /** @type {const} */ ({
 	ALL_OR_NOTHING_SOFTLOCK: 9,
 	TERMINATED_BY_VOTE: 10
 });
+
+export const HAND_SIZE = [-1, -1, 5, 5, 4, 4, 3];

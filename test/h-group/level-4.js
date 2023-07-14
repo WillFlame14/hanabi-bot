@@ -10,6 +10,7 @@ import * as Utils from '../../src/tools/util.js';
 import logger from '../../src/tools/logger.js';
 
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
+import { take_action } from '../../src/conventions/h-group/take-action.js';
 import { determine_playable_card, find_urgent_actions } from '../../src/conventions/h-group/action-helper.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
@@ -161,6 +162,56 @@ describe('giving order chop move', () => {
 
 		const { save_clues } = find_clues(state);
 		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 5 });
+	});
+
+	it('will not ocm trash', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r4', 'g4', 'g4', 'r1']
+		], 4);
+
+		state.play_stacks = [2, 0, 0, 0, 0];
+		state.hypo_stacks = [2, 0, 0, 0, 0];
+
+		// Bob clues Alice 1, touching slots 3 and 4.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+
+		// Alice should not OCM the trash r1.
+		const action = take_action(state);
+		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.PLAY, target: 1 });
+	});
+
+	it('will ocm one card of an unsaved duplicate', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r4', 'g5', 'g4', 'g4']
+		], 4);
+
+		// Bob clues Alice 1, touching slots 3 and 4.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+
+		// Alice should OCM 1 copy of g4.
+		const action = take_action(state);
+		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.PLAY, target: 2 });
+	});
+
+	it('will not ocm one card of a saved duplicate', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r4', 'g3', 'g3', 'r2'],
+			['g4', 'r3', 'y3', 'y3', 'r2']
+		], 4);
+
+		// Bob clues Cathy 2, touching r2
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [10], target: PLAYER.CATHY });
+		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.DONALD });
+
+		// Cathy clues Alice 1, touching slots 2 and 3.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.CATHY, list: [1, 2], target: PLAYER.ALICE });
+
+		// Alice should not OCM the copy of r2.
+		const action = take_action(state);
+		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.PLAY, target: 1 });
 	});
 });
 

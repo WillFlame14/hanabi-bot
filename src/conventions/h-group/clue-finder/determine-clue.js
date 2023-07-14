@@ -197,7 +197,7 @@ export function get_result(state, hypo_state, clue, provisions = {}) {
 	}
 
 	const new_chop = hypo_state.hands[target][find_chop(hypo_state.hands[target], { afterClue: true })];
-	const remainder = (new_chop !== undefined) ? card_value(state, new_chop) : 0;
+	const remainder = (new_chop !== undefined && state.clue_tokens <= 2) ? card_value(hypo_state, new_chop) : 0;
 
 	return { elim, new_touched, bad_touch, trash, finesses, playables, remainder };
 }

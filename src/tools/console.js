@@ -81,7 +81,7 @@ export function initConsole() {
 							break;
 						}
 
-						if (!state.actionList.some(action => action.type === 'turn' && action.num === turn - 1)) {
+						if (!state.actionList.some(action => action.type === 'turn' && action.num === turn)) {
 							logger.error(`Turn ${turn} does not exist.`);
 							break;
 						}

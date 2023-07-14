@@ -1,6 +1,6 @@
 import * as https from 'https';
 
-import { ACTION, CLUE, END_CONDITION } from './constants.js';
+import { ACTION, CLUE, END_CONDITION, HAND_SIZE } from './constants.js';
 import { Card } from './basics/Card.js';
 import { Hand } from './basics/Hand.js';
 
@@ -42,8 +42,6 @@ function fetchReplay(id) {
 		req.end();
 	});
 }
-
-const HAND_SIZE = [-1, -1, 5, 5, 4, 4, 3];
 
 async function main() {
 	const { id, level, index } = Utils.parse_args();

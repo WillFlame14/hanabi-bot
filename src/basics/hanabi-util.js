@@ -1,3 +1,4 @@
+import { HAND_SIZE } from '../constants.js';
 import { cardCount } from '../variants.js';
 
 /**
@@ -109,8 +110,8 @@ export function getPace(state) {
 
 /**
  * @param {State} state
- * @param {import("./Card.js").Card} card
+ * @param {Card} card
  */
 export function inStartingHand(state, card) {
-	return card.order < state.numPlayers * state.hands[0].length;
+	return card.order < state.numPlayers * HAND_SIZE[state.numPlayers];
 }

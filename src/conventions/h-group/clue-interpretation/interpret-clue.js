@@ -73,6 +73,7 @@ function apply_good_touch(state, action) {
 	if (target === state.ourPlayerIndex) {
 		for (const card of state.hands[target]) {
 			if (card.finessed && had_inferences.some(({ order }) => order === card.order) && card.inferred.length === 0) {
+				// TODO: Possibly try rewinding older reasoning until rewind works?
 				const action_index = list.includes(card.order) ? card.reasoning.at(-2) : card.reasoning.pop();
 				if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue })) {
 					return { layered_reveal: true };
@@ -442,13 +443,11 @@ function assign_connections(state, connections, suitIndex) {
 		}
 
 		// Updating notes not on our turn
+		// There might be multiple possible inferences on the same card from a self component
 		// TODO: Examine why this originally had self only?
-		if (self || true) {
-			// There might be multiple possible inferences on the same card from a self component
-			if (card.reasoning.at(-1) !== state.actionList.length - 1) {
-				card.reasoning.push(state.actionList.length - 1);
-				card.reasoning_turn.push(state.turn_count);
-			}
+		if (card.old_inferred.length > card.inferred.length && card.reasoning.at(-1) !== state.actionList.length - 1) {
+			card.reasoning.push(state.actionList.length - 1);
+			card.reasoning_turn.push(state.turn_count);
 		}
 	}
 }

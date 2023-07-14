@@ -266,36 +266,28 @@ export class State {
 		// Remove special actions from the action list (they will be added back in when rewinding)
 		const actionList = this.actionList.filter(action => !['identify', 'ignore', 'finesse'].includes(action.type));
 
-		let turn_count = 0, action_index = 0;
+		let action_index = 0;
 
 		// Don't log history
 		logger.wrapLevel(logger.LEVELS.ERROR, () => {
-			while (turn_count < turn - 1) {
+			while (new_state.turn_count < turn - 1) {
 				const action = actionList[action_index];
 				if (action.type === 'clue' && action.mistake) {
 					action.mistake = false;
 				}
 				new_state.handle_action(action, true);
 				action_index++;
-
-				if (action.type === 'turn') {
-					turn_count = action.num + 1;
-				}
 			}
 		});
 
 		// Log the previous turn and the 'turn' action leading to the desired turn
-		while (turn_count < turn) {
+		while (new_state.turn_count < turn) {
 			const action = actionList[action_index];
 			if (action.type === 'clue' && action.mistake) {
 				action.mistake = false;
 			}
 			new_state.handle_action(action);
 			action_index++;
-
-			if (action.type === 'turn') {
-				turn_count = action.num + 1;
-			}
 		}
 
 		// Copy over the full game history
