@@ -56,7 +56,7 @@ function find_colour_focus(state, suitIndex, action) {
 		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
 			// e.g. If 2 reds are clued with only r5 remaining, the focus should not connect to the other card as r6
-			logger.debug(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_playable_rank})}`);
+			logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_playable_rank})}`);
 			break;
 		}
 		else if (type === 'finesse') {
@@ -162,6 +162,11 @@ function find_rank_focus(state, rank, action) {
 
 	// Play clue
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+		// Critical cards can never be given a play clue
+		if (isCritical(state, suitIndex, rank)) {
+			continue;
+		}
+
 		let next_rank = state.play_stacks[suitIndex] + 1;
 
 		/** @type {Connection[]} */
@@ -183,13 +188,22 @@ function find_rank_focus(state, rank, action) {
 			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 
 			while (connecting.length !== 0) {
+				const { type, card } = connecting[0];
+
+				if (card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_rank))) {
+					// Trying to use a newly known/playable connecting card, but the focused card could be that
+					// e.g. If two 4s are clued (all other 4s visible), the other 4 should not connect and render this card with only one inference
+					logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_rank})}`);
+					break;
+				}
+
 				finesses += connecting.filter(conn => conn.type === 'finesse').length;
 				if (state.level === 1 && finesses === 2) {
 					logger.warn('blocked double finesse at level 1');
 					break;
 				}
 
-				if (connecting[0].type === 'finesse') {
+				if (type === 'finesse') {
 					// A finesse proves that this is not direct
 					looksDirect = focused_card.identity({ symmetric: true }) === undefined && looksSave;
 

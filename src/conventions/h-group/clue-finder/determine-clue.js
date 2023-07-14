@@ -197,7 +197,7 @@ export function get_result(state, hypo_state, clue, provisions = {}) {
 	}
 
 	const new_chop = hypo_state.hands[target][find_chop(hypo_state.hands[target], { afterClue: true })];
-	const remainder = (new_chop !== undefined && state.clue_tokens <= 2) ? card_value(hypo_state, new_chop) : 0;
+	const remainder = (new_chop !== undefined) ? card_value(hypo_state, new_chop) : 4;
 
 	return { elim, new_touched, bad_touch, trash, finesses, playables, remainder };
 }
@@ -255,7 +255,7 @@ export function determine_clue(state, target, target_card, options) {
 			playables: playables.map(({ playerIndex, card }) => {
 				return { player: state.playerNames[playerIndex], card: logCard(card) };
 			}),
-			remainder: chop ? remainder : 0 	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
+			remainder: (chop && state.clue_tokens <= 2) ? remainder : 0 	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
 		};
 		logger.info('result,', JSON.stringify(result_log));
 

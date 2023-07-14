@@ -172,7 +172,7 @@ export function find_bad_touch(state, cards, focusedCardOrder = -1) {
  * @param {number} giver
  */
 export function stall_severity(state, giver) {
-	if (state.clue_tokens === 7 && state.turn_count !== 1) {
+	if (state.clue_tokens === 8 && state.turn_count !== 1) {
 		return 4;
 	}
 	if (state.hands[giver].isLocked()) {

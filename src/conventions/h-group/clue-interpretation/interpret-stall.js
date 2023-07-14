@@ -94,7 +94,7 @@ function isStall(state, action, giver, severity, prev_state) {
  */
 export function stalling_situation(state, action, prev_state) {
 	const { giver } = action;
-	const severity = stall_severity(state, giver);
+	const severity = stall_severity(prev_state, giver);
 
 	// Not a stalling situation
 	if (severity === 0) {
