@@ -259,7 +259,7 @@ export function take_action(state) {
 		}
 
 		// Endgame (and stalling is effective)
-		if (inEndgame(state) && state.hypo_stacks.some((stack, index) => stack > state.play_stacks[index])) {
+		if (inEndgame(state) && state.hypo_stacks[state.ourPlayerIndex].some((stack, index) => stack > state.play_stacks[index])) {
 			logger.info('endgame stall');
 			return best_stall_clue;
 		}

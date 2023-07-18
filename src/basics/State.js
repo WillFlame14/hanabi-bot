@@ -26,7 +26,7 @@ export class State {
 	hands = /** @type {Hand[]} */ ([]);
 
 	play_stacks = /** @type {number[]} */ ([]);
-	hypo_stacks = /** @type {number[]} */ ([]);
+	hypo_stacks = /** @type {number[][]} */ ([]);
 	discard_stacks = /** @type {number[][]} */ ([]);
 	max_ranks = /** @type {number[]} */ ([]);
 
@@ -92,7 +92,6 @@ export class State {
 		const all_possible = [];
 		for (let suitIndex = 0; suitIndex < this.suits.length; suitIndex++) {
 			this.play_stacks.push(0);
-			this.hypo_stacks.push(0);
 			this.discard_stacks.push([0, 0, 0, 0, 0]);
 			this.max_ranks.push(5);
 
@@ -102,6 +101,7 @@ export class State {
 		}
 
 		for (let i = 0; i < this.numPlayers; i++) {
+			this.hypo_stacks.push([0, 0, 0, 0, 0]);
 			this.hands.push(new Hand(this, i));
 			this.all_possible.push(Utils.objClone(all_possible));
 			this.all_inferred.push(Utils.objClone(all_possible));

@@ -29,14 +29,15 @@ function find_sarcastic(hand, suitIndex, rank) {
 /**
  * Reverts the hypo stacks of the given suitIndex to the given rank - 1, if it was originally above that.
  * @param {State} state
- * @param {number} playerIndex
  * @param {number} suitIndex
  * @param {number} rank
  */
-function undo_hypo_stacks(state, playerIndex, suitIndex, rank) {
-	logger.info(`${state.playerNames[playerIndex]} discarded useful card ${logCard({suitIndex, rank})}, setting hypo stack ${rank - 1}`);
-	if (state.hypo_stacks[suitIndex] >= rank) {
-		state.hypo_stacks[suitIndex] = rank - 1;
+function undo_hypo_stacks(state, suitIndex, rank) {
+	logger.info(`discarded useful card ${logCard({suitIndex, rank})}, setting hypo stack to ${rank - 1}`);
+	for (const hypo_stacks of state.hypo_stacks) {
+		if (hypo_stacks[suitIndex] >= rank) {
+			hypo_stacks[suitIndex] = rank - 1;
+		}
 	}
 }
 
@@ -61,7 +62,7 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
 	if (sarcastic.length === 0 || sarcastic.some(s => !playable(s))) {
-		undo_hypo_stacks(state, playerIndex, suitIndex, rank);
+		undo_hypo_stacks(state, suitIndex, rank);
 	}
 }
 
@@ -98,7 +99,7 @@ export function interpret_discard(state, action, card) {
 
 		// Card was bombed
 		if (failed) {
-			undo_hypo_stacks(state, playerIndex, suitIndex, rank);
+			undo_hypo_stacks(state, suitIndex, rank);
 		}
 		else {
 			// Unknown sarcastic discard to us

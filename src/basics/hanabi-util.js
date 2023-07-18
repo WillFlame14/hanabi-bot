@@ -39,6 +39,28 @@ export function visibleFind(state, inferringPlayerIndex, suitIndex, rank, option
 }
 
 /**
+ * Returns the number of cards matching an identity on either the play stacks or the discard stacks.
+ * @param {State} state
+ * @param {number} suitIndex
+ * @param {number} rank
+ */
+export function baseCount(state, suitIndex, rank) {
+    return (state.play_stacks[suitIndex] >= rank ? 1 : 0) + state.discard_stacks[suitIndex][rank - 1];
+}
+
+/**
+ * Returns the number of cards still unknown that could be this identity according to a player.
+ * @param {State} state
+ * @param {number} playerIndex
+ * @param {number} suitIndex
+ * @param {number} rank
+ */
+export function unknownIdentities(state, playerIndex, suitIndex, rank) {
+    const visibleCount = visibleFind(state, playerIndex, suitIndex, rank, { ignore: [playerIndex] }).length;
+    return cardCount(state.suits[suitIndex], rank) - baseCount(state, suitIndex, rank) - visibleCount;
+}
+
+/**
  * Returns whether the given suitIndex and rank is currently critical.
  * @param {State} state
  * @param {number} suitIndex

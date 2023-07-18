@@ -146,14 +146,17 @@ export function interpret_clue(state, action) {
 	const prev_state = state.minimalCopy();
 
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
+	const { focused_card, chop } = determine_focus(state.hands[target], list);
+
+	const old_focused = focused_card.focused;
+	focused_card.focused = true;
+
 	const { fix, layered_reveal } = apply_good_touch(state, action);
 
 	// Rewind occurred, this action will be completed as a result of it
 	if (layered_reveal) {
 		return;
 	}
-
-	const { focused_card, chop } = determine_focus(state.hands[target], list);
 
 	if (chop) {
 		focused_card.chop_when_first_clued = true;
@@ -176,6 +179,9 @@ export function interpret_clue(state, action) {
 			// TODO: Revise, should we always hard elim?
 			team_elim(state, focused_card, giver, target, suitIndex, rank);
 		}
+
+		// Focus doesn't matter for a fix clue
+		focused_card.focused = old_focused;
 		return;
 	}
 
@@ -264,9 +270,9 @@ export function interpret_clue(state, action) {
 					}
 
 					const looksDirect = focused_card.identity({ symmetric: true }) === undefined && (		// Focus must be unknown AND
-						action.clue.type === CLUE.COLOUR ||										// Colour clue always looks direct
-						state.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
-						focus_possible.some(fp => fp.save));									// Looks like a save
+						action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
+						state.hypo_stacks[giver].some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
+						focus_possible.some(fp => fp.save));											// Looks like a save
 
 					const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect);
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
@@ -298,9 +304,9 @@ export function interpret_clue(state, action) {
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!isBasicTrash(state, focused_card.suitIndex, focused_card.rank)) {
 			const looksDirect = focused_card.identity({ symmetric: true }) === undefined && (	// Focused card must be unknown AND
-				action.clue.type === CLUE.COLOUR ||										// Colour clue always looks direct
-				state.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
-				focus_possible.some(fp => fp.save));									// Looks like a save
+				action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
+				state.hypo_stacks[giver].some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
+				focus_possible.some(fp => fp.save));											// Looks like a save
 
 			const { feasible, connections } = find_own_finesses(state, giver, target, focused_card.suitIndex, focused_card.rank, looksDirect);
 			if (feasible) {
@@ -352,7 +358,6 @@ export function interpret_clue(state, action) {
 			state.hands.forEach(hand => hand.forEach(card => card.superposition = false));
 		}
 	}
-	focused_card.focused = true;
 	logger.highlight('blue', 'final inference on focused card', focused_card.inferred.map(c => logCard(c)).join(','));
 	logger.debug('hand state after clue', logHand(state.hands[target]));
 	update_hypo_stacks(state);
@@ -396,7 +401,7 @@ function assign_connections(state, connections, suitIndex) {
 	const hypo_stacks = state.hypo_stacks.slice();
 
 	for (const connection of connections) {
-		const { type, reacting, self, hidden, card: conn_card, known } = connection;
+		const { type, reacting, hidden, card: conn_card, known } = connection;
 		// The connections can be cloned, so need to modify the card directly
 		const card = state.hands[reacting].findOrder(conn_card.order);
 
@@ -412,23 +417,19 @@ function assign_connections(state, connections, suitIndex) {
 		}
 
 		if (hidden) {
-			const playable_identities = hypo_stacks.map((stack_rank, index) => { return { suitIndex: index, rank: stack_rank + 1 }; });
+			const playable_identities = hypo_stacks[reacting].map((stack_rank, index) => { return { suitIndex: index, rank: stack_rank + 1 }; });
 			card.intersect('inferred', playable_identities);
 
+			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
 			if (card.identity() !== undefined) {
 				const { suitIndex: suitIndex2, rank: rank2 } = card.identity();
-				if (hypo_stacks[suitIndex2] + 1 !== rank2) {
+				if (hypo_stacks[reacting][suitIndex2] + 1 !== rank2) {
 					logger.warn('trying to connect', logCard({ suitIndex: suitIndex2, rank: rank2 }), 'but hypo stacks at', hypo_stacks[suitIndex2]);
 				}
-				hypo_stacks[suitIndex2] = rank2;
+				hypo_stacks[reacting][suitIndex2] = rank2;
 			}
 		}
 		else {
-			if (hypo_stacks[suitIndex] + 1 !== next_rank) {
-				logger.warn('trying to connect', logCard({ suitIndex, rank: next_rank }), 'but hypo stacks at', hypo_stacks[suitIndex]);
-			}
-			hypo_stacks[suitIndex] = next_rank;
-
 			// There are multiple possible connections on this card
 			if (card.superposition) {
 				card.union('inferred', [new Card(suitIndex, next_rank)]);

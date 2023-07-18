@@ -110,7 +110,7 @@ export function card_value(state, card) {
 	}
 
 	// Next playable rank is value 4, rank 4 with nothing on the stack is value 1
-	return 5 - (rank - state.hypo_stacks[suitIndex]);
+	return 5 - (rank - state.hypo_stacks[state.ourPlayerIndex][suitIndex]);
 }
 
 /**

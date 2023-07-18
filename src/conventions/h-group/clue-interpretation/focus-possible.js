@@ -182,7 +182,7 @@ function find_rank_focus(state, rank, action) {
 
 			let finesses = 0;
 
-			const looksPlayable = state.hypo_stacks.some(stack => stack + 1 === rank);
+			const looksPlayable = state.hypo_stacks[giver].some(stack => stack + 1 === rank);
 			let ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
 			let looksDirect = focused_card.identity({ symmetric: true }) === undefined && (looksSave || looksPlayable);
 			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);

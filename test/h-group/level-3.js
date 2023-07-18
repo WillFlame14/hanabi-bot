@@ -128,7 +128,7 @@ describe('sarcastic discard', () => {
 		], 3);
 
 		state.play_stacks = [0, 3, 0, 0, 1];
-		state.hypo_stacks = [0, 3, 0, 0, 1];
+		state.hypo_stacks = Array(3).fill([0, 3, 0, 0, 1]);
 
 		// pace = currScore (4) + state.cardsLeft (19) + state.numPlayers (2) - maxScore (25) = 0
 		state.cardsLeft = 19;

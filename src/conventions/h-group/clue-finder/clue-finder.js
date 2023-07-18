@@ -34,7 +34,7 @@ function find_save(state, target, card) {
 	}
 
 	// Save a delayed playable card that isn't visible somewhere else
-	if (state.hypo_stacks[suitIndex] + 1 === rank && visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
+	if (state.hypo_stacks[state.ourPlayerIndex][suitIndex] + 1 === rank && visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
 		const save_clue = determine_clue(state, target, card, { save: true });
 
 		if (save_clue === undefined) {
@@ -259,7 +259,7 @@ export function find_clues(state, options = {}) {
 
 					// Can only perform a 5cm at severity 0 (otherwise, looks like 5 stall)
 					// Allow giving direct 5 clues when every hypo stack is at (max - 1) or above
-					if (severity === 0 && !state.hypo_stacks.every((stack, index) => stack >= (state.max_ranks[index] - 1))) {
+					if (severity === 0 && !state.hypo_stacks[state.ourPlayerIndex].every((stack, index) => stack >= (state.max_ranks[index] - 1))) {
 						// Find where chop is, relative to the rightmost clued 5
 						let distance_from_chop = 0;
 						for (let j = cardIndex; j < chopIndex; j++) {
@@ -331,7 +331,7 @@ export function find_clues(state, options = {}) {
 			const { type, value, target } = save_clue;
 			const list = state.hands[target].clueTouched(save_clue).map(c => c.order);
 			const hypo_state = state.simulate_clue({ type: 'clue', clue: { type, value }, giver: state.ourPlayerIndex, target, list });
-			const result = get_result(state, hypo_state, save_clue);
+			const result = get_result(state, hypo_state, save_clue, state.ourPlayerIndex);
 
 			return find_clue_value(result);
 		});

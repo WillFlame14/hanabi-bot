@@ -1,5 +1,5 @@
 import { cardTouched } from '../variants.js';
-import { isBasicTrash, visibleFind } from './hanabi-util.js';
+import { isBasicTrash, unknownIdentities, visibleFind } from './hanabi-util.js';
 import * as Basics from '../basics.js';
 
 import { logCard } from '../tools/log.js';
@@ -112,7 +112,7 @@ export class Hand extends Array {
 
 		for (const { cards, identities } of this.links) {
 			// We aren't sure about the identities of these cards - at least one is bad touched
-			if (cards.length > identities.length) {
+			if (cards.length > identities.reduce((sum, { suitIndex, rank }) => sum += unknownIdentities(this.state, this.playerIndex, suitIndex, rank), 0)) {
 				cards.forEach(c => linked_orders.add(c.order));
 			}
 		}
@@ -205,7 +205,7 @@ export class Hand extends Array {
 
 			// We have enough inferred cards to eliminate elsewhere
 			// TODO: Sudoku elim from this
-			if (linked_cards.length > card.inferred.length) {
+			if (linked_cards.length > card.inferred.reduce((sum, { suitIndex, rank }) => sum += unknownIdentities(this.state, this.playerIndex, suitIndex, rank), 0)) {
 				logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(inf => logCard(inf)));
 
 				this.links.push({ cards: linked_cards, identities: card.inferred.map(c => c.raw()), promised: false });

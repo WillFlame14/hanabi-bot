@@ -21,7 +21,7 @@ describe('self-finesse', () => {
 		], 2);
 
 		state.play_stacks = [1, 3, 0, 1, 2];
-		state.hypo_stacks = [1, 3, 0, 1, 2];
+		state.hypo_stacks = Array(3).fill([1, 3, 0, 1, 2]);
 
 		// Bob clues Cathy green, touching slot 1.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [14], target: PLAYER.CATHY });
@@ -32,6 +32,47 @@ describe('self-finesse', () => {
 
 		// 3 to Bob is not a valid clue.
 		assert.equal(play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 3), false);
+	});
+
+	it('plays correctly into self-finesses', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g1', 'b3', 'r2', 'y3', 'p3']
+		], 2);
+
+		// Bob clues Alice 2, touching slot 2.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
+		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.ALICE });
+
+		// Alice plays slot 1. It is g1.
+		state.handle_action({ type: 'play', playerIndex: PLAYER.ALICE, suitIndex: COLOUR.GREEN, rank: 1, order: 4 });
+		state.handle_action({ type: 'draw', playerIndex: PLAYER.ALICE, suitIndex: -1, rank: -1, order: 11 });
+		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.BOB });
+
+		// Slot 2 should be g2.
+		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['g2'].map(expandShortCard));
+	});
+
+	it('interprets self-finesses correctly when giver knows less', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g3', 'r1', 'g4', 'b1', 'g3'],
+			['g1', 'g2', 'r5', 'y3', 'p3']
+		], 2);
+
+		// Alice clues Bob 1, touching r1 and b1.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6,8], target: PLAYER.BOB });
+		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.BOB });
+
+		// Bob clues Cathy 2, touching r2,g2 as a Self-Finesse.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [13], target: PLAYER.CATHY });
+		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.CATHY });
+
+		// Cathy's slot 1 should be finessed.
+		assert.equal(state.hands[PLAYER.CATHY][0].finessed, true);
+
+		// Alice's slot 1 should not.
+		assert.equal(state.hands[PLAYER.ALICE][0].finessed, false);
 	});
 });
 
@@ -46,7 +87,7 @@ describe('asymmetric clues', () => {
 
 		// b1 has been played. We hold a b2 in our hand.
 		state.play_stacks = [0, 0, 0, 1, 0];
-		state.hypo_stacks = [0, 0, 0, 1, 0];
+		state.hypo_stacks = Array(4).fill([0, 0, 0, 1, 0]);
 
 		// Cathy clues blue to Donald, finessing b2.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.BLUE }, giver: PLAYER.CATHY, list: [12], target: PLAYER.DONALD });

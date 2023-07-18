@@ -45,7 +45,7 @@ describe('other cases', () => {
 		], 1);
 
 		state.play_stacks = [1, 0, 0, 0, 0];
-		state.hypo_stacks = [1, 0, 0, 0, 0];
+		state.hypo_stacks = Array(4).fill([1, 0, 0, 0, 0]);
 
 		// y3 is discarded.
 		state.discard_stacks[COLOUR.YELLOW] = [0, 0, 1, 0, 0];

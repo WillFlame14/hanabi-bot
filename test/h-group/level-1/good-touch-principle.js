@@ -19,7 +19,7 @@ describe('good touch principle', () => {
 		], 1);
 
 		state.play_stacks = [0, 0, 0, 0, 4];
-		state.hypo_stacks = [0, 0, 0, 0, 4];
+		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 4]);
 
 		// Bob clues purple to Alice, touching slots 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -36,7 +36,7 @@ describe('good touch principle', () => {
 		], 1);
 
 		state.play_stacks = [0, 0, 2, 0, 0];
-		state.hypo_stacks = [0, 0, 2, 0, 0];
+		state.hypo_stacks = Array(2).fill([0, 0, 2, 0, 0]);
 
 		// One g4 has been discarded.
 		state.discard_stacks[COLOUR.GREEN] = [0, 0, 0, 1, 0];
@@ -58,7 +58,7 @@ describe('good touch principle', () => {
 		], 1);
 
 		state.play_stacks = [5, 2, 5, 3, 5];
-		state.hypo_stacks = [5, 2, 5, 3, 5];
+		state.hypo_stacks = Array(2).fill([5, 2, 5, 3, 5]);
 
 		// y4 is discarded.
 		state.discard_stacks[COLOUR.YELLOW] = [0, 0, 0, 1, 0];
@@ -87,7 +87,7 @@ describe('good touch principle', () => {
 		], 1);
 
 		state.play_stacks = [0, 0, 0, 0, 3];
-		state.hypo_stacks = [0, 0, 0, 0, 3];
+		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 3]);
 
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -112,7 +112,7 @@ describe('good touch principle', () => {
 		], 1);
 
 		state.play_stacks = [0, 0, 0, 0, 3];
-		state.hypo_stacks = [0, 0, 0, 0, 3];
+		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 3]);
 
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -145,7 +145,7 @@ describe('good touch principle', () => {
 		], 1);
 
 		state.play_stacks = [0, 0, 0, 0, 3];
-		state.hypo_stacks = [0, 0, 0, 0, 3];
+		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 3]);
 
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -178,7 +178,7 @@ describe('good touch principle', () => {
 		], 1);
 
 		state.play_stacks = [0, 0, 0, 0, 3];
-		state.hypo_stacks = [0, 0, 0, 0, 3];
+		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 3]);
 
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -211,9 +211,6 @@ describe('good touch principle', () => {
 			['p5', 'p4', 'p4', 'p3', 'p3'],
 		], 1);
 
-		state.play_stacks = [0, 0, 0, 0, 0];
-		state.hypo_stacks = [0, 0, 0, 0, 0];
-
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
 		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.ALICE });
@@ -240,5 +237,42 @@ describe('good touch principle', () => {
 		// Link should be gone now, Alice's new slot 5 should be p2.
 		assert.deepEqual(state.hands[PLAYER.ALICE].links, []);
 		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][4]), ['p2'].map(expandShortCard));
+	});
+
+	it('plays from focus (no link)', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p1', 'r2', 'p4', 'p3', 'b1'],
+		], 1);
+
+		state.play_stacks = [5, 5, 1, 5, 5];
+		state.hypo_stacks = Array(2).fill([5, 5, 1, 5, 5]);
+
+		// Bob clues 2 to Alice, touching slots 1 and 3.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [2, 4], target: PLAYER.ALICE, giver: PLAYER.BOB });
+		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.ALICE });
+
+		const playables = state.hands[PLAYER.ALICE].find_playables();
+		assert.deepEqual(playables.map(c => c.order), [4]);
+	});
+
+	it('plays from focus (link)', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p1', 'r2', 'p4', 'p3', 'b1'],
+		], 1);
+
+		state.play_stacks = [5, 5, 1, 5, 5];
+		state.hypo_stacks = Array(2).fill([5, 5, 1, 5, 5]);
+
+		// One g2 is discarded
+		state.discard_stacks[COLOUR.GREEN][1] = 1;
+
+		// Bob clues 2 to Alice, touching slots 1 and 3.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [2, 4], target: PLAYER.ALICE, giver: PLAYER.BOB });
+		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.ALICE });
+
+		const playables = state.hands[PLAYER.ALICE].find_playables();
+		assert.deepEqual(playables.map(c => c.order), [4]);
 	});
 });

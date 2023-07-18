@@ -22,7 +22,7 @@ describe('hidden finesse', () => {
 		], 5);
 
 		state.play_stacks = [1, 0, 1, 1, 0];
-		state.hypo_stacks = [1, 0, 1, 1, 0];
+		state.hypo_stacks = Array(3).fill([1, 0, 1, 1, 0]);
 
 		// Cathy's r2 was previously clued with 2.
 		state.hands[PLAYER.CATHY][2].clued = true;
@@ -54,7 +54,7 @@ describe('hidden finesse', () => {
 		], 5);
 
 		state.play_stacks = [1, 0, 1, 1, 0];
-		state.hypo_stacks = [1, 0, 1, 1, 0];
+		state.hypo_stacks = Array(3).fill([1, 0, 1, 1, 0]);
 
 		// Cathy's r2 was previously clued with 2.
 		state.hands[PLAYER.CATHY][2].clued = true;

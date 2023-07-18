@@ -40,6 +40,11 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 				logger.info(`found known ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
 				return { type: 'known', reacting: playerIndex, card };
 			}
+
+			if (card.rewinded && card.matches(suitIndex, rank)) {
+				logger.info(`found rewinded ${logCard({suitIndex, rank})} in own hand`);
+				return { type: 'known', reacting: playerIndex, card };
+			}
 		}
 	}
 
@@ -376,7 +381,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 								logger.info('adding layered finesse in our hand in slot', index + 1);
 								connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: our_hand[index], hidden: true, self: true });
 
-								const playable_identities = hypo_state.hypo_stacks.map((stack_rank, index) => { return { suitIndex: index, rank: stack_rank + 1 }; });
+								const playable_identities = hypo_state.hypo_stacks[state.ourPlayerIndex].map((stack_rank, index) => { return { suitIndex: index, rank: stack_rank + 1 }; });
 								our_hand[index].intersect('inferred', playable_identities);
 
 								ignoreOrders.push(our_hand[index].order);

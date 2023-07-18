@@ -116,9 +116,10 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
  * @param  {State} state
  * @param  {State} hypo_state
  * @param  {Clue} clue
+ * @param  {number} giver
  * @param  {{touch?: Card[], list?: number[]}} provisions 	Provided 'touch' and 'list' variables if clued in our hand.
  */
-export function get_result(state, hypo_state, clue, provisions = {}) {
+export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 	const { target } = clue;
 	const hand = state.hands[target];
 
@@ -166,7 +167,7 @@ export function get_result(state, hypo_state, clue, provisions = {}) {
 
 	// Count the number of finesses and newly known playable cards
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-		for (let rank = state.hypo_stacks[suitIndex] + 1; rank <= hypo_state.hypo_stacks[suitIndex]; rank++) {
+		for (let rank = state.hypo_stacks[giver][suitIndex] + 1; rank <= hypo_state.hypo_stacks[giver][suitIndex]; rank++) {
 			// Find the card
 			let found = false;
 			for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
@@ -242,7 +243,7 @@ export function determine_clue(state, target, target_card, options) {
 		}
 
 		const interpret = hypo_state.hands[target].find(c => c.order === target_card.order).inferred;
-		const { elim, new_touched, bad_touch, trash, finesses, playables, remainder } = get_result(state, hypo_state, clue);
+		const { elim, new_touched, bad_touch, trash, finesses, playables, remainder } = get_result(state, hypo_state, clue, state.ourPlayerIndex);
 
 		const result_log = {
 			clue: logClue(clue),

@@ -101,7 +101,7 @@ describe('trash chop move', () => {
 		], 4);
 
 		state.play_stacks = [5, 1, 0, 2, 2];
-		state.hypo_stacks = [5, 1, 0, 2, 2];
+		state.hypo_stacks = Array(2).fill([5, 1, 0, 2, 2]);
 
 		const { play_clues, save_clues, fix_clues } = find_clues(state);
 		const playable_priorities = determine_playable_card(state, state.hands[PLAYER.ALICE].find_playables());
@@ -171,7 +171,7 @@ describe('giving order chop move', () => {
 		], 4);
 
 		state.play_stacks = [2, 0, 0, 0, 0];
-		state.hypo_stacks = [2, 0, 0, 0, 0];
+		state.hypo_stacks = Array(2).fill([2, 0, 0, 0, 0]);
 
 		// Bob clues Alice 1, touching slots 3 and 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });

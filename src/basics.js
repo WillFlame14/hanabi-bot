@@ -1,6 +1,6 @@
 import { Card } from './basics/Card.js';
 import { find_possibilities } from './basics/helper.js';
-import { visibleFind } from './basics/hanabi-util.js';
+import { baseCount, visibleFind } from './basics/hanabi-util.js';
 import { cardCount } from './variants.js';
 import logger from './tools/logger.js';
 import { logCard } from './tools/log.js';
@@ -152,7 +152,7 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 		return [];
 	}
 
-	const base_count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0);
+	const base_count = baseCount(state, suitIndex, rank);
 	const certain_cards = visibleFind(state, playerIndex, suitIndex, rank, { infer: [] });
 	const total_count = cardCount(state.suits[suitIndex], rank);
 
