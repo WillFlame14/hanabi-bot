@@ -111,6 +111,9 @@ export function interpret_discard(state, action, card) {
 					if (!sarcastic[0].rewinded && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank, infer: true })) {
 						return;
 					}
+					else {
+						logger.warn('rewind failed, not writing any inferences from discard');
+					}
 				}
 				else {
 					apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);

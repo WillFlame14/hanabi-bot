@@ -19,7 +19,7 @@ import { logHand } from '../../tools/log.js';
  */
 export function determine_focus(hand, list, options = {}) {
 	const chopIndex = hand.chopIndex();
-	logger.info('determining focus with chopIndex', chopIndex, 'list', list, 'hand', logHand(hand));
+	logger.debug('determining focus with chopIndex', chopIndex, 'list', list, 'hand', logHand(hand));
 
 	// Chop card exists, check for chop focus
 	if (chopIndex !== -1 && list.includes(hand[chopIndex].order)) {

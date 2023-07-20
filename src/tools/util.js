@@ -141,6 +141,14 @@ export function maxOn(arr, valueFunc) {
  * Checks if two objects look the same (i.e. have the same properties).
  */
 export function objEquals(obj1, obj2) {
+	if (typeof obj1 !== typeof obj2) {
+		return false;
+	}
+
+	if (typeof obj1 !== 'object') {
+		return false;
+	}
+
 	const keys1 = Object.keys(obj1);
 
 	// Different number of keys

@@ -135,11 +135,11 @@ export function handle_action(action, catchup = false) {
 			logger.info(`identifying card with order ${order} as ${logCard({ suitIndex, rank })}`);
 			if (!infer) {
 				Object.assign(card, { suitIndex, rank });
-				card.rewinded = true;
 			}
 			else {
 				card.intersect('inferred', [{ suitIndex, rank }]);
 			}
+			card.rewinded = true;
 			break;
 		}
 		case 'ignore': {

@@ -114,6 +114,7 @@ export class State {
 	createBlank() {
 		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress);
 		newState.notes = this.notes;
+		newState.rewinds = this.rewinds;
 		return newState;
 	}
 
@@ -212,11 +213,14 @@ export class State {
 		this.rewindDepth++;
 
 		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
-		pivotal_action.mistake = mistake || this.rewindDepth > 1;
 
 		logger.highlight('cyan', `Rewinding to insert ${JSON.stringify(rewind_action)}`);
-		if (Utils.objEquals(pivotal_action, rewind_action) || Utils.objEquals(this.actionList[action_index - 1], rewind_action)) {
+		if ([-1, 0].some(offset => Utils.objEquals(this.actionList[action_index + offset], rewind_action))) {
 			throw new Error(`Attempted to rewind ${JSON.stringify(rewind_action)} that was already rewinded!`);
+		}
+
+		if (pivotal_action.type === 'clue') {
+			pivotal_action.mistake = mistake || this.rewindDepth > 1;
 		}
 
 		logger.highlight('green', '------- STARTING REWIND -------');
