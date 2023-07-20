@@ -1,8 +1,6 @@
 import { CLUE, ACTION } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
-import { find_chop } from './hanabi-logic.js';
-import { card_value } from './clue-finder/clue-safe.js';
-import { playableAway, inStartingHand } from '../../basics/hanabi-util.js';
+import { cardValue, inStartingHand, playableAway } from '../../basics/hanabi-util.js';
 import { cardTouched } from '../../variants.js';
 
 import logger from '../../tools/logger.js';
@@ -149,7 +147,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 
 	// If there are clues that make the save target playable, we should prioritize those
 	// TODO: Consider adding this back?
-	// const save_target = state.hands[target][find_chop(state.hands[target])];
+	// const save_target = state.hands[target].chop();
 	// const playable_saves = play_clues.filter(({ playables }) => playables.some(c => c.matches(save_target.suitIndex, save_target.rank)));
 
 	const { clue } = Utils.maxOn(play_clues, ({ clue }) => find_clue_value(clue.result));
@@ -206,17 +204,40 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 	for (let i = 1; i < state.numPlayers; i++) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
-		// They require a save clue or are locked
+		// They are locked, we should try to unlock
+		if (state.hands[target].isLocked()) {
+			const unlock_action = find_unlock(state, target);
+			if (unlock_action !== undefined) {
+				urgent_actions[i === 1 ? 0 : 4].push(unlock_action);
+				continue;
+			}
+
+			const play_over_save = find_play_over_save(state, target, play_clues.flat(), true, 0);
+			if (play_over_save !== undefined) {
+				urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
+				continue;
+			}
+
+			const trash_fix = fix_clues[target].find(clue => clue.trash);
+			if (trash_fix !== undefined) {
+				urgent_actions[i === 1 ? 2 : 6].push(Utils.clueToAction(trash_fix, state.tableID));
+				continue;
+			}
+			continue;
+		}
+
+		// They require a save clue
 		// Urgency: [next, unlock] [next, save only] [next, play/trash fix over save] [next, urgent fix] [other, unlock]
 		// (play) (give play if 2+ clues)
 		// [other, save only] [other, play/trash fix over save] [all other fixes]
 		// (give play if < 2 clues) [early saves]
-		if (save_clues[target] !== undefined || state.hands[target].isLocked()) {
+		if (save_clues[target] !== undefined) {
+			const hand = state.hands[target];
+			const save = save_clues[target];
+
 			// They already have a playable or trash (i.e. early save)
-			if (state.hands[target].isLoaded()) {
-				if (save_clues[target] !== undefined) {
-					urgent_actions[8].push(Utils.clueToAction(save_clues[target], state.tableID));
-				}
+			if (hand.isLoaded()) {
+				urgent_actions[8].push(Utils.clueToAction(save, state.tableID));
 				continue;
 			}
 
@@ -228,27 +249,20 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 				continue;
 			}
 
-			// Try to give a play clue involving them (2 players, too risky to try play over save at 1 clue)
-			if (state.clue_tokens >= (state.numPlayers > 2 ? 1 : 2)) {
-				let remainder_boost = 0;
-
-				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
-				// Prioritize cm-type saves over plays?
-				if (save_clues[target] !== undefined) {
-					const saved_hand = Utils.objClone(state.hands[target]);
-					for (const card of saved_hand) {
-						if (cardTouched(card, state.suits, save_clues[target])) {
-							card.clued = true;
-						}
-						else if (save_clues[target].cm.some(c => c.order === card.order)) {
-							card.chop_moved = true;
-						}
-					}
-					const new_chop = saved_hand[find_chop(saved_hand)];
-					remainder_boost = new_chop ? card_value(state, new_chop) * 0.2 : 3;
+			const hand_after_save = Utils.objClone(hand);
+			for (const card of hand_after_save) {
+				if (cardTouched(card, state.suits, save)) {
+					card.clued = true;
 				}
+				else if (save.cm.some(c => c.order === card.order)) {
+					card.chop_moved = true;
+				}
+			}
 
-				const play_over_save = find_play_over_save(state, target, play_clues.flat(), state.hands[target].isLocked(), remainder_boost);
+			// Try to give a play clue involving them (if 2 players, too risky to try play over save at 1 clue)
+			if (state.clue_tokens >= (state.numPlayers > 2 ? 1 : 2)) {
+				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
+				const play_over_save = find_play_over_save(state, target, play_clues.flat(), false, hand_after_save.chopValue());
 				if (play_over_save !== undefined) {
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
 					continue;
@@ -264,25 +278,18 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 
 			// Check if Order Chop Move is available - 4 (unknown card) must be highest priority, they must be 1s, and this cannot be a playable save
 			if (state.level >= LEVEL.BASIC_CM &&
-				playable_priorities.every((priority_cards, priority) => priority >= 4 || priority_cards.length === 0) &&
-				(save_clues[target] && !save_clues[target].playable)
+				playable_priorities.every((cards, priority) => priority >= 4 || cards.length === 0) &&
+				!save.playable
 			) {
 				const ordered_1s = order_1s(state, playable_priorities[4]);
 				const distance = (target + state.numPlayers - state.ourPlayerIndex) % state.numPlayers;
 
 				// If we want to OCM the next player (distance 1), we need at least two unknown 1s.
 				if (ordered_1s.length > distance) {
-					const hand = state.hands[target];
-					const new_hand = Utils.objClone(state.hands[target]);
-					new_hand[find_chop(new_hand)].chop_moved = true;
+					const hand_after_ocm = Utils.objClone(hand);
+					hand_after_ocm.chop().chop_moved = true;
 
-					const [old_chop_value, new_chop_value] = [hand, new_hand].map(h => {
-						const chopIndex = find_chop(h);
-
-						// A locked hand is value 4. It is worth locking hand for a unique 2, but not anything less.
-						return chopIndex === -1 ? 4 : card_value(state, h[chopIndex]);
-					});
-
+					const [old_chop_value, new_chop_value] = [hand, hand_after_ocm].map(h => h.chopValue());
 
 					// Make sure the old chop is better than the new one
 					if (old_chop_value >= new_chop_value) {
@@ -292,10 +299,17 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 				}
 			}
 
-			// No alternative, have to give save
-			if (save_clues[target] !== undefined) {
-				urgent_actions[i === 1 ? 1 : 5].push(Utils.clueToAction(save_clues[target], state.tableID));
+			const bad_save = hand_after_save.isLocked() ?
+				hand.chopValue() < cardValue(state, hand_after_save.locked_discard()) :
+				hand.chopValue() < hand_after_save.chopValue();
+
+			// Do not save at 1 clue if new chop or sacrifice discard are better than old chop
+			if (state.clue_tokens === 1 && save.cm.length === 0 && bad_save) {
+				continue;
 			}
+
+			// No alternative, have to give save
+			urgent_actions[i === 1 ? 1 : 5].push(Utils.clueToAction(save_clues[target], state.tableID));
 		}
 
 		// They require a fix clue

@@ -1,9 +1,10 @@
 import { HAND_SIZE } from '../constants.js';
+import { Card } from './Card.js';
 import { cardCount } from '../variants.js';
 
 /**
  * @typedef {import('./State.js').State} State
- * @typedef {import('./Card.js').Card} Card
+ * @typedef {import('../types.js').BasicCard} BasicCard
  * 
  * @typedef {{symmetric?: number[], infer?: number[], ignore?: number[]}} FindOptions
  * The 'ignore' option can store an array of player indexes whose hands should be ignored during search.
@@ -136,4 +137,50 @@ export function getPace(state) {
  */
 export function inStartingHand(state, card) {
 	return card.order < state.numPlayers * HAND_SIZE[state.numPlayers];
+}
+
+/**
+ * Returns whether a card is a unique 2 on the board, according to us.
+ * @param  {State} state
+ * @param  {BasicCard} card
+ */
+export function unique2(state, card) {
+    const { suitIndex, rank } = card;
+
+    return rank === 2 &&
+        state.play_stacks[suitIndex] === 0 &&                                                       // play stack at 0
+        visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&                      // other copy isn't visible
+        !state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true }));  // not in our hand
+}
+
+/**
+ * Returns the relative "value" of a card. 0 is worthless, 5 is critical.
+ * TODO: Improve general algorithm. (e.g. having clued cards of a suit makes it better, a dead suit is worse)
+ * @param  {State} state
+ * @param  {BasicCard} card
+ * @returns {number}
+ */
+export function cardValue(state, card) {
+    const { suitIndex, rank } = card;
+
+    // Unknown card in our hand, return average of possibilities
+    if (suitIndex === -1 && card instanceof Card) {
+        return card.possible.reduce((sum, curr) => sum += cardValue(state, curr), 0) / card.possible.length;
+    }
+
+    // Basic trash, saved already, duplicate visible
+    if (isTrash(state, state.ourPlayerIndex, suitIndex, rank) || visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length > 1) {
+        return 0;
+    }
+
+    if (isCritical(state, suitIndex, rank)) {
+        return 5;
+    }
+
+    if (unique2(state, card)) {
+        return 4;
+    }
+
+    // Next playable rank is value 4, rank 4 with nothing on the stack is value 1
+    return 5 - (rank - state.hypo_stacks[state.ourPlayerIndex][suitIndex]);
 }

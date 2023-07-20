@@ -3,16 +3,15 @@ import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
 import { select_play_clue, find_urgent_actions, determine_playable_card, order_1s } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { find_chop, inEndgame, minimum_clue_value } from './hanabi-logic.js';
-import { getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+import { inEndgame, minimum_clue_value } from './hanabi-logic.js';
+import { cardValue, getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
-import { card_value } from './clue-finder/clue-safe.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
- * @typedef {import('../../basics/Hand.js').Hand} Hand
+ * @typedef {import('../h-hand.js').HGroup_Hand} Hand
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').PerformAction} PerformAction
  */
@@ -88,23 +87,19 @@ export function take_action(state) {
 						break;
 					}
 
-					const old_chop_index = find_chop(state.hands[playerIndex]);
+					const old_chop = state.hands[playerIndex].chop();
 					// Player is locked, OCM is meaningless
-					if (old_chop_index === -1) {
+					if (old_chop === undefined) {
 						continue;
 					}
-					const old_chop_value = card_value(state, state.hands[playerIndex][old_chop_index]);
+					const old_chop_value = cardValue(state, old_chop);
 
 					const newHand = state.hands[playerIndex].clone();
-					newHand[old_chop_index].chop_moved = true;
-					const new_chop_index = find_chop(newHand);
-
-					// OCM to lock for unique 2 or criticals
-					const new_chop_value = new_chop_index !== -1 ? card_value(state, newHand[new_chop_index]) : 3.5;
+					newHand.chop().chop_moved = true;
+					const new_chop_value = newHand.chopValue();
 
 					const ocm_value = old_chop_value - new_chop_value;
-
-					const { suitIndex, rank, order } = state.hands[playerIndex][old_chop_index];
+					const { suitIndex, rank, order } = old_chop;
 
 					if (!isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) && ocm_value > best_ocm_value) {
 						best_ocm_index = i;
@@ -285,8 +280,7 @@ export function take_action(state) {
  */
 function discard_chop(hand, tableID) {
 	// Nothing else to do, so discard chop
-	const chopIndex = find_chop(hand);
-	const discard = (chopIndex !== -1) ? hand[chopIndex] : hand[Math.floor(Math.random() * hand.length)];
+	const discard = hand.chop() ?? hand.locked_discard();
 
 	return { tableID, type: ACTION.DISCARD, target: discard.order };
 }

@@ -1,7 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { cardCount } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
-import { find_prompt, find_finesse } from '../hanabi-logic.js';
 import { order_1s } from '../action-helper.js';
 import { card_elim } from '../../../basics.js';
 import { playableAway } from '../../../basics/hanabi-util.js';
@@ -94,8 +93,8 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
  */
 function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, rank, ignoreOrders = []) {
 	const hand = state.hands[playerIndex];
-	const prompt = find_prompt(hand, suitIndex, rank, state.suits, ignoreOrders);
-	const finesse = find_finesse(hand, ignoreOrders);
+	const prompt = hand.find_prompt(suitIndex, rank, state.suits, ignoreOrders);
+	const finesse = hand.find_finesse(ignoreOrders);
 
 	// Prompt takes priority over finesse
 	if (prompt !== undefined) {
@@ -304,7 +303,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 		}
 		else {
 			// Otherwise, try to find prompt in our hand
-			const prompt = find_prompt(our_hand, suitIndex, next_rank, hypo_state.suits, currIgnoreOrders);
+			const prompt = our_hand.find_prompt(suitIndex, next_rank, hypo_state.suits, currIgnoreOrders);
 			logger.debug('prompt in slot', prompt ? our_hand.findIndex(c => c.order === prompt.order) + 1 : '-1');
 			if (prompt !== undefined) {
 				if (state.level === 1 && finesses >= 1) {
@@ -341,7 +340,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 			}
 			else {
 				// Otherwise, try to find finesse in our hand
-				let finesse = find_finesse(our_hand, currIgnoreOrders);
+				let finesse = our_hand.find_finesse(currIgnoreOrders);
 				logger.debug('finesse in slot', finesse ? our_hand.findIndex(c => c.order === finesse.order) + 1 : '-1');
 
 				if (finesse?.rewinded && playableAway(hypo_state, finesse.suitIndex, finesse.rank) === 0) {
@@ -369,7 +368,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 					// We have some information about the next finesse
 					if (state.next_finesse.length > 0) {
 						for (const action of state.next_finesse) {
-							let index = our_hand.findIndex(c => c.order === find_finesse(our_hand, currIgnoreOrders).order);
+							let index = our_hand.findIndex(c => c.order === our_hand.find_finesse(currIgnoreOrders).order);
 							const { list, clue } = action;
 
 							// Touching a matching card to the finesse - all untouched cards are layered
@@ -399,7 +398,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 							break;
 						}
 						// Assume next card is the finesse target
-						finesse = find_finesse(our_hand, currIgnoreOrders);
+						finesse = our_hand.find_finesse(currIgnoreOrders);
 
 						// Layered finesse is imposible
 						if (finesse === undefined) {

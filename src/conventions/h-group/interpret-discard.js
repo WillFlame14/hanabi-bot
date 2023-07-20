@@ -5,7 +5,7 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
- * @typedef {import('../../basics/Hand.js').Hand} Hand
+ * @typedef {import('../h-hand.js').HGroup_Hand} Hand
  */
 
 /**

@@ -1,8 +1,8 @@
 import { CLUE } from '../../../constants.js';
-import { card_value, clue_safe } from './clue-safe.js';
-import { determine_focus, find_chop, find_bad_touch } from '../hanabi-logic.js';
+import { clue_safe } from './clue-safe.js';
+import { determine_focus, find_bad_touch } from '../hanabi-logic.js';
 import { cardTouched, isCluable } from '../../../variants.js';
-import { isTrash } from '../../../basics/hanabi-util.js';
+import { cardValue, isTrash } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
@@ -197,8 +197,8 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 		}
 	}
 
-	const new_chop = hypo_state.hands[target][find_chop(hypo_state.hands[target], { afterClue: true })];
-	const remainder = (new_chop !== undefined) ? card_value(hypo_state, new_chop) : 4;
+	const new_chop = hypo_state.hands[target].chop({ afterClue: true });
+	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, new_chop) : 4;
 
 	return { elim, new_touched, bad_touch, trash, finesses, playables, remainder };
 }

@@ -100,3 +100,49 @@ describe('early game', () => {
 		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.DISCARD, target: 0 });
 	});
 });
+
+describe('sacrifice discards', () => {
+	it('discards a non-critical card when locked with no clues', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g4', 'r2', 'r4', 'p4', 'b3'],
+			['r3', 'b4', 'r2', 'y4', 'y2'],
+		], 1);
+
+		// One copy of r4 is discarded.
+		state.discard_stacks[COLOUR.RED][3] = 1;
+
+		// Bob clues Alice 5, touching all cards except slot 2.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 5 }, list: [0,1,2,4], target: PLAYER.ALICE, giver: PLAYER.BOB });
+		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
+
+		// Cathy clues Alice 4, touching slot 2.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [3], target: PLAYER.ALICE, giver: PLAYER.CATHY });
+		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
+
+		// Alice should not discard slot 2.
+		assert.equal(state.hands[PLAYER.ALICE].locked_discard().order === 3, false);
+	});
+
+	it('discards the farthest critical card when locked with crits', () => {
+		const state = setup(HGroup, [
+			['r4', 'b4', 'r5', 'b2', 'y5'],
+		], 1);
+
+		// Alice knows all of her cards.
+		['r4', 'b4', 'r5', 'b2', 'y5'].forEach((short, index) => {
+			state.hands[PLAYER.ALICE][index].intersect('inferred', [short].map(expandShortCard));
+		});
+
+		// All cards are crit.
+		state.discard_stacks[COLOUR.RED] = [0, 0, 0, 1, 0];
+		state.discard_stacks[COLOUR.YELLOW] = [0, 0, 0, 1, 0];
+		state.discard_stacks[COLOUR.BLUE] = [0, 1, 0, 1, 0];
+
+		state.play_stacks = [2, 1, 0, 0, 0];
+		state.hypo_stacks[PLAYER.ALICE] = [2, 1, 0, 0, 0];
+
+		// Alice should discard y5.
+		assert.equal(state.hands[PLAYER.ALICE].locked_discard().order, 0);
+	});
+});

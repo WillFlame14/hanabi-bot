@@ -1,6 +1,5 @@
 import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
-import { find_chop } from './hanabi-logic.js';
 import { recursive_elim, update_hypo_stacks } from '../../basics/helper.js';
 import { order_1s } from './action-helper.js';
 
@@ -9,7 +8,7 @@ import logger from '../../tools/logger.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
- * @typedef {import('../../basics/Hand.js').Hand} Hand
+ * @typedef {import('../h-hand.js').HGroup_Hand} Hand
  * @typedef {import('../../types.js').PlayAction} PlayAction
  */
 
@@ -33,13 +32,13 @@ function check_ocm(state, action) {
 			// Just going to assume no double order chop moves in 3p
 			if (target !== playerIndex) {
 				const target_hand = state.hands[target];
-				const chopIndex = find_chop(target_hand);
+				const chop = target_hand.chop();
 
-				if (chopIndex === -1) {
+				if (chop === undefined) {
 					logger.warn(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
 				}
 				else {
-					target_hand[chopIndex].chop_moved = true;
+					chop.chop_moved = true;
 					logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
 				}
 			}

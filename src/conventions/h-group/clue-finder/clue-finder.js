@@ -1,10 +1,10 @@
 import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
-import { card_value, clue_safe, save2 } from './clue-safe.js';
+import { clue_safe, save2 } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { determine_clue, direct_clues, get_result } from './determine-clue.js';
-import { find_chop, stall_severity } from '../hanabi-logic.js';
-import { isBasicTrash, isCritical, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
+import { stall_severity } from '../hanabi-logic.js';
+import { cardValue, isBasicTrash, isCritical, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
@@ -33,17 +33,6 @@ function find_save(state, target, card) {
 		return;
 	}
 
-	// Save a delayed playable card that isn't visible somewhere else
-	if (state.hypo_stacks[state.ourPlayerIndex][suitIndex] + 1 === rank && visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
-		const save_clue = determine_clue(state, target, card, { save: true });
-
-		if (save_clue === undefined) {
-			logger.error(`unable to find save clue for ${logCard(card)}!`);
-			return;
-		}
-		return Object.assign(save_clue, { playable: true, cm: [] });
-	}
-
 	if (isCritical(state, suitIndex, rank)) {
 		logger.warn('saving critical card', logCard(card));
 		if (rank === 5) {
@@ -58,6 +47,20 @@ function find_save(state, target, card) {
 				return;
 			}
 			return Object.assign(save_clue, { playable: false, cm: [] });
+		}
+	}
+	// Save a non-critical delayed playable card that isn't visible somewhere else
+	else if (state.hypo_stacks[state.ourPlayerIndex][suitIndex] + 1 === rank && visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
+		const save_clue = determine_clue(state, target, card, { save: true });
+
+		if (save_clue === undefined) {
+			logger.error(`unable to find save clue for ${logCard(card)}!`);
+			return;
+		}
+
+		// Do not give unsafe delayed play clues
+		if (clue_safe(state, save_clue) || state.play_stacks[suitIndex] + 1 === rank || (state.ourPlayerIndex + 1) % state.numPlayers !== target) {
+			return Object.assign(save_clue, { playable: true, cm: [] });
 		}
 	}
 	else if (save2(state, target, card) && clue_safe(state, { type: CLUE.RANK, value: 2 , target })) {
@@ -105,7 +108,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 			saved_cards.some(c => card.matches(c.suitIndex, c.rank) && card.order > c.order) ||	// Saving 2 of the same card
 			state.hands.some((hand, index) =>
 				hand.findCards(suitIndex, rank, { infer: index === state.ourPlayerIndex }).some(c =>
-					c.order !== order && hand[find_chop(hand)].order !== order));		// Saving a copy of a visible card that isn't on chop
+					c.order !== order && hand.chop().order !== order));		// Saving a copy of a visible card that isn't on chop
 	}).map(c => logCard(c));
 
 	logger.info(`would save ${saved_trash.length === 0 ? 'no' : saved_trash.join()} trash`);
@@ -168,13 +171,13 @@ function find_5cm(state, target, chop, cardIndex) {
 
 	// 5cm to lock for unique 2 or critical
 	if (new_chop === undefined) {
-		if (card_value(state, chop) >= 4) {
+		if (cardValue(state, chop) >= 4) {
 			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop] };
 		}
 	}
 	else {
 		// 5cm if new chop is less valuable than old chop
-		if (card_value(state, chop) >= card_value(state, new_chop)) {
+		if (cardValue(state, chop) >= cardValue(state, new_chop)) {
 			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop] };
 		}
 	}
@@ -214,7 +217,7 @@ export function find_clues(state, options = {}) {
 		}
 
 		const hand = state.hands[target];
-		const chopIndex = find_chop(hand);
+		const chopIndex = hand.chopIndex();
 
 		let found_tcm = false, tried_5cm = false;
 		const severity = stall_severity(state, state.ourPlayerIndex);

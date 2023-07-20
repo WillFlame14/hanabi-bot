@@ -146,7 +146,7 @@ export function interpret_clue(state, action) {
 	const prev_state = state.minimalCopy();
 
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], list);
+	const { focused_card, chop } = determine_focus(state.hands[target], list, { beforeClue: true });
 
 	const old_focused = focused_card.focused;
 	focused_card.focused = true;
