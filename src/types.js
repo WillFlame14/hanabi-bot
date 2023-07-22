@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { CLUE, ACTION } from './constants.js';
 import { Card } from './basics/Card.js';
 
