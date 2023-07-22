@@ -5,7 +5,7 @@
     "ws": "^8.8.0"
   },
   "devDependencies": {
-    "@types/node": "^20.4.2",
+    "@types/node": "^20.4.3",
     "eslint": "^8.20.0",
     "eslint-plugin-jsdoc": "^46.4.4",
     "typescript": "^5.1.6"
