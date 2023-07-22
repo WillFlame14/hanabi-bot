@@ -34,7 +34,9 @@
 		// Also marks variables used in JSDoc as used
 		"jsdoc/no-undefined-types": "warn",
 		// Stop warning on duplicate property names in long comments
-		"jsdoc/check-property-names": "off"
+		"jsdoc/check-property-names": "off",
+		// Unfortunately the JSDoc plugin does not recognize some types
+		"jsdoc/valid-types": "off"
 	},
 	"settings": {
 		"jsdoc": {
