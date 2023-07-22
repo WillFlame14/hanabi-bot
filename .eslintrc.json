@@ -27,6 +27,17 @@
 		"jsdoc/require-property-description": "off",
 		"jsdoc/require-param-description": "off",
 		"jsdoc/require-returns-description": "off",
-		"jsdoc/tag-lines": "off"
+		"jsdoc/tag-lines": "off",
+		// Also marks variables used in JSDoc as used
+		"jsdoc/no-undefined-types": "warn",
+		// Stop warning on duplicate property names in long comments
+		"jsdoc/check-property-names": "off"
+	},
+	"settings": {
+		"jsdoc": {
+			"tagNamePreference": {
+				"augments": "extends"
+			}
+		}
 	}
 }
