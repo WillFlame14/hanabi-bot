@@ -15,6 +15,7 @@
 		"ecmaVersion": "latest",
 		"sourceType": "module"
 	},
+	"ignorePatterns": ["src/hanabi-bot.js"],
 	"rules": {
 		"indent": ["error", "tab"],
 		"no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
