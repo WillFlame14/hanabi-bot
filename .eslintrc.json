@@ -1,19 +1,32 @@
 {
-    "env": {
-        "node": true,
-        "commonjs": true,
-        "es2021": true
-    },
-    "extends": "eslint:recommended",
-    "parserOptions": {
-        "ecmaVersion": "latest",
-        "sourceType": "module"
-    },
-    "rules": {
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-        "semi": "error",
-        "eol-last": "warn",
-        "no-trailing-spaces": ["warn", { "ignoreComments": true }],
-        "prefer-const": "warn"
-    }
+	"env": {
+		"node": true,
+		"commonjs": true,
+		"es2021": true
+	},
+	"plugins": [
+		"jsdoc"
+	],
+	"extends": [
+		"eslint:recommended",
+		"plugin:jsdoc/recommended"
+	],
+	"parserOptions": {
+		"ecmaVersion": "latest",
+		"sourceType": "module"
+	},
+	"rules": {
+		"indent": ["error", "tab"],
+		"no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+		"semi": "error",
+		"eol-last": "warn",
+		"no-trailing-spaces": ["warn", { "ignoreComments": true }],
+		"prefer-const": "warn",
+		// JSDoc rules are conservative, to avoid false positives
+		"jsdoc/require-jsdoc": "off",
+		"jsdoc/require-property-description": "off",
+		"jsdoc/require-param-description": "off",
+		"jsdoc/require-returns-description": "off",
+		"jsdoc/tag-lines": "off"
+	}
 }
