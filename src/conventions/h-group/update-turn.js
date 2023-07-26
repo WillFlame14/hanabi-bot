@@ -1,11 +1,11 @@
-import { Card } from '../../basics/Card.js';
 import { update_hypo_stacks } from '../../basics/helper.js';
-import { visibleFind } from '../../basics/hanabi-util.js';
+import { playableAway, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
+ * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').TurnAction} TurnAction
  */
 
@@ -85,6 +85,24 @@ export function update_turn(state, action) {
 					continue;
 				}
 
+				/**
+				 * Determines if the card could be superpositioned on a finesse that is not yet playable.
+				 */
+				const unknown_finesse = () => state.waiting_connections.some((wc, index) => {
+					if (index === i) {
+						return;
+					}
+
+					const identity = wc.connections.find((conn, index) => index >= conn_index && conn.card.order === old_card.order)?.identity;
+					const unplayable = identity && playableAway(state, identity.suitIndex, identity.rank) > 0;
+
+					if (unplayable) {
+						logger.warn(logCard(identity), 'possibility not playable');
+					}
+
+					return unplayable;
+				});
+
 				// Didn't play into finesse
 				if (type === 'finesse') {
 					if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
@@ -96,6 +114,9 @@ export function update_turn(state, action) {
 					else if (connections.filter((conn, index) => index >= conn_index && !conn.hidden && conn.reacting === reacting).length > 1 && !ambiguousPassback) {
 						logger.warn(`${state.playerNames[reacting]} didn't play into finesse but they need to play multiple non-hidden cards, passing back`);
 						state.waiting_connections[i].ambiguousPassback = true;
+					}
+					else if (unknown_finesse()) {
+						logger.info(`${state.playerNames[reacting]} cannot play finesse due to additional possibilities, continuing to wait`);
 					}
 					else {
 						logger.info(`${state.playerNames[reacting]} didn't play into finesse, removing inference ${logCard(inference)}`);
@@ -122,12 +143,19 @@ export function update_turn(state, action) {
 
 					// Finesses demonstrate that a card must be playable and not save
 					if (type === 'finesse') {
-						const prev_card = demonstrated.find(({ card }) => card.order === focused_card.order);
-						if (prev_card === undefined) {
-							demonstrated.push({card: focused_card, inferences: [inference]});
+						const connection = state.last_actions[reacting].card;
+						// Card ended up being clued and focused, so the finesse was stomped on. We can't confirm that there was a finesse.
+						if (connection.clued && connection.focused) {
+							logger.warn('connecting card was focused with a clue, not confirming finesse');
 						}
 						else {
-							prev_card.inferences.push(inference);
+							const prev_card = demonstrated.find(({ card }) => card.order === focused_card.order);
+							if (prev_card === undefined) {
+								demonstrated.push({card: focused_card, inferences: [inference]});
+							}
+							else {
+								prev_card.inferences.push(inference);
+							}
 						}
 					}
 				}

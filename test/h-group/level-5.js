@@ -67,6 +67,7 @@ describe('ambiguous clues', () => {
 		], 5);
 
 		state.play_stacks = [1, 0, 1, 1, 0];
+		state.hypo_stacks = Array(3).fill([1, 0, 1, 1, 0]);
 
 		// Alice clues 2 to Cathy.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });

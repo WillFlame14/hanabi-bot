@@ -20,6 +20,10 @@ import * as Utils from './tools/util.js';
 export function handle_action(action, catchup = false) {
 	this.actionList.push(action);
 
+	if (['clue', 'discard', 'play'].includes(action.type)) {
+		this.handHistory[this.turn_count] = Utils.objClone(this.hands[this.ourPlayerIndex]);
+	}
+
 	switch(action.type) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
@@ -72,26 +76,28 @@ export function handle_action(action, catchup = false) {
 			this.turn_count = num + 1;
 
 			// Update notes on cards
-			for (const card of this.hands[this.ourPlayerIndex]) {
-				if (card.clued || card.finessed || card.chop_moved) {
-					const note = card.getNote();
+			for (const hand of this.hands) {
+				for (const card of hand) {
+					if (card.clued || card.finessed || card.chop_moved) {
+						const note = card.getNote();
 
-					if (this.notes[card.order] === undefined) {
-						this.notes[card.order] = { last: '', turn: 0, full: '' };
-					}
-
-					// Only write a new note if it's different from the last note and is a later turn
-					if (note !== this.notes[card.order].last && this.turn_count > this.notes[card.order].turn) {
-						this.notes[card.order].last = note;
-						this.notes[card.order].turn = this.turn_count;
-
-						if (this.notes[card.order].full !== '') {
-							this.notes[card.order].full += ' | ';
+						if (this.notes[card.order] === undefined) {
+							this.notes[card.order] = { last: '', turn: 0, full: '' };
 						}
-						this.notes[card.order].full += `t${this.turn_count}: ${note}`;
 
-						if (this.in_progress) {
-							setTimeout(() => Utils.sendCmd('note', { tableID: this.tableID, order: card.order, note: this.notes[card.order].full }), Math.random() * 1000);
+						// Only write a new note if it's different from the last note and is a later turn
+						if (note !== this.notes[card.order].last && this.turn_count > this.notes[card.order].turn) {
+							this.notes[card.order].last = note;
+							this.notes[card.order].turn = this.turn_count;
+
+							if (this.notes[card.order].full !== '') {
+								this.notes[card.order].full += ' | ';
+							}
+							this.notes[card.order].full += `t${this.turn_count}: ${note}`;
+
+							if (this.in_progress) {
+								setTimeout(() => Utils.sendCmd('note', { tableID: this.tableID, order: card.order, note: this.notes[card.order].full }), Math.random() * 1000);
+							}
 						}
 					}
 				}

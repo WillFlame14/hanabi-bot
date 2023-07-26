@@ -35,6 +35,7 @@ export class State {
 
 	actionList = /** @type {Action[]} */ ([]);
 	last_actions = /** @type {(Action & {card?: Card})[]} */ ([]);
+	handHistory = /** @type {Hand[]} */ ([]);
 
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
 
@@ -129,7 +130,7 @@ export class State {
 		}
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands',
-			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'cardsLeft'];
+			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
@@ -228,10 +229,36 @@ export class State {
 		const new_state = this.createBlank();
 		const history = this.actionList.slice(0, action_index);
 
+		/** @param {Action} action */
+		const catchup_action = (action) => {
+			const our_action =
+				(action.type === 'clue' && action.giver === this.ourPlayerIndex) ||
+				((action.type === 'play' || action.type === 'discard') && action.playerIndex === this.ourPlayerIndex);
+
+			const hypo_state = new_state.minimalCopy();
+
+			if (our_action) {
+				new_state.hands[this.ourPlayerIndex] = this.handHistory[new_state.turn_count];
+				new_state.hands[this.ourPlayerIndex].state = this;
+			}
+
+			new_state.handle_action(action, true);
+
+			// Simulate the actual hand as well for replacement
+			logger.collect();
+			hypo_state.handle_action(action, true);
+			logger.flush(false);
+
+			if (our_action) {
+				new_state.hands[this.ourPlayerIndex] = hypo_state.hands[this.ourPlayerIndex];
+				new_state.hands[this.ourPlayerIndex].state = this;
+			}
+		};
+
 		logger.wrapLevel(logger.LEVELS.ERROR, () => {
 			// Get up to speed
 			for (const action of history) {
-				new_state.handle_action(action, true);
+				catchup_action(action);
 			}
 		});
 
@@ -242,7 +269,7 @@ export class State {
 		// Redo all the following actions
 		const future = this.actionList.slice(action_index + 1, -1);
 		for (const action of future) {
-			new_state.handle_action(action, true);
+			catchup_action(action);
 		}
 
 		logger.highlight('green', '------- REWIND COMPLETE -------');

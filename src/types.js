@@ -76,9 +76,16 @@ import { Card } from './basics/Card.js';
  * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate'} type
  * @property {number} reacting
  * @property {Card} card
+ * @property {BasicCard} identity
  * @property {boolean} [self]
  * @property {boolean} [hidden]
  * @property {boolean} [known]
+ * 
+ * @typedef FocusPossibility
+ * @property {number} suitIndex
+ * @property {number} rank
+ * @property {Connection[]} connections
+ * @property {boolean} [save]
  * 
  * @typedef WaitingConnection
  * @property {Connection[]} connections

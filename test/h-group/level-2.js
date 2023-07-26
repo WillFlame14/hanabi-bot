@@ -7,7 +7,6 @@ import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../tes
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
-import { logClue } from '../../src/tools/log.js';
 import logger from '../../src/tools/logger.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
@@ -27,8 +26,6 @@ describe('self-finesse', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [14], target: PLAYER.CATHY });
 
 		const { play_clues } = find_clues(state);
-
-		logger.info(play_clues[PLAYER.BOB].map(clue => logClue(clue)));
 
 		// 3 to Bob is not a valid clue.
 		assert.equal(play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 3), false);

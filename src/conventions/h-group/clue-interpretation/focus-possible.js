@@ -10,12 +10,7 @@ import * as Utils from '../../../tools/util.js';
  * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
- * 
- * @typedef FocusPossibility
- * @property {number} suitIndex
- * @property {number} rank
- * @property {Connection[]} connections
- * @property {boolean} [save]
+ * @typedef {import('../../../types.js').FocusPossibility} FocusPossibility
  */
 
 /**
@@ -162,8 +157,8 @@ function find_rank_focus(state, rank, action) {
 
 	// Play clue
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-		// Critical cards can never be given a play clue
-		if (isCritical(state, suitIndex, rank)) {
+		// Critical cards on chop can never be given a play clue
+		if (chop && isCritical(state, suitIndex, rank)) {
 			continue;
 		}
 

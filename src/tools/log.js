@@ -9,6 +9,7 @@ import { globals } from './util.js';
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').PerformAction} PerformAction
+ * @typedef {import('../types.js').Connection} Connection
  */
 
 /**
@@ -179,4 +180,12 @@ export function logAction(action) {
 		default:
 			return JSON.stringify(action);
 	}
+}
+
+/**
+ * @param {Connection} connection
+ */
+export function logConnection(connection) {
+	const { type, reacting, identity, card } = connection;
+	return `${card.order} ${logCard(identity)} ${type} (${globals.state.playerNames[reacting]})`;
 }

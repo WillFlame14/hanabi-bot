@@ -209,7 +209,7 @@ describe('layered finesse', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [8], target: PLAYER.BOB });
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
-		// Alice plays slot 1, which is revealed to be b1! Alice then draws y1.
+		// Alice plays slot 1, which is revealed to be b1! Alice then draws something random.
 		state.handle_action({ type: 'play', order: 4, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1 });
 		state.handle_action({ type: 'draw', order: 16, suitIndex: -1, rank: -1, playerIndex: PLAYER.ALICE });
 		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.BOB });

@@ -15,6 +15,9 @@ export default class HGroup extends State {
 	update_turn = update_turn;
 	interpret_play = interpret_play;
 
+	hand_history = /** @type {HGroup_Hand[]} */ ([]);
+	hands = /** @type {HGroup_Hand[]} */ ([]);
+
 	/**
      * @param {number} tableID
      * @param {string[]} playerNames
@@ -25,7 +28,6 @@ export default class HGroup extends State {
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress, level = 1) {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
 
-		/** @type HGroup_Hand[] */
 		this.hands = [];
 		for (let i = 0; i < playerNames.length; i++) {
 			this.hands.push(new HGroup_Hand(this, i));
@@ -49,7 +51,7 @@ export default class HGroup extends State {
 		}
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands',
-			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'cardsLeft'];
+			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);

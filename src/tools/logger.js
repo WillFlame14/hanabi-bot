@@ -31,8 +31,12 @@ class Logger {
 	log(colour, ...args) {
 		if (this.accumulateDepth > 0) {
 			// Failsafe
-			if (this.buffer[this.accumulateDepth].length > 1000 || this.accumulateDepth > 10) {
-				throw new Error('stop.');
+			if (this.buffer[this.accumulateDepth].length > 2000) {
+				throw new Error('stop. buffer too large');
+			}
+
+			if (this.accumulateDepth > 10) {
+				throw new Error('stop. recursion too deep');
 			}
 
 			this.buffer[this.accumulateDepth].push({ colour, args });
