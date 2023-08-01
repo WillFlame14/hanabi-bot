@@ -235,6 +235,7 @@ export function interpret_clue(state, action) {
 	const matched_correct = target === state.ourPlayerIndex || correct_match !== undefined;
 
 	const old_state = state.minimalCopy();
+	const old_inferred = focused_card.inferred;
 
 	// Card matches an inference and not a save/stall
 	// If we know the identity of the card, one of the matched inferences must also be correct before we can give this clue.
@@ -274,6 +275,7 @@ export function interpret_clue(state, action) {
 			for (const { connections } of symmetric_connections) {
 				assign_connections(state, connections);
 			}
+			focused_card.union('inferred', old_inferred.filter(inf => symmetric_connections.some(c => c.suitIndex === inf.suitIndex && c.rank === inf.rank)));
 			reset_superpositions(state);
 		}
 	}
@@ -398,6 +400,7 @@ export function interpret_clue(state, action) {
 				for (const { connections } of symmetric_connections) {
 					assign_connections(state, connections);
 				}
+				focused_card.union('inferred', old_inferred.filter(inf => symmetric_connections.some(c => c.suitIndex === inf.suitIndex && c.rank === inf.rank)));
 				reset_superpositions(state);
 			}
 		}

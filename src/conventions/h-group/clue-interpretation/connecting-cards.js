@@ -40,11 +40,6 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 				logger.info(`found known ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand`);
 				return { type: 'known', reacting: playerIndex, card, identity: { suitIndex, rank } };
 			}
-
-			if (card.rewinded && card.matches(suitIndex, rank)) {
-				logger.info(`found rewinded ${logCard({suitIndex, rank})} in own hand`);
-				return { type: 'known', reacting: playerIndex, card, identity: { suitIndex, rank } };
-			}
 		}
 	}
 
@@ -350,7 +345,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 					return { feasible: false, connections: [] };
 				}
 
-				if (prompt?.rewinded && playableAway(hypo_state, prompt.suitIndex, prompt.rank) === 0) {
+				if (prompt?.rewinded && suitIndex !== prompt.suitIndex && playableAway(hypo_state, prompt.suitIndex, prompt.rank) === 0) {
 					if (state.level < LEVEL.INTERMEDIATE_FINESSES) {
 						logger.warn(`blocked hidden finesse at level ${state.level}`);
 						return { feasible: false, connections: [] };
@@ -445,7 +440,7 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 	let finesse = our_hand.find_finesse(ignoreOrders);
 	logger.debug('finesse in slot', finesse ? our_hand.findIndex(c => c.order === finesse.order) + 1 : '-1');
 
-	if (finesse?.rewinded && playableAway(state, finesse.suitIndex, finesse.rank) === 0) {
+	if (finesse?.rewinded && finesse.suitIndex !== suitIndex && playableAway(state, finesse.suitIndex, finesse.rank) === 0) {
 		if (state.level < LEVEL.INTERMEDIATE_FINESSES) {
 			logger.warn(`blocked layered finesse at level ${state.level}`);
 			return { feasible: false, connections: [] };

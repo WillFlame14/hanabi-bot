@@ -142,11 +142,13 @@ export function update_turn(state, action) {
 					}
 
 					// Finesses demonstrate that a card must be playable and not save
-					if (type === 'finesse') {
+					if (type === 'finesse' || type === 'prompt') {
 						const connection = state.last_actions[reacting].card;
-						// Card ended up being clued and focused, so the finesse was stomped on. We can't confirm that there was a finesse.
-						if (connection.clued && connection.focused) {
-							logger.warn('connecting card was focused with a clue, not confirming finesse');
+						if (type === 'finesse' && connection.clued && connection.focused) {
+							logger.warn('connecting card was focused with a clue (stomped on), not confirming finesse');
+						}
+						else if (type === 'prompt' && connection.possible.length === 1) {
+							logger.warn('connecting card was filled in completely, not confirming prompt');
 						}
 						else {
 							const prev_card = demonstrated.find(({ card }) => card.order === focused_card.order);
@@ -214,6 +216,11 @@ export function update_turn(state, action) {
 
 	demonstrated.forEach(({card}) => card.superposition = false);
 
-	// Filter out connections that have been removed
-	state.waiting_connections = state.waiting_connections.filter((_, i) => !to_remove.includes(i));
+	// Filter out connections that have been removed (or connections to the same card where others have been demonstrated)
+	state.waiting_connections = state.waiting_connections.filter((wc, i) =>
+		!to_remove.includes(i) &&
+		!demonstrated.some(d => d.card.order === wc.focused_card.order &&
+			!d.inferences.some(inf => wc.inference.suitIndex === inf.suitIndex && wc.inference.rank === inf.rank)
+		)
+	);
 }

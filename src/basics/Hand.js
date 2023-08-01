@@ -198,7 +198,7 @@ export class Hand extends Array {
 
 			// Find all unknown cards with the same inferences
 			const linked_cards = Array.from(this.filter(c =>
-				card.identity() === undefined &&
+				c.identity() === undefined &&
 				card.inferred.length === c.inferred.length &&
 				c.inferred.every(({suitIndex, rank}) => card.inferred.some(inf2 => inf2.matches(suitIndex, rank)))
 			));

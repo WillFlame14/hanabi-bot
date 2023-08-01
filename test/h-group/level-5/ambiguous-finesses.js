@@ -102,4 +102,26 @@ describe('ambiguous finesse', () => {
 		assert.equal(state.hands[PLAYER.ALICE][1].finessed, true);
 		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['r1'].map(expandShortCard));
 	});
+
+	it('prefers hidden prompt over ambiguous', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g3', 'b4', 'g4', 'r3'],
+			['g4', 'y3', 'r4', 'p2'],
+			['g2', 'y2', 'g5', 'b2']
+		], 5);
+
+		state.play_stacks = [0, 1, 1, 0, 0];
+
+		// Bob clues 2 to Donald.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [12,14,15], target: PLAYER.DONALD });
+		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
+
+		// Cathy clues 4 to Bob, connecting on g2 (Donald, prompt) and g3 (Bob, finesse).
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 4 }, giver: PLAYER.CATHY, list: [5], target: PLAYER.BOB });
+		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.DONALD });
+
+		// Bob's slot 1 can be either g3 or y3, since he doesn't know which 1 is connecting.
+		assert.deepEqual(getRawInferences(state.hands[PLAYER.BOB][0]), ['y3', 'g3'].map(expandShortCard));
+	});
 });

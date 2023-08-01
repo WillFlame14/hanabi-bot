@@ -51,7 +51,6 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			card.intersect('possible', [{ suitIndex, rank }]);
 
 			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
@@ -123,7 +122,6 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
-			card.intersect('possible', [{ suitIndex, rank }]);
 
 			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
