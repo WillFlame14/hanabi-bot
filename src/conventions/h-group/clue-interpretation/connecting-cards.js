@@ -107,7 +107,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 				return;
 			}
 			logger.info(`found playable prompt ${logCard(prompt)} in ${state.playerNames[playerIndex]}'s hand`);
-			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true, identity: { suitIndex, rank } };
+			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true, identity: prompt.raw() };
 		}
 		else {
 			logger.info(`wrong prompt on ${logCard(prompt)}`);
@@ -126,13 +126,13 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 		}
 		// Finessed card is delayed playable
 		else if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
-			// Could be duplicated in giver's hand - disallow hidden prompt
+			// Could be duplicated in giver's hand - disallow hidden finesse
 			if (state.hands[giver].some(c => c.clued && c.inferred.some(inf => inf.matches(suitIndex, rank)))) {
 				logger.info(`disallowed hidden finesse on ${logCard(finesse)}, could be duplicated in giver's hand`);
 				return;
 			}
 			logger.info(`found playable finesse ${logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand`);
-			return { type: 'finesse', reacting: playerIndex, card: finesse, hidden: true, identity: { suitIndex, rank } };
+			return { type: 'finesse', reacting: playerIndex, card: finesse, hidden: true, identity: finesse };
 		}
 	}
 }
@@ -175,43 +175,39 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 	for (let i = 1; i < state.numPlayers; i++) {
 		const playerIndex = (giver + i) % state.numPlayers;
 
-		if (options.knownOnly?.includes(playerIndex)) {
-			continue;
-		}
-		if (playerIndex === target && looksDirect) {
+		if (options.knownOnly?.includes(playerIndex) || (playerIndex === target && looksDirect)) {
 			// Clue receiver will not find known prompts/finesses in their hand unless no identities are delayed playable
 			continue;
 		}
-		else {
-			const connections = [];
-			const hypo_state = state.minimalCopy();
-			const newIgnoreOrders = ignoreOrders.slice();
 
-			logger.collect();
+		const connections = [];
+		const hypo_state = state.minimalCopy();
+		const newIgnoreOrders = ignoreOrders.slice();
 
-			let connecting = find_unknown_connecting(hypo_state, giver, target, playerIndex, suitIndex, rank, newIgnoreOrders);
+		logger.collect();
 
-			// If the connection is hidden, that player must have the actual card playable in order for the layer to work.
-			// Thus, we keep searching for unknown connections in their hand until we find a non-hidden connection.
-			while (connecting?.hidden) {
-				connections.push(connecting);
-				newIgnoreOrders.push(connecting.card.order);
-				hypo_state.play_stacks[connecting.card.suitIndex]++;
+		let connecting = find_unknown_connecting(hypo_state, giver, target, playerIndex, suitIndex, rank, newIgnoreOrders);
 
-				connecting = find_unknown_connecting(hypo_state, giver, target, playerIndex, suitIndex, rank, newIgnoreOrders);
-			}
+		// If the connection is hidden, that player must have the actual card playable in order for the layer to work.
+		// Thus, we keep searching for unknown connections in their hand until we find a non-hidden connection.
+		while (connecting?.hidden) {
+			connections.push(connecting);
+			newIgnoreOrders.push(connecting.card.order);
+			hypo_state.play_stacks[connecting.card.suitIndex]++;
 
-			if (connecting) {
-				connections.push(connecting);
-			}
-
-			// The final card must not be hidden
-			if (connections.length > 0 && !connections.at(-1).hidden) {
-				logger.flush(true);
-				return connections;
-			}
-			logger.flush(false);
+			connecting = find_unknown_connecting(hypo_state, giver, target, playerIndex, suitIndex, rank, newIgnoreOrders);
 		}
+
+		if (connecting) {
+			connections.push(connecting);
+		}
+
+		// The final card must not be hidden
+		if (connections.length > 0 && !connections.at(-1).hidden) {
+			logger.flush(true);
+			return connections;
+		}
+		logger.flush(false);
 	}
 
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
@@ -352,7 +348,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 					}
 
 					logger.info('found hidden prompt', logCard(prompt), 'in our hand - still searching for', logCard({ suitIndex, rank: next_rank}));
-					addConnections([{ type: 'known', reacting: state.ourPlayerIndex, card: prompt, hidden: true, self: true, identity }]);
+					addConnections([{ type: 'known', reacting: state.ourPlayerIndex, card: prompt, hidden: true, self: true, identity: prompt.raw() }]);
 					continue;
 				}
 				else if (prompt.identity() === undefined || prompt.matches(suitIndex, next_rank)) {
@@ -447,7 +443,7 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 		}
 
 		logger.info('found layered finesse', logCard(finesse), 'in our hand - still searching for', logCard(identity));
-		return { feasible: true, connections: [{ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, hidden: true, self: true, identity }] };
+		return { feasible: true, connections: [{ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, hidden: true, self: true, identity: finesse.raw() }] };
 	}
 
 	if (finesse?.inferred.some(p => p.matches(suitIndex, rank)) && (finesse.identity() === undefined || finesse.matches(suitIndex, rank))) {

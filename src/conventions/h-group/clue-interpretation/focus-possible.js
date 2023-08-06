@@ -1,5 +1,5 @@
 import { CLUE } from '../../../constants.js';
-import { determine_focus } from '../hanabi-logic.js';
+import { determine_focus, looksPlayable } from '../hanabi-logic.js';
 import { find_connecting } from './connecting-cards.js';
 import { isCritical, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
@@ -177,9 +177,8 @@ function find_rank_focus(state, rank, action) {
 
 			let finesses = 0;
 
-			const looksPlayable = state.hypo_stacks[giver].some(stack => stack + 1 === rank);
 			let ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-			let looksDirect = focused_card.identity({ symmetric: true }) === undefined && (looksSave || looksPlayable);
+			let looksDirect = focused_card.identity({ symmetric: true }) === undefined && (looksSave || looksPlayable(state, rank, giver, target, focused_card));
 			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 
 			while (connecting.length !== 0) {

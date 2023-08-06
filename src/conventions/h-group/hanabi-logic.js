@@ -1,4 +1,5 @@
-import { getPace, isTrash } from '../../basics/hanabi-util.js';
+import { baseCount, getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+import { cardCount } from '../../variants.js';
 import logger from '../../tools/logger.js';
 import { logHand } from '../../tools/log.js';
 
@@ -135,4 +136,22 @@ export function minimum_clue_value(state) {
 	// -0.5 if 2 players (allows tempo clues to be given)
 	// -10 if endgame
 	return 1 - (state.numPlayers === 2 ? 0.5 : 0) - (inEndgame(state) ? 10 : 0);
+}
+
+/**
+ * @param {State} state
+ * @param {number} rank
+ * @param {number} giver
+ * @param {number} target
+ * @param {Card} focused_card
+ */
+export function looksPlayable(state, rank, giver, target, focused_card) {
+	return state.hypo_stacks[giver].some((stack, suitIndex) => {
+		const playable_identity = stack + 1 === rank;
+		const other_visibles = baseCount(state, suitIndex, rank) +
+			visibleFind(state, target, suitIndex, rank).filter(c => c.order !== focused_card.order).length;
+		const matching_inference = focused_card.inferred.some(inf => inf.suitIndex === suitIndex && inf.rank === rank);
+
+		return playable_identity && other_visibles < cardCount(state.suits[suitIndex], rank) && matching_inference;
+	});
 }

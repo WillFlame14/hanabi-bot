@@ -74,9 +74,9 @@ export function handle_action(action, catchup = false) {
 			const { currentPlayerIndex, num } = action;
 			this.turn_count = num + 1;
 
-			// Update notes on cards
-			for (const hand of this.hands) {
-				for (const card of hand) {
+			if (!catchup) {
+				// Update notes on cards
+				for (const card of this.hands.flat()) {
 					if (card.clued || card.finessed || card.chop_moved) {
 						const note = card.getNote();
 
@@ -95,7 +95,7 @@ export function handle_action(action, catchup = false) {
 							this.notes[card.order].full += `t${this.turn_count}: ${note}`;
 
 							if (this.in_progress) {
-								setTimeout(() => Utils.sendCmd('note', { tableID: this.tableID, order: card.order, note: this.notes[card.order].full }), Math.random() * 1000);
+								Utils.sendCmd('note', { tableID: this.tableID, order: card.order, note: this.notes[card.order].full });
 							}
 						}
 					}

@@ -2,7 +2,7 @@ import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
 import { interpret_tcm, interpret_5cm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
-import { determine_focus } from '../hanabi-logic.js';
+import { determine_focus, looksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { find_own_finesses } from './connecting-cards.js';
 import { assign_connections, inference_known, inference_rank, find_symmetric_connections, add_symmetric_connections } from './connection-helper.js';
@@ -257,8 +257,6 @@ export function interpret_clue(state, action) {
 			}
 		}
 
-		reset_superpositions(state);
-
 		// We can update hypo stacks
 		if (inference_known(matched_inferences)) {
 			const { suitIndex, rank } = matched_inferences[0];
@@ -266,18 +264,18 @@ export function interpret_clue(state, action) {
 		}
 		else if (target !== state.ourPlayerIndex && !correct_match.save) {
 			const selfRanks = Array.from(new Set(matched_inferences.flatMap(({ connections }) =>
-				connections.filter(conn => conn.type === 'finesse').map(conn => conn.identity.rank))
+				connections.filter(conn => conn.type === 'finesse' && conn.reacting === target).map(conn => conn.identity.rank))
 			));
 			const ownBlindPlays = correct_match.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length;
 			const symmetric_connections = find_symmetric_connections(old_state, action, focus_possible.some(fp => fp.save), selfRanks, ownBlindPlays);
 
 			add_symmetric_connections(state, symmetric_connections, matched_inferences, focused_card, giver);
-			for (const { connections } of symmetric_connections) {
-				assign_connections(state, connections);
+			for (const { fake, connections } of symmetric_connections) {
+				assign_connections(state, connections, { symmetric: true, target, fake });
 			}
-			focused_card.union('inferred', old_inferred.filter(inf => symmetric_connections.some(c => c.suitIndex === inf.suitIndex && c.rank === inf.rank)));
-			reset_superpositions(state);
+			focused_card.union('inferred', old_inferred.filter(inf => symmetric_connections.some(c => !c.fake && c.suitIndex === inf.suitIndex && c.rank === inf.rank)));
 		}
+		reset_superpositions(state);
 	}
 	// Card doesn't match any inferences
 	else {
@@ -286,6 +284,11 @@ export function interpret_clue(state, action) {
 		/** @type {FocusPossibility[]} */
 		const all_connections = [];
 		logger.info(`inferences ${focused_card.inferred.map(c => logCard(c)).join(',')}`);
+
+		const looksDirect = focused_card.identity({ symmetric: true }) === undefined && (	// Focused card must be unknown AND
+			action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
+			looksPlayable(state, action.clue.value, giver, target, focused_card) ||			// Looks like a play
+			focus_possible.some(fp => fp.save));											// Looks like a save
 
 		if (target === state.ourPlayerIndex) {
 			// Only look for finesses if the card isn't trash
@@ -298,11 +301,6 @@ export function interpret_clue(state, action) {
 					if (isBasicTrash(state, card.suitIndex, card.rank)) {
 						continue;
 					}
-
-					const looksDirect = focused_card.identity({ symmetric: true }) === undefined && (		// Focus must be unknown AND
-						action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
-						state.hypo_stacks[giver].some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
-						focus_possible.some(fp => fp.save));											// Looks like a save
 
 					const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect);
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
@@ -334,13 +332,8 @@ export function interpret_clue(state, action) {
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!isBasicTrash(state, focused_card.suitIndex, focused_card.rank)) {
 			const { suitIndex, rank } = focused_card;
-
-			const looksDirect = focused_card.identity({ symmetric: true }) === undefined && (	// Focused card must be unknown AND
-				action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
-				state.hypo_stacks[giver].some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
-				focus_possible.some(fp => fp.save));											// Looks like a save
-
 			const { feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank, looksDirect);
+
 			if (feasible) {
 				all_connections.push({ connections, suitIndex: suitIndex, rank: inference_rank(state, suitIndex, connections) });
 			}
@@ -380,7 +373,6 @@ export function interpret_clue(state, action) {
 					state.waiting_connections.push({ connections, focused_card, inference, giver, action_index: state.actionList.length - 1 });
 				}
 			}
-			reset_superpositions(state);
 
 			const correct_match2 = all_connections.find(p => focused_card.matches(p.suitIndex, p.rank));
 
@@ -391,18 +383,19 @@ export function interpret_clue(state, action) {
 			}
 			else if (target !== state.ourPlayerIndex && !correct_match2.save) {
 				const selfRanks = Array.from(new Set(all_connections.flatMap(({ connections }) =>
-					connections.filter(conn => conn.type === 'finesse').map(conn => conn.identity.rank))
+					connections.filter(conn => conn.type === 'finesse' && conn.reacting === target).map(conn => conn.identity.rank))
 				));
 				const ownBlindPlays = correct_match2.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length;
 				const symmetric_connections = find_symmetric_connections(old_state, action, focus_possible.some(fp => fp.save), selfRanks, ownBlindPlays);
 
 				add_symmetric_connections(state, symmetric_connections, all_connections, focused_card, giver);
-				for (const { connections } of symmetric_connections) {
-					assign_connections(state, connections);
+				for (const { fake, connections } of symmetric_connections) {
+					assign_connections(state, connections, { symmetric: true, target, fake });
 				}
-				focused_card.union('inferred', old_inferred.filter(inf => symmetric_connections.some(c => c.suitIndex === inf.suitIndex && c.rank === inf.rank)));
-				reset_superpositions(state);
+				focused_card.union('inferred', old_inferred.filter(inf => symmetric_connections.some(c => !c.fake && c.suitIndex === inf.suitIndex && c.rank === inf.rank)));
 			}
+
+			reset_superpositions(state);
 		}
 	}
 	logger.highlight('blue', 'final inference on focused card', focused_card.inferred.map(c => logCard(c)).join(','));

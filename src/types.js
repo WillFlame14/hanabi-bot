@@ -86,6 +86,8 @@ import { Card } from './basics/Card.js';
  * @property {number} rank
  * @property {Connection[]} connections
  * @property {boolean} [save]
+ *
+ * @typedef {FocusPossibility & {fake: boolean}} SymFocusPossibility
  * 
  * @typedef WaitingConnection
  * @property {Connection[]} connections
@@ -95,6 +97,7 @@ import { Card } from './basics/Card.js';
  * @property {{suitIndex: number, rank: number}} inference
  * @property {number} action_index
  * @property {boolean} [ambiguousPassback]
+ * @property {boolean} [fake]
  * 
  * @typedef Link
  * @property {Card[]} cards

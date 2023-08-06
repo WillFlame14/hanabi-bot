@@ -14,6 +14,7 @@ import * as Utils from '../../../tools/util.js';
  * @typedef {import('../../../types.js').Connection} Connection
  * @typedef {import('../../../types.js').BasicCard} BasicCard
  * @typedef {import('../../../types.js').FocusPossibility} FocusPossibility
+ * @typedef {import('../../../types.js').SymFocusPossibility} SymFocusPossibility
  */
 
 /**
@@ -42,14 +43,14 @@ export function inference_rank(state, suitIndex, connections) {
 /**
  * Adds all symmetric connections to the list of waiting connections in the state.
  * @param {State} state
- * @param {FocusPossibility[]} symmetric_connections
+ * @param {SymFocusPossibility[]} symmetric_connections
  * @param {FocusPossibility[]} existing_connections
  * @param {Card} focused_card
  * @param {number} giver
  */
 export function add_symmetric_connections(state, symmetric_connections, existing_connections, focused_card, giver) {
 	for (const sym of symmetric_connections) {
-		const { connections, suitIndex, rank } = sym;
+		const { connections, suitIndex, rank, fake } = sym;
 
 		// No connections required
 		if (connections.length === 0) {
@@ -61,7 +62,7 @@ export function add_symmetric_connections(state, symmetric_connections, existing
 			continue;
 		}
 
-		state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1 });
+		state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake });
 	}
 }
 
@@ -77,11 +78,14 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 	const { giver, list, target } = action;
 	const { focused_card } = determine_focus(state.hands[target], list, { beforeClue: true });
 
-	/** @type {FocusPossibility[]} */
+	/** @type {SymFocusPossibility[]} */
 	const symmetric_connections = [];
 
-	let conn_save, min_blind_plays = 10;
-	let self_target = true;
+	/** @type {{ card: Card, connections: Connection[] }[]} */
+	const self_connections = [];
+
+	/** @type {{ card: Card, connections: Connection[] }[]} */
+	const non_self_connections = [];
 
 	for (const card of focused_card.inferred) {
 		if (isBasicTrash(state, card.suitIndex, card.rank)) {
@@ -98,30 +102,34 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 		logger.flush(false);
 
 		if (feasible) {
-			// Starts with self-finesse or self-prompt on target
 			if (connections[0]?.reacting === target) {
-				const blind_plays = connections.filter(conn => conn.type === 'finesse' && conn.reacting === target).length;
-
-				if (self_target && blind_plays < min_blind_plays) {
-					conn_save = { connections, suitIndex: card.suitIndex, rank: inference_rank(state, card.suitIndex, connections) };
-					min_blind_plays = blind_plays;
-				}
+				self_connections.push({ card, connections });
 			}
-			// Doesn't start with self
 			else {
-				// Temp: if a connection with no self-component exists, don't consider any connection with a self-component
-				self_target = false;
-				const blind_plays = connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length;
-
-				if (blind_plays === ownBlindPlays) {
-					symmetric_connections.push({ connections, suitIndex: card.suitIndex, rank: inference_rank(state, card.suitIndex, connections) });
-				}
+				non_self_connections.push({ card, connections });
 			}
 		}
 	}
 
-	if (self_target && conn_save !== undefined) {
-		symmetric_connections.push(conn_save);
+	/** @type {(conns: Connection[], playerIndex: number) => number} */
+	const blind_plays = (conns, playerIndex) => conns.filter(conn => conn.type === 'finesse' && conn.reacting === playerIndex).length;
+
+	const possible_connections = non_self_connections.length === 0 ? self_connections : non_self_connections;
+
+	// All connections with the minimum number of target blind plays will be considered
+	const blind_plays_arr = possible_connections.map(({ connections }) => blind_plays(connections, target));
+	const min_blind_plays = blind_plays_arr.reduce((min, curr) => Math.min(min, curr));
+
+	for (let i = 0; i < possible_connections.length; i++) {
+		if (blind_plays_arr[i] === min_blind_plays) {
+			const { card, connections } = possible_connections[i];
+			symmetric_connections.push({
+				connections,
+				suitIndex: card.suitIndex,
+				rank: inference_rank(state, card.suitIndex, connections),
+				fake: blind_plays(connections, state.ourPlayerIndex) > ownBlindPlays
+			});
+		}
 	}
 
 	const sym_conn = symmetric_connections.map(conn => {
@@ -140,17 +148,25 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
  * Helper function that applies the given connections on the given suit to the state (e.g. writing finesses).
  * @param {State} state
  * @param {Connection[]} connections
+ * @param {{symmetric?: boolean, target?: number, fake?: boolean}} [options] 	If this is a symmetric connection, this indicates the only player we should write notes on.
  */
-export function assign_connections(state, connections) {
+export function assign_connections(state, connections, options = {}) {
 	// let next_rank = state.play_stacks[suitIndex] + 1;
-	const hypo_stacks = state.hypo_stacks.slice();
+	const hypo_stacks = Utils.objClone(state.hypo_stacks);
 
 	for (const connection of connections) {
 		const { type, reacting, hidden, card: conn_card, known, identity } = connection;
 		// The connections can be cloned, so need to modify the card directly
 		const card = state.hands[reacting].findOrder(conn_card.order);
 
-		logger.info(`connecting on order ${conn_card.order} (${logCard(conn_card)}) as ${logCard(identity)} order ${card.order} type ${type}`);
+		logger.info(`connecting on order ${conn_card.order} (${logCard(conn_card)}) as ${logCard(identity)} order ${card.order} type ${type} ${ options.fake ? 'fake' : ''}`);
+
+		// Do not write notes on:
+		// - fake connections (where we need to blind play more than necessary)
+		// - symmetric connections on anyone not the target, since they actually know their card
+		if (options?.fake || (options?.symmetric && reacting !== options.target)) {
+			continue;
+		}
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		if (!card.superposition) {

@@ -56,15 +56,33 @@ export function sendChat(tableID, msg) {
 	sendCmd('chat', { msg, room: `table${tableID}` });
 }
 
+const cmdQueue = [];
+let queueTimer;
+
 /**
  * Sends a game command to hanab.live with an object as data.
  * @param {string} command
  * @param {any} arg
  */
 export function sendCmd(command, arg) {
-	const cmd = command + ' ' + JSON.stringify(arg);
-	logger.debug('sending cmd ' + cmd);
+	cmdQueue.push(command + ' ' + JSON.stringify(arg));
+
+	if (queueTimer === undefined) {
+		emptyCmdQueue();
+	}
+}
+
+function emptyCmdQueue() {
+	if (cmdQueue.length === 0) {
+		queueTimer = undefined;
+		return;
+	}
+
+	const cmd = cmdQueue.shift();
 	globals.ws.send(cmd);
+	logger.debug('sending cmd', cmd);
+
+	queueTimer = setTimeout(emptyCmdQueue, 500);
 }
 
 /**

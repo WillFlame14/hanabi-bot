@@ -186,12 +186,12 @@ describe('asymmetric clues', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [15], target: PLAYER.DONALD });
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.CATHY });
 
-		// Cathy clues 4 to Bob, connecting on y2 (Donald, known) and y3 (Bob, finesse).
+		// Cathy clues 4 to Bob, connecting on g2 (Bob, finesse) and g3 (Bob, finesse).
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 4 }, giver: PLAYER.CATHY, list: [5], target: PLAYER.BOB });
 		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.DONALD });
 
 		// Although y3 should still be preferred, the correct inference is g2 -> g3 double self-finesse.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.BOB][0]), ['y3','g2'].map(expandShortCard));
+		assert.deepEqual(getRawInferences(state.hands[PLAYER.BOB][0]), ['g2','y3'].map(expandShortCard));
 	});
 
 	it('connects when a card plays early', () => {
@@ -210,7 +210,7 @@ describe('asymmetric clues', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [13,15], target: PLAYER.DONALD });
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.BOB });
 
-		// Bob clues 3 to Cathy, connecting on y1 (Donald, playable) and y2 (Alice, playable).
+		// Bob clues 3 to Cathy, connecting on y1 (Donald, playable) and y2 (Alice, prompt).
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [9], target: PLAYER.CATHY });
 		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.CATHY });
 

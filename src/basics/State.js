@@ -231,9 +231,7 @@ export class State {
 
 		/** @param {Action} action */
 		const catchup_action = (action) => {
-			const our_action =
-				(action.type === 'clue' && action.giver === this.ourPlayerIndex) ||
-				((action.type === 'play' || action.type === 'discard') && action.playerIndex === this.ourPlayerIndex);
+			const our_action = action.type === 'clue' && action.giver === this.ourPlayerIndex;
 
 			const hypo_state = new_state.minimalCopy();
 
