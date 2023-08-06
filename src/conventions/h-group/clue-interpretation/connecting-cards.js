@@ -24,7 +24,7 @@ import { logCard } from '../../../tools/log.js';
  * @param {number} suitIndex
  * @param {number} rank
  * @param {number[]} [ignoreOrders]		The orders of cards to ignore when searching.
- * @returns {Connection}
+ * @returns {Connection | undefined}
  */
 function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = []) {
 	// Symmetrically (globally) known
@@ -85,7 +85,7 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
  * @param {number} suitIndex
  * @param {number} rank
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
- * @returns {Connection}
+ * @returns {Connection | undefined}
  */
 function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, rank, ignoreOrders = []) {
 	const hand = state.hands[playerIndex];
@@ -213,10 +213,10 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
 	if (giver !== state.ourPlayerIndex) {
 		const playable_conns = state.hands[state.ourPlayerIndex].filter(card =>
-				!ignoreOrders.includes(card.order) &&
-				card.inferred.some(inf => inf.matches(suitIndex, rank)) &&					// At least one inference must match
-				(card.identity() === undefined || card.matches(suitIndex, rank)) &&			// If we know the card (from a rewind), it must match
-				(card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0) || card.finessed));	// Must be playable
+			!ignoreOrders.includes(card.order) &&
+			card.inferred.some(inf => inf.matches(suitIndex, rank)) &&					// At least one inference must match
+			(card.identity() === undefined || card.matches(suitIndex, rank)) &&			// If we know the card (from a rewind), it must match
+			(card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0) || card.finessed));	// Must be playable
 
 		if (playable_conns.length > 0) {
 			if (rank === 1 && playable_conns.every(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1))) {

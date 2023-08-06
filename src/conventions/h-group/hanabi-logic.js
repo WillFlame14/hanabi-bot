@@ -56,6 +56,7 @@ export function determine_focus(hand, list, options = {}) {
  * Returns all cards that would be bad touch if clued. In the case of duplicates, both will be returned.
  * @param {State} state
  * @param {Card[]} cards
+ * @param {number} [focusedCardOrder]	The order of the focused card of a clue (will never be considered for bad touch).
  */
 export function find_bad_touch(state, cards, focusedCardOrder = -1) {
 	/** @type {Card[]} */
@@ -130,7 +131,7 @@ export function inEndgame(state) {
 /**
  * Returns the current minimum clue value.
  * @param  {State} state
- * @return {number}
+ * @returns {number}
  */
 export function minimum_clue_value(state) {
 	// -0.5 if 2 players (allows tempo clues to be given)

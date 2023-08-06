@@ -125,7 +125,7 @@ function get_own_hand(state, deck) {
  * @param  {PerformAction} action
  * @param  {number} playerIndex
  * @param  {BasicCard[]} deck
- * @return {Action}
+ * @returns {Action}
  */
 function parse_action(state, action, playerIndex, deck) {
 	const { type, target, value } = action;

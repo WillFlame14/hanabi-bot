@@ -16,7 +16,7 @@ import * as Utils from './tools/util.js';
  * @this State
  * @param {Action} 	action
  * @param {boolean} [catchup]	Whether the bot should take an action or not as a result of this action.
- * */
+ */
 export function handle_action(action, catchup = false) {
 	this.actionList.push(action);
 

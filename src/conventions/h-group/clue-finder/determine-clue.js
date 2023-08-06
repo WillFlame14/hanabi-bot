@@ -209,7 +209,7 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
  * @param {number} target 					The player index with the card.
  * @param {Card} target_card 				The card to be focused.
  * @param {Partial<ClueOptions>} [options] 	Any additional options when determining clues.
- * @returns {Clue}							The best clue (if valid), otherwise undefined.
+ * @returns {Clue | undefined}				The best clue (if valid).
  */
 export function determine_clue(state, target, target_card, options) {
 	logger.info('determining clue to target card', logCard(target_card));

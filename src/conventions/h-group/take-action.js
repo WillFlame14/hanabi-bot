@@ -19,7 +19,7 @@ import * as Utils from '../../tools/util.js';
 /**
  * Performs the most appropriate action given the current state.
  * @param {State} state
- * @return {PerformAction}
+ * @returns {PerformAction}
  */
 export function take_action(state) {
 	const { tableID } = state;

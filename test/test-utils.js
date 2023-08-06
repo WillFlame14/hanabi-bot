@@ -23,7 +23,8 @@ const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
  * @template {import ('../src/basics/State.js').State} A
  * @param {{new(...args: any[]): A}} StateClass
  * @param {string[][]} hands
- * @return {A}
+ * @param {number} level
+ * @returns {A}
  */
 export function setup(StateClass, hands, level = 1) {
 	const playerNames = names.slice(0, hands.length);

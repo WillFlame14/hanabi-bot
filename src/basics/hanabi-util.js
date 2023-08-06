@@ -46,7 +46,7 @@ export function visibleFind(state, inferringPlayerIndex, suitIndex, rank, option
  * @param {number} rank
  */
 export function baseCount(state, suitIndex, rank) {
-    return (state.play_stacks[suitIndex] >= rank ? 1 : 0) + state.discard_stacks[suitIndex][rank - 1];
+	return (state.play_stacks[suitIndex] >= rank ? 1 : 0) + state.discard_stacks[suitIndex][rank - 1];
 }
 
 /**
@@ -57,8 +57,8 @@ export function baseCount(state, suitIndex, rank) {
  * @param {number} rank
  */
 export function unknownIdentities(state, playerIndex, suitIndex, rank) {
-    const visibleCount = visibleFind(state, playerIndex, suitIndex, rank, { ignore: [playerIndex] }).length;
-    return cardCount(state.suits[suitIndex], rank) - baseCount(state, suitIndex, rank) - visibleCount;
+	const visibleCount = visibleFind(state, playerIndex, suitIndex, rank, { ignore: [playerIndex] }).length;
+	return cardCount(state.suits[suitIndex], rank) - baseCount(state, suitIndex, rank) - visibleCount;
 }
 
 /**
@@ -87,6 +87,7 @@ export function isBasicTrash(state, suitIndex, rank) {
  * @param {number} inferringPlayerIndex     The inferring player (i.e. can only infer on their own cards).
  * @param {number} suitIndex
  * @param {number} rank
+ * @param {number} [order] 					A card's order to exclude from search.
  * @param {FindOptions & {ignoreCM?: boolean}} [options]
  */
 export function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, options = {}) {
@@ -145,9 +146,9 @@ export function inStartingHand(state, card) {
  * @param  {BasicCard} card
  */
 export function unique2(state, card) {
-    const { suitIndex, rank } = card;
+	const { suitIndex, rank } = card;
 
-    return rank === 2 &&
+	return rank === 2 &&
         state.play_stacks[suitIndex] === 0 &&                                                       // play stack at 0
         visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&                      // other copy isn't visible
         !state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true }));  // not in our hand
@@ -161,26 +162,26 @@ export function unique2(state, card) {
  * @returns {number}
  */
 export function cardValue(state, card) {
-    const { suitIndex, rank } = card;
+	const { suitIndex, rank } = card;
 
-    // Unknown card in our hand, return average of possibilities
-    if (suitIndex === -1 && card instanceof Card) {
-        return card.possible.reduce((sum, curr) => sum += cardValue(state, curr), 0) / card.possible.length;
-    }
+	// Unknown card in our hand, return average of possibilities
+	if (suitIndex === -1 && card instanceof Card) {
+		return card.possible.reduce((sum, curr) => sum += cardValue(state, curr), 0) / card.possible.length;
+	}
 
-    // Basic trash, saved already, duplicate visible
-    if (isTrash(state, state.ourPlayerIndex, suitIndex, rank) || visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length > 1) {
-        return 0;
-    }
+	// Basic trash, saved already, duplicate visible
+	if (isTrash(state, state.ourPlayerIndex, suitIndex, rank) || visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length > 1) {
+		return 0;
+	}
 
-    if (isCritical(state, suitIndex, rank)) {
-        return 5;
-    }
+	if (isCritical(state, suitIndex, rank)) {
+		return 5;
+	}
 
-    if (unique2(state, card)) {
-        return 4;
-    }
+	if (unique2(state, card)) {
+		return 4;
+	}
 
-    // Next playable rank is value 4, rank 4 with nothing on the stack is value 1
-    return 5 - (rank - state.hypo_stacks[state.ourPlayerIndex][suitIndex]);
+	// Next playable rank is value 4, rank 4 with nothing on the stack is value 1
+	return 5 - (rank - state.hypo_stacks[state.ourPlayerIndex][suitIndex]);
 }

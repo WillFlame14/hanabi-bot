@@ -57,12 +57,12 @@ export class State {
 	handle_action = handle_action;
 
 	/**
-     * @param {number} tableID
-     * @param {string[]} playerNames
-     * @param {number} ourPlayerIndex
-     * @param {string[]} suits
-     * @param {boolean} in_progress
-     */
+	 * @param {number} tableID
+	 * @param {string[]} playerNames
+	 * @param {number} ourPlayerIndex
+	 * @param {string[]} suits
+	 * @param {boolean} in_progress
+	 */
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress) {
 		/** @type {number} */
 		this.tableID = tableID;
@@ -149,19 +149,19 @@ export class State {
 
 	/**
 	 * @abstract
-     * @param {State} _state
-     * @param {Omit<ClueAction, "type">} _action
-     */
+	 * @param {State} _state
+	 * @param {Omit<ClueAction, "type">} _action
+	 */
 	interpret_clue(_state, _action) {
 		throw new Error('must be implemented by subclass!');
 	}
 
 	/**
 	 * @abstract
-     * @param {State} _state
-     * @param {Omit<DiscardAction, "type">} _action
-     * @param {Card} _card
-     */
+	 * @param {State} _state
+	 * @param {Omit<DiscardAction, "type">} _action
+	 * @param {Card} _card
+	 */
 	interpret_discard(_state, _action, _card) {
 		throw new Error('must be implemented by subclass!');
 	}
@@ -177,28 +177,28 @@ export class State {
 
 	/**
 	 * @abstract
-     * @param {State} _state
-     * @returns {PerformAction}
-     */
+	 * @param {State} _state
+	 * @returns {PerformAction}
+	 */
 	take_action(_state) {
 		throw new Error('must be implemented by subclass!');
 	}
 
 	/**
 	 * @abstract
-     * @param {State} _state
-     * @param {Omit<TurnAction, "type">} _action
-     */
+	 * @param {State} _state
+	 * @param {Omit<TurnAction, "type">} _action
+	 */
 	update_turn(_state, _action) {
 		throw new Error('must be implemented by subclass!');
 	}
 
 	/**
 	 * Rewinds the state to a particular action index, inserts the rewind action just before it and then replays all future moves.
-     * @param {number} action_index
-     * @param {Action} rewind_action	The rewind action to insert before the target action
-     * @param {boolean} [mistake] 		Whether the target action was a mistake
-     */
+	 * @param {number} action_index
+	 * @param {Action} rewind_action	The rewind action to insert before the target action
+	 * @param {boolean} [mistake] 		Whether the target action was a mistake
+	 */
 	rewind(action_index, rewind_action, mistake = false) {
 		this.rewinds++;
 		if (this.rewinds > 50) {
@@ -284,8 +284,8 @@ export class State {
 
 	/**
 	 * Navigates the state to the beginning of a particular turn. Must be in 'replay' mode.
-     * @param {number} turn
-     */
+	 * @param {number} turn
+	 */
 	navigate(turn) {
 		logger.highlight('greenb', `------- NAVIGATING (turn ${turn}) -------`);
 
@@ -333,9 +333,9 @@ export class State {
 	 * 
 	 * The 'enableLogs' option causes all logs from the simulated state to be printed.
 	 * Otherwise, only errors are printed from the simulated state.
-     * @param {ClueAction} action
-     * @param {{simulatePlayerIndex?: number, enableLogs?: boolean}} options
-     */
+	 * @param {ClueAction} action
+	 * @param {{simulatePlayerIndex?: number, enableLogs?: boolean}} options
+	 */
 	simulate_clue(action, options = {}) {
 		const hypo_state = /** @type {this} */ (this.minimalCopy());
 

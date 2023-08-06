@@ -1,9 +1,9 @@
-import { ACTION } from '../constants.js';
 import { Card } from '../basics/Card.js';
 import { Hand } from '../basics/Hand.js';
 import logger from './logger.js';
 
 /**
+ * @typedef {typeof import('../constants.js').ACTION} ACTION
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
@@ -89,6 +89,7 @@ function emptyCmdQueue() {
  * Deep clones an object. Does not create clones of functions.
  * @template T
  * @param {T} obj
+ * @param {number} depth 	The current nesting depth. Throws an error if this is above 15.
  * @returns {T}
  */
 export function objClone(obj, depth = 0) {
@@ -157,6 +158,8 @@ export function maxOn(arr, valueFunc) {
 
 /**
  * Checks if two objects look the same (i.e. have the same properties).
+ * @param {unknown} obj1
+ * @param {unknown} obj2
  */
 export function objEquals(obj1, obj2) {
 	if (typeof obj1 !== typeof obj2) {
@@ -205,7 +208,7 @@ export function objEquals(obj1, obj2) {
  * Transforms a CLUE into an ACTION.
  * @param  {Clue} clue
  * @param  {number} tableID
- * @return {PerformAction}
+ * @returns {PerformAction}
  */
 export function clueToAction(clue, tableID) {
 	const { type, value, target } = clue;

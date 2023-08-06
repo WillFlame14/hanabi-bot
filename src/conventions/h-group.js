@@ -19,12 +19,13 @@ export default class HGroup extends State {
 	hands = /** @type {HGroup_Hand[]} */ ([]);
 
 	/**
-     * @param {number} tableID
-     * @param {string[]} playerNames
-     * @param {number} ourPlayerIndex
-     * @param {boolean} in_progress
-     * @param {string[]} suits
-     */
+	 * @param {number} tableID
+	 * @param {string[]} playerNames
+	 * @param {number} ourPlayerIndex
+	 * @param {string[]} suits
+	 * @param {boolean} in_progress
+	 * @param {number} [level] 	The convention level (defaults to 1).
+	 */
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress, level = 1) {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
 

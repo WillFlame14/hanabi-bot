@@ -26,9 +26,9 @@ export class Hand extends Array {
 
 	/**
 	 * @param {State} state
-     * @param {number} playerIndex
-     * @param {Card[]} args
-     */
+	 * @param {number} playerIndex
+	 * @param {Card[]} args
+	 */
 	constructor(state, playerIndex, ...args) {
 		super(...args);
 
@@ -45,9 +45,9 @@ export class Hand extends Array {
 	}
 
 	/**
-     * Removes the card with the given order from the hand.
-     * @param {number} order
-     */
+	 * Removes the card with the given order from the hand.
+	 * @param {number} order
+	 */
 	removeOrder(order) {
 		const card_index = this.findIndex(c => c.order === order);
 
@@ -61,8 +61,8 @@ export class Hand extends Array {
 	}
 
 	/**
-     * Returns whether the hand is locked (i.e. every card is clued, chop moved, or an unplayable finesse AND not loaded).
-     */
+	 * Returns whether the hand is locked (i.e. every card is clued, chop moved, or an unplayable finesse AND not loaded).
+	 */
 	isLocked() {
 		return this.every(c => c.clued || c.chop_moved || (c.finessed && this.state.play_stacks[c.suitIndex] < c.rank)) && !this.isLoaded();
 	}
@@ -75,28 +75,28 @@ export class Hand extends Array {
 	}
 
 	/**
-     * Returns the card with the given order.
-     * @param {number} order
-     * @returns The card if it exists, or undefined otherwise.
-     */
+	 * Returns the card with the given order.
+	 * @param {number} order
+	 * @returns The card if it exists, or undefined otherwise.
+	 */
 	findOrder(order) {
 		return this.find(c => c.order === order);
 	}
 
 	/**
-     * Returns an array of cards matching the provided suitIndex and rank.
-     * @param {number} suitIndex
-     * @param {number} rank
-     * @param {MatchOptions} options
-     */
+	 * Returns an array of cards matching the provided suitIndex and rank.
+	 * @param {number} suitIndex
+	 * @param {number} rank
+	 * @param {MatchOptions} options
+	 */
 	findCards(suitIndex, rank, options = {}) {
 		return this.filter(c => c.matches(suitIndex, rank, options));
 	}
 
 	/**
 	 * Returns an array of cards touched by the clue.
-     * @param {BaseClue} clue
-     */
+	 * @param {BaseClue} clue
+	 */
 	clueTouched(clue) {
 		return this.filter(card => cardTouched(card, this.state.suits, clue));
 	}

@@ -1,5 +1,8 @@
-import { CLUE, ACTION } from './constants.js';
-import { Card } from './basics/Card.js';
+/**
+ * @typedef {import('./basics/Card.js').Card} Card
+ * @typedef {typeof import('./constants.js').CLUE} CLUE
+ * @typedef {typeof import('./constants.js').ACTION} ACTION
+ */
 
 /**
  * @typedef BasicCard
@@ -8,7 +11,7 @@ import { Card } from './basics/Card.js';
  */
 /**
  * @typedef BaseClue
- * @property {typeof CLUE.COLOUR | typeof CLUE.RANK} type
+ * @property {CLUE[keyof CLUE]} type
  * @property {number} value
  * 
  * @typedef {BaseClue & {target: number, result?: ClueResult}} Clue

@@ -257,9 +257,9 @@ describe('interpreting order chop move', () => {
 describe('interpreting chop moves', () => {
 	it('will interpret new focus correctly', () => {
 		const state = setup(HGroup, [
-				['xx', 'xx', 'xx', 'xx', 'xx'],
-				['b4', 'b3', 'g3', 'r3', 'r5']
-			], 4);
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'b3', 'g3', 'r3', 'r5']
+		], 4);
 
 		// Alice's slots 4 and 5 are chop moved
 		[3, 4].forEach(index => state.hands[PLAYER.ALICE][index].chop_moved = true);
@@ -273,9 +273,9 @@ describe('interpreting chop moves', () => {
 
 	it('will interpret only touching cm cards correctly', () => {
 		const state = setup(HGroup, [
-				['xx', 'xx', 'xx', 'xx', 'xx'],
-				['b4', 'b3', 'g3', 'r3', 'r5']
-			], 4);
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'b3', 'g3', 'r3', 'r5']
+		], 4);
 
 		// Alice's slots 4 and 5 are chop moved
 		[3, 4].forEach(index => state.hands[PLAYER.ALICE][index].chop_moved = true);

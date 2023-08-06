@@ -38,10 +38,10 @@ export class Card {
 	rewinded = false;								// Whether the card has ever been rewinded
 
 	/**
-     * @param {number} suitIndex
-     * @param {number} rank
-     * @param {Partial<Card>} additions
-     */
+	 * @param {number} suitIndex
+	 * @param {number} rank
+	 * @param {Partial<Card>} additions
+	 */
 	constructor(suitIndex, rank, additions = {}) {
 		this.suitIndex = suitIndex;
 		this.rank = rank;
@@ -98,10 +98,10 @@ export class Card {
 
 	/**
 	 * Checks if the card matches the provided suitIndex and rank.
-     * @param {number} suitIndex
-     * @param {number} rank
-     * @param {MatchOptions} options
-     */
+	 * @param {number} suitIndex
+	 * @param {number} rank
+	 * @param {MatchOptions} options
+	 */
 	matches(suitIndex, rank, options = {}) {
 		const id = this.identity(options);
 
@@ -122,27 +122,27 @@ export class Card {
 
 	/**
 	 * Sets the inferences/possibilities to the intersection of the existing field and the provided array of cards.
-     * @param {'possible' | 'inferred'} type
-     * @param {BasicCard[]} cards
-     */
+	 * @param {'possible' | 'inferred'} type
+	 * @param {BasicCard[]} cards
+	 */
 	intersect(type, cards) {
 		this[type] = this[type].filter(c1 => cards.some(c2 => c1.matches(c2.suitIndex, c2.rank)));
 	}
 
 	/**
 	 * Sets the inferences/possibilities to the difference of the existing field and the provided array of cards.
-     * @param {'possible' | 'inferred'} type
-     * @param {BasicCard[]} cards
-     */
+	 * @param {'possible' | 'inferred'} type
+	 * @param {BasicCard[]} cards
+	 */
 	subtract(type, cards) {
 		this[type] = this[type].filter(c1 => !cards.some(c2 => c1.matches(c2.suitIndex, c2.rank)));
 	}
 
 	/**
 	 * Sets the inferences/possibilities to the union of the existing field and the provided array of cards.
-     * @param {'possible' | 'inferred'} type
-     * @param {BasicCard[]} cards
-     */
+	 * @param {'possible' | 'inferred'} type
+	 * @param {BasicCard[]} cards
+	 */
 	union(type, cards) {
 		for (const { suitIndex, rank } of cards) {
 			if (!this[type].some(c => c.matches(suitIndex, rank))) {
