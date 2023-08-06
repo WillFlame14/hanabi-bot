@@ -1,5 +1,5 @@
 import { CLUE } from '../../../constants.js';
-import { determine_focus } from '../hanabi-logic.js';
+import { determine_focus, looksPlayable } from '../hanabi-logic.js';
 import { find_connecting } from './connecting-cards.js';
 import { isCritical, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
@@ -10,12 +10,7 @@ import * as Utils from '../../../tools/util.js';
  * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
- * 
- * @typedef FocusPossibility
- * @property {number} suitIndex
- * @property {number} rank
- * @property {Connection[]} connections
- * @property {boolean} [save]
+ * @typedef {import('../../../types.js').FocusPossibility} FocusPossibility
  */
 
 /**
@@ -162,8 +157,8 @@ function find_rank_focus(state, rank, action) {
 
 	// Play clue
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-		// Critical cards can never be given a play clue
-		if (isCritical(state, suitIndex, rank)) {
+		// Critical cards on chop can never be given a play clue
+		if (chop && isCritical(state, suitIndex, rank)) {
 			continue;
 		}
 
@@ -182,9 +177,8 @@ function find_rank_focus(state, rank, action) {
 
 			let finesses = 0;
 
-			const looksPlayable = state.hypo_stacks[giver].some(stack => stack + 1 === rank);
 			let ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-			let looksDirect = focused_card.identity({ symmetric: true }) === undefined && (looksSave || looksPlayable);
+			let looksDirect = focused_card.identity({ symmetric: true }) === undefined && (looksSave || looksPlayable(state, rank, giver, target, focused_card));
 			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 
 			while (connecting.length !== 0) {

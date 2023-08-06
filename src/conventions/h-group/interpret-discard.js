@@ -75,6 +75,30 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
 export function interpret_discard(state, action, card) {
 	const { order, playerIndex, rank, suitIndex, failed } = action;
 
+	const to_remove = [];
+	for (let i = 0; i < state.waiting_connections.length; i++) {
+		const { connections, conn_index = 0, inference, action_index } = state.waiting_connections[i];
+
+		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.card.order === order);
+		if (dc_conn_index !== -1) {
+			const { card, reacting } = connections[dc_conn_index];
+			logger.info(`discarded connecting card ${logCard(card)}, cancelling waiting connection for inference ${logCard(inference)}`);
+
+			to_remove.push(i);
+
+			// No other waiting connections exist for this
+			if (!state.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index))) {
+				const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
+				state.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects });
+				return;
+			}
+		}
+	}
+
+	if (to_remove.length > 0) {
+		state.waiting_connections = state.waiting_connections.filter((_, index) => !to_remove.includes(index));
+	}
+
 	// End early game?
 	if (state.early_game && !action.failed && !card.clued) {
 		logger.warn('ending early game from discard of', logCard(card));
@@ -84,10 +108,10 @@ export function interpret_discard(state, action, card) {
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
 	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order)))) {
 		logger.info('all inferences', card.inferred.map(c => logCard(c)));
-		const action_index = card.reasoning.pop();
-		if (action_index !== undefined && state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, card.finessed)) {
-			return;
-		}
+
+		const action_index = card.drawn_index;
+		state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, card.finessed);
+		return;
 	}
 
 	// Discarding a useful card

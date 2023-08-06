@@ -116,7 +116,7 @@ export class HGroup_Hand extends Hand {
 			return (all_crit ? rank * 5 : 0) + rank - this.state.hypo_stacks[this.playerIndex][suitIndex];
 		};
 
-		let max_dist = 0;
+		let max_dist = -1;
 
 		/** @type Card */
 		let furthest_card;

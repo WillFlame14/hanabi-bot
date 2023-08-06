@@ -9,7 +9,6 @@ import HGroup from '../../../src/conventions/h-group.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
 import logger from '../../../src/tools/logger.js';
 
-
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('other cases', () => {

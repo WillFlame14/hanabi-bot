@@ -299,8 +299,11 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 				}
 			}
 
-			const bad_save = hand_after_save.isLocked() ?
-				hand.chopValue() < cardValue(state, hand_after_save.locked_discard()) :
+			const list = state.hands[target].clueTouched(save).map(c => c.order);
+			const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, list, clue: save, target });
+
+			const bad_save = hypo_state.hands[target].isLocked() ?
+				hand.chopValue() < cardValue(state, hypo_state.hands[target].locked_discard()) :
 				hand.chopValue() < hand_after_save.chopValue();
 
 			// Do not save at 1 clue if new chop or sacrifice discard are better than old chop

@@ -191,7 +191,7 @@ export function take_action(state) {
 	}
 
 	// Playing a connecting card or playing a 5
-	if (playable_cards.length > 0 && priority <= 3) {
+	if (best_playable_card !== undefined && priority <= 3) {
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 	}
 
@@ -201,7 +201,7 @@ export function take_action(state) {
 	}
 
 	// Playable card with any priority
-	if (playable_cards.length > 0) {
+	if (best_playable_card !== undefined) {
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 	}
 

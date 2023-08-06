@@ -172,6 +172,12 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 				// Card can be further eliminated
 				if (card.inferred.length === 1 || card.possible.length === 1) {
 					const { suitIndex: suitIndex2, rank: rank2 } = card.identity({ symmetric: true, infer: true });
+
+					// Do not further eliminate on a rewinded card proven to be a different identity
+					if (playerIndex === state.ourPlayerIndex && card.possible.length > 1 && !card.matches(suitIndex2, rank2)) {
+						continue;
+					}
+
 					new_elims.push({ suitIndex: suitIndex2, rank: rank2 });
 
 					for (let i = 0; i < state.numPlayers; i++) {
@@ -189,7 +195,8 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 			return [];
 		}
 
-		let inferred_cards = visibleFind(state, playerIndex, suitIndex, rank);
+		let inferred_cards = visibleFind(state, playerIndex, suitIndex, rank).filter(c =>
+			!state.hands[state.ourPlayerIndex].some(card => card.order === c.order && card.rewinded && !card.matches(suitIndex, rank)));
 		let focus_elim = false;
 
 		if (base_count + inferred_cards.length >= total_count) {

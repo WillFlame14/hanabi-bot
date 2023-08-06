@@ -225,11 +225,19 @@ export function find_clues(state, options = {}) {
 		for (let cardIndex = hand.length - 1; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
 			const { suitIndex, rank, order, finessed } = card;
-			const duplicates = visibleFind(state, state.ourPlayerIndex, suitIndex, rank);
+
+			const duplicated = visibleFind(state, state.ourPlayerIndex, suitIndex, rank).some(c =>
+				(c.clued || c.finessed) && (c.order !== card.order));
+
+			const in_finesse = state.waiting_connections.some(w_conn => {
+				const { fake, focused_card, inference } = w_conn;
+				const matches = focused_card.identity() === undefined || focused_card.matches(inference.suitIndex, inference.rank);
+
+				return !fake && matches && suitIndex === inference.suitIndex && rank <= inference.rank;
+			});
 
 			// Ignore finessed cards (do not ignore cm'd cards), cards visible elsewhere, or cards possibly part of a finesse (that we either know for certain or in our hand)
-			if (finessed || duplicates.some(c => (c.clued || c.finessed) && (c.order !== card.order)) ||
-				state.waiting_connections.some(c => (c.focused_card.suitIndex === -1 || c.inference.suitIndex === c.focused_card.suitIndex) && suitIndex === c.inference.suitIndex && rank <= c.inference.rank)) {
+			if (finessed || duplicated || in_finesse) {
 				continue;
 			}
 

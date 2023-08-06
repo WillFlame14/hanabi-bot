@@ -79,9 +79,18 @@ import { Card } from './basics/Card.js';
  * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate'} type
  * @property {number} reacting
  * @property {Card} card
+ * @property {BasicCard} identity
  * @property {boolean} [self]
  * @property {boolean} [hidden]
  * @property {boolean} [known]
+ * 
+ * @typedef FocusPossibility
+ * @property {number} suitIndex
+ * @property {number} rank
+ * @property {Connection[]} connections
+ * @property {boolean} [save]
+ *
+ * @typedef {FocusPossibility & {fake: boolean}} SymFocusPossibility
  */
 /**
  * @typedef WaitingConnection
@@ -92,6 +101,7 @@ import { Card } from './basics/Card.js';
  * @property {{suitIndex: number, rank: number}} inference
  * @property {number} action_index
  * @property {boolean} [ambiguousPassback]
+ * @property {boolean} [fake]
  */
 /**
  * @typedef Link
