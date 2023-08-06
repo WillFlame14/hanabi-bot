@@ -216,8 +216,9 @@ export function update_turn(state, action) {
 		else {
 			card.union('inferred', inferences);
 		}
-		// TODO: update hypo stacks?
 	}
+
+	update_hypo_stacks(state);
 
 	demonstrated.forEach(({card}) => card.superposition = false);
 
