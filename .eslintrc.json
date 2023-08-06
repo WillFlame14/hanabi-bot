@@ -17,7 +17,7 @@
 	},
 	"ignorePatterns": ["src/hanabi-bot.js"],
 	"rules": {
-		"indent": ["error", "tab", { "SwitchCase": 1 }],
+		"indent": ["error", "tab", { "SwitchCase": 1, "ignoredNodes": ["ConditionalExpression"] }],
 		"no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
 		"semi": "error",
 		"eol-last": "warn",
