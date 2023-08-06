@@ -1,9 +1,7 @@
-// @ts-ignore
 import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, assertCardHasInferences, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
@@ -47,7 +45,7 @@ describe('self-finesse', () => {
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.BOB });
 
 		// Slot 2 should be g2.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['g2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['g2']);
 	});
 
 	it('interprets self-finesses correctly when giver knows less', () => {
@@ -95,7 +93,7 @@ describe('asymmetric clues', () => {
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
 		// We think we have b3 in slot 1, as a Certain Finesse. 
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][0]), ['b3'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][0], ['b3']);
 
 		// We clue 5 to Bob to save r5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.ALICE, list: [4], target: PLAYER.BOB });
@@ -137,7 +135,7 @@ describe('asymmetric clues', () => {
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.DONALD });
 
 		// Bob's slot 1 can be either g2 or y2, since he doesn't know which 1 is connecting.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.BOB][0]), ['y2', 'g2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.BOB][0], ['y2', 'g2']);
 	});
 
 	it('prefers the least number of blind plays on target', () => {
@@ -164,7 +162,7 @@ describe('asymmetric clues', () => {
 		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.DONALD });
 
 		// Bob's slot 1 must be y3, since it only requires one blind play (y3) instead of two (g2,g3).
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.BOB][0]), ['y3'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.BOB][0], ['y3']);
 	});
 
 	it('includes the correct interpretation, even if it requires more blind plays', () => {
@@ -191,7 +189,7 @@ describe('asymmetric clues', () => {
 		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.DONALD });
 
 		// Although y3 should still be preferred, the correct inference is g2 -> g3 double self-finesse.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.BOB][0]), ['g2','y3'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.BOB][0], ['g2','y3']);
 	});
 
 	it('connects when a card plays early', () => {
@@ -215,7 +213,7 @@ describe('asymmetric clues', () => {
 		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.CATHY });
 
 		// The clued card is likely g3 or y3, since that requires the least number of blind plays.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.CATHY][2]), ['y3', 'g3'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.CATHY][2], ['y3', 'g3']);
 
 		// Cathy gives a 5 Save to Donald.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.CATHY, list: [12], target: PLAYER.DONALD });
@@ -232,6 +230,6 @@ describe('asymmetric clues', () => {
 		state.handle_action({ type: 'turn', num: 6, currentPlayerIndex: PLAYER.BOB });
 
 		// y3 should be known, since y2 played before g1 played.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.CATHY][2]), ['y3'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.CATHY][2], ['y3']);
 	});
 });

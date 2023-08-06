@@ -1,10 +1,8 @@
-// @ts-ignore
 import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
 import { CLUE } from '../../../src/constants.js';
-import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, assertCardHasInferences, setup } from '../../test-utils.js';
 import HGroup from '../../../src/conventions/h-group.js';
 
 import logger from '../../../src/tools/logger.js';
@@ -25,8 +23,8 @@ describe('good touch principle', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1], target: PLAYER.ALICE, giver: PLAYER.BOB });
 
 		// Our slot 5 should be p5, and our slot 4 should have no inferences.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][4]), ['p5'].map(expandShortCard));
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][3]), [].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['p5']);
+		assertCardHasInferences(state.hands[PLAYER.ALICE][3], []);
 	});
 
 	it('eliminates from focus correctly (direct save)', () => {
@@ -45,9 +43,9 @@ describe('good touch principle', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
 
 		// Our slot 5 should be g4, and our slots 2 and 3 should have no inferences.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][4]), ['g4'].map(expandShortCard));
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][3]), [].map(expandShortCard));
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), [].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['g4']);
+		assertCardHasInferences(state.hands[PLAYER.ALICE][3], []);
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], []);
 	});
 
 	it('eliminates from focus (indirect)', () => {
@@ -68,16 +66,16 @@ describe('good touch principle', () => {
 		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
 
 		// The two 4's in Alice's hand should be inferred y4,b4.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['y4', 'b4'].map(expandShortCard));
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][4]), ['y4', 'b4'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['y4', 'b4']);
+		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['y4', 'b4']);
 
 		// Cathy clues 4 to Bob, touching b4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [8], target: PLAYER.BOB, giver: PLAYER.CATHY });
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
 		// Aice's slot 5 should be y4 only, and slot 3 should have no inferences.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), []);
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][4]), ['y4'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], []);
+		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['y4']);
 	});
 
 	it('generates a link from GTP', () => {
@@ -236,7 +234,7 @@ describe('good touch principle', () => {
 
 		// Link should be gone now, Alice's new slot 5 should be p2.
 		assert.deepEqual(state.hands[PLAYER.ALICE].links, []);
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][4]), ['p2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['p2']);
 	});
 
 	it('plays from focus (no link)', () => {

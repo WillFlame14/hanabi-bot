@@ -1,4 +1,10 @@
+import { strict as assert } from 'node:assert';
 import * as Utils from '../src/tools/util.js';
+import { logCard } from '../src/tools/log.js';
+
+/**
+ * @typedef {} Card
+ */
 
 export const COLOUR = /** @type {const} */ ({
 	RED: 0,
@@ -59,8 +65,15 @@ export function expandShortCard(short) {
 }
 
 /**
- * @param  {import('../src/basics/Card.js').Card} card [description]
+ * @param  {import('../src/basics/Card.js').Card} card 	The card to check inferences of.
+ * @param  {string[]} inferences 						The set of inferences to compare to.
  */
-export function getRawInferences(card) {
-	return card.inferred.map(c => c.raw());
+export function assertCardHasInferences(card, inferences) {
+	const message = `Differing inferences. Expected ${inferences}, got ${card.inferred.map(c => logCard(c))}`;
+
+	assert.ok(card.inferred.length === inferences.length && inferences.every(inf => {
+		const { suitIndex, rank } = expandShortCard(inf);
+
+		return card.inferred.some(c => c.matches(suitIndex, rank));
+	}), message);
 }

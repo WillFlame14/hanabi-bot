@@ -1,9 +1,6 @@
-// @ts-ignore
-import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, setup, getRawInferences, expandShortCard } from '../../test-utils.js';
+import { COLOUR, PLAYER, setup, assertCardHasInferences, expandShortCard } from '../../test-utils.js';
 import HGroup from '../../../src/conventions/h-group.js';
 import { CLUE } from '../../../src/constants.js';
 
@@ -23,7 +20,7 @@ describe('play clue', () => {
 
 		// Target card should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][1];
-		assert.deepEqual(getRawInferences(targetCard), ['r1'].map(expandShortCard));
+		assertCardHasInferences(targetCard, ['r1']);
 	});
 
 	it('can interpret a colour play clue touching multiple cards', () => {
@@ -37,7 +34,7 @@ describe('play clue', () => {
 
 		// Bob's slot 1 should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][0];
-		assert.deepEqual(getRawInferences(targetCard), ['r1'].map(expandShortCard));
+		assertCardHasInferences(targetCard, ['r1']);
 	});
 
 	it('can interpret a colour play clue touching chop', () => {
@@ -51,7 +48,7 @@ describe('play clue', () => {
 
 		// Bob's slot 5 (chop) should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][4];
-		assert.deepEqual(getRawInferences(targetCard), ['r1'].map(expandShortCard));
+		assertCardHasInferences(targetCard, ['r1']);
 	});
 
 	it('can interpret a colour play clue on a partial stack', () => {
@@ -67,7 +64,7 @@ describe('play clue', () => {
 
 		// Bob's slot 3 should be inferred as r3.
 		const targetCard = state.hands[PLAYER.BOB][2];
-		assert.deepEqual(getRawInferences(targetCard), ['r3'].map(expandShortCard));
+		assertCardHasInferences(targetCard, ['r3']);
 	});
 
 	it('can interpret a colour play clue through someone\'s hand', () => {
@@ -87,7 +84,7 @@ describe('play clue', () => {
 
 		// Bob's slot 3 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][2];
-		assert.deepEqual(getRawInferences(targetCard), ['r2'].map(expandShortCard));
+		assertCardHasInferences(targetCard, ['r2']);
 	});
 
 	it('can interpret a self-connecting colour play clue', () => {
@@ -106,6 +103,6 @@ describe('play clue', () => {
 
 		// Bob's slot 1 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][0];
-		assert.deepEqual(getRawInferences(targetCard), ['r2'].map(expandShortCard));
+		assertCardHasInferences(targetCard, ['r2']);
 	});
 });

@@ -1,9 +1,7 @@
-// @ts-ignore
 import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../../test-utils.js';
+import { COLOUR, PLAYER, assertCardHasInferences, setup } from '../../test-utils.js';
 import HGroup from '../../../src/conventions/h-group.js';
 import { CLUE } from '../../../src/constants.js';
 import logger from '../../../src/tools/logger.js';
@@ -31,7 +29,7 @@ describe('ambiguous finesse', () => {
 		state.update_turn(state, { type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 2 should be [g1].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][0]), ['g1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][0], ['g1']);
 	});
 
 	it('understands an ambiguous finesse with a self component', () => {
@@ -100,7 +98,7 @@ describe('ambiguous finesse', () => {
 
 		// Alice's slot 1 has now moved to slot 2.
 		assert.equal(state.hands[PLAYER.ALICE][1].finessed, true);
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['r1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['r1']);
 	});
 
 	it('prefers hidden prompt over ambiguous', () => {
@@ -122,6 +120,6 @@ describe('ambiguous finesse', () => {
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.DONALD });
 
 		// Bob's slot 1 can be either g3 or y3, since he doesn't know which 1 is connecting.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.BOB][0]), ['y3', 'g3'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.BOB][0], ['y3', 'g3']);
 	});
 });

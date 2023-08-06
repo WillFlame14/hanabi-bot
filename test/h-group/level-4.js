@@ -1,9 +1,7 @@
-// @ts-ignore
 import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, assertCardHasInferences, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import * as Utils from '../../src/tools/util.js';
@@ -268,7 +266,7 @@ describe('interpreting chop moves', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,3], target: PLAYER.ALICE });
 
 		// Alice's slot 2 should be p1.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['p1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['p1']);
 	});
 
 	it('will interpret only touching cm cards correctly', () => {
@@ -284,6 +282,6 @@ describe('interpreting chop moves', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,1], target: PLAYER.ALICE });
 
 		// Alice's slot 4 should be p1.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][3]), ['p1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['p1']);
 	});
 });

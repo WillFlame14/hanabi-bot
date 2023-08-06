@@ -1,9 +1,7 @@
-// @ts-ignore
 import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, assertCardHasInferences, setup } from '../test-utils.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import HGroup from '../../src/conventions/h-group.js';
 import * as Utils from '../../src/tools/util.js';
@@ -74,7 +72,7 @@ describe('playing 1s in the correct order', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [6, 8], target: PLAYER.BOB });
 
 		// Alice's slot 2 should still be any 1 (not prompted to be r1).
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['r1', 'y1', 'g1', 'b1', 'p1']);
 	});
 });
 
@@ -117,7 +115,7 @@ describe('sarcastic discard', () => {
 		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 4 should be y1 now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][3]), ['y1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['y1']);
 	});
 
 	it('prefers playing if that would reveal duplicate is trash in endgame', () => {

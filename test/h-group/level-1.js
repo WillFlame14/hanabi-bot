@@ -1,10 +1,8 @@
-// @ts-ignore
 import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
 import { ACTION, CLUE } from '../../src/constants.js';
-import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, assertCardHasInferences, expandShortCard, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 import * as Utils from '../../src/tools/util.js';
@@ -66,7 +64,7 @@ describe('save clue', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [8,9,10], target: PLAYER.CATHY, giver: PLAYER.BOB });
 
 		// g2 is visible in Donald's hand. Other than that, the saved 2 can be any 2.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.CATHY][3]), ['r2', 'y2', 'b2', 'p2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.CATHY][3], ['r2', 'y2', 'b2', 'p2']);
 	});
 
 	it('does not finesse from a 2 Save', () => {
@@ -131,7 +129,7 @@ describe('sacrifice discards', () => {
 
 		// Alice knows all of her cards.
 		['r4', 'b4', 'r5', 'b2', 'y5'].forEach((short, index) => {
-			state.hands[PLAYER.ALICE][index].intersect('inferred', [short].map(expandShortCard));
+			state.hands[PLAYER.ALICE][index].intersect('inferred', [expandShortCard(short)]);
 		});
 
 		// All cards are crit.

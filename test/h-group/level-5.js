@@ -1,9 +1,7 @@
-// @ts-ignore
 import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, assertCardHasInferences, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
@@ -23,7 +21,7 @@ describe('ambiguous clues', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
 
 		// Alice's slot 2 should be [g1,g2].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['g1', 'g2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['g1', 'g2']);
 		assert.equal(state.hands[PLAYER.CATHY][0].reasoning.length, 1);
 
 		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
@@ -31,7 +29,7 @@ describe('ambiguous clues', () => {
 		state.update_turn(state, { type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 2 should just be g1 now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['g1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['g1']);
 	});
 
 	it('understands a self-connecting play clue', () => {
@@ -56,7 +54,7 @@ describe('ambiguous clues', () => {
 		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.BOB });
 
 		// Alice's slot 4 (used to be slot 3) should just be g2 now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][3]), ['g2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['g2']);
 	});
 
 	it('understands a delayed finesse', () => {
@@ -78,7 +76,7 @@ describe('ambiguous clues', () => {
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.CATHY });
 
 		// Alice's slot 3 should be [r3,r4].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r3', 'r4'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
 		// Cathy plays r2.
 		state.handle_action({ type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 2, playerIndex: PLAYER.CATHY });
@@ -87,7 +85,7 @@ describe('ambiguous clues', () => {
 		state.update_turn(state, { type: 'turn', num: 3, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 3 should still be [r3,r4] to allow for the possibility of a hidden finesse.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r3', 'r4'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
 		// Alice discards.
 		state.handle_action({ type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
@@ -102,7 +100,7 @@ describe('ambiguous clues', () => {
 		state.update_turn(state, { type: 'turn', num: 6, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 4 (used to be slot 3) should be just [r4] now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r4'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r4']);
 	});
 
 	it('understands a fake delayed finesse', () => {
@@ -139,7 +137,7 @@ describe('ambiguous clues', () => {
 		state.update_turn(state, { type: 'turn', num: 6, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 4 (used to be slot 3) should be just [r2] now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r2']);
 	});
 });
 

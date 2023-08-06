@@ -1,9 +1,7 @@
-// @ts-ignore
 import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, assertCardHasInferences, setup } from '../../test-utils.js';
 import HGroup from '../../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../../src/constants.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
@@ -34,7 +32,7 @@ describe('hidden finesse', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
 
 		// Alice's slot 3 should be [r3,g3].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r3', 'g3'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'g3']);
 
 		// Cathy plays r2 thinking it is a prompt.
 		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
@@ -43,7 +41,7 @@ describe('hidden finesse', () => {
 		state.update_turn(state, { type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 3 should still be [r3,g3] to allow for the possibility of a hidden finesse.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r3', 'g3'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'g3']);
 	});
 
 	it('understands a fake hidden finesse (rank)', () => {
@@ -84,7 +82,7 @@ describe('hidden finesse', () => {
 		state.update_turn(state, { type: 'turn', num: 5, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 3 should just be r3 now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r3'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r3']);
 	});
 
 	it('plays into a hidden finesse', () => {
@@ -117,7 +115,7 @@ describe('hidden finesse', () => {
 		state.handle_action({ type: 'turn', num: 5, currentPlayerIndex: PLAYER.BOB });
 
 		// Our slot 1 (now slot 2) should be r1.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['r1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['r1']);
 	});
 });
 
@@ -133,7 +131,7 @@ describe('layered finesse', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
 
 		// Alice's slot 3 should be [y1,y2].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['y1', 'y2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['y1', 'y2']);
 
 		// Cathy plays g1 thinking it is y1.
 		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
@@ -155,7 +153,7 @@ describe('layered finesse', () => {
 		state.update_turn(state, { type: 'turn', num: 5, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 4 (used to be slot 3) should be y2 now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][3]), ['y2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['y2']);
 	});
 
 	it('understands playing into a layered finesse', () => {
@@ -169,7 +167,7 @@ describe('layered finesse', () => {
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
 
 		// Alice's slot 1 should be [y1].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][0]), ['y1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][0], ['y1']);
 
 		// Alice plays slot 1, but it is actually g1!
 		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.ALICE });
@@ -177,7 +175,7 @@ describe('layered finesse', () => {
 		state.handle_action({ type: 'draw', order: 16, playerIndex: PLAYER.ALICE, suitIndex: -1, rank: -1 });
 
 		// Alice's slot 2 should be [y1] now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['y1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['y1']);
 	});
 
 	it('does not try giving layered finesses on the same card', () => {
@@ -219,11 +217,11 @@ describe('layered finesse', () => {
 
 		// Alice's slot 2 (the yellow card) should be finessed as y1.
 		assert.equal(state.hands[PLAYER.ALICE][1].finessed, true);
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['y1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['y1']);
 
 		// Alice's slot 3 should be finessed as the missing r1.
 		assert.equal(state.hands[PLAYER.ALICE][2].finessed, true);
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r1']);
 	});
 
 	it('gracefully handles clues that reveal layered finesses (matching)', () => {
@@ -252,11 +250,11 @@ describe('layered finesse', () => {
 
 		// Alice's slot 2 should be finessed as [y1, g1, b2, p1].
 		assert.equal(state.hands[PLAYER.ALICE][1].finessed, true);
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['y1', 'g1', 'b2', 'p1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['y1', 'g1', 'b2', 'p1']);
 
 		// Alice's slot 3 should be finessed as the missing r1.
 		assert.equal(state.hands[PLAYER.ALICE][2].finessed, true);
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r1']);
 	});
 
 	it('plays correctly into layered finesses with self-connecting cards', () => {
@@ -290,7 +288,7 @@ describe('layered finesse', () => {
 		state.handle_action({ type: 'draw', order: 17, suitIndex: -1, rank: -1, playerIndex: PLAYER.ALICE });
 
 		// y1 should be in slot 3 now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['y1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['y1']);
 	});
 
 	it('understands a clandestine finesse', () => {
@@ -305,14 +303,14 @@ describe('layered finesse', () => {
 		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
 
 		// Alice's slot 3 should be [g2,r2].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r2', 'g2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r2', 'g2']);
 
 		// Cathy plays g1 thinking it is r1.
 		state.handle_action({ type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.GREEN, rank: 1 });
 		state.update_turn(state, { type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 3 should still be [g2,r2] to allow for the possibility of a clandestine finesse.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r2', 'g2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r2', 'g2']);
 
 		// Alice discards.
 		state.handle_action({ type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
@@ -329,7 +327,7 @@ describe('layered finesse', () => {
 		state.update_turn(state, { type: 'turn', num: 5, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 4 (used to be 3) should just be r2 now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][3]), ['r2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
 	});
 
 	it('understands a queued finesse', () => {
@@ -344,14 +342,14 @@ describe('layered finesse', () => {
 		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
 
 		// Alice's slot 1 should be [g1].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][0]), ['g1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][0], ['g1']);
 
 		// Cathy clues 2 to Bob.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [8], target: PLAYER.BOB });
 		state.update_turn(state, { type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 2 should be [r1].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['r1'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['r1']);
 
 		// Alice should play slot 1 first.
 		const action = take_action(state);
@@ -378,7 +376,7 @@ describe('layered finesse', () => {
 		state.update_turn(state, { type: 'turn', num: 3, currentPlayerIndex: PLAYER.ALICE });
 
 		// Alice's slot 2 should still be [r1, r2].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['r1', 'r2'].map(expandShortCard));
+		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['r1', 'r2']);
 	});
 
 	it('plays queued finesses in the right order', () => {
