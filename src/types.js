@@ -1,13 +1,12 @@
-// @ts-nocheck
-
 import { CLUE, ACTION } from './constants.js';
 import { Card } from './basics/Card.js';
 
 /**
  * @typedef BasicCard
  * @property {number} suitIndex
- * @property {number} rank 
- * 
+ * @property {number} rank
+ */
+/**
  * @typedef BaseClue
  * @property {typeof CLUE.COLOUR | typeof CLUE.RANK} type
  * @property {number} value
@@ -15,7 +14,8 @@ import { Card } from './basics/Card.js';
  * @typedef {BaseClue & {target: number, result?: ClueResult}} Clue
  * @typedef {Clue & {playable: boolean, cm: Card[]}} SaveClue
  * @typedef {Clue & {urgent: boolean, trash: boolean}} FixClue
- * 
+ */
+/**
  * @typedef ClueResult
  * @property {number} elim
  * @property {number} new_touched
@@ -24,7 +24,8 @@ import { Card } from './basics/Card.js';
  * @property {number} finesses
  * @property {number} remainder
  * @property {({playerIndex: number, card: Card})[]} playables
- * 
+ */
+/**
  * @typedef StatusAction
  * @property {'status'} type
  * @property {number}   clues
@@ -65,13 +66,15 @@ import { Card } from './basics/Card.js';
  * @property {any}          votes
  * 
  * @typedef {StatusAction | TurnAction | ClueAction | DrawAction | DiscardAction | PlayAction | GameOverAction | IdentifyAction | IgnoreAction | FinesseAction} Action
- * 
+ */
+/**
  * @typedef PerformAction
  * @property {number} tableID
  * @property {ACTION[keyof ACTION]} type
  * @property {number} target
  * @property {number} [value]
- * 
+ */
+/**
  * @typedef Connection
  * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate'} type
  * @property {number} reacting
@@ -88,7 +91,8 @@ import { Card } from './basics/Card.js';
  * @property {boolean} [save]
  *
  * @typedef {FocusPossibility & {fake: boolean}} SymFocusPossibility
- * 
+ */
+/**
  * @typedef WaitingConnection
  * @property {Connection[]} connections
  * @property {number} giver
@@ -98,7 +102,8 @@ import { Card } from './basics/Card.js';
  * @property {number} action_index
  * @property {boolean} [ambiguousPassback]
  * @property {boolean} [fake]
- * 
+ */
+/**
  * @typedef Link
  * @property {Card[]} cards
  * @property {BasicCard[]} identities

@@ -1,19 +1,48 @@
 {
-    "env": {
-        "node": true,
-        "commonjs": true,
-        "es2021": true
-    },
-    "extends": "eslint:recommended",
-    "parserOptions": {
-        "ecmaVersion": "latest",
-        "sourceType": "module"
-    },
-    "rules": {
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-        "semi": "error",
-        "eol-last": "warn",
-        "no-trailing-spaces": ["warn", { "ignoreComments": true }],
-        "prefer-const": "warn"
-    }
+	"env": {
+		"node": true,
+		"commonjs": true,
+		"es2021": true
+	},
+	"plugins": [
+		"jsdoc"
+	],
+	"extends": [
+		"eslint:recommended",
+		"plugin:jsdoc/recommended"
+	],
+	"parserOptions": {
+		"ecmaVersion": "latest",
+		"sourceType": "module"
+	},
+	"ignorePatterns": ["src/hanabi-bot.js"],
+	"rules": {
+		"indent": ["error", "tab", { "SwitchCase": 1, "ignoredNodes": ["ConditionalExpression"] }],
+		"no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+		"semi": "error",
+		"eol-last": "warn",
+		"no-trailing-spaces": ["warn", { "ignoreComments": true }],
+		"prefer-const": "warn",
+		// JSDoc rules are conservative, to avoid false positives
+		"jsdoc/require-jsdoc": "off",
+		"jsdoc/require-property-description": "off",
+		"jsdoc/require-param-description": "off",
+		"jsdoc/require-returns-description": "off",
+		"jsdoc/require-returns": "off",
+		"jsdoc/require-returns-type": "off",
+		"jsdoc/tag-lines": "off",
+		// Also marks variables used in JSDoc as used
+		"jsdoc/no-undefined-types": "warn",
+		// Stop warning on duplicate property names in long comments
+		"jsdoc/check-property-names": "off",
+		// Unfortunately the JSDoc plugin does not recognize some types
+		"jsdoc/valid-types": "off"
+	},
+	"settings": {
+		"jsdoc": {
+			"tagNamePreference": {
+				"augments": "extends"
+			}
+		}
+	}
 }

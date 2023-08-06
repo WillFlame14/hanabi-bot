@@ -1,0 +1,29 @@
+{
+	"editor.insertSpaces": false,
+	"editor.tabSize": 4,
+	"editor.detectIndentation": false,
+	"eslint.format.enable": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": true
+	},
+	// Never trim trailing whitespace in js files, because we allow trailing
+	// whitespace in comments
+	"[javascript]": {
+		"files.trimTrailingWhitespace": false
+	},
+	"[typescript]": {
+		"files.trimTrailingWhitespace": false
+	},
+	// Json files should indent according to the existing format.
+	// NEVER format on save
+	"[json]": {
+		"editor.detectIndentation": true,
+		"editor.formatOnSave": false
+	},
+	"[jsonc]": {
+		"editor.detectIndentation": true,
+		"editor.formatOnSave": false
+	},
+	// Disable default javascript formatter, just to be safe
+	"javascript.format.enable": false,
+}
