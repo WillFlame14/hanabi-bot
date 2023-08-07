@@ -15,10 +15,10 @@ describe('self-finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g3', 'g2', 'g4', 'r4', 'g3'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], 2);
-
-		state.play_stacks = [1, 3, 0, 1, 2];
-		state.hypo_stacks = Array(3).fill([1, 3, 0, 1, 2]);
+		], {
+			level: 2,
+			play_stacks: [1, 3, 0, 1, 2]
+		});
 
 		// Bob clues Cathy green, touching slot 1.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [14], target: PLAYER.CATHY });
@@ -33,7 +33,7 @@ describe('self-finesse', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], 2);
+		], { level: 2 });
 
 		// Bob clues Alice 2, touching slot 2.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
@@ -53,7 +53,7 @@ describe('self-finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g3', 'r1', 'g4', 'b1', 'g3'],
 			['g1', 'g2', 'r5', 'y3', 'p3']
-		], 2);
+		], { level: 2 });
 
 		// Alice clues Bob 1, touching r1 and b1.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6,8], target: PLAYER.BOB });
@@ -78,11 +78,10 @@ describe('asymmetric clues', () => {
 			['b2', 'b4', 'r4', 'r5'],
 			['g4', 'y3', 'r4', 'p2'],
 			['g3', 'g2', 'p3', 'b3']
-		], 2);
-
-		// b1 has been played. We hold a b2 in our hand.
-		state.play_stacks = [0, 0, 0, 1, 0];
-		state.hypo_stacks = Array(4).fill([0, 0, 0, 1, 0]);
+		], {
+			level: 2,
+			play_stacks: [0, 0, 0, 1, 0]	// b1 has been played. We hold a b2 in our hand.
+		});
 
 		// Cathy clues blue to Donald, finessing b2.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.BLUE }, giver: PLAYER.CATHY, list: [12], target: PLAYER.DONALD });
@@ -124,7 +123,7 @@ describe('asymmetric clues', () => {
 			['g2', 'b4', 'g3', 'r3'],
 			['g4', 'y3', 'r4', 'p2'],
 			['g1', 'g5', 'y1', 'b4']
-		], 2);
+		], { level: 2 });
 
 		// Bob clues 1 to Donald.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [13,15], target: PLAYER.DONALD });
@@ -144,10 +143,10 @@ describe('asymmetric clues', () => {
 			['y3', 'b2', 'y4', 'r3'],
 			['g4', 'y3', 'r4', 'p2'],
 			['g1', 'y2', 'y5', 'b4']
-		], 2);
-
-		// y1 is played.
-		state.play_stacks = [0, 1, 0, 0, 0];
+		], {
+			level: 2,
+			play_stacks: [0, 1, 0, 0, 0]	// y1 is played.
+		});
 
 		// Alice clues yellow to Donald, getting y2.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.ALICE, list: [13,14], target: PLAYER.DONALD });
@@ -171,10 +170,10 @@ describe('asymmetric clues', () => {
 			['g2', 'g3', 'g4', 'r3'],
 			['g4', 'y3', 'r4', 'p2'],
 			['g1', 'y2', 'y5', 'b4']
-		], 2);
-
-		// y1 is played.
-		state.play_stacks = [0, 1, 0, 0, 0];
+		], {
+			level: 2,
+			play_stacks: [0, 1, 0, 0, 0]	// y1 is played.
+		});
 
 		// Alice clues yellow to Donald, getting y2.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.ALICE, list: [13,14], target: PLAYER.DONALD });
@@ -198,7 +197,7 @@ describe('asymmetric clues', () => {
 			['p5', 'y4', 'r1', 'b3'],
 			['p1', 'p2', 'y3', 'y1'],
 			['g1', 'g5', 'y1', 'b5']
-		], 2);
+		], { level: 2 });
 
 		// Donald clues 2 to Alice, touching slot 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.DONALD, list: [0], target: PLAYER.ALICE });

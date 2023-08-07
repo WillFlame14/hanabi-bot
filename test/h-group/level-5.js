@@ -15,7 +15,7 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
 		// Bob clues Alice green, touching slot 2.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
@@ -37,7 +37,7 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g3', 'b3', 'r2', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
 		// Bob clues Alice 1, touching slot 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1], target: PLAYER.ALICE });
@@ -62,10 +62,10 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p4', 'r4', 'g4', 'r5', 'b4'],
 			['r3', 'b3', 'r2', 'y3', 'p3']
-		], 5);
-
-		state.play_stacks = [1, 0, 1, 1, 0];
-		state.hypo_stacks = Array(3).fill([1, 0, 1, 1, 0]);
+		], {
+			level: 5,
+			play_stacks: [1, 0, 1, 1, 0]
+		});
 
 		// Alice clues 2 to Cathy.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
@@ -108,7 +108,7 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p4', 'r4', 'g4', 'r5', 'b4'],
 			['r2', 'b3', 'r1', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
 		// Alice clues 1 to Cathy.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
@@ -147,7 +147,7 @@ describe('guide principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r2', 'g4', 'r5', 'b4'],
 			['r4', 'r3', 'b3', 'y3', 'b5']
-		], 5);
+		], { level: 5 });
 
 		// Giving 3 to Cathy should be unsafe since b5 will be discarded.
 		assert.equal(clue_safe(state, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);

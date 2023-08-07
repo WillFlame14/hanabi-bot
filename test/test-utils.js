@@ -1,9 +1,18 @@
 import { strict as assert } from 'node:assert';
 import * as Utils from '../src/tools/util.js';
 import { logCard } from '../src/tools/log.js';
+import { card_elim } from '../src/basics.js';
+import { cardCount } from '../src/variants.js';
 
 /**
- * @typedef {} Card
+ * @typedef {import ('../src/basics/State.js').State} State
+ * 
+ * @typedef SetupOptions
+ * @property {number} level
+ * @property {number[]} play_stacks
+ * @property {string[]} discarded
+ * @property {number} clue_tokens
+ * @property {(state: State) => void} init
  */
 
 export const COLOUR = /** @type {const} */ ({
@@ -26,16 +35,16 @@ const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
 const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
 
 /**
- * @template {import ('../src/basics/State.js').State} A
+ * @template {State} A
  * @param {{new(...args: any[]): A}} StateClass
  * @param {string[][]} hands
- * @param {number} level
+ * @param {Partial<SetupOptions>} options
  * @returns {A}
  */
-export function setup(StateClass, hands, level = 1) {
+export function setup(StateClass, hands, options = {}) {
 	const playerNames = names.slice(0, hands.length);
 
-	const state = new StateClass(-1, playerNames, 0, suits, false, level);
+	const state = new StateClass(-1, playerNames, 0, suits, false, options.level ?? 1);
 	Utils.globalModify({state});
 
 	let orderCounter = 0;
@@ -51,6 +60,57 @@ export function setup(StateClass, hands, level = 1) {
 		}
 	}
 
+	/** @param {State} new_state */
+	const init_state = (new_state) => {
+		if (options.play_stacks) {
+			new_state.play_stacks = options.play_stacks;
+			for (let i = 0; i < new_state.numPlayers; i++) {
+				new_state.hypo_stacks[i] = options.play_stacks.slice();
+			}
+		}
+
+		// Initialize discard stacks
+		for (const short of options.discarded ?? []) {
+			const { suitIndex, rank } = expandShortCard(short);
+
+			new_state.discard_stacks[suitIndex][rank - 1]++;
+			console.log('adding to discard stacks', suitIndex, rank);
+
+			// Card is now definitely known to everyone - eliminate
+			for (let i = 0; i < new_state.numPlayers; i++) {
+				card_elim(new_state, i, suitIndex, rank);
+				new_state.hands[i].refresh_links();
+			}
+
+			// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
+			if (new_state.discard_stacks[suitIndex][rank - 1] === cardCount(new_state.suits[suitIndex], rank) && new_state.max_ranks[suitIndex] > rank - 1) {
+				new_state.max_ranks[suitIndex] = rank - 1;
+			}
+		}
+
+		new_state.clue_tokens = options.clue_tokens ?? 8;
+
+		if (options.init) {
+			options.init(new_state);
+		}
+	}
+
+	init_state(state);
+	console.log('reading dc stacks', state.discard_stacks[2]);
+
+	/** @this {State} */
+	function injectBlank() {
+		this.createBlankDefault = this.createBlank;
+		this.createBlank = function () {
+			const new_state = this.createBlankDefault();
+			init_state(new_state);
+			injectBlank.bind(new_state)();
+			return new_state;
+		}
+	}
+
+	// Inject initialize statements into createBlank
+	injectBlank.bind(state)();
 	return state;
 }
 

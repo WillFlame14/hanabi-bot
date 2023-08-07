@@ -15,7 +15,7 @@ describe('ambiguous finesse', () => {
 			['r4', 'g2', 'g4', 'r5', 'b4'],
 			['r1', 'b3', 'r2', 'y3', 'p3'],
 			['g1', 'b4', 'y5', 'y2', 'p4'],
-		], 5);
+		], { level: 5 });
 
 		// Cathy clues Bob green.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.CATHY, list: [8], target: PLAYER.BOB });
@@ -37,7 +37,7 @@ describe('ambiguous finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'g2', 'g4', 'r5', 'b4'],
 			['r1', 'b3', 'r2', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
 		// Bob clues Alice 2, touching slot 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
@@ -56,7 +56,7 @@ describe('ambiguous finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'g2', 'g4', 'r5', 'b4'],
 			['r1', 'b1', 'r2', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
 		// Bob clues Alice 3, touching slot 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
@@ -76,7 +76,7 @@ describe('ambiguous finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'b5', 'r3', 'y5', 'p4'],
 			['r4', 'g2', 'g4', 'r5', 'b4']
-		], 5);
+		], { level: 5 });
 
 		// Cathy clues Bob 3, touching r3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
@@ -107,9 +107,10 @@ describe('ambiguous finesse', () => {
 			['g3', 'b4', 'g4', 'r3'],
 			['g4', 'y3', 'r4', 'p2'],
 			['g2', 'y2', 'g5', 'b2']
-		], 5);
-
-		state.play_stacks = [0, 1, 1, 0, 0];
+		], {
+			level: 5,
+			play_stacks: [0, 1, 1, 0, 0]
+		});
 
 		// Bob clues 2 to Donald.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [12,14,15], target: PLAYER.DONALD });

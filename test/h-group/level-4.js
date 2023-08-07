@@ -18,9 +18,10 @@ describe('trash chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r1', 'b4']
-		], 4);
-
-		state.play_stacks = [2, 2, 2, 2, 2];
+		], {
+			level: 4,
+			play_stacks: [2, 2, 2, 2, 2]
+		});
 
 		const { save_clues } = find_clues(state);
 		const bob_save = save_clues[PLAYER.BOB];
@@ -33,9 +34,10 @@ describe('trash chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'b1', 'r1', 'b4']
-		], 4);
-
-		state.play_stacks = [2, 2, 2, 2, 2];
+		], {
+			level: 4,
+			play_stacks: [2, 2, 2, 2, 2]
+		});
 
 		const { save_clues } = find_clues(state);
 		const bob_save = save_clues[PLAYER.BOB];
@@ -48,9 +50,10 @@ describe('trash chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'b1', 'b4', 'g1']
-		], 4);
-
-		state.play_stacks = [2, 2, 2, 2, 2];
+		], {
+			level: 4,
+			play_stacks: [2, 2, 2, 2, 2]
+		});
 
 		const { save_clues } = find_clues(state);
 		assert.equal(save_clues[PLAYER.BOB], undefined);
@@ -60,9 +63,10 @@ describe('trash chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'b1', 'g4', 'g4']
-		], 4);
-
-		state.play_stacks = [2, 2, 2, 2, 2];
+		], {
+			level: 4,
+			play_stacks: [2, 2, 2, 2, 2]
+		});
 
 		const { save_clues } = find_clues(state);
 		assert.equal(save_clues[PLAYER.BOB], undefined);
@@ -72,9 +76,10 @@ describe('trash chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'b1', 'r1', 'g5']
-		], 4);
-
-		state.play_stacks = [2, 2, 2, 2, 2];
+		], {
+			level: 4,
+			play_stacks: [2, 2, 2, 2, 2]
+		});
 
 		const { save_clues } = find_clues(state);
 		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 5 });
@@ -84,9 +89,10 @@ describe('trash chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y4', 'g4', 'b1', 'r1', 'y2']
-		], 4);
-
-		state.play_stacks = [5, 0, 0, 2, 2];
+		], {
+			level: 4,
+			play_stacks: [5, 0, 0, 2, 2]
+		});
 
 		const { save_clues } = find_clues(state);
 		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 2 });
@@ -96,14 +102,15 @@ describe('trash chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y4', 'g4', 'b1', 'r1', 'y2']
-		], 4);
-
-		state.play_stacks = [5, 1, 0, 2, 2];
-		state.hypo_stacks = Array(2).fill([5, 1, 0, 2, 2]);
+		], {
+			level: 4,
+			play_stacks: [5, 1, 0, 2, 2]
+		});
 
 		const { play_clues, save_clues, fix_clues } = find_clues(state);
 		const playable_priorities = determine_playable_card(state, state.hands[PLAYER.ALICE].find_playables());
 		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
+
 		assert.deepEqual(urgent_actions[1], []);
 		assert.deepEqual(Utils.objPick(urgent_actions[2][0], ['type', 'value']), { type: ACTION.COLOUR, value: 1 });
 	});
@@ -114,7 +121,7 @@ describe('giving order chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r3', 'r5']
-		], 4);
+		], { level: 4 });
 
 		// Bob clues Alice 1, touching slots 3 and 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
@@ -134,7 +141,7 @@ describe('giving order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g3', 'r3', 'y3', 'y4', 'y4'],
 			['r4', 'r4', 'g4', 'r3', 'r5'],
-		], 4);
+		], { level: 4 });
 
 		// Bob clues Alice 1, touching slots 2, 3 and 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2, 3], target: PLAYER.ALICE });
@@ -153,7 +160,7 @@ describe('giving order chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'r5']
-		], 4);
+		], { level: 4 });
 
 		// Bob clues Alice 1, touching slots 3 and 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
@@ -166,10 +173,10 @@ describe('giving order chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'g4', 'r1']
-		], 4);
-
-		state.play_stacks = [2, 0, 0, 0, 0];
-		state.hypo_stacks = Array(2).fill([2, 0, 0, 0, 0]);
+		], {
+			level: 4,
+			play_stacks: [2, 0, 0, 0, 0]
+		});
 
 		// Bob clues Alice 1, touching slots 3 and 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
@@ -183,7 +190,7 @@ describe('giving order chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g5', 'g4', 'g4']
-		], 4);
+		], { level: 4 });
 
 		// Bob clues Alice 1, touching slots 3 and 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
@@ -198,7 +205,7 @@ describe('giving order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g3', 'g3', 'r2'],
 			['g4', 'r3', 'y3', 'y3', 'r2']
-		], 4);
+		], { level: 4 });
 
 		// Bob clues Cathy 2, touching r2
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [10], target: PLAYER.CATHY });
@@ -219,7 +226,7 @@ describe('interpreting order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b1', 'g1', 'r1', 'r5'],
 			['y4', 'r4', 'g4', 'r4', 'b5']
-		], 4);
+		], { level: 4 });
 
 		// Alice clues Bob 1, touching slots 2, 3 and 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6, 7, 8], target: PLAYER.BOB });
@@ -236,7 +243,7 @@ describe('interpreting order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b1', 'g1', 'r1', 'r5'],
 			['y4', 'r4', 'g4', 'r4', 'b5']
-		], 4);
+		], { level: 4 });
 
 		// Cathy clues Alice 5, touching slot 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.CATHY, list: [0], target: PLAYER.ALICE });
@@ -257,7 +264,7 @@ describe('interpreting chop moves', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b3', 'g3', 'r3', 'r5']
-		], 4);
+		], { level: 4 });
 
 		// Alice's slots 4 and 5 are chop moved
 		[3, 4].forEach(index => state.hands[PLAYER.ALICE][index].chop_moved = true);
@@ -273,7 +280,7 @@ describe('interpreting chop moves', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b3', 'g3', 'r3', 'r5']
-		], 4);
+		], { level: 4 });
 
 		// Alice's slots 4 and 5 are chop moved
 		[3, 4].forEach(index => state.hands[PLAYER.ALICE][index].chop_moved = true);

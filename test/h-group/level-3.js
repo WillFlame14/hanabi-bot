@@ -16,7 +16,7 @@ describe('playing 1s in the correct order', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
-		], 3);
+		], { level: 3 });
 
 		// Bob clues Alice 1, touching slots 3 and 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
@@ -29,7 +29,7 @@ describe('playing 1s in the correct order', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
-		], 3);
+		], { level: 3 });
 
 		// Slot 1 is a new card
 		state.hands[PLAYER.ALICE][0].order = 10;
@@ -45,7 +45,7 @@ describe('playing 1s in the correct order', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
-		], 3);
+		], { level: 3 });
 
 		// Slot 1 is a new card
 		state.hands[PLAYER.ALICE][0].order = 10;
@@ -62,7 +62,7 @@ describe('playing 1s in the correct order', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b2', 'r2', 'g3', 'r5', 'b3'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
-		], 3);
+		], { level: 3 });
 
 		// Bob clues Alice 1, touching slots 2 and 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [2, 3], target: PLAYER.ALICE });
@@ -81,7 +81,7 @@ describe('sarcastic discard', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y1', 'p4']
-		], 3);
+		], { level: 3 });
 
 		// Alice clues Bob 1, touching y1.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6], target: PLAYER.BOB });
@@ -100,7 +100,7 @@ describe('sarcastic discard', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'y1']
-		], 3);
+		], { level: 3 });
 
 		// Bob clues Alice 1, touching slot 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1], target: PLAYER.ALICE });
@@ -123,10 +123,10 @@ describe('sarcastic discard', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'y5', 'y4', 'p4'],
 			['g4', 'b2', 'y1', 'y2', 'p1']
-		], 3);
-
-		state.play_stacks = [0, 3, 0, 0, 1];
-		state.hypo_stacks = Array(3).fill([0, 3, 0, 0, 1]);
+		], {
+			level: 3,
+			play_stacks: [0, 3, 0, 0, 1]
+		});
 
 		// pace = currScore (4) + state.cardsLeft (19) + state.numPlayers (2) - maxScore (25) = 0
 		state.cardsLeft = 19;

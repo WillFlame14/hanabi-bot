@@ -17,10 +17,11 @@ describe('save clue', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 			['g3', 'p1', 'b3', 'b2', 'b5']
-		], 1);
-
-		state.play_stacks = [1, 5, 1, 0, 5];
-		state.clue_tokens = 2;
+		], {
+			level: 1,
+			play_stacks: [1, 5, 1, 0, 5],
+			clue_tokens: 2
+		});
 
 		// Bob's last 3 cards are clued.
 		[2,3,4].forEach(index => state.hands[PLAYER.BOB][index].clued = true);
@@ -38,10 +39,10 @@ describe('save clue', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'g5', 'p2', 'p4', 'g4']
-		], 1);
-
-		// g4 is discarded.
-		state.discard_stacks[COLOUR.GREEN] = [0, 0, 0, 1, 0];
+		], {
+			level: 1,
+			discarded: ['g4']
+		});
 
 		// Bob's p2 is clued.
 		state.hands[PLAYER.BOB][2].clued = true;
@@ -58,7 +59,7 @@ describe('save clue', () => {
 			['r5', 'r4', 'b2', 'y4'],
 			['g5', 'b2', 'g2', 'y2'],
 			['y3', 'g2', 'y1', 'b3']
-		], 1);
+		], { level: 1 });
 
 		// Bob clues 2 to Cathy.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [8,9,10], target: PLAYER.CATHY, giver: PLAYER.BOB });
@@ -72,7 +73,7 @@ describe('save clue', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'r4', 'r2', 'y4', 'y2'],
 			['g5', 'b4', 'g1', 'y2', 'b3']
-		], 1);
+		], { level: 1 });
 
 		// Cathy clues 2 to Bob.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [5,7], target: PLAYER.BOB, giver: PLAYER.CATHY });
@@ -88,11 +89,11 @@ describe('early game', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g4', 'r5', 'r4', 'y4', 'b3'],
-		], 1);
-
-		// Discarded both r4's
-		state.max_ranks[0] = 3;
-		state.clue_tokens = 7;
+		], {
+			level: 1,
+			discarded: ['r4', 'r4'],
+			clue_tokens: 7
+		});
 
 		const action = state.take_action(state);
 		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.DISCARD, target: 0 });
@@ -105,40 +106,36 @@ describe('sacrifice discards', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g4', 'r2', 'r4', 'p4', 'b3'],
 			['r3', 'b4', 'r2', 'y4', 'y2'],
-		], 1);
+		], {
+			level: 1,
+			discarded: ['r4']
+		});
 
-		// One copy of r4 is discarded.
-		state.discard_stacks[COLOUR.RED][3] = 1;
-
-		// Bob clues Alice 5, touching all cards except slot 2.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 5 }, list: [0,1,2,4], target: PLAYER.ALICE, giver: PLAYER.BOB });
+		// Bob clues Alice 5, touching slots 1, 3 and 5.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 5 }, list: [0,2,4], target: PLAYER.ALICE, giver: PLAYER.BOB });
 		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
 
-		// Cathy clues Alice 4, touching slot 2.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [3], target: PLAYER.ALICE, giver: PLAYER.CATHY });
+		// Cathy clues Alice 4, touching slots 2 and 4.
+		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [1,3], target: PLAYER.ALICE, giver: PLAYER.CATHY });
 		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
 
-		// Alice should not discard slot 2.
-		assert.equal(state.hands[PLAYER.ALICE].locked_discard().order === 3, false);
+		// Alice should discard slot 2.
+		assert.equal(state.hands[PLAYER.ALICE].locked_discard().order, 3);
 	});
 
 	it('discards the farthest critical card when locked with crits', () => {
 		const state = setup(HGroup, [
 			['r4', 'b4', 'r5', 'b2', 'y5'],
-		], 1);
+		], {
+			level: 1,
+			play_stacks: [2, 1, 0, 0, 0],
+			discarded: ['r4', 'b2', 'b4']
+		});
 
-		// Alice knows all of her cards.
+		// Alice knows all of her cards (all crit).
 		['r4', 'b4', 'r5', 'b2', 'y5'].forEach((short, index) => {
 			state.hands[PLAYER.ALICE][index].intersect('inferred', [expandShortCard(short)]);
 		});
-
-		// All cards are crit.
-		state.discard_stacks[COLOUR.RED] = [0, 0, 0, 1, 0];
-		state.discard_stacks[COLOUR.YELLOW] = [0, 0, 0, 1, 0];
-		state.discard_stacks[COLOUR.BLUE] = [0, 1, 0, 1, 0];
-
-		state.play_stacks = [2, 1, 0, 0, 0];
-		state.hypo_stacks[PLAYER.ALICE] = [2, 1, 0, 0, 0];
 
 		// Alice should discard y5.
 		assert.equal(state.hands[PLAYER.ALICE].locked_discard().order, 0);

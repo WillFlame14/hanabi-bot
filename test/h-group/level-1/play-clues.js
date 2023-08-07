@@ -13,7 +13,7 @@ describe('play clue', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['xx', 'xx', 'xx', 'xx', 'xx']
-		]);
+		], { level: 1 });
 
 		// Alice clues Bob red on slot 2.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [8], target: PLAYER.BOB });
@@ -27,7 +27,7 @@ describe('play clue', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['xx', 'xx', 'xx', 'xx', 'xx']
-		]);
+		], { level: 1 });
 
 		// Alice clues Bob red on slots 1, 2 and 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [7, 8, 9], target: PLAYER.BOB });
@@ -41,7 +41,7 @@ describe('play clue', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['xx', 'xx', 'xx', 'xx', 'xx']
-		]);
+		], { level: 1 });
 
 		// Alice clues Bob red on slots 1, 2 and 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [5, 8, 9], target: PLAYER.BOB });
@@ -55,9 +55,10 @@ describe('play clue', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['xx', 'xx', 'xx', 'xx', 'xx']
-		]);
-
-		state.play_stacks[COLOUR.RED] = 2;
+		], {
+			level: 1,
+			play_stacks: [2, 0, 0, 0, 0]
+		});
 
 		// Alice clues Bob red on slot 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.ALICE, list: [7], target: PLAYER.BOB });
@@ -72,7 +73,7 @@ describe('play clue', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['xx', 'r1', 'xx', 'xx', 'xx']
-		]);
+		], { level: 1 });
 
 		// Cathy's r1 is clued and inferred.
 		state.hands[PLAYER.CATHY][1].clued = true;
@@ -91,7 +92,7 @@ describe('play clue', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-		]);
+		], { level: 1 });
 
 		// Bob has a 1 in slot 2.
 		state.hands[PLAYER.BOB][1].clued = true;

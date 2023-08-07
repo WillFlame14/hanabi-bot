@@ -14,10 +14,10 @@ describe('good touch principle', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'r4', 'r2', 'y4', 'y2'],
-		], 1);
-
-		state.play_stacks = [0, 0, 0, 0, 4];
-		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 4]);
+		], {
+			level: 1,
+			play_stacks: [0, 0, 0, 0, 4]
+		});
 
 		// Bob clues purple to Alice, touching slots 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -31,13 +31,11 @@ describe('good touch principle', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2'],
-		], 1);
-
-		state.play_stacks = [0, 0, 2, 0, 0];
-		state.hypo_stacks = Array(2).fill([0, 0, 2, 0, 0]);
-
-		// One g4 has been discarded.
-		state.discard_stacks[COLOUR.GREEN] = [0, 0, 0, 1, 0];
+		], {
+			level: 1,
+			play_stacks: [0, 0, 2, 0, 0],
+			discarded: ['g4']
+		});
 
 		// Bob clues green to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -53,13 +51,11 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b2', 'b4', 'b2', 'p2', 'r1'],
 			['y3', 'r4', 'y2', 'p1', 'g3']
-		], 1);
-
-		state.play_stacks = [5, 2, 5, 3, 5];
-		state.hypo_stacks = Array(2).fill([5, 2, 5, 3, 5]);
-
-		// y4 is discarded.
-		state.discard_stacks[COLOUR.YELLOW] = [0, 0, 0, 1, 0];
+		], {
+			level: 1,
+			play_stacks: [5, 2, 5, 3, 5],
+			discarded: ['y4']
+		});
 
 		// Bob clues 4 to Alice, touching slots 3 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [0,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -82,10 +78,10 @@ describe('good touch principle', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2'],
-		], 1);
-
-		state.play_stacks = [0, 0, 0, 0, 3];
-		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 3]);
+		], {
+			level: 1,
+			play_stacks: [0, 0, 0, 0, 3]
+		});
 
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -107,10 +103,10 @@ describe('good touch principle', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2'],
-		], 1);
-
-		state.play_stacks = [0, 0, 0, 0, 3];
-		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 3]);
+		], {
+			level: 1,
+			play_stacks: [0, 0, 0, 0, 3]
+		});
 
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -140,10 +136,10 @@ describe('good touch principle', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2'],
-		], 1);
-
-		state.play_stacks = [0, 0, 0, 0, 3];
-		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 3]);
+		], {
+			level: 1,
+			play_stacks: [0, 0, 0, 0, 3]
+		});
 
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -173,10 +169,10 @@ describe('good touch principle', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2'],
-		], 1);
-
-		state.play_stacks = [0, 0, 0, 0, 3];
-		state.hypo_stacks = Array(2).fill([0, 0, 0, 0, 3]);
+		], {
+			level: 1,
+			play_stacks: [0, 0, 0, 0, 3]
+		});
 
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -207,7 +203,7 @@ describe('good touch principle', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p5', 'p4', 'p4', 'p3', 'p3'],
-		], 1);
+		], { level: 1 });
 
 		// Bob clues purple to Alice, touching slots 3, 4 and 5.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -241,10 +237,10 @@ describe('good touch principle', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p1', 'r2', 'p4', 'p3', 'b1'],
-		], 1);
-
-		state.play_stacks = [5, 5, 1, 5, 5];
-		state.hypo_stacks = Array(2).fill([5, 5, 1, 5, 5]);
+		], {
+			level: 1,
+			play_stacks: [5, 5, 1, 5, 5]
+		});
 
 		// Bob clues 2 to Alice, touching slots 1 and 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [2, 4], target: PLAYER.ALICE, giver: PLAYER.BOB });
@@ -258,13 +254,11 @@ describe('good touch principle', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p1', 'r2', 'p4', 'p3', 'b1'],
-		], 1);
-
-		state.play_stacks = [5, 5, 1, 5, 5];
-		state.hypo_stacks = Array(2).fill([5, 5, 1, 5, 5]);
-
-		// One g2 is discarded
-		state.discard_stacks[COLOUR.GREEN][1] = 1;
+		], {
+			level: 1,
+			play_stacks: [5, 5, 1, 5, 5],
+			discarded: ['g2']
+		});
 
 		// Bob clues 2 to Alice, touching slots 1 and 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [2, 4], target: PLAYER.ALICE, giver: PLAYER.BOB });

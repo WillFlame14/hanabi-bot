@@ -17,10 +17,10 @@ describe('hidden finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g2', 'b3', 'r2', 'y3', 'p3']
-		], 5);
-
-		state.play_stacks = [1, 0, 1, 1, 0];
-		state.hypo_stacks = Array(3).fill([1, 0, 1, 1, 0]);
+		], {
+			level: 5,
+			play_stacks: [1, 0, 1, 1, 0]
+		});
 
 		// Cathy's r2 was previously clued with 2.
 		state.hands[PLAYER.CATHY][2].clued = true;
@@ -49,10 +49,10 @@ describe('hidden finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g2', 'b3', 'r2', 'y3', 'p3']
-		], 5);
-
-		state.play_stacks = [1, 0, 1, 1, 0];
-		state.hypo_stacks = Array(3).fill([1, 0, 1, 1, 0]);
+		], {
+			level: 5,
+			play_stacks: [1, 0, 1, 1, 0]
+		});
 
 		// Cathy's r2 was previously clued with 2.
 		state.hands[PLAYER.CATHY][2].clued = true;
@@ -90,7 +90,7 @@ describe('hidden finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'r2', 'r3', 'p1', 'b4'],
 			['p2', 'g4', 'y2', 'b4', 'p5']
-		], 5);
+		], { level: 5 });
 
 		// Cathy clues 1 to us, touching slots 2 and 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.CATHY, list: [2,3], target: PLAYER.ALICE });
@@ -125,7 +125,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'y1', 'r2', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
 		// Bob clues Alice yellow, touching slot 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
@@ -161,7 +161,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b5', 'p4', 'y2', 'g3', 'r3'],
 			['r4', 'r4', 'g4', 'r5', 'b4']
-		], 5);
+		], { level: 5 });
 
 		// Cathy clues Bob yellow, touching y2.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
@@ -183,7 +183,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y1', 'y1', 'p1', 'r5', 'b4'],
 			['r2', 'y4', 'p2', 'g3', 'r3']
-		], 5);
+		], { level: 5 });
 
 		const { play_clues } = find_clues(state);
 
@@ -196,7 +196,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b5', 'r2', 'y1', 'p4', 'y4'],
 			['r4', 'g2', 'g4', 'r5', 'b4']
-		], 5);
+		], { level: 5 });
 
 		// Bob bombs y4 and draws g3.
 		state.handle_action({ type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.YELLOW, rank: 4, failed: true });
@@ -229,7 +229,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b5', 'r2', 'y1', 'p4', 'r4'],
 			['y4', 'g2', 'g4', 'r5', 'b4']
-		], 5);
+		], { level: 5 });
 
 		// Bob bombs r4 and draws g3.
 		state.handle_action({ type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.RED, rank: 4, failed: true });
@@ -262,7 +262,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b1', 'b4', 'y2', 'r5', 'r4'],
 			['g1', 'r1', 'b5', 'g4', 'b4']
-		], 5);
+		], { level: 5 });
 
 		// Cathy clues yellow to Bob, touching y2.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
@@ -296,7 +296,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'r1', 'b2', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
 		// Bob clues Alice 2, touching slot 3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
@@ -335,7 +335,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r2', 'g4', 'r5', 'b4'],
 			['g2', 'b3', 'r2', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
 		// Bob clues Cathy green.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [14], target: PLAYER.CATHY });
@@ -361,7 +361,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b3', 'r2', 'y3', 'p3'],
 			['g1', 'r1', 'r4', 'g4', 'b4']
-		], 5);
+		], { level: 5 });
 
 		// Alice clues Bob green.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.ALICE, list: [9], target: PLAYER.BOB });
@@ -384,7 +384,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r2', 'g4', 'r5', 'b4'],
 			['g2', 'b3', 'r2', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
 		// Cathy clues 2 to Bob.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [8], target: PLAYER.BOB });

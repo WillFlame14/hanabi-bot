@@ -16,7 +16,7 @@ describe('other cases', () => {
 			['r2', 'b3', 'p1', 'g4'],
 			['r5', 'p4', 'r4', 'b2'],
 			['r1', 'g5', 'p2', 'p4']
-		], 1);
+		], { level: 1 });
 
 		// Bob clues 1 to us, touching slot 4.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [0], target: PLAYER.ALICE });
@@ -39,13 +39,11 @@ describe('other cases', () => {
 			['y2', 'b2', 'b1', 'g3'],
 			['p1', 'p4', 'r3', 'y3'],
 			['y5', 'r4', 'r4', 'r2']
-		], 1);
-
-		state.play_stacks = [1, 0, 0, 0, 0];
-		state.hypo_stacks = Array(4).fill([1, 0, 0, 0, 0]);
-
-		// y3 is discarded.
-		state.discard_stacks[COLOUR.YELLOW] = [0, 0, 1, 0, 0];
+		], {
+			level: 1,
+			play_stacks: [1, 0, 0, 0, 0],
+			discarded: ['y3']
+		});
 
 		// Bob clues 3 to Cathy, saving y3 and touching r3.
 		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [8,9], target: PLAYER.CATHY });
