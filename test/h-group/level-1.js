@@ -2,10 +2,10 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { ACTION, CLUE } from '../../src/constants.js';
-import { COLOUR, PLAYER, assertCardHasInferences, expandShortCard, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
+import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
-import * as Utils from '../../src/tools/util.js';
 
 import logger from '../../src/tools/logger.js';
 
@@ -32,7 +32,7 @@ describe('save clue', () => {
 		const action = take_action(state);
 
 		// Alice should give green to Cathy to finesse over save
-		assert.deepEqual(Utils.objPick(action, ['type', 'target', 'value']), { type: ACTION.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN });
+		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN });
 	});
 
 	it('prefers touching less cards to save critical cards', () => {
@@ -50,7 +50,7 @@ describe('save clue', () => {
 		const action = take_action(state);
 
 		// Alice should give green to Bob instead of 4
-		assert.deepEqual(Utils.objPick(action, ['type', 'target', 'value']), { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN });
+		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN });
 	});
 
 	it('generates correct inferences for a 2 Save', () => {
@@ -68,7 +68,7 @@ describe('save clue', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [8,9,10], target: PLAYER.CATHY, giver: PLAYER.BOB });
 
 		// g2 is visible in Donald's hand. Other than that, the saved 2 can be any 2.
-		assertCardHasInferences(state.hands[PLAYER.CATHY][3], ['r2', 'y2', 'b2', 'p2']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.CATHY][3], ['r2', 'y2', 'b2', 'p2']);
 	});
 
 	it('does not finesse from a 2 Save', () => {
@@ -102,7 +102,7 @@ describe('early game', () => {
 		});
 
 		const action = state.take_action(state);
-		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.DISCARD, target: 0 });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
 	});
 });
 

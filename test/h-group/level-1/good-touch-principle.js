@@ -2,7 +2,8 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { CLUE } from '../../../src/constants.js';
-import { COLOUR, PLAYER, expandShortCard, assertCardHasInferences, setup, takeTurn } from '../../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../../test-utils.js';
+import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
 
 import logger from '../../../src/tools/logger.js';
@@ -24,8 +25,8 @@ describe('good touch principle', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, list: [0,1], target: PLAYER.ALICE, giver: PLAYER.BOB });
 
 		// Our slot 5 should be p5, and our slot 4 should have no inferences.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['p5']);
-		assertCardHasInferences(state.hands[PLAYER.ALICE][3], []);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['p5']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], []);
 	});
 
 	it('eliminates from focus correctly (direct save)', () => {
@@ -43,9 +44,9 @@ describe('good touch principle', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, list: [0,1,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
 
 		// Our slot 5 should be g4, and our slots 2 and 3 should have no inferences.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['g4']);
-		assertCardHasInferences(state.hands[PLAYER.ALICE][3], []);
-		assertCardHasInferences(state.hands[PLAYER.ALICE][2], []);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['g4']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], []);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], []);
 	});
 
 	it('eliminates from focus (indirect)', () => {
@@ -64,15 +65,15 @@ describe('good touch principle', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [0,2], target: PLAYER.ALICE, giver: PLAYER.BOB });
 
 		// The two 4's in Alice's hand should be inferred y4,b4.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['y4', 'b4']);
-		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['y4', 'b4']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['y4', 'b4']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['y4', 'b4']);
 
 		// Cathy clues 4 to Bob, touching b4.
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [8], target: PLAYER.BOB, giver: PLAYER.CATHY });
 
 		// Aice's slot 5 should be y4 only, and slot 3 should have no inferences.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][2], []);
-		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['y4']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], []);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['y4']);
 	});
 
 	it('generates a link from GTP', () => {
@@ -216,7 +217,7 @@ describe('good touch principle', () => {
 
 		// Link should be gone now, Alice's new slot 5 should be p2.
 		assert.deepEqual(state.hands[PLAYER.ALICE].links, []);
-		assertCardHasInferences(state.hands[PLAYER.ALICE][4], ['p2']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['p2']);
 	});
 
 	it('plays from focus (no link)', () => {

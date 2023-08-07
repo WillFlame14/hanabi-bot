@@ -1,12 +1,10 @@
-import { strict as assert } from 'node:assert';
-import * as Utils from '../src/tools/util.js';
-import { logAction, logCard } from '../src/tools/log.js';
-import { card_elim } from '../src/basics.js';
 import { cardCount } from '../src/variants.js';
+import { card_elim } from '../src/basics.js';
+import * as Utils from '../src/tools/util.js';
+import { logAction } from '../src/tools/log.js';
 
 /**
  * @typedef {import ('../src/basics/State.js').State} State
- * @typedef {import('../src/basics/Card.js').Card} Card
  * @typedef {import('../src/types.js').Action} Action
  * 
  * @typedef SetupOptions
@@ -163,18 +161,4 @@ export function expandShortCard(short) {
 		suitIndex: ['x', 'r', 'y', 'g', 'b', 'p'].indexOf(short[0]) - 1,
 		rank: Number(short[1]) || -1
 	};
-}
-
-/**
- * @param  {Card} card 				The card to check inferences of.
- * @param  {string[]} inferences 	The set of inferences to compare to.
- */
-export function assertCardHasInferences(card, inferences) {
-	const message = `Differing inferences. Expected ${inferences}, got ${card.inferred.map(c => logCard(c))}`;
-
-	assert.ok(card.inferred.length === inferences.length && inferences.every(inf => {
-		const { suitIndex, rank } = expandShortCard(inf);
-
-		return card.inferred.some(c => c.matches(suitIndex, rank));
-	}), message);
 }

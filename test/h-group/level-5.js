@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, assertCardHasInferences, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
+import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
@@ -24,14 +25,14 @@ describe('ambiguous clues', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
 
 		// Alice's slot 2 should be [g1,g2].
-		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['g1', 'g2']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g1', 'g2']);
 		assert.equal(state.hands[PLAYER.CATHY][0].reasoning.length, 1);
 
 		// Cathy discards chop.
 		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'r1');
 
 		// Alice's slot 2 should just be g1 now.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['g1']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g1']);
 	});
 
 	it('understands a self-connecting play clue', () => {
@@ -54,7 +55,7 @@ describe('ambiguous clues', () => {
 		takeTurn(state, { type: 'play', order: 1, suitIndex: COLOUR.GREEN, rank: 1, playerIndex: PLAYER.ALICE });
 
 		// Alice's slot 4 (used to be slot 3) should just be g2 now.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['g2']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['g2']);
 	});
 
 	it('understands a delayed finesse', () => {
@@ -74,13 +75,13 @@ describe('ambiguous clues', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
 
 		// Alice's slot 3 should be [r3,r4].
-		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
 		// Cathy plays r2.
 		takeTurn(state, { type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 2, playerIndex: PLAYER.CATHY }, 'y1');
 
 		// Alice's slot 3 should still be [r3,r4] to allow for the possibility of a hidden finesse.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
 		// Alice discards.
 		takeTurn(state, { type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
@@ -92,7 +93,7 @@ describe('ambiguous clues', () => {
 		takeTurn(state, { type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.RED, rank: 3 }, 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r4] now.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['r4']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r4']);
 	});
 
 	it('understands a fake delayed finesse', () => {
@@ -121,7 +122,7 @@ describe('ambiguous clues', () => {
 		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r2] now.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
 	});
 });
 

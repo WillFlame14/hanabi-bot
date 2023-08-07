@@ -2,7 +2,8 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { CLUE } from '../../../src/constants.js';
-import { COLOUR, PLAYER, assertCardHasInferences, setup, takeTurn } from '../../test-utils.js';
+import { COLOUR, PLAYER, setup, takeTurn } from '../../test-utils.js';
+import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
 import logger from '../../../src/tools/logger.js';
@@ -28,7 +29,7 @@ describe('other cases', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
 
 		// Alice's slot 4 should still be any 1.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['r1', 'y1', 'g1', 'b1', 'p1']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r1', 'y1', 'g1', 'b1', 'p1']);
 
 		// Donald's r1 should be finessed.
 		assert.equal(state.hands[PLAYER.DONALD][0].finessed, true);

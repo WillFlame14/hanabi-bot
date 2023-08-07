@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, assertCardHasInferences, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
+import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
@@ -46,7 +47,7 @@ describe('self-finesse', () => {
 		takeTurn(state, { type: 'play', playerIndex: PLAYER.ALICE, suitIndex: COLOUR.GREEN, rank: 1, order: 4 });
 
 		// Slot 2 should be g2.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['g2']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g2']);
 	});
 
 	it('interprets self-finesses correctly when giver knows less', () => {
@@ -90,7 +91,7 @@ describe('asymmetric clues', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 4 }, giver: PLAYER.DONALD, list: [5,6], target: PLAYER.BOB });
 
 		// We think we have b3 in slot 1, as a Certain Finesse. 
-		assertCardHasInferences(state.hands[PLAYER.ALICE][0], ['b3']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][0], ['b3']);
 
 		// We clue 5 to Bob to save r5.
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.ALICE, list: [4], target: PLAYER.BOB });
@@ -127,7 +128,7 @@ describe('asymmetric clues', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.CATHY, list: [5], target: PLAYER.BOB });
 
 		// Bob's slot 1 can be either g2 or y2, since he doesn't know which 1 is connecting.
-		assertCardHasInferences(state.hands[PLAYER.BOB][0], ['y2', 'g2']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['y2', 'g2']);
 	});
 
 	it('prefers the least number of blind plays on target', () => {
@@ -151,7 +152,7 @@ describe('asymmetric clues', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 4 }, giver: PLAYER.CATHY, list: [5], target: PLAYER.BOB });
 
 		// Bob's slot 1 must be y3, since it only requires one blind play (y3) instead of two (g2,g3).
-		assertCardHasInferences(state.hands[PLAYER.BOB][0], ['y3']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['y3']);
 	});
 
 	it('includes the correct interpretation, even if it requires more blind plays', () => {
@@ -175,7 +176,7 @@ describe('asymmetric clues', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 4 }, giver: PLAYER.CATHY, list: [5], target: PLAYER.BOB });
 
 		// Although y3 should still be preferred, the correct inference is g2 -> g3 double self-finesse.
-		assertCardHasInferences(state.hands[PLAYER.BOB][0], ['g2','y3']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['g2','y3']);
 	});
 
 	it('connects when a card plays early', () => {
@@ -199,7 +200,7 @@ describe('asymmetric clues', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [9], target: PLAYER.CATHY });
 
 		// The clued card is likely g3 or y3, since that requires the least number of blind plays.
-		assertCardHasInferences(state.hands[PLAYER.CATHY][2], ['y3', 'g3']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.CATHY][2], ['y3', 'g3']);
 
 		// Cathy gives a 5 Save to Donald.
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.CATHY, list: [12], target: PLAYER.DONALD });
@@ -211,6 +212,6 @@ describe('asymmetric clues', () => {
 		takeTurn(state, { type: 'play', playerIndex: PLAYER.ALICE, suitIndex: COLOUR.YELLOW, rank: 2, order: 0 }, 'b1');
 
 		// y3 should be known, since y2 played before g1 played.
-		assertCardHasInferences(state.hands[PLAYER.CATHY][2], ['y3']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.CATHY][2], ['y3']);
 	});
 });

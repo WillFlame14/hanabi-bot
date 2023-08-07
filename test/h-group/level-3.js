@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, assertCardHasInferences, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
+import * as ExAsserts from '../extra-asserts.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import HGroup from '../../src/conventions/h-group.js';
 import * as Utils from '../../src/tools/util.js';
@@ -83,7 +84,7 @@ describe('playing 1s in the correct order', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [6, 8], target: PLAYER.BOB });
 
 		// Alice's slot 2 should still be any 1 (not prompted to be r1).
-		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['r1', 'y1', 'g1', 'b1', 'p1']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['r1', 'y1', 'g1', 'b1', 'p1']);
 	});
 });
 
@@ -102,7 +103,7 @@ describe('sarcastic discard', () => {
 
 		// Alice should discard slot 5 as a Sarcastic Discard.
 		const action = state.take_action(state);
-		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.DISCARD, target: 0 });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
 	});
 
 	it('understands a sarcastic discard', () => {
@@ -124,7 +125,7 @@ describe('sarcastic discard', () => {
 		takeTurn(state, { type: 'discard', playerIndex: PLAYER.BOB, suitIndex: COLOUR.YELLOW, rank: 1, order: 5, failed: false }, 'r1');
 
 		// Alice's slot 4 should be y1 now.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['y1']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['y1']);
 	});
 
 	it('prefers playing if that would reveal duplicate is trash in endgame', () => {
@@ -156,6 +157,6 @@ describe('sarcastic discard', () => {
 
 		// Alice should play slot 5 instead of discarding for tempo.
 		const action = state.take_action(state);
-		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.PLAY, target: 0 });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 0 });
 	});
 });

@@ -1,10 +1,10 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, assertCardHasInferences, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
+import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
-import * as Utils from '../../src/tools/util.js';
 import logger from '../../src/tools/logger.js';
 
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
@@ -24,10 +24,7 @@ describe('trash chop move', () => {
 		});
 
 		const { save_clues } = find_clues(state);
-		const bob_save = save_clues[PLAYER.BOB];
-
-		assert(bob_save !== undefined);
-		assert(bob_save.type === CLUE.RANK && bob_save.value === 1);
+		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 1 });
 	});
 
 	it('will give a rank tcm touching multiple trash cards', () => {
@@ -40,10 +37,7 @@ describe('trash chop move', () => {
 		});
 
 		const { save_clues } = find_clues(state);
-		const bob_save = save_clues[PLAYER.BOB];
-
-		assert(bob_save !== undefined);
-		assert(bob_save.type === CLUE.RANK && bob_save.value === 1);
+		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 1 });
 	});
 
 	it('will not give a tcm if chop is trash', () => {
@@ -82,7 +76,7 @@ describe('trash chop move', () => {
 		});
 
 		const { save_clues } = find_clues(state);
-		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 5 });
+		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 5 });
 	});
 
 	it('will not give a tcm if chop can be saved directly (2 save)', () => {
@@ -95,7 +89,7 @@ describe('trash chop move', () => {
 		});
 
 		const { save_clues } = find_clues(state);
-		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 2 });
+		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 2 });
 	});
 
 	it('will not give a tcm if a play can be given instead', () => {
@@ -112,7 +106,7 @@ describe('trash chop move', () => {
 		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
 
 		assert.deepEqual(urgent_actions[1], []);
-		assert.deepEqual(Utils.objPick(urgent_actions[2][0], ['type', 'value']), { type: ACTION.COLOUR, value: 1 });
+		ExAsserts.objHasProperties(urgent_actions[2][0], { type: ACTION.COLOUR, value: 1 });
 	});
 });
 
@@ -135,8 +129,7 @@ describe('giving order chop move', () => {
 		const { play_clues, save_clues, fix_clues } = find_clues(state);
 		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
 
-		assert.equal(urgent_actions[1][0].type, ACTION.PLAY);
-		assert.equal(urgent_actions[1][0].target, our_hand[2].order);
+		ExAsserts.objHasProperties(urgent_actions[1][0], { type: ACTION.PLAY, target: our_hand[2].order });
 	});
 
 	it('will find an ocm to cathy', () => {
@@ -158,8 +151,7 @@ describe('giving order chop move', () => {
 		const { play_clues, save_clues, fix_clues } = find_clues(state);
 		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
 
-		assert.equal(urgent_actions[5][0].type, ACTION.PLAY);
-		assert.equal(urgent_actions[5][0].target, our_hand[1].order);
+		ExAsserts.objHasProperties(urgent_actions[5][0], { type: ACTION.PLAY, target: our_hand[1].order });
 	});
 
 	it('will not give an ocm putting a critical on chop', () => {
@@ -175,7 +167,7 @@ describe('giving order chop move', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 
 		const { save_clues } = find_clues(state);
-		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 5 });
+		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 5 });
 	});
 
 	it('will not ocm trash', () => {
@@ -193,7 +185,7 @@ describe('giving order chop move', () => {
 
 		// Alice should not OCM the trash r1.
 		const action = take_action(state);
-		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.PLAY, target: 1 });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
 
 	it('will ocm one card of an unsaved duplicate', () => {
@@ -210,7 +202,7 @@ describe('giving order chop move', () => {
 
 		// Alice should OCM 1 copy of g4.
 		const action = take_action(state);
-		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.PLAY, target: 2 });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 2 });
 	});
 
 	it('will not ocm one card of a saved duplicate', () => {
@@ -231,7 +223,7 @@ describe('giving order chop move', () => {
 
 		// Alice should not OCM the copy of r2.
 		const action = take_action(state);
-		assert.deepEqual(Utils.objPick(action, ['type', 'target']), { type: ACTION.PLAY, target: 1 });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
 });
 
@@ -294,7 +286,7 @@ describe('interpreting chop moves', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,3], target: PLAYER.ALICE });
 
 		// Alice's slot 2 should be p1.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['p1']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['p1']);
 	});
 
 	it('will interpret only touching cm cards correctly', () => {
@@ -313,6 +305,6 @@ describe('interpreting chop moves', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,1], target: PLAYER.ALICE });
 
 		// Alice's slot 4 should be p1.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['p1']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['p1']);
 	});
 });

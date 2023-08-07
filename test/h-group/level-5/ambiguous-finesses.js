@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, assertCardHasInferences, setup, takeTurn } from '../../test-utils.js';
+import { COLOUR, PLAYER, setup, takeTurn } from '../../test-utils.js';
+import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
 import { CLUE } from '../../../src/constants.js';
 import logger from '../../../src/tools/logger.js';
@@ -30,7 +31,7 @@ describe('ambiguous finesse', () => {
 		takeTurn(state, { type: 'discard', order: 15, playerIndex: PLAYER.DONALD, suitIndex: COLOUR.PURPLE, rank: 4, failed: false }, 'r1');
 
 		// Alice's slot 2 should be [g1].
-		assertCardHasInferences(state.hands[PLAYER.ALICE][0], ['g1']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][0], ['g1']);
 	});
 
 	it('understands an ambiguous finesse with a self component', () => {
@@ -98,7 +99,7 @@ describe('ambiguous finesse', () => {
 
 		// Alice's slot 1 has now moved to slot 2.
 		assert.equal(state.hands[PLAYER.ALICE][1].finessed, true);
-		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['r1']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['r1']);
 	});
 
 	it('prefers hidden prompt over ambiguous', () => {
@@ -120,6 +121,6 @@ describe('ambiguous finesse', () => {
 		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 4 }, giver: PLAYER.CATHY, list: [5], target: PLAYER.BOB });
 
 		// Bob's slot 1 can be either g3 or y3, since he doesn't know which 1 is connecting.
-		assertCardHasInferences(state.hands[PLAYER.BOB][0], ['y3', 'g3']);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['y3', 'g3']);
 	});
 });

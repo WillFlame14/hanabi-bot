@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, setup, assertCardHasInferences, expandShortCard, takeTurn } from '../../test-utils.js';
+import { COLOUR, PLAYER, setup, expandShortCard, takeTurn } from '../../test-utils.js';
+import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
 import { CLUE } from '../../../src/constants.js';
 
@@ -20,7 +21,7 @@ describe('play clue', () => {
 
 		// Target card should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][1];
-		assertCardHasInferences(targetCard, ['r1']);
+		ExAsserts.cardHasInferences(targetCard, ['r1']);
 	});
 
 	it('can interpret a colour play clue touching multiple cards', () => {
@@ -34,7 +35,7 @@ describe('play clue', () => {
 
 		// Bob's slot 1 should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][0];
-		assertCardHasInferences(targetCard, ['r1']);
+		ExAsserts.cardHasInferences(targetCard, ['r1']);
 	});
 
 	it('can interpret a colour play clue touching chop', () => {
@@ -48,7 +49,7 @@ describe('play clue', () => {
 
 		// Bob's slot 5 (chop) should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][4];
-		assertCardHasInferences(targetCard, ['r1']);
+		ExAsserts.cardHasInferences(targetCard, ['r1']);
 	});
 
 	it('can interpret a colour play clue on a partial stack', () => {
@@ -65,7 +66,7 @@ describe('play clue', () => {
 
 		// Bob's slot 3 should be inferred as r3.
 		const targetCard = state.hands[PLAYER.BOB][2];
-		assertCardHasInferences(targetCard, ['r3']);
+		ExAsserts.cardHasInferences(targetCard, ['r3']);
 	});
 
 	it('can interpret a colour play clue through someone\'s hand', () => {
@@ -85,7 +86,7 @@ describe('play clue', () => {
 
 		// Bob's slot 3 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][2];
-		assertCardHasInferences(targetCard, ['r2']);
+		ExAsserts.cardHasInferences(targetCard, ['r2']);
 	});
 
 	it('can interpret a self-connecting colour play clue', () => {
@@ -104,6 +105,6 @@ describe('play clue', () => {
 
 		// Bob's slot 1 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][0];
-		assertCardHasInferences(targetCard, ['r2']);
+		ExAsserts.cardHasInferences(targetCard, ['r2']);
 	});
 });
