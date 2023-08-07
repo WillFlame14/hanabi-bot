@@ -5,7 +5,6 @@ import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.
 import * as ExAsserts from '../extra-asserts.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import HGroup from '../../src/conventions/h-group.js';
-import * as Utils from '../../src/tools/util.js';
 import logger from '../../src/tools/logger.js';
 
 import { order_1s } from '../../src/conventions/h-group/action-helper.js';

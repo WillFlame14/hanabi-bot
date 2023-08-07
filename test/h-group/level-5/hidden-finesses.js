@@ -8,7 +8,6 @@ import { ACTION, CLUE } from '../../../src/constants.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
 import { take_action } from '../../../src/conventions/h-group/take-action.js';
 import logger from '../../../src/tools/logger.js';
-import * as Utils from '../../../src/tools/util.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -181,20 +180,18 @@ describe('layered finesse', () => {
 	it('gracefully handles clues that reveal layered finesses (non-matching)', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['b5', 'r2', 'y1', 'p4', 'y4'],
+			['g3', 'b5', 'r2', 'y1', 'p4'],
 			['r4', 'g2', 'g4', 'r5', 'b4']
 		], {
 			level: 5,
-			starting: PLAYER.BOB
+			starting: PLAYER.CATHY,
+			discarded: ['y4']
 		});
 
-		// Bob bombs y4 and draws g3.
-		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.YELLOW, rank: 4, failed: true }, 'g3');
-
 		// Cathy clues Bob red, touching r2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [8], target: PLAYER.BOB });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
 
-		// Alice plays slot 1, which is revealed to be b1! Alice then draws something random.
+		// Alice plays slot 1, which is revealed to be b1!
 		takeTurn(state, { type: 'play', order: 4, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1 });
 
 		// Bob clues yellow to Alice, touching slots 2 and 5.
@@ -212,20 +209,18 @@ describe('layered finesse', () => {
 	it('gracefully handles clues that reveal layered finesses (matching)', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['b5', 'r2', 'y1', 'p4', 'r4'],
+			['g3', 'b5', 'r2', 'y1', 'p4'],
 			['y4', 'g2', 'g4', 'r5', 'b4']
 		], {
 			level: 5,
-			starting: PLAYER.BOB
+			starting: PLAYER.CATHY,
+			discarded: ['r4']
 		});
 
-		// Bob bombs r4 and draws g3.
-		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.RED, rank: 4, failed: true }, 'g3');
-
 		// Cathy clues Bob red, touching r2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [8], target: PLAYER.BOB });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
 
-		// Alice plays slot 1, which is revealed to be b1! Alice then draws y1.
+		// Alice plays slot 1, which is revealed to be b1!
 		takeTurn(state, { type: 'play', order: 4, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1 });
 
 		// Bob clues red to Alice, touching slots 3 and 5.

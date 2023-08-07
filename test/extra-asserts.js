@@ -25,7 +25,7 @@ export function cardHasInferences(card, inferences) {
 /**
  * Asserts that the object as the provided properties (and possibly more).
  * @param  {Record<string, unknown>} obj 			The object to check properties of.
- * @param  {Recrod<string, unknown>} properties 	The properties to check.
+ * @param  {Record<string, unknown>} properties 	The properties to check.
  */
 export function objHasProperties(obj, properties) {
 	assert.ok(typeof obj === 'object', `Object (${JSON.stringify(obj)}) is not of type 'object'.`);
