@@ -43,6 +43,9 @@ export class State {
 	rewindDepth = 0;
 	copyDepth = 0;
 
+	currentPlayerIndex = 0;
+	cardOrder = 0;
+
 	/**
 	 * The orders of cards to ignore in the next play clue.
 	 * @type {number[][]}

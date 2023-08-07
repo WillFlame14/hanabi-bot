@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { CLUE } from '../../../src/constants.js';
-import { COLOUR, PLAYER, assertCardHasInferences, setup } from '../../test-utils.js';
+import { COLOUR, PLAYER, assertCardHasInferences, setup, takeTurn } from '../../test-utils.js';
 import HGroup from '../../../src/conventions/h-group.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
 import logger from '../../../src/tools/logger.js';
@@ -16,15 +16,16 @@ describe('other cases', () => {
 			['r2', 'b3', 'p1', 'g4'],
 			['r5', 'p4', 'r4', 'b2'],
 			['r1', 'g5', 'p2', 'p4']
-		], { level: 1 });
+		], {
+			level: 1,
+			starting: PLAYER.BOB
+		});
 
 		// Bob clues 1 to us, touching slot 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [0], target: PLAYER.ALICE });
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [0], target: PLAYER.ALICE });
 
 		// Cathy clues red to Bob, touching r2.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
-		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.DONALD });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
 
 		// Alice's slot 4 should still be any 1.
 		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['r1', 'y1', 'g1', 'b1', 'p1']);
@@ -42,20 +43,18 @@ describe('other cases', () => {
 		], {
 			level: 1,
 			play_stacks: [1, 0, 0, 0, 0],
-			discarded: ['y3']
+			discarded: ['y3'],
+			starting: PLAYER.BOB
 		});
 
 		// Bob clues 3 to Cathy, saving y3 and touching r3.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [8,9], target: PLAYER.CATHY });
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [8,9], target: PLAYER.CATHY });
 
 		// Cathy clues clues red to Donald.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [12,13,14], target: PLAYER.DONALD });
-		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.DONALD });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [12,13,14], target: PLAYER.DONALD });
 
 		// Donald plays r2 and draws r5.
-		state.handle_action({ type: 'play', playerIndex: PLAYER.DONALD, suitIndex: COLOUR.RED, rank: 2, order: 12 });
-		state.handle_action({ type: 'draw', playerIndex: PLAYER.DONALD, suitIndex: COLOUR.RED, rank: 5, order: 16 });
+		takeTurn(state, { type: 'play', playerIndex: PLAYER.DONALD, suitIndex: COLOUR.RED, rank: 2, order: 12 }, 'r5');
 
 		const { play_clues } = find_clues(state);
 

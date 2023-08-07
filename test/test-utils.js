@@ -1,17 +1,20 @@
 import { strict as assert } from 'node:assert';
 import * as Utils from '../src/tools/util.js';
-import { logCard } from '../src/tools/log.js';
+import { logAction, logCard } from '../src/tools/log.js';
 import { card_elim } from '../src/basics.js';
 import { cardCount } from '../src/variants.js';
 
 /**
  * @typedef {import ('../src/basics/State.js').State} State
+ * @typedef {import('../src/basics/Card.js').Card} Card
+ * @typedef {import('../src/types.js').Action} Action
  * 
  * @typedef SetupOptions
  * @property {number} level
  * @property {number[]} play_stacks
  * @property {string[]} discarded
  * @property {number} clue_tokens
+ * @property {number} starting
  * @property {(state: State) => void} init
  */
 
@@ -33,6 +36,92 @@ export const PLAYER = /** @type {const} */ ({
 
 const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
 const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
+
+/**
+ * Initializes the state according to the options provided.
+ * @param {State} state
+ * @param {Partial<SetupOptions>} options
+ */
+function init_state(state, options) {
+	if (options.play_stacks) {
+		state.play_stacks = options.play_stacks;
+		for (let i = 0; i < state.numPlayers; i++) {
+			state.hypo_stacks[i] = options.play_stacks.slice();
+		}
+	}
+
+	// Initialize discard stacks
+	for (const short of options.discarded ?? []) {
+		const { suitIndex, rank } = expandShortCard(short);
+
+		state.discard_stacks[suitIndex][rank - 1]++;
+
+		// Card is now definitely known to everyone - eliminate
+		for (let i = 0; i < state.numPlayers; i++) {
+			card_elim(state, i, suitIndex, rank);
+			state.hands[i].refresh_links();
+		}
+
+		// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
+		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits[suitIndex], rank) && state.max_ranks[suitIndex] > rank - 1) {
+			state.max_ranks[suitIndex] = rank - 1;
+		}
+	}
+
+	state.currentPlayerIndex = options.starting ?? 0;
+	state.clue_tokens = options.clue_tokens ?? 8;
+
+	if (options.init) {
+		options.init(state);
+	}
+}
+
+/**
+ * Injects extra statements into state functions for ease of testing.
+ * @this {State}
+ * @param {Partial<SetupOptions>} options
+ */
+function injectFuncs(options) {
+	this.createBlankDefault = this.createBlank;
+	this.createBlank = function () {
+		const new_state = this.createBlankDefault();
+		init_state(new_state, options);
+		injectFuncs.bind(new_state)(options);
+		return new_state;
+	};
+}
+
+/**
+ * Helper function for taking an action.
+ * @param {State} state
+ * @param {Action} action
+ * @param {string} [draw] 		The card to draw after taking an action (can be omitted if we are drawing).
+ */
+export function takeTurn(state, action, draw = 'xx') {
+	// We only care about the turn taker of these 3 actions
+	const turnTaker = action.type === 'clue' ? action.giver :
+						action.type === 'play' ? action.playerIndex :
+						action.type === 'discard' ? action.playerIndex : state.currentPlayerIndex;
+
+	if (turnTaker !== state.currentPlayerIndex) {
+		const expectedPlayer = state.playerNames[state.currentPlayerIndex];
+		throw new Error(`Expected ${expectedPlayer}'s turn for action (${logAction(action)}), test written incorrectly?`);
+	}
+
+	state.handle_action(action);
+
+	if (action.type === 'play' || action.type === 'discard') {
+		if (draw === 'xx' && state.currentPlayerIndex !== state.ourPlayerIndex) {
+			throw new Error(`Missing draw for ${state.playerNames[state.currentPlayerIndex]}'s action (${logAction(action)}).`);
+		}
+
+		const { suitIndex, rank } = expandShortCard(draw);
+		state.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank });
+	}
+
+	const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.numPlayers;
+	state.handle_action({ type: 'turn', num: state.turn_count + 1, currentPlayerIndex: nextPlayerIndex });
+}
 
 /**
  * @template {State} A
@@ -60,57 +149,9 @@ export function setup(StateClass, hands, options = {}) {
 		}
 	}
 
-	/** @param {State} new_state */
-	const init_state = (new_state) => {
-		if (options.play_stacks) {
-			new_state.play_stacks = options.play_stacks;
-			for (let i = 0; i < new_state.numPlayers; i++) {
-				new_state.hypo_stacks[i] = options.play_stacks.slice();
-			}
-		}
+	init_state(state, options);
+	injectFuncs.bind(state)(options);
 
-		// Initialize discard stacks
-		for (const short of options.discarded ?? []) {
-			const { suitIndex, rank } = expandShortCard(short);
-
-			new_state.discard_stacks[suitIndex][rank - 1]++;
-			console.log('adding to discard stacks', suitIndex, rank);
-
-			// Card is now definitely known to everyone - eliminate
-			for (let i = 0; i < new_state.numPlayers; i++) {
-				card_elim(new_state, i, suitIndex, rank);
-				new_state.hands[i].refresh_links();
-			}
-
-			// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
-			if (new_state.discard_stacks[suitIndex][rank - 1] === cardCount(new_state.suits[suitIndex], rank) && new_state.max_ranks[suitIndex] > rank - 1) {
-				new_state.max_ranks[suitIndex] = rank - 1;
-			}
-		}
-
-		new_state.clue_tokens = options.clue_tokens ?? 8;
-
-		if (options.init) {
-			options.init(new_state);
-		}
-	}
-
-	init_state(state);
-	console.log('reading dc stacks', state.discard_stacks[2]);
-
-	/** @this {State} */
-	function injectBlank() {
-		this.createBlankDefault = this.createBlank;
-		this.createBlank = function () {
-			const new_state = this.createBlankDefault();
-			init_state(new_state);
-			injectBlank.bind(new_state)();
-			return new_state;
-		}
-	}
-
-	// Inject initialize statements into createBlank
-	injectBlank.bind(state)();
 	return state;
 }
 
@@ -125,8 +166,8 @@ export function expandShortCard(short) {
 }
 
 /**
- * @param  {import('../src/basics/Card.js').Card} card 	The card to check inferences of.
- * @param  {string[]} inferences 						The set of inferences to compare to.
+ * @param  {Card} card 				The card to check inferences of.
+ * @param  {string[]} inferences 	The set of inferences to compare to.
  */
 export function assertCardHasInferences(card, inferences) {
 	const message = `Differing inferences. Expected ${inferences}, got ${card.inferred.map(c => logCard(c))}`;

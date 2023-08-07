@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { ACTION, CLUE } from '../../src/constants.js';
-import { COLOUR, PLAYER, assertCardHasInferences, expandShortCard, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, assertCardHasInferences, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 import * as Utils from '../../src/tools/util.js';
@@ -59,10 +59,13 @@ describe('save clue', () => {
 			['r5', 'r4', 'b2', 'y4'],
 			['g5', 'b2', 'g2', 'y2'],
 			['y3', 'g2', 'y1', 'b3']
-		], { level: 1 });
+		], {
+			level: 1,
+			starting: PLAYER.BOB
+		});
 
 		// Bob clues 2 to Cathy.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [8,9,10], target: PLAYER.CATHY, giver: PLAYER.BOB });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [8,9,10], target: PLAYER.CATHY, giver: PLAYER.BOB });
 
 		// g2 is visible in Donald's hand. Other than that, the saved 2 can be any 2.
 		assertCardHasInferences(state.hands[PLAYER.CATHY][3], ['r2', 'y2', 'b2', 'p2']);
@@ -73,10 +76,13 @@ describe('save clue', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'r4', 'r2', 'y4', 'y2'],
 			['g5', 'b4', 'g1', 'y2', 'b3']
-		], { level: 1 });
+		], {
+			level: 1,
+			starting: PLAYER.CATHY
+		});
 
 		// Cathy clues 2 to Bob.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [5,7], target: PLAYER.BOB, giver: PLAYER.CATHY });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [5,7], target: PLAYER.BOB, giver: PLAYER.CATHY });
 
 		// Our slot 1 should not only be y1.
 		assert.equal(state.hands[PLAYER.ALICE][0].inferred.length > 1, true);
@@ -108,16 +114,15 @@ describe('sacrifice discards', () => {
 			['r3', 'b4', 'r2', 'y4', 'y2'],
 		], {
 			level: 1,
-			discarded: ['r4']
+			discarded: ['r4'],
+			starting: PLAYER.BOB
 		});
 
 		// Bob clues Alice 5, touching slots 1, 3 and 5.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 5 }, list: [0,2,4], target: PLAYER.ALICE, giver: PLAYER.BOB });
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 5 }, list: [0,2,4], target: PLAYER.ALICE, giver: PLAYER.BOB });
 
 		// Cathy clues Alice 4, touching slots 2 and 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [1,3], target: PLAYER.ALICE, giver: PLAYER.CATHY });
-		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [1,3], target: PLAYER.ALICE, giver: PLAYER.CATHY });
 
 		// Alice should discard slot 2.
 		assert.equal(state.hands[PLAYER.ALICE].locked_discard().order, 3);

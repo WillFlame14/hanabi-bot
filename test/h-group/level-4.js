@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, assertCardHasInferences, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, assertCardHasInferences, setup, takeTurn } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import * as Utils from '../../src/tools/util.js';
@@ -121,10 +121,13 @@ describe('giving order chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r3', 'r5']
-		], { level: 4 });
+		], {
+			level: 4,
+			starting: PLAYER.BOB
+		});
 
 		// Bob clues Alice 1, touching slots 3 and 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 
 		const our_hand = state.hands[state.ourPlayerIndex];
 
@@ -141,10 +144,13 @@ describe('giving order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g3', 'r3', 'y3', 'y4', 'y4'],
 			['r4', 'r4', 'g4', 'r3', 'r5'],
-		], { level: 4 });
+		], {
+			level: 4,
+			starting: PLAYER.BOB
+		});
 
 		// Bob clues Alice 1, touching slots 2, 3 and 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2, 3], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2, 3], target: PLAYER.ALICE });
 
 		const our_hand = state.hands[PLAYER.ALICE];
 
@@ -160,10 +166,13 @@ describe('giving order chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'r5']
-		], { level: 4 });
+		], {
+			level: 4,
+			starting: PLAYER.BOB
+		});
 
 		// Bob clues Alice 1, touching slots 3 and 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 
 		const { save_clues } = find_clues(state);
 		assert.deepEqual(Utils.objPick(save_clues[PLAYER.BOB], ['type', 'value']), { type: CLUE.RANK, value: 5 });
@@ -175,11 +184,12 @@ describe('giving order chop move', () => {
 			['r4', 'r4', 'g4', 'g4', 'r1']
 		], {
 			level: 4,
-			play_stacks: [2, 0, 0, 0, 0]
+			play_stacks: [2, 0, 0, 0, 0],
+			starting: PLAYER.BOB
 		});
 
 		// Bob clues Alice 1, touching slots 3 and 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 
 		// Alice should not OCM the trash r1.
 		const action = take_action(state);
@@ -190,10 +200,13 @@ describe('giving order chop move', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g5', 'g4', 'g4']
-		], { level: 4 });
+		], {
+			level: 4,
+			starting: PLAYER.BOB
+		});
 
 		// Bob clues Alice 1, touching slots 3 and 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
 
 		// Alice should OCM 1 copy of g4.
 		const action = take_action(state);
@@ -205,14 +218,16 @@ describe('giving order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g3', 'g3', 'r2'],
 			['g4', 'r3', 'y3', 'y3', 'r2']
-		], { level: 4 });
+		], {
+			level: 4,
+			starting: PLAYER.BOB
+		});
 
-		// Bob clues Cathy 2, touching r2
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [10], target: PLAYER.CATHY });
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.DONALD });
+		// Bob clues Cathy 2, touching r2.
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [10], target: PLAYER.CATHY });
 
 		// Cathy clues Alice 1, touching slots 2 and 3.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.CATHY, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.CATHY, list: [1, 2], target: PLAYER.ALICE });
 
 		// Alice should not OCM the copy of r2.
 		const action = take_action(state);
@@ -229,10 +244,10 @@ describe('interpreting order chop move', () => {
 		], { level: 4 });
 
 		// Alice clues Bob 1, touching slots 2, 3 and 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6, 7, 8], target: PLAYER.BOB });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6, 7, 8], target: PLAYER.BOB });
 
 		// Bob performs an ocm on Cathy.
-		state.handle_action({ type: 'play', order: 7, playerIndex: PLAYER.BOB, suitIndex: COLOUR.GREEN, rank: 1 });
+		takeTurn(state, { type: 'play', order: 7, playerIndex: PLAYER.BOB, suitIndex: COLOUR.GREEN, rank: 1 }, 'r1');
 
 		// Cathy's slot 5 should be chop moved.
 		assert.equal(state.hands[PLAYER.CATHY][4].chop_moved, true);
@@ -243,16 +258,19 @@ describe('interpreting order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b1', 'g1', 'r1', 'r5'],
 			['y4', 'r4', 'g4', 'r4', 'b5']
-		], { level: 4 });
+		], {
+			level: 4,
+			starting: PLAYER.CATHY
+		});
 
 		// Cathy clues Alice 5, touching slot 5.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.CATHY, list: [0], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.CATHY, list: [0], target: PLAYER.ALICE });
 
 		// Alice clues Bob 1, touching slots 2, 3 and 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6, 7, 8], target: PLAYER.BOB });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6, 7, 8], target: PLAYER.BOB });
 
 		// Bob performs an ocm on Alice.
-		state.handle_action({ type: 'play', order: 8, playerIndex: PLAYER.BOB, suitIndex: COLOUR.GREEN, rank: 1 });
+		takeTurn(state, { type: 'play', order: 8, playerIndex: PLAYER.BOB, suitIndex: COLOUR.GREEN, rank: 1 }, 'r1');
 
 		// Alice's slot 4 should be chop moved.
 		assert.equal(state.hands[PLAYER.ALICE][3].chop_moved, true);
@@ -264,13 +282,16 @@ describe('interpreting chop moves', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b3', 'g3', 'r3', 'r5']
-		], { level: 4 });
+		], {
+			level: 4,
+			starting: PLAYER.BOB
+		});
 
 		// Alice's slots 4 and 5 are chop moved
 		[3, 4].forEach(index => state.hands[PLAYER.ALICE][index].chop_moved = true);
 
 		// Bob clues Alice purple, touching slots 2 and 5.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,3], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,3], target: PLAYER.ALICE });
 
 		// Alice's slot 2 should be p1.
 		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['p1']);
@@ -280,13 +301,16 @@ describe('interpreting chop moves', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b3', 'g3', 'r3', 'r5']
-		], { level: 4 });
+		], {
+			level: 4,
+			starting: PLAYER.BOB
+		});
 
 		// Alice's slots 4 and 5 are chop moved
 		[3, 4].forEach(index => state.hands[PLAYER.ALICE][index].chop_moved = true);
 
 		// Bob clues Alice purple, touching slots 4 and 5.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,1], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,1], target: PLAYER.ALICE });
 
 		// Alice's slot 4 should be p1.
 		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['p1']);

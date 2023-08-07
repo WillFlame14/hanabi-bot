@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, assertCardHasInferences, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, assertCardHasInferences, setup, takeTurn } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
@@ -15,18 +15,20 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], { level: 5 });
+		], {
+			level: 5,
+			starting: PLAYER.BOB
+		});
 
 		// Bob clues Alice green, touching slot 2.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
 
 		// Alice's slot 2 should be [g1,g2].
 		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['g1', 'g2']);
 		assert.equal(state.hands[PLAYER.CATHY][0].reasoning.length, 1);
 
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
-		state.handle_action({ type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false });
-		state.update_turn(state, { type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
+		// Cathy discards chop.
+		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'r1');
 
 		// Alice's slot 2 should just be g1 now.
 		assertCardHasInferences(state.hands[PLAYER.ALICE][1], ['g1']);
@@ -37,21 +39,19 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g3', 'b3', 'r2', 'y3', 'p3']
-		], { level: 5 });
+		], {
+			level: 5,
+			starting: PLAYER.BOB
+		});
 
 		// Bob clues Alice 1, touching slot 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1], target: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1], target: PLAYER.ALICE });
 
 		// Cathy clues Alice 2, touching slot 3.
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.CATHY, list: [2], target: PLAYER.ALICE });
-
-		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.CATHY, list: [2], target: PLAYER.ALICE });
 
 		// Alice plays the unknown 1 as g1.
-		state.handle_action({ type: 'play', order: 1, suitIndex: COLOUR.GREEN, rank: 1, playerIndex: PLAYER.ALICE });
-		state.handle_action({ type: 'draw', order: 15, suitIndex: -1, rank: -1, playerIndex: PLAYER.ALICE });
-		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.BOB });
+		takeTurn(state, { type: 'play', order: 1, suitIndex: COLOUR.GREEN, rank: 1, playerIndex: PLAYER.ALICE });
 
 		// Alice's slot 4 (used to be slot 3) should just be g2 now.
 		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['g2']);
@@ -68,39 +68,31 @@ describe('ambiguous clues', () => {
 		});
 
 		// Alice clues 2 to Cathy.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.BOB });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
 
 		// Bob clues Alice red, touching slot 3.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
-		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.CATHY });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
 
 		// Alice's slot 3 should be [r3,r4].
 		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
 		// Cathy plays r2.
-		state.handle_action({ type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 2, playerIndex: PLAYER.CATHY });
-		state.handle_action({ type: 'draw', order: 15, suitIndex: COLOUR.YELLOW, rank: 1, playerIndex: PLAYER.CATHY });
-
-		state.update_turn(state, { type: 'turn', num: 3, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, { type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 2, playerIndex: PLAYER.CATHY }, 'y1');
 
 		// Alice's slot 3 should still be [r3,r4] to allow for the possibility of a hidden finesse.
 		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
 		// Alice discards.
-		state.handle_action({ type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
-		state.handle_action({ type: 'turn', num: 4, currentPlayerIndex: PLAYER.BOB });
+		takeTurn(state, { type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
 
 		// Bob discards.
-		state.handle_action({ type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false });
-		state.handle_action({ type: 'turn', num: 5, currentPlayerIndex: PLAYER.CATHY });
+		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false }, 'r1');
 
 		// Cathy plays r3.
-		state.handle_action({ type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.RED, rank: 3 });
-		state.update_turn(state, { type: 'turn', num: 6, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, { type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.RED, rank: 3 }, 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r4] now.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r4']);
+		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['r4']);
 	});
 
 	it('understands a fake delayed finesse', () => {
@@ -111,33 +103,25 @@ describe('ambiguous clues', () => {
 		], { level: 5 });
 
 		// Alice clues 1 to Cathy.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.BOB });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
 
 		// Bob clues Alice red, touching slot 3.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
-		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.CATHY });
+		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
 
 		// Cathy plays r1.
-		state.handle_action({ type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 1, playerIndex: PLAYER.CATHY });
-		state.handle_action({ type: 'draw', order: 15, suitIndex: COLOUR.YELLOW, rank: 1, playerIndex: PLAYER.CATHY });
-
-		state.update_turn(state, { type: 'turn', num: 3, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, { type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 1, playerIndex: PLAYER.CATHY }, 'y1');
 
 		// Alice discards.
-		state.handle_action({ type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
-		state.handle_action({ type: 'turn', num: 4, currentPlayerIndex: PLAYER.BOB });
+		takeTurn(state, { type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
 
 		// Bob discards.
-		state.handle_action({ type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false });
-		state.handle_action({ type: 'turn', num: 5, currentPlayerIndex: PLAYER.CATHY });
+		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false }, 'r1');
 
 		// Cathy discards.
-		state.handle_action({ type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false });
-		state.update_turn(state, { type: 'turn', num: 6, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r2] now.
-		assertCardHasInferences(state.hands[PLAYER.ALICE][2], ['r2']);
+		assertCardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
 	});
 });
 

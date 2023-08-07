@@ -72,6 +72,7 @@ export function handle_action(action, catchup = false) {
 		case 'turn': {
 			//  { type: 'turn', num: 1, currentPlayerIndex: 1 }
 			const { currentPlayerIndex, num } = action;
+			this.currentPlayerIndex = currentPlayerIndex;
 			this.turn_count = num + 1;
 
 			if (!catchup) {
