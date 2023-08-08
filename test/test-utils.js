@@ -169,18 +169,19 @@ export function takeTurn(state, rawAction, draw = 'xx') {
 /**
  * Parses slot numbers from the separated parts.
  * @param {State} state
- * @param {number} partsIndex
+ * @param {string[]} parts
+ * @param {number} partsIndex 		The index to start parsing from.
  * @param {boolean} expectOne 		A flag saying whether to only expect one slot.
  * @param {string} insufficientMsg 	An additional message to show if insufficient arguments are provided.
  */
-function parseSlots(state, partsIndex, expectOne, insufficientMsg = '') {
+function parseSlots(state, parts, partsIndex, expectOne, insufficientMsg = '') {
 	const original = parts[partsIndex - 1] + ' ' + parts[partsIndex];
 
 	if (parts.length < partsIndex + 1) {
 		throw new Error(`Not enough arguments provided ${insufficientMsg}, needs '(slot x)'.`);
 	}
 
-	const slots = parts[partsIndex].slice(0, parts[partsIndex].length - 1).split(',').map(s => Number(s));;
+	const slots = parts[partsIndex].slice(0, parts[partsIndex].length - 1).split(',').map(s => Number(s));
 	if (slots.length === 0 || slots.some(slot => isNaN(slot) || slot < 1 && slot > state.hands[state.ourPlayerIndex].length)) {
 		throw new Error(`Failed to parse ${original}.`);
 	}
@@ -233,7 +234,7 @@ export function parseAction(state, rawAction) {
 			}
 			else {
 				// e.g. "Bob clues 2 to Alice (slots 2,4)"
-				const slots = parseSlots(state, 6, false, '(clue to us)');
+				const slots = parseSlots(state, parts, 6, false, '(clue to us)');
 				const list = slots.map(slot => state.hands[state.ourPlayerIndex][slot - 1].order);
 
 				return { type: 'clue', clue, giver: playerIndex, target, list };
@@ -251,7 +252,7 @@ export function parseAction(state, rawAction) {
 				else if (matching.length === 1) {
 					// Brief check to make sure that if slot provided, it is correct
 					if (parts.length >= 4) {
-						const slot = parseSlots(state, 4, true)[0];
+						const slot = parseSlots(state, parts, 4, true)[0];
 						if (state.hands[playerIndex][slot - 1].order !== matching[0].order) {
 							throw new Error(`Identity ${parts[2]} is not in slot ${slot}, test written incorrectly?`);
 						}
@@ -260,18 +261,18 @@ export function parseAction(state, rawAction) {
 				}
 				else {
 					// e.g. "Bob plays b3 (slot 1)"
-					const slot = parseSlots(state, 4, true, '(ambiguous identity)')[0];
+					const slot = parseSlots(state, parts, 4, true, '(ambiguous identity)')[0];
 					const card = state.hands[playerIndex][slot - 1];
 
 					if (!card.matches(suitIndex, rank)) {
-						throw new Error(`Identity ${parts[2]} is not in slot ${slot}, test written incorrectly?`)
+						throw new Error(`Identity ${parts[2]} is not in slot ${slot}, test written incorrectly?`);
 					}
-					return { type: 'play', playerIndex, suitIndex, rank, order };
+					return { type: 'play', playerIndex, suitIndex, rank, order: card.order };
 				}
 			}
 			else {
 				// e.g. "Alice plays y5 (slot 1)"
-				const slot = parseSlots(state, 4, true, '(play from us)');
+				const slot = parseSlots(state, parts, 4, true, '(play from us)');
 				const { order } = state.hands[state.ourPlayerIndex][slot - 1];
 
 				return { type: 'play', playerIndex, suitIndex, rank, order };
@@ -295,7 +296,7 @@ export function parseAction(state, rawAction) {
 					throw new Error(`Not enough arguments provided for a discard action from us, needs '(slot x)' at the end.`);
 				}
 
-				const slot = parseSlots(state, 4, true, '(discard from us)');
+				const slot = parseSlots(state, parts, 4, true, '(discard from us)');
 				const { order } = state.hands[state.ourPlayerIndex][slot - 1];
 
 				return { type: 'discard', playerIndex, suitIndex, rank, order, failed: parts[1] === 'bombs' };

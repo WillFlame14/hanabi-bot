@@ -1,9 +1,8 @@
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, setup, expandShortCard, takeTurn } from '../../test-utils.js';
+import { PLAYER, setup, expandShortCard, takeTurn } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
-import { CLUE } from '../../../src/constants.js';
 
 import logger from '../../../src/tools/logger.js';
 
