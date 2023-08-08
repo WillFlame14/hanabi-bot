@@ -64,8 +64,7 @@ describe('save clue', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues 2 to Cathy.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [8,9,10], target: PLAYER.CATHY, giver: PLAYER.BOB });
+		takeTurn(state, 'Bob clues 2 to Cathy');
 
 		// g2 is visible in Donald's hand. Other than that, the saved 2 can be any 2.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.CATHY][3], ['r2', 'y2', 'b2', 'p2']);
@@ -81,8 +80,7 @@ describe('save clue', () => {
 			starting: PLAYER.CATHY
 		});
 
-		// Cathy clues 2 to Bob.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, list: [5,7], target: PLAYER.BOB, giver: PLAYER.CATHY });
+		takeTurn(state, 'Cathy clues 2 to Bob');
 
 		// Our slot 1 should not only be y1.
 		assert.equal(state.hands[PLAYER.ALICE][0].inferred.length > 1, true);
@@ -118,11 +116,8 @@ describe('sacrifice discards', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 5, touching slots 1, 3 and 5.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 5 }, list: [0,2,4], target: PLAYER.ALICE, giver: PLAYER.BOB });
-
-		// Cathy clues Alice 4, touching slots 2 and 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 4 }, list: [1,3], target: PLAYER.ALICE, giver: PLAYER.CATHY });
+		takeTurn(state, 'Bob clues 5 to Alice (slots 1,3,5)');
+		takeTurn(state, 'Cathy clues 4 to Alice (slots 2,4)');
 
 		// Alice should discard slot 2.
 		assert.equal(state.hands[PLAYER.ALICE].locked_discard().order, 3);

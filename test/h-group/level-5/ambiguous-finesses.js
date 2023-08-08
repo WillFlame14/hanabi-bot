@@ -21,14 +21,12 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.CATHY
 		});
 
-		// Cathy clues Bob green.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.CATHY, list: [8], target: PLAYER.BOB });
+		takeTurn(state, 'Cathy clues green to Bob');
 
 		// Donald's g1 should be finessed
 		assert.deepEqual(state.hands[PLAYER.DONALD][0].finessed, true);
 
-		// Donald discards.
-		takeTurn(state, { type: 'discard', order: 15, playerIndex: PLAYER.DONALD, suitIndex: COLOUR.PURPLE, rank: 4, failed: false }, 'r1');
+		takeTurn(state, 'Donald discards p4', 'r1');
 
 		// Alice's slot 2 should be [g1].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][0], ['g1']);
@@ -44,11 +42,8 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 2, touching slot 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
-
-		// Cathy discards.
-		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'r1');
+		takeTurn(state, 'Bob clues 2 to Alice (slot 3)');
+		takeTurn(state, 'Cathy discards p3', 'r1');
 
 		// Alice's slot 1 should be finessed.
 		assert.equal(state.hands[PLAYER.ALICE][0].finessed, true);
@@ -64,11 +59,8 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 3, touching slot 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
-
-		// Cathy discards.
-		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'b3');
+		takeTurn(state, 'Bob clues 3 to Alice (slot 3)');
+		takeTurn(state, 'Cathy discards p3', 'b3');
 
 		// Alice should pass back, making her slot 1 not finessed and Cathy's slot 2 (used to be slot 1) finessed.
 		assert.equal(state.hands[PLAYER.ALICE][0].finessed, false);
@@ -85,17 +77,11 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.CATHY
 		});
 
-		// Cathy clues Bob 3, touching r3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
+		takeTurn(state, 'Cathy clues 3 to Bob');		// Ambiguous finesse on us and Bob
+		takeTurn(state, 'Alice discards p3 (slot 5)');
+		takeTurn(state, 'Bob discards p4', 'b2');		// Bob passes back
 
-		// Alice discards and draws y1.
-		takeTurn(state, { type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.PURPLE, rank: 3, failed: false });
-
-		// Bob discards and draws b2, passing back the ambiguous finesse.
-		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'b2');
-
-		// Cathy clues 5 to Bob as a 5 Save.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.CATHY, list: [6,8], target: PLAYER.BOB });
+		takeTurn(state, 'Cathy clues 5 to Bob');		// 5 Save
 
 		// Alice's slot 1 has now moved to slot 2.
 		assert.equal(state.hands[PLAYER.ALICE][1].finessed, true);
@@ -105,7 +91,7 @@ describe('ambiguous finesse', () => {
 	it('prefers hidden prompt over ambiguous', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['g3', 'b4', 'g4', 'r3'],
+			['g3', 'b2', 'g4', 'r3'],
 			['g4', 'y3', 'r4', 'p2'],
 			['g2', 'y2', 'g5', 'b2']
 		], {
@@ -114,11 +100,8 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues 2 to Donald.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [12,14,15], target: PLAYER.DONALD });
-
-		// Cathy clues 4 to Bob, connecting on g2 (Donald, prompt) and g3 (Bob, finesse).
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 4 }, giver: PLAYER.CATHY, list: [5], target: PLAYER.BOB });
+		takeTurn(state, 'Bob clues 2 to Donald');
+		takeTurn(state, 'Cathy clues 4 to Bob');	// connecting on g2 (Donald, prompt) and g3 (Bob, finesse)
 
 		// Bob's slot 1 can be either g3 or y3, since he doesn't know which 1 is connecting.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['y3', 'g3']);

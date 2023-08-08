@@ -22,11 +22,8 @@ describe('other cases', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues 1 to us, touching slot 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [0], target: PLAYER.ALICE });
-
-		// Cathy clues red to Bob, touching r2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
+		takeTurn(state, 'Bob clues 1 to Alice (slot 4)');
+		takeTurn(state, 'Cathy clues red to Bob');			// r2 finesse
 
 		// Alice's slot 4 should still be any 1.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r1', 'y1', 'g1', 'b1', 'p1']);
@@ -48,14 +45,9 @@ describe('other cases', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues 3 to Cathy, saving y3 and touching r3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [8,9], target: PLAYER.CATHY });
-
-		// Cathy clues clues red to Donald.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [12,13,14], target: PLAYER.DONALD });
-
-		// Donald plays r2 and draws r5.
-		takeTurn(state, { type: 'play', playerIndex: PLAYER.DONALD, suitIndex: COLOUR.RED, rank: 2, order: 12 }, 'r5');
+		takeTurn(state, 'Bob clues 3 to Cathy');		// saving y3 and touching r3
+		takeTurn(state, 'Cathy clues red to Donald');	// getting r2
+		takeTurn(state, 'Donald plays r2', 'r5');
 
 		const { play_clues } = find_clues(state);
 

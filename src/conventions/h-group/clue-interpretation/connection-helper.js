@@ -135,7 +135,7 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 	const sym_conn = symmetric_connections.map(conn => {
 		return {
 			connections: conn.connections.map(logConnection),
-			inference: logCard({ suitIndex: conn.suitIndex, rank: conn.rank })
+			inference: logCard({ suitIndex: conn.suitIndex, rank: conn.rank }) + (conn.fake ? '(fake)' : '')
 		};
 	});
 

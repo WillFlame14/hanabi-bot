@@ -29,14 +29,12 @@ describe('hidden finesse', () => {
 		state.hands[PLAYER.CATHY][2].intersect('inferred', ['r2', 'y2', 'g2', 'b2', 'p2'].map(expandShortCard));
 		state.hands[PLAYER.CATHY][2].clues.push({ type: CLUE.RANK, value: 2 });
 
-		// Bob clues Alice 3, touching slot 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 3 to Alice (slot 3)');
 
 		// Alice's slot 3 should be [r3,g3].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'g3']);
 
-		// Cathy plays r2 thinking it is a prompt.
-		takeTurn(state, { type: 'play', order: 12, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.RED, rank: 2 }, 'r1');
+		takeTurn(state, 'Cathy plays r2', 'r1');	// expecting g2 prompt
 
 		// Alice's slot 3 should still be [r3,g3] to allow for the possibility of a hidden finesse.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'g3']);
@@ -59,20 +57,12 @@ describe('hidden finesse', () => {
 		state.hands[PLAYER.CATHY][2].intersect('inferred', ['r2', 'y2', 'g2', 'b2', 'p2'].map(expandShortCard));
 		state.hands[PLAYER.CATHY][2].clues.push({ type: CLUE.RANK, value: 2 });
 
-		// Bob clues Alice 3, touching slot 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 3 }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 3 to Alice (slot 3)');
+		takeTurn(state, 'Cathy plays r2', 'b1');			// r2 prompt
+		takeTurn(state, 'Alice discards b1 (slot 5)');		// waiting for g2 hidden finesse
 
-		// Cathy plays r2 thinking it is a prompt.
-		takeTurn(state, { type: 'play', order: 12, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.RED, rank: 2 }, 'b1');
-
-		// Alice discards.
-		takeTurn(state, { type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
-
-		// Bob discards.
-		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false }, 'r1');
-
-		// Cathy discards.
-		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'y1');
+		takeTurn(state, 'Bob discards b4', 'r1');
+		takeTurn(state, 'Cathy discards p3', 'y1');			// Cathy demonstrates not hidden finesse
 
 		// Alice's slot 4 (used to be 3) should just be r3 now.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r3']);
@@ -88,20 +78,12 @@ describe('hidden finesse', () => {
 			starting: PLAYER.CATHY
 		});
 
-		// Cathy clues 1 to us, touching slots 2 and 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.CATHY, list: [2,3], target: PLAYER.ALICE });
+		takeTurn(state, 'Cathy clues 1 to Alice (slots 2,3)');
+		takeTurn(state, 'Alice plays y1 (slot 3)');
+		takeTurn(state, 'Bob clues 5 to Cathy');
 
-		// We play slot 3 as y1.
-		takeTurn(state, { type: 'play', order: 2, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.YELLOW, rank: 1 });
-
-		// Bob clues 5 to Cathy.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.BOB, list: [10], target: PLAYER.CATHY });
-
-		// Cathy clues red to Bob, touching r2 as a hidden finesse.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [7,8], target: PLAYER.BOB });
-
-		// We play slot 3 as r1, but it turns out to be b1!
-		takeTurn(state, { type: 'play', order: 3, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1 });
+		takeTurn(state, 'Cathy clues red to Bob');		// r2 hidden finesse
+		takeTurn(state, 'Alice plays b1 (slot 3)');		// expecting r1 playable
 
 		// Our slot 1 (now slot 2) should be r1.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['r1']);
@@ -119,23 +101,16 @@ describe('layered finesse', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice yellow, touching slot 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues yellow to Alice (slot 3)');
 
 		// Alice's slot 3 should be [y1,y2].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['y1', 'y2']);
 
-		// Cathy plays g1 thinking it is y1.
-		takeTurn(state, { type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.GREEN, rank: 1 }, 'b1');
+		takeTurn(state, 'Cathy plays g1', 'b1');		// expecting y1 finesse
+		takeTurn(state, 'Alice discards b1 (slot 5)');
+		takeTurn(state, 'Bob discards b4', 'r1');
 
-		// Alice discards.
-		takeTurn(state, { type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
-
-		// Bob discards.
-		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false }, 'r1');
-
-		// Cathy plays y1.
-		takeTurn(state, { type: 'play', order: 13, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.YELLOW, rank: 1 }, 'y1');
+		takeTurn(state, 'Cathy plays y1', 'y1');
 
 		// Alice's slot 4 (used to be slot 3) should be y2 now.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['y2']);
@@ -151,14 +126,12 @@ describe('layered finesse', () => {
 			starting: PLAYER.CATHY
 		});
 
-		// Cathy clues Bob yellow, touching y2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
+		takeTurn(state, 'Cathy clues yellow to Bob');
 
 		// Alice's slot 1 should be [y1].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][0], ['y1']);
 
-		// Alice plays slot 1, but it is actually g1!
-		takeTurn(state, { type: 'play', order: 4, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.GREEN, rank: 1 });
+		takeTurn(state, 'Alice plays g1 (slot 1)');		// expecting y1 finesse
 
 		// Alice's slot 2 should be [y1] now.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['y1']);
@@ -188,14 +161,9 @@ describe('layered finesse', () => {
 			discarded: ['y4']
 		});
 
-		// Cathy clues Bob red, touching r2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
-
-		// Alice plays slot 1, which is revealed to be b1!
-		takeTurn(state, { type: 'play', order: 4, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1 });
-
-		// Bob clues yellow to Alice, touching slots 2 and 5.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.BOB, list: [0,3], target: PLAYER.ALICE });
+		takeTurn(state, 'Cathy clues red to Bob');			// r2 layered finesse on us
+		takeTurn(state, 'Alice plays b1 (slot 1)');			// expecting r1 finesse
+		takeTurn(state, 'Bob clues yellow to Alice (slots 2,5)');		// y4 save
 
 		// Alice's slot 2 (the yellow card) should be finessed as y1.
 		assert.equal(state.hands[PLAYER.ALICE][1].finessed, true);
@@ -217,14 +185,9 @@ describe('layered finesse', () => {
 			discarded: ['r4']
 		});
 
-		// Cathy clues Bob red, touching r2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
-
-		// Alice plays slot 1, which is revealed to be b1!
-		takeTurn(state, { type: 'play', order: 4, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1 });
-
-		// Bob clues red to Alice, touching slots 3 and 5.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [0,2], target: PLAYER.ALICE });
+		takeTurn(state, 'Cathy clues red to Bob'); 			// r2 layered finesse on us
+		takeTurn(state, 'Alice plays b1 (slot 1)');			// expecting r1 finesse
+		takeTurn(state, 'Bob clues red to Alice (slots 3,5)');		// r4 save
 
 		// Alice's slot 2 should be finessed as [y1, g1, b2, p1].
 		assert.equal(state.hands[PLAYER.ALICE][1].finessed, true);
@@ -246,19 +209,12 @@ describe('layered finesse', () => {
 		});
 
 		// Cathy clues yellow to Bob, touching y2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.YELLOW }, giver: PLAYER.CATHY, list: [7], target: PLAYER.BOB });
+		takeTurn(state, 'Cathy clues yellow to Bob');		// y2 layered finesse on us
+		takeTurn(state, 'Alice plays p1 (slot 1)');			// expecting y1 finesse
+		takeTurn(state, 'Bob discards r4', 'b2');
 
-		// We play slot 1, but it turns out to be p1!
-		takeTurn(state, { type: 'play', order: 4, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.PURPLE, rank: 1 });
-
-		// Bob discards and draws b2.
-		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.RED, rank: 4, failed: false }, 'b2');
-
-		// Cathy discards and draws b3.
-		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.BLUE, rank: 4, failed: false }, 'b3');
-
-		// We play slot 2, but it turns out to be p2!
-		takeTurn(state, { type: 'play', order: 3, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.PURPLE, rank: 2 });
+		takeTurn(state, 'Cathy discards b4', 'b3');
+		takeTurn(state, 'Alice plays p2 (slot 2)');			// expecting y1 finesse
 
 		// y1 should be in slot 3 now.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['y1']);
@@ -274,26 +230,19 @@ describe('layered finesse', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 2, touching slot 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 2 to Alice (slot 3)');	// r2 clandestine finesse
 
 		// Alice's slot 3 should be [g2,r2].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r2', 'g2']);
 
-		// Cathy plays g1 thinking it is r1.
-		takeTurn(state, { type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.GREEN, rank: 1 }, 'b1');
+		takeTurn(state, 'Cathy plays g1', 'b1');			// expecing r1 finesse
 
 		// Alice's slot 3 should still be [g2,r2] to allow for the possibility of a clandestine finesse.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r2', 'g2']);
 
-		// Alice discards.
-		takeTurn(state, { type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
-
-		// Bob discards and draws g5.
-		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false }, 'g5');
-
-		// Cathy plays r1.
-		takeTurn(state, { type: 'play', order: 13, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.RED, rank: 1 }, 'r1');
+		takeTurn(state, 'Alice discards b1 (slot 5)');
+		takeTurn(state, 'Bob discards b4', 'g5');
+		takeTurn(state, 'Cathy plays r1', 'r1');
 
 		// Alice's slot 4 (used to be 3) should just be r2 now.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
@@ -309,14 +258,12 @@ describe('layered finesse', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Cathy green.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [14], target: PLAYER.CATHY });
+		takeTurn(state, 'Bob clues green to Cathy');		// g2 finesse on us
 
 		// Alice's slot 1 should be [g1].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][0], ['g1']);
 
-		// Cathy clues 2 to Bob.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.CATHY, list: [8], target: PLAYER.BOB });
+		takeTurn(state, 'Cathy clues 2 to Bob');			// r2 finesse on us
 
 		// Alice's slot 2 should be [r1].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['r1']);
@@ -333,14 +280,9 @@ describe('layered finesse', () => {
 			['g1', 'r1', 'r4', 'g4', 'b4']
 		], { level: 5 });
 
-		// Alice clues Bob green.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.ALICE, list: [9], target: PLAYER.BOB });
-
-		// Bob clues red to Alice, touching slot 2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
-
-		// Cathy plays g1.
-		takeTurn(state, { type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.GREEN, rank: 1 }, 'r1');
+		takeTurn(state, 'Alice clues green to Bob');			// g2 reverse finesse on Cathy
+		takeTurn(state, 'Bob clues red to Alice (slot 2)');		// r2 reverse finesse on Cathy
+		takeTurn(state, 'Cathy plays g1', 'b1');
 
 		// Alice's slot 2 should still be [r1, r2].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['r1', 'r2']);
@@ -356,17 +298,11 @@ describe('layered finesse', () => {
 			starting: PLAYER.CATHY
 		});
 
-		// Cathy clues 2 to Bob.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.CATHY, list: [8], target: PLAYER.BOB });
+		takeTurn(state, 'Cathy clues 2 to Bob');		// r2 finesse
+		takeTurn(state, 'Alice plays b1 (slot 1)');		// expecting r1 finesse
+		takeTurn(state, 'Bob clues green to Cathy');	// g2 reverse finesse
 
-		// Alice plays slot 1, but it is revealed to be b1!
-		takeTurn(state, { type: 'play', order: 4, suitIndex: COLOUR.BLUE, rank: 1, playerIndex: PLAYER.ALICE });
-
-		// Bob clues Cathy green.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [14], target: PLAYER.CATHY });
-
-		// Cathy discards and draws y1.
-		takeTurn(state, { type: 'discard', order: 10, suitIndex: COLOUR.PURPLE, rank: 3, playerIndex: PLAYER.CATHY, failed: false }, 'y1');
+		takeTurn(state, 'Cathy discards p3', 'y1');
 
 		// Alice should play slot 2 first (continue digging for r1).
 		const action = take_action(state);

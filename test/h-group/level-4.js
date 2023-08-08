@@ -120,8 +120,7 @@ describe('giving order chop move', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 1, touching slots 3 and 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 1 to Alice (slots 3,4)');
 
 		const our_hand = state.hands[state.ourPlayerIndex];
 
@@ -142,8 +141,7 @@ describe('giving order chop move', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 1, touching slots 2, 3 and 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2, 3], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 1 to Alice (slots 2,3,4)');
 
 		const our_hand = state.hands[PLAYER.ALICE];
 
@@ -163,8 +161,7 @@ describe('giving order chop move', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 1, touching slots 3 and 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 1 to Alice (slots 3,4)');
 
 		const { save_clues } = find_clues(state);
 		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 5 });
@@ -180,8 +177,7 @@ describe('giving order chop move', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 1, touching slots 3 and 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 1 to Alice (slots 3,4)');
 
 		// Alice should not OCM the trash r1.
 		const action = take_action(state);
@@ -197,8 +193,7 @@ describe('giving order chop move', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 1, touching slots 3 and 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 1 to Alice (slots 3,4)');
 
 		// Alice should OCM 1 copy of g4.
 		const action = take_action(state);
@@ -215,11 +210,8 @@ describe('giving order chop move', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Cathy 2, touching r2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.BOB, list: [10], target: PLAYER.CATHY });
-
-		// Cathy clues Alice 1, touching slots 2 and 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.CATHY, list: [1, 2], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 2 to Cathy');		// 2 Save, r2
+		takeTurn(state, 'Cathy clues 1 to Alice (slots 3,4)');
 
 		// Alice should not OCM the copy of r2.
 		const action = take_action(state);
@@ -235,11 +227,8 @@ describe('interpreting order chop move', () => {
 			['y4', 'r4', 'g4', 'r4', 'b5']
 		], { level: 4 });
 
-		// Alice clues Bob 1, touching slots 2, 3 and 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6, 7, 8], target: PLAYER.BOB });
-
-		// Bob performs an ocm on Cathy.
-		takeTurn(state, { type: 'play', order: 7, playerIndex: PLAYER.BOB, suitIndex: COLOUR.GREEN, rank: 1 }, 'r1');
+		takeTurn(state, 'Alice clues 1 to Bob');
+		takeTurn(state, 'Bob plays g1', 'r1');		// OCM on Cathy
 
 		// Cathy's slot 5 should be chop moved.
 		assert.equal(state.hands[PLAYER.CATHY][4].chop_moved, true);
@@ -255,14 +244,9 @@ describe('interpreting order chop move', () => {
 			starting: PLAYER.CATHY
 		});
 
-		// Cathy clues Alice 5, touching slot 5.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 5 }, giver: PLAYER.CATHY, list: [0], target: PLAYER.ALICE });
-
-		// Alice clues Bob 1, touching slots 2, 3 and 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [6, 7, 8], target: PLAYER.BOB });
-
-		// Bob performs an ocm on Alice.
-		takeTurn(state, { type: 'play', order: 8, playerIndex: PLAYER.BOB, suitIndex: COLOUR.GREEN, rank: 1 }, 'r1');
+		takeTurn(state, 'Cathy clues 5 to Alice (slot 5)');
+		takeTurn(state, 'Alice clues 1 to Bob');
+		takeTurn(state, 'Bob plays b1', 'r1');		// OCM on Alice
 
 		// Alice's slot 4 should be chop moved.
 		assert.equal(state.hands[PLAYER.ALICE][3].chop_moved, true);
@@ -282,8 +266,7 @@ describe('interpreting chop moves', () => {
 		// Alice's slots 4 and 5 are chop moved
 		[3, 4].forEach(index => state.hands[PLAYER.ALICE][index].chop_moved = true);
 
-		// Bob clues Alice purple, touching slots 2 and 5.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,3], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues purple to Alice (slots 2,5)');
 
 		// Alice's slot 2 should be p1.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['p1']);
@@ -301,8 +284,7 @@ describe('interpreting chop moves', () => {
 		// Alice's slots 4 and 5 are chop moved
 		[3, 4].forEach(index => state.hands[PLAYER.ALICE][index].chop_moved = true);
 
-		// Bob clues Alice purple, touching slots 4 and 5.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.PURPLE }, giver: PLAYER.BOB, list: [0,1], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues purple to Alice (slots 4,5)');
 
 		// Alice's slot 4 should be p1.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['p1']);

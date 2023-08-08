@@ -21,15 +21,13 @@ describe('ambiguous clues', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice green, touching slot 2.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues green to Alice (slot 2)');
 
 		// Alice's slot 2 should be [g1,g2].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g1', 'g2']);
 		assert.equal(state.hands[PLAYER.CATHY][0].reasoning.length, 1);
 
-		// Cathy discards chop.
-		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'r1');
+		takeTurn(state, 'Cathy discards p3', 'r1');
 
 		// Alice's slot 2 should just be g1 now.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g1']);
@@ -45,14 +43,9 @@ describe('ambiguous clues', () => {
 			starting: PLAYER.BOB
 		});
 
-		// Bob clues Alice 1, touching slot 4.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1], target: PLAYER.ALICE });
-
-		// Cathy clues Alice 2, touching slot 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.CATHY, list: [2], target: PLAYER.ALICE });
-
-		// Alice plays the unknown 1 as g1.
-		takeTurn(state, { type: 'play', order: 1, suitIndex: COLOUR.GREEN, rank: 1, playerIndex: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues 1 to Alice (slot 4)');
+		takeTurn(state, 'Cathy clues 2 to Alice (slot 3)');
+		takeTurn(state, 'Alice plays g1 (slot 4)');
 
 		// Alice's slot 4 (used to be slot 3) should just be g2 now.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['g2']);
@@ -68,29 +61,20 @@ describe('ambiguous clues', () => {
 			play_stacks: [1, 0, 1, 1, 0]
 		});
 
-		// Alice clues 2 to Cathy.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
-
-		// Bob clues Alice red, touching slot 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
+		takeTurn(state, 'Alice clues 2 to Cathy');
+		takeTurn(state, 'Bob clues red to Alice (slot 3)');
 
 		// Alice's slot 3 should be [r3,r4].
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
-		// Cathy plays r2.
-		takeTurn(state, { type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 2, playerIndex: PLAYER.CATHY }, 'y1');
+		takeTurn(state, 'Cathy plays r2', 'y1');
 
 		// Alice's slot 3 should still be [r3,r4] to allow for the possibility of a hidden finesse.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
-		// Alice discards.
-		takeTurn(state, { type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
-
-		// Bob discards.
-		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false }, 'r1');
-
-		// Cathy plays r3.
-		takeTurn(state, { type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.RED, rank: 3 }, 'g1');
+		takeTurn(state, 'Alice discards b1 (slot 5)');
+		takeTurn(state, 'Bob discards b4', 'r1');
+		takeTurn(state, 'Cathy plays r3', 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r4] now.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r4']);
@@ -103,23 +87,13 @@ describe('ambiguous clues', () => {
 			['r2', 'b3', 'r1', 'y3', 'p3']
 		], { level: 5 });
 
-		// Alice clues 1 to Cathy.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
+		takeTurn(state, 'Alice clues 1 to Cathy');
+		takeTurn(state, 'Bob clues red to Alice (slot 3)');
+		takeTurn(state, 'Cathy plays r1', 'y1');
 
-		// Bob clues Alice red, touching slot 3.
-		takeTurn(state, { type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
-
-		// Cathy plays r1.
-		takeTurn(state, { type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 1, playerIndex: PLAYER.CATHY }, 'y1');
-
-		// Alice discards.
-		takeTurn(state, { type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
-
-		// Bob discards.
-		takeTurn(state, { type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false }, 'r1');
-
-		// Cathy discards.
-		takeTurn(state, { type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false }, 'g1');
+		takeTurn(state, 'Alice discards b1 (slot 5)');
+		takeTurn(state, 'Bob discards b4', 'r1');
+		takeTurn(state, 'Cathy discards p3', 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r2] now.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
