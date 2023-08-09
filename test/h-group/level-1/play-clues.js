@@ -1,8 +1,11 @@
+import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, setup, expandShortCard, takeTurn } from '../../test-utils.js';
+import { COLOUR, PLAYER, setup, expandShortCard, takeTurn } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
+import { CLUE } from '../../../src/constants.js';
 import HGroup from '../../../src/conventions/h-group.js';
+import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
 
 import logger from '../../../src/tools/logger.js';
 
@@ -99,5 +102,20 @@ describe('play clue', () => {
 		// Bob's slot 1 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][0];
 		ExAsserts.cardHasInferences(targetCard, ['r2']);
+	});
+
+	it('considers ambiguous play clues to still be plays', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y1', 'p4', 'g4', 'g4', 'r4'],
+			['y5', 'r2', 'y3', 'p1', 'y1']
+		], {
+			level: 1,
+			play_stacks: [5, 0, 5, 5, 5]
+		});
+
+		const { play_clues } = find_clues(state);
+		assert.ok(play_clues[PLAYER.CATHY].some(clue =>
+			clue.type === CLUE.COLOUR && clue.value === COLOUR.YELLOW && clue.result.playables.length === 1));
 	});
 });

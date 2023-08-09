@@ -88,6 +88,34 @@ describe('hidden finesse', () => {
 		// Our slot 1 (now slot 2) should be r1.
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['r1']);
 	});
+
+	it('correctly generates focus possibilities for a connection involving a hidden finesse', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g1', 'y4', 'b1', 'r5', 'g4'],
+			['y3', 'g2', 'b3', 'p5', 'p4']
+		], {
+			level: 5,
+			starting: PLAYER.CATHY
+		});
+
+		// Cathy's g2 is fully known.
+		state.hands[PLAYER.CATHY][1].clued = true;
+		state.hands[PLAYER.CATHY][1].intersect('possible', [expandShortCard('g2')]);
+		state.hands[PLAYER.CATHY][1].intersect('inferred', [expandShortCard('g2')]);
+		state.hands[PLAYER.CATHY][1].clues.push({ type: CLUE.RANK, value: 2 });
+		state.hands[PLAYER.CATHY][1].clues.push({ type: CLUE.COLOUR, value: COLOUR.GREEN });
+
+		// Bob's b1 is clued with 1.
+		state.hands[PLAYER.BOB][2].clued = true;
+		state.hands[PLAYER.BOB][2].intersect('possible', ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+		state.hands[PLAYER.BOB][2].intersect('inferred', ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+		state.hands[PLAYER.BOB][2].clues.push({ type: CLUE.RANK, value: 1 });
+
+		takeTurn(state, 'Cathy clues green to Alice (slot 2)');
+
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g1', 'g3']);
+	});
 });
 
 describe('layered finesse', () => {

@@ -1,7 +1,8 @@
 import { ACTION } from '../../constants.js';
 import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
-import { select_play_clue, find_urgent_actions, determine_playable_card, order_1s } from './action-helper.js';
+import { select_play_clue, determine_playable_card, order_1s } from './action-helper.js';
+import { find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { inEndgame, minimum_clue_value } from './hanabi-logic.js';
 import { cardValue, getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';

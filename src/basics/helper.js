@@ -190,7 +190,17 @@ export function update_hypo_stacks(state) {
 						return !all_trash;
 					};
 
-					if (card.matches_inferences() && (delayed_playable(card.possible) || delayed_playable(card.inferred) || (card.finessed && delayed_playable([card])))) {
+					const fake_wcs = state.waiting_connections.filter(wc => {
+						const { fake, focused_card, inference } = wc;
+						return focused_card.order === card.order &&
+							(fake || !focused_card.matches(inference.suitIndex, inference.rank));
+					});
+
+					// Ignore all waiting connections that will be proven wrong
+					const diff = card.clone();
+					diff.subtract('inferred', fake_wcs.flatMap(wc => wc.inference));
+
+					if (diff.matches_inferences() && (delayed_playable(diff.possible) || delayed_playable(diff.inferred) || (diff.finessed && delayed_playable([card])))) {
 						const id = card.identity({ infer: true, symmetric: i === hand.playerIndex });
 						if (id === undefined) {
 							// Playable, but the player doesn't know what card it is so hypo stacks aren't updated

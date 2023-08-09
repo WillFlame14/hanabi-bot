@@ -9,7 +9,8 @@ import logger from '../../src/tools/logger.js';
 
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
-import { determine_playable_card, find_urgent_actions } from '../../src/conventions/h-group/action-helper.js';
+import { determine_playable_card } from '../../src/conventions/h-group/action-helper.js';
+import { find_urgent_actions } from '../../src/conventions/h-group/urgent-actions.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 

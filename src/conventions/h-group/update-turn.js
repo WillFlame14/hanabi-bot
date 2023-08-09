@@ -72,7 +72,7 @@ export function update_turn(state, action) {
 	const demonstrated = [];
 
 	for (let i = 0; i < state.waiting_connections.length; i++) {
-		const { connections, conn_index = 0, focused_card, inference, giver, action_index, ambiguousPassback } = state.waiting_connections[i];
+		const { connections, conn_index = 0, focused_card, inference, giver, action_index, fake, ambiguousPassback } = state.waiting_connections[i];
 		const { type, reacting, card: old_card, identity } = connections[conn_index];
 		logger.info(`waiting for connecting ${logCard(old_card)} (${state.playerNames[reacting]}) for inference ${logCard(inference)}`);
 
@@ -83,9 +83,17 @@ export function update_turn(state, action) {
 		if (reacting === lastPlayerIndex) {
 			// They still have the card
 			if (card !== undefined) {
-				/**
-				 * Determines if the card could be superpositioned on a finesse that is not yet playable.
-				 */
+				// Determines if we need to pass back an ambiguous finesse.
+				const passback = () => {
+					const non_hidden_connections = connections.filter((conn, index) =>
+						index >= conn_index && !conn.hidden && conn.reacting === reacting && conn.type === 'finesse');
+
+					return reacting !== state.ourPlayerIndex && 	// can't pass back to ourselves
+						non_hidden_connections.length > 1 &&		// they need to play more than 1 card
+						!ambiguousPassback;							// haven't already tried to pass back
+				};
+
+				// Determines if the card could be superpositioned on a finesse that is not yet playable.
 				const unknown_finesse = () => state.waiting_connections.some((wc, index) => {
 					if (index === i) {
 						return;
@@ -109,9 +117,7 @@ export function update_turn(state, action) {
 					else if (state.last_actions[reacting].type === 'play' && state.last_actions[reacting].card?.finessed) {
 						logger.info(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
 					}
-					else if (connections.filter((conn, index) =>
-						index >= conn_index && !conn.hidden && conn.reacting === reacting && conn.type === 'finesse').length > 1 && !ambiguousPassback
-					) {
+					else if (passback()) {
 						logger.warn(`${state.playerNames[reacting]} didn't play into finesse but they need to play multiple non-hidden cards, passing back`);
 						state.waiting_connections[i].ambiguousPassback = true;
 					}
@@ -179,18 +185,22 @@ export function update_turn(state, action) {
 		// Check if giver played card that matches next connection
 		else if (lastPlayerIndex === giver) {
 			const last_action = state.last_actions[giver];
+			if (last_action.type !== 'play') {
+				continue;
+			}
 
-			if (last_action.type === 'play') {
-				const { suitIndex, rank } = last_action;
+			const { suitIndex, rank, card: giver_card } = last_action;
 
-				if (old_card.matches(suitIndex, rank, { infer: true }) && card.finessed) {
-					logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`);
-					// Advance connection
-					state.waiting_connections[i].conn_index = conn_index + 1;
-					if (state.waiting_connections[i].conn_index === connections.length) {
-						to_remove.push(i);
-					}
+			// The giver's card must have been known before the finesse was given
+			if (old_card.matches(suitIndex, rank, { infer: true }) && card.finessed && giver_card.reasoning[0] < action_index) {
+				logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`);
+				// Advance connection
+				state.waiting_connections[i].conn_index = conn_index + 1;
+				if (state.waiting_connections[i].conn_index === connections.length) {
+					to_remove.push(i);
+				}
 
+				if (!fake) {
 					// Remove finesse
 					if (card.old_inferred !== undefined) {
 						// Restore old inferences

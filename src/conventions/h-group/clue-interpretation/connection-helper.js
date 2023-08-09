@@ -118,7 +118,7 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 
 	// All connections with the minimum number of target blind plays will be considered
 	const blind_plays_arr = possible_connections.map(({ connections }) => blind_plays(connections, target));
-	const min_blind_plays = blind_plays_arr.reduce((min, curr) => Math.min(min, curr));
+	const min_blind_plays = blind_plays_arr.reduce((min, curr) => Math.min(min, curr), 10);
 
 	for (let i = 0; i < possible_connections.length; i++) {
 		if (blind_plays_arr[i] === min_blind_plays) {

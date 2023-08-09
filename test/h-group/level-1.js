@@ -1,13 +1,14 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { ACTION } from '../../src/constants.js';
+import { ACTION, CLUE } from '../../src/constants.js';
 import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
+import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -85,6 +86,23 @@ describe('save clue', () => {
 		// Our slot 1 should not only be y1.
 		assert.equal(state.hands[PLAYER.ALICE][0].inferred.length > 1, true);
 		assert.equal(state.hands[PLAYER.ALICE][0].finessed, false);
+	});
+
+	it('prefers giving saves that fill in plays', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'g2', 'p5', 'r2', 'y2'],
+			['p3', 'g3', 'p2', 'p1', 'b4']
+		], { level: 1 });
+
+		takeTurn(state, 'Alice clues red to Bob');				// getting r1, touching r2
+		takeTurn(state, 'Bob plays r1', 'b3');
+		takeTurn(state, 'Cathy clues 5 to Alice (slot 5)');		// 5 Save
+
+		const { save_clues } = find_clues(state);
+
+		// We should save with 2 since it reveals r2 playable.
+		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 2 });
 	});
 });
 

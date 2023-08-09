@@ -46,7 +46,7 @@ function find_colour_focus(state, suitIndex, action) {
 			break;
 		}
 
-		const { type, card } = connecting[0];
+		const { type, card } = connecting.at(-1);
 
 		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_rank))) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
@@ -184,7 +184,7 @@ function find_rank_focus(state, rank, action) {
 			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 
 			while (connecting.length !== 0) {
-				const { type, card } = connecting[0];
+				const { type, card } = connecting.at(-1);
 
 				if (card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_rank))) {
 					// Trying to use a newly known/playable connecting card, but the focused card could be that

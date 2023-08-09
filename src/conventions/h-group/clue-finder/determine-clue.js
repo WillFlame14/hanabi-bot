@@ -268,6 +268,7 @@ export function determine_clue(state, target, target_card, options) {
 	}
 
 	const { clue, result: best_result } = Utils.maxOn(results, ({ result }) => find_clue_value(result));
+	logger.info('preferring', logClue(clue));
 
 	// Change type from CLUE to ACTION
 	return { type: clue.type, value: clue.value, target: clue.target, result: best_result };
