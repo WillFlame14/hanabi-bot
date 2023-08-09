@@ -5,7 +5,7 @@ import { find_own_finesses } from './connecting-cards.js';
 import { isBasicTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logConnection } from '../../../tools/log.js';
+import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**
@@ -133,10 +133,8 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 	}
 
 	const sym_conn = symmetric_connections.map(conn => {
-		return {
-			connections: conn.connections.map(logConnection),
-			inference: logCard({ suitIndex: conn.suitIndex, rank: conn.rank }) + (conn.fake ? '(fake)' : '')
-		};
+		const nextIdentity = { suitIndex: conn.suitIndex, rank: conn.rank };
+		return logConnections(conn.connections, nextIdentity) + (conn.fake ? ' (fake)' : '');
 	});
 
 	logger.info('symmetric connections', sym_conn);
@@ -159,8 +157,6 @@ export function assign_connections(state, connections, options = {}) {
 		// The connections can be cloned, so need to modify the card directly
 		const card = state.hands[reacting].findOrder(conn_card.order);
 
-		logger.info(`connecting on order ${conn_card.order} (${logCard(conn_card)}) as ${logCard(identity)} order ${card.order} type ${type} ${ options.fake ? 'fake' : ''}`);
-
 		// Do not write notes on:
 		// - fake connections (where we need to blind play more than necessary)
 		// - symmetric connections on anyone not the target, since they actually know their card
@@ -180,16 +176,18 @@ export function assign_connections(state, connections, options = {}) {
 		}
 
 		if (hidden) {
-			const playable_identities = hypo_stacks[reacting].map((stack_rank, index) => { return { suitIndex: index, rank: stack_rank + 1 }; });
+			const playable_identities = hypo_stacks[reacting].map((stack_rank, index) => {
+				return { suitIndex: index, rank: stack_rank + 1 };
+			});
 			card.intersect('inferred', playable_identities);
 
 			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
 			if (card.identity() !== undefined) {
-				const { suitIndex: suitIndex2, rank: rank2 } = card.identity();
-				if (hypo_stacks[reacting][suitIndex2] + 1 !== rank2) {
-					logger.warn('trying to connect', logCard({ suitIndex: suitIndex2, rank: rank2 }), 'but hypo stacks at', hypo_stacks[suitIndex2]);
+				const { suitIndex, rank } = card.identity();
+				if (hypo_stacks[reacting][suitIndex] + 1 !== rank) {
+					logger.warn('trying to connect', logCard(card), 'but hypo stacks at', hypo_stacks[suitIndex]);
 				}
-				hypo_stacks[reacting][suitIndex2] = rank2;
+				hypo_stacks[reacting][suitIndex] = rank;
 			}
 		}
 		else {

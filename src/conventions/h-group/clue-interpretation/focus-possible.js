@@ -3,7 +3,7 @@ import { determine_focus, looksPlayable } from '../hanabi-logic.js';
 import { find_connecting } from './connecting-cards.js';
 import { isCritical, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
-import { logCard } from '../../../tools/log.js';
+import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**
@@ -25,7 +25,7 @@ function find_colour_focus(state, suitIndex, action) {
 
 	/** @type {FocusPossibility[]} */
 	const focus_possible = [];
-	let next_playable_rank = state.play_stacks[suitIndex] + 1;
+	let next_rank = state.play_stacks[suitIndex] + 1;
 
 	// Play clue
 	/** @type {Connection[]} */
@@ -37,21 +37,21 @@ function find_colour_focus(state, suitIndex, action) {
 
 	let finesses = 0;
 
-	while (next_playable_rank < state.max_ranks[suitIndex]) {
+	while (next_rank < state.max_ranks[suitIndex]) {
 		// Note that a colour clue always looks direct
-		const ignoreOrders = already_connected.concat(state.next_ignore[next_playable_rank - state.play_stacks[suitIndex] - 1] ?? []);
+		const ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
 		const looksDirect = focused_card.identity({ symmetric: true }) === undefined;
-		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_playable_rank, looksDirect, ignoreOrders);
+		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 		if (connecting.length === 0) {
 			break;
 		}
 
 		const { type, card } = connecting[0];
 
-		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_playable_rank))) {
+		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_rank))) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
 			// e.g. If 2 reds are clued with only r5 remaining, the focus should not connect to the other card as r6
-			logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_playable_rank})}`);
+			logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_rank})}`);
 			break;
 		}
 		else if (type === 'finesse') {
@@ -62,17 +62,19 @@ function find_colour_focus(state, suitIndex, action) {
 			}
 
 			// Even if a finesse is possible, it might not be a finesse
-			focus_possible.push({ suitIndex, rank: next_playable_rank, save: false, connections: Utils.objClone(connections) });
+			focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: Utils.objClone(connections) });
 		}
 		hypo_state.play_stacks[suitIndex]++;
-		next_playable_rank++;
+		next_rank++;
 
 		connections = connections.concat(connecting);
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
 
+	logger.info('found connections:', logConnections(connections, {suitIndex, rank: next_rank}));
+
 	// Our card could be the final rank that we can't find
-	focus_possible.push({ suitIndex, rank: next_playable_rank, save: false, connections });
+	focus_possible.push({ suitIndex, rank: next_rank, save: false, connections });
 
 	// Save clue on chop (5 save cannot be done with colour)
 	if (chop) {
@@ -221,6 +223,8 @@ function find_rank_focus(state, rank, action) {
 				ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
 				connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
 			}
+
+			logger.info('found connections:', logConnections(connections, {suitIndex, rank: next_rank}));
 
 			// Connected cards can stack up to this rank
 			if (rank === next_rank) {

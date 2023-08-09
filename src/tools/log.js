@@ -8,6 +8,7 @@ import { globals } from './util.js';
  * @typedef {import('../basics/Card.js').Card} Card
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
+ * @typedef {import('../types.js').BasicCard} BasicCard
  * @typedef {import('../types.js').PerformAction} PerformAction
  * @typedef {import('../types.js').Connection} Connection
  */
@@ -188,4 +189,15 @@ export function logAction(action) {
 export function logConnection(connection) {
 	const { type, reacting, identity, card } = connection;
 	return `${card.order} ${logCard(identity)} ${type} (${globals.state.playerNames[reacting]})`;
+}
+
+/**
+ * @param {Connection[]} connections
+ * @param {BasicCard} nextIdentity
+ */
+export function logConnections(connections, nextIdentity) {
+	const { suitIndex, rank } = nextIdentity;
+	const showNext = globals.state.max_ranks[suitIndex] >= rank;
+
+	return `[${connections.map(conn => logConnection(conn)).join(' -> ')} ${showNext ? `-> ${logCard(nextIdentity)}?` : ''}]`;
 }

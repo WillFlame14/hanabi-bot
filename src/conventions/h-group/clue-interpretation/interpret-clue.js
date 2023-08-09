@@ -12,7 +12,7 @@ import { cardCount } from '../../../variants.js';
 
 import logger from '../../../tools/logger.js';
 import * as Basics from '../../../basics.js';
-import { logCard, logConnection, logHand } from '../../../tools/log.js';
+import { logCard, logConnections, logHand } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**
@@ -222,13 +222,8 @@ export function interpret_clue(state, action) {
 	}
 
 	const focus_possible = find_focus_possible(state, action);
-	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save, connections }) => {
-		return {
-			identity: logCard({suitIndex, rank}),
-			save,
-			conn: connections.map(logConnection)
-		};
-	}));
+	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) =>
+		logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
 
 	const matched_inferences = focus_possible.filter(p => focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank)));
 	const correct_match = matched_inferences.find(p => focused_card.matches(p.suitIndex, p.rank));
@@ -304,7 +299,7 @@ export function interpret_clue(state, action) {
 
 					const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect);
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
-					logger.info('feasible?', feasible, 'blind plays', blind_plays);
+					logger.info('found connections:', logConnections(connections, card));
 
 					if (feasible) {
 						// Starts with self-finesse or self-prompt
@@ -334,6 +329,8 @@ export function interpret_clue(state, action) {
 			const { suitIndex, rank } = focused_card;
 			const { feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank, looksDirect);
 
+			logger.info('found connections:', logConnections(connections, { suitIndex, rank }));
+
 			if (feasible) {
 				all_connections.push({ connections, suitIndex: suitIndex, rank: inference_rank(state, suitIndex, connections) });
 			}
@@ -360,6 +357,7 @@ export function interpret_clue(state, action) {
 		}
 		else {
 			focused_card.inferred = [];
+			logger.info('selecting inferences', all_connections.map(conns => logCard(conns)));
 
 			for (const { connections, suitIndex, rank } of all_connections) {
 				const inference = { suitIndex, rank };
