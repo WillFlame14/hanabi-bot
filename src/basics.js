@@ -112,6 +112,7 @@ export function onDraw(state, action) {
 		}
 	}
 
+	state.cardOrder = order;
 	state.cardsLeft--;
 
 	// suitIndex and rank are -1 if they're your own cards

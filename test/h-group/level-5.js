@@ -1,9 +1,8 @@
-// @ts-ignore
 import { strict as assert } from 'node:assert';
-// @ts-ignore
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, getRawInferences, setup } from '../test-utils.js';
+import { PLAYER, setup, takeTurn } from '../test-utils.js';
+import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
@@ -17,21 +16,21 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], 5);
+		], {
+			level: 5,
+			starting: PLAYER.BOB
+		});
 
-		// Bob clues Alice green, touching slot 2.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.GREEN }, giver: PLAYER.BOB, list: [3], target: PLAYER.ALICE });
+		takeTurn(state, 'Bob clues green to Alice (slot 2)');
 
 		// Alice's slot 2 should be [g1,g2].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['g1', 'g2'].map(expandShortCard));
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g1', 'g2']);
 		assert.equal(state.hands[PLAYER.CATHY][0].reasoning.length, 1);
 
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
-		state.handle_action({ type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false });
-		state.update_turn(state, { type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, 'Cathy discards p3', 'r1');
 
 		// Alice's slot 2 should just be g1 now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][1]), ['g1'].map(expandShortCard));
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g1']);
 	});
 
 	it('understands a self-connecting play clue', () => {
@@ -39,24 +38,17 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g3', 'b3', 'r2', 'y3', 'p3']
-		], 5);
+		], {
+			level: 5,
+			starting: PLAYER.BOB
+		});
 
-		// Bob clues Alice 1, touching slot 4.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.BOB, list: [1], target: PLAYER.ALICE });
-
-		// Cathy clues Alice 2, touching slot 3.
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.CATHY });
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.CATHY, list: [2], target: PLAYER.ALICE });
-
-		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.ALICE });
-
-		// Alice plays the unknown 1 as g1.
-		state.handle_action({ type: 'play', order: 1, suitIndex: COLOUR.GREEN, rank: 1, playerIndex: PLAYER.ALICE });
-		state.handle_action({ type: 'draw', order: 15, suitIndex: -1, rank: -1, playerIndex: PLAYER.ALICE });
-		state.handle_action({ type: 'turn', num: 3, currentPlayerIndex: PLAYER.BOB });
+		takeTurn(state, 'Bob clues 1 to Alice (slot 4)');
+		takeTurn(state, 'Cathy clues 2 to Alice (slot 3)');
+		takeTurn(state, 'Alice plays g1 (slot 4)');
 
 		// Alice's slot 4 (used to be slot 3) should just be g2 now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][3]), ['g2'].map(expandShortCard));
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['g2']);
 	});
 
 	it('understands a delayed finesse', () => {
@@ -64,45 +56,28 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p4', 'r4', 'g4', 'r5', 'b4'],
 			['r3', 'b3', 'r2', 'y3', 'p3']
-		], 5);
+		], {
+			level: 5,
+			play_stacks: [1, 0, 1, 1, 0]
+		});
 
-		state.play_stacks = [1, 0, 1, 1, 0];
-		state.hypo_stacks = Array(3).fill([1, 0, 1, 1, 0]);
-
-		// Alice clues 2 to Cathy.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 2 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.BOB });
-
-		// Bob clues Alice red, touching slot 3.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
-		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.CATHY });
+		takeTurn(state, 'Alice clues 2 to Cathy');
+		takeTurn(state, 'Bob clues red to Alice (slot 3)');
 
 		// Alice's slot 3 should be [r3,r4].
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r3', 'r4'].map(expandShortCard));
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
-		// Cathy plays r2.
-		state.handle_action({ type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 2, playerIndex: PLAYER.CATHY });
-		state.handle_action({ type: 'draw', order: 15, suitIndex: COLOUR.YELLOW, rank: 1, playerIndex: PLAYER.CATHY });
-
-		state.update_turn(state, { type: 'turn', num: 3, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, 'Cathy plays r2', 'y1');
 
 		// Alice's slot 3 should still be [r3,r4] to allow for the possibility of a hidden finesse.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r3', 'r4'].map(expandShortCard));
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
 
-		// Alice discards.
-		state.handle_action({ type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
-		state.handle_action({ type: 'turn', num: 4, currentPlayerIndex: PLAYER.BOB });
-
-		// Bob discards.
-		state.handle_action({ type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false });
-		state.handle_action({ type: 'turn', num: 5, currentPlayerIndex: PLAYER.CATHY });
-
-		// Cathy plays r3.
-		state.handle_action({ type: 'play', order: 14, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.RED, rank: 3 });
-		state.update_turn(state, { type: 'turn', num: 6, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, 'Alice discards b1 (slot 5)');
+		takeTurn(state, 'Bob discards b4', 'r1');
+		takeTurn(state, 'Cathy plays r3', 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r4] now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r4'].map(expandShortCard));
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r4']);
 	});
 
 	it('understands a fake delayed finesse', () => {
@@ -110,36 +85,18 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p4', 'r4', 'g4', 'r5', 'b4'],
 			['r2', 'b3', 'r1', 'y3', 'p3']
-		], 5);
+		], { level: 5 });
 
-		// Alice clues 1 to Cathy.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.RANK, value: 1 }, giver: PLAYER.ALICE, list: [12], target: PLAYER.CATHY });
-		state.handle_action({ type: 'turn', num: 1, currentPlayerIndex: PLAYER.BOB });
+		takeTurn(state, 'Alice clues 1 to Cathy');
+		takeTurn(state, 'Bob clues red to Alice (slot 3)');
+		takeTurn(state, 'Cathy plays r1', 'y1');
 
-		// Bob clues Alice red, touching slot 3.
-		state.handle_action({ type: 'clue', clue: { type: CLUE.COLOUR, value: COLOUR.RED }, giver: PLAYER.BOB, list: [2], target: PLAYER.ALICE });
-		state.handle_action({ type: 'turn', num: 2, currentPlayerIndex: PLAYER.CATHY });
-
-		// Cathy plays r1.
-		state.handle_action({ type: 'play', order: 12, suitIndex: COLOUR.RED, rank: 1, playerIndex: PLAYER.CATHY });
-		state.handle_action({ type: 'draw', order: 15, suitIndex: COLOUR.YELLOW, rank: 1, playerIndex: PLAYER.CATHY });
-
-		state.update_turn(state, { type: 'turn', num: 3, currentPlayerIndex: PLAYER.ALICE });
-
-		// Alice discards.
-		state.handle_action({ type: 'discard', order: 0, playerIndex: PLAYER.ALICE, suitIndex: COLOUR.BLUE, rank: 1, failed: false });
-		state.handle_action({ type: 'turn', num: 4, currentPlayerIndex: PLAYER.BOB });
-
-		// Bob discards.
-		state.handle_action({ type: 'discard', order: 5, playerIndex: PLAYER.BOB, suitIndex: COLOUR.BLUE, rank: 4, failed: false });
-		state.handle_action({ type: 'turn', num: 5, currentPlayerIndex: PLAYER.CATHY });
-
-		// Cathy discards.
-		state.handle_action({ type: 'discard', order: 10, playerIndex: PLAYER.CATHY, suitIndex: COLOUR.PURPLE, rank: 3, failed: false });
-		state.update_turn(state, { type: 'turn', num: 6, currentPlayerIndex: PLAYER.ALICE });
+		takeTurn(state, 'Alice discards b1 (slot 5)');
+		takeTurn(state, 'Bob discards b4', 'r1');
+		takeTurn(state, 'Cathy discards p3', 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r2] now.
-		assert.deepEqual(getRawInferences(state.hands[PLAYER.ALICE][2]), ['r2'].map(expandShortCard));
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
 	});
 });
 
@@ -149,7 +106,7 @@ describe('guide principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r2', 'g4', 'r5', 'b4'],
 			['r4', 'r3', 'b3', 'y3', 'b5']
-		], 5);
+		], { level: 5 });
 
 		// Giving 3 to Cathy should be unsafe since b5 will be discarded.
 		assert.equal(clue_safe(state, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);
