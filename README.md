@@ -3,7 +3,11 @@ A deterministic NodeJS bot that plays on the [hanab.live](https://hanab.live/) i
 
 It follows [H-Group](https://hanabi.github.io/) conventions. The goal of the bot is to play with humans, so it can handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning" during a game.
 
+A demo game at level 3:
+
 https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-92d0-e1d01291986e.mp4
+
+A game played at level 5 can be seen [here](https://github.com/WillFlame14/hanabi-bot/assets/25177576/1aa4f67e-aa66-4704-ba75-fe6edf403bfa).
 
 ## Bot features
 - Can play at different levels of the H-Group convention set. Currently, levels 1-5 are supported.
