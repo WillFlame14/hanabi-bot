@@ -107,7 +107,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 		}
 
 		// Touches the chop card
-		if (state.hands[target].clueTouched(clue).some(c => c.order === state.hands[target].chop().order) && clue_safe(state, clue)) {
+		if (!locked && state.hands[target].clueTouched(clue).some(c => c.order === state.hands[target].chop().order) && clue_safe(state, clue)) {
 			play_clues.push({ clue, playables: [] });
 		}
 	}

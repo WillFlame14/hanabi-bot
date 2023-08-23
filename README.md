@@ -1,5 +1,5 @@
 # hanabi-bot
-A deterministic NodeJS bot that plays on the [hanab.live](https://hanab.live/) interface. Basic structure and ideas were taken from [Zamiell's example bot](https://github.com/Zamiell/hanabi-live-bot) (Python).
+A deterministic NodeJS bot that plays on the [hanab.live](https://hanab.live/) interface. Basic structure and ideas were taken from [Zamiell's example bot](https://github.com/Zamiell/hanabi-live-bot) (Python). You can play with it by inviting any of the `will-bot`'s to your table.
 
 It follows [H-Group](https://hanabi.github.io/) conventions. The goal of the bot is to play with humans, so it can handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning" during a game.
 
@@ -11,10 +11,10 @@ A game played at level 5 can be seen [here](https://github.com/WillFlame14/hanab
 
 ## Bot features
 - Can play at different levels of the H-Group convention set. Currently, levels 1-5 are supported.
-- Takes notes during the game on cards in its own hand.
+- Takes notes during the game on what it thinks each player knows about their own hand.
 - Internally rewinds to relevant turns to understand mistakes.
 - Can create and start games on its own (i.e. for playing bot-only games).
-- Can replay completed games on hanab.live and offer suggestions.
+- Can replay completed games on hanab.live and offer suggested actions.
 
 ## Running locally
 - You'll need to have NodeJS v16 or above. You can download it [here](https://nodejs.org/en/download/).
@@ -34,9 +34,10 @@ Send a PM to the bot on hanab.live (`/pm <HANABI_USERNAME> <message>`) to intera
 - `/rejoin` to rejoin a game that has already started (e.g. if it crashed).
 - `/leave` to kick the bot from your table.
 - `/create <name> <maxPlayers> <password>` to have the bot create a table. The name can't have spaces.
-- `/start` to have the bot start the game (only works if it created the table).
-- `/settings [conventions=HGroup] [level]` to set or view the bot's conventions and level. The bot plays with H-Group conventions at level 1 by default.
-- `/restart` and `remake` to perform the corresponding actions in the current room after the game has finished.
+- `/start` to have the bot start the game (only works if it is the table leader).
+- `/settings [conventions=HGroup] [level]` to set the bot's conventions. To view the current settings, provide no parameters. The bot remembers its settings between games, but plays with H-Group conventions at level 1 on first boot.
+    - If only a level is provided (without a convention set), H-Group is assumed.
+- `/restart` and `/remake` to have the bot perform the corresponding room actions after the game has finished (only works if it is the table leader).
 
 Some commands can be sent inside a room to affect all bots that have joined.
 - `/setall [conventions=HGroup] [level]` to set conventions and level for all bots.

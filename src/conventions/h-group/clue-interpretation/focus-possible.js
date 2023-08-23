@@ -122,7 +122,7 @@ function find_rank_focus(state, rank, action) {
 
 	/** @type {FocusPossibility[]} */
 	const focus_possible = [];
-	let looksSave = false, alwaysSave = false;
+	let looksSave = false;
 
 	// Save clue on chop
 	if (chop) {
@@ -143,20 +143,11 @@ function find_rank_focus(state, rank, action) {
 
 			// Critical save or 2 save
 			if (isCritical(state, suitIndex, rank) || save2) {
-				// Saving 2s or 5s will never cause a prompt or finesse.
-				if (save2 || rank === 5) {
-					alwaysSave = true;
-				}
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				looksSave = true;
 			}
 		}
 	}
-
-	if (alwaysSave) {
-		return focus_possible;
-	}
-
 	// Play clue
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 		// Critical cards on chop can never be given a play clue
@@ -190,6 +181,11 @@ function find_rank_focus(state, rank, action) {
 					// Trying to use a newly known/playable connecting card, but the focused card could be that
 					// e.g. If two 4s are clued (all other 4s visible), the other 4 should not connect and render this card with only one inference
 					logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_rank})}`);
+					break;
+				}
+
+				// Saving 2s or criticals will never cause a prompt or finesse.
+				if ((type === 'prompt' || type === 'finesse') && (rank === 2 || isCritical(state, suitIndex, rank))) {
 					break;
 				}
 
