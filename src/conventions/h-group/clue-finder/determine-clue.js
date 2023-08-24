@@ -243,7 +243,10 @@ export function determine_clue(state, target, target_card, options) {
 		}
 
 		const interpret = hypo_state.hands[target].find(c => c.order === target_card.order).inferred;
-		const { elim, new_touched, bad_touch, trash, finesses, playables, remainder } = get_result(state, hypo_state, clue, state.ourPlayerIndex);
+		const result = get_result(state, hypo_state, clue, state.ourPlayerIndex);
+
+		const { elim, new_touched, bad_touch, trash, finesses, playables } = result;
+		const remainder = (chop && (!clue_safe(state, clue) || state.clue_tokens <= 2)) ? result.remainder: 0;
 
 		const result_log = {
 			clue: logClue(clue),
@@ -256,11 +259,11 @@ export function determine_clue(state, target, target_card, options) {
 			playables: playables.map(({ playerIndex, card }) => {
 				return { player: state.playerNames[playerIndex], card: logCard(card) };
 			}),
-			remainder: (chop && state.clue_tokens <= 2) ? remainder : 0 	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
+			remainder	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
 		};
-		logger.info('result,', JSON.stringify(result_log));
+		logger.info('result,', JSON.stringify(result_log), find_clue_value(result));
 
-		results.push({ clue, result: { elim, new_touched, bad_touch, trash, finesses, playables, remainder: chop ? remainder: 0 } });
+		results.push({ clue, result: { elim, new_touched, bad_touch, trash, finesses, playables, remainder } });
 	}
 
 	if (results.length === 0) {

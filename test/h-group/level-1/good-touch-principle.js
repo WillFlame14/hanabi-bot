@@ -226,4 +226,20 @@ describe('good touch principle', () => {
 		const playables = state.hands[PLAYER.ALICE].find_playables();
 		assert.deepEqual(playables.map(c => c.order), [4]);
 	});
+
+	it('assumes good touch even when others are playing unknown cards', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y3', 'p2', 'g4', 'p1', 'g2']
+		], {
+			level: 1,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(state, 'Bob clues 1 to Alice (slot 5)');
+		takeTurn(state, 'Alice clues 1 to Bob');
+		takeTurn(state, 'Bob plays p1', 'p4');
+
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['r1', 'y1', 'g1', 'b1']);
+	});
 });

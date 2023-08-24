@@ -331,5 +331,5 @@ function assignSettings(data, priv) {
 		settings.level = Math.max(Math.min(level, 5), 1);
 	}
 
-	reply(`Currently playing with ${settingsString} conventions.`);
+	reply(`Currently playing with ${settingsString()} conventions.`);
 }

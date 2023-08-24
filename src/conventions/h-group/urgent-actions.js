@@ -246,6 +246,11 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 				continue;
 			}
 
+			// Do not save if unsafe
+			if (!save.safe) {
+				continue;
+			}
+
 			// No alternative, have to give save
 			urgent_actions[i === 1 ? 1 : 5].push(Utils.clueToAction(save_clues[target], state.tableID));
 		}

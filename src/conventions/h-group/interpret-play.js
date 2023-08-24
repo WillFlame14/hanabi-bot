@@ -78,7 +78,7 @@ export function interpret_play(state, action) {
 
 	// Apply good touch principle on remaining possibilities
 	for (let i = 0; i < state.numPlayers; i++) {
-		recursive_elim(state, playerIndex, suitIndex, rank);
+		recursive_elim(state, i, suitIndex, rank);
 	}
 
 	// Resolve any links after playing

@@ -81,7 +81,9 @@ export function initConsole() {
 							break;
 						}
 
-						if (!state.actionList.some(action => action.type === 'turn' && action.num === turn)) {
+						const maxTurn = state.actionList.reduce((max, action) => Math.max(max, action.type === 'turn' ? action.num + 2 : -1), 0);
+
+						if (turn < 1 || turn > maxTurn) {
 							logger.error(`Turn ${turn} does not exist.`);
 							break;
 						}

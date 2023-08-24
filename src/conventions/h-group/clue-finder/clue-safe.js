@@ -66,21 +66,6 @@ export function clue_safe(state, clue) {
 }
 
 /**
- * Checks if the card is a valid (and safe) 2 save.
- * @param {State} state
- * @param {number} target 	The player with the card
- * @param {BasicCard} card
- */
-export function save2(state, target, card) {
-	if (card.rank !== 2) {
-		return false;
-	}
-
-	const clue = { type: CLUE.RANK, value: 2, target };
-	return unique2(state, card) && clue_safe(state, clue);
-}
-
-/**
  * Checks if a player's chop is safe after a clue, according to us.
  * @param {State} state
  * @param {number} playerIndex

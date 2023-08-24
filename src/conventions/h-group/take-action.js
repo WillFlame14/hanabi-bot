@@ -107,6 +107,7 @@ export function take_action(state) {
 						best_ocm_value = ocm_value;
 					}
 				}
+				logger.highlight('yellow', `performing ocm by playing ${best_ocm_index + 1}'th 1`);
 				best_playable_card = ordered_1s[best_ocm_index];
 			}
 		}

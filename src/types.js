@@ -15,7 +15,7 @@
  * @property {number} value
  * 
  * @typedef {BaseClue & {target: number, result?: ClueResult}} Clue
- * @typedef {Clue & {playable: boolean, cm: Card[]}} SaveClue
+ * @typedef {Clue & {playable: boolean, cm: Card[], safe: boolean}} SaveClue
  * @typedef {Clue & {urgent: boolean, trash: boolean}} FixClue
  */
 /**

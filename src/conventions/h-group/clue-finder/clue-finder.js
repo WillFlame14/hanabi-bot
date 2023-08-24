@@ -1,10 +1,10 @@
 import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
-import { clue_safe, save2 } from './clue-safe.js';
+import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { determine_clue, direct_clues, get_result } from './determine-clue.js';
 import { stall_severity } from '../hanabi-logic.js';
-import { cardValue, isBasicTrash, isCritical, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
+import { cardValue, isBasicTrash, isCritical, isTrash, unique2, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
@@ -34,9 +34,9 @@ function find_save(state, target, card) {
 	}
 
 	if (isCritical(state, suitIndex, rank)) {
-		logger.warn('saving critical card', logCard(card));
+		logger.highlight('yellow', 'saving critical card', logCard(card));
 		if (rank === 5) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [] };
+			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [], safe: true };
 		}
 		else {
 			// The card is on chop, so it can always be focused
@@ -46,11 +46,12 @@ function find_save(state, target, card) {
 				logger.error(`unable to find save clue for ${logCard(card)}!`);
 				return;
 			}
-			return Object.assign(save_clue, { playable: false, cm: [] });
+			return Object.assign(save_clue, { playable: false, cm: [], safe: true });
 		}
 	}
 	// Save a non-critical delayed playable card that isn't visible somewhere else
 	else if (state.hypo_stacks[state.ourPlayerIndex][suitIndex] + 1 === rank && visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length === 1) {
+		logger.highlight('yellow', 'saving playable card', logCard(card));
 		const save_clue = determine_clue(state, target, card, { save: true });
 
 		if (save_clue === undefined) {
@@ -58,14 +59,17 @@ function find_save(state, target, card) {
 			return;
 		}
 
-		// Do not give unsafe delayed play clues
-		if (clue_safe(state, save_clue) || state.play_stacks[suitIndex] + 1 === rank || (state.ourPlayerIndex + 1) % state.numPlayers !== target) {
-			return Object.assign(save_clue, { playable: true, cm: [] });
+		if (state.play_stacks[suitIndex] + 1 === rank || (state.ourPlayerIndex + 1) % state.numPlayers !== target) {
+			return Object.assign(save_clue, { playable: true, cm: [], safe: clue_safe(state, save_clue) });
 		}
 	}
-	else if (save2(state, target, card) && clue_safe(state, { type: CLUE.RANK, value: 2 , target })) {
-		return { type: CLUE.RANK, value: 2, target, playable: false, cm: [] };
+	else if (unique2(state, card)) {
+		logger.highlight('yellow', 'saving unique 2', logCard(card));
+
+		const safe = clue_safe(state, { type: CLUE.RANK, value: 2 , target });
+		return { type: CLUE.RANK, value: 2, target, playable: false, cm: [], safe };
 	}
+
 	return;
 }
 
@@ -84,7 +88,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 
 	// Colour or rank save (if possible) is preferred over trash chop move
 	// TODO: Can save variant cards together (like rainbow)
-	if ((isCritical(state, chop.suitIndex, chop.rank) || save2(state, target, chop)) &&
+	if ((isCritical(state, chop.suitIndex, chop.rank) || (unique2(state, chop) && clue_safe(state, { type: CLUE.RANK, value: 2, target }))) &&
 		(saved_cards.every(c => c.suitIndex === chop.suitIndex) || saved_cards.every(c => c.rank === chop.rank))
 	) {
 		logger.info('prefer direct save');
@@ -137,7 +141,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		});
 
 		if (tcm !== undefined) {
-			return { type: tcm.type, value: tcm.value, target, playable: false, cm: saved_cards };
+			return { type: tcm.type, value: tcm.value, target, playable: false, cm: saved_cards, safe: true };
 		}
 	}
 	return;
@@ -172,13 +176,13 @@ function find_5cm(state, target, chop, cardIndex) {
 	// 5cm to lock for unique 2 or critical
 	if (new_chop === undefined) {
 		if (cardValue(state, chop) >= 4) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop] };
+			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop], safe: true };
 		}
 	}
 	else {
 		// 5cm if new chop is less valuable than old chop
 		if (cardValue(state, chop) >= cardValue(state, new_chop)) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop] };
+			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop], safe: true };
 		}
 	}
 

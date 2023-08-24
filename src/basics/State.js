@@ -4,6 +4,7 @@ import { handle_action } from '../action-handler.js';
 import { cardCount } from '../variants.js';
 import logger from '../tools/logger.js';
 import * as Utils from '../tools/util.js';
+import { logPerformAction } from '../tools/log.js';
 
 /**
  * @typedef {import('../types.js').Action} Action
@@ -300,26 +301,41 @@ export class State {
 
 		let action_index = 0;
 
-		// Don't log history
-		logger.wrapLevel(logger.LEVELS.ERROR, () => {
-			while (new_state.turn_count < turn - 1) {
+		// Going first
+		if (turn === 1 && new_state.ourPlayerIndex === 0) {
+			let action = actionList[action_index];
+
+			while(action.type === 'draw') {
+				new_state.handle_action(action, true);
+				action_index++;
+				action = actionList[action_index];
+			}
+
+			const suggested_action = new_state.take_action(new_state);
+			logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
+		}
+		else {
+			// Don't log history
+			logger.wrapLevel(logger.LEVELS.ERROR, () => {
+				while (new_state.turn_count < turn - 1) {
+					const action = actionList[action_index];
+					if (action.type === 'clue' && action.mistake) {
+						action.mistake = false;
+					}
+					new_state.handle_action(action, true);
+					action_index++;
+				}
+			});
+
+			// Log the previous turn and the 'turn' action leading to the desired turn
+			while (new_state.turn_count < turn && actionList[action_index] !== undefined) {
 				const action = actionList[action_index];
 				if (action.type === 'clue' && action.mistake) {
 					action.mistake = false;
 				}
-				new_state.handle_action(action, true);
+				new_state.handle_action(action);
 				action_index++;
 			}
-		});
-
-		// Log the previous turn and the 'turn' action leading to the desired turn
-		while (new_state.turn_count < turn) {
-			const action = actionList[action_index];
-			if (action.type === 'clue' && action.mistake) {
-				action.mistake = false;
-			}
-			new_state.handle_action(action);
-			action_index++;
 		}
 
 		// Copy over the full game history
