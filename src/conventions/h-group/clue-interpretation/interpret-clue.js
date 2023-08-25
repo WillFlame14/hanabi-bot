@@ -129,9 +129,6 @@ function apply_good_touch(state, action) {
 				}
 			}
 		}
-
-		state.hands[target].refresh_links();
-
 		bad_touch = bad_touch_possibilities(state, giver, target, bad_touch);
 	}
 	while (bad_touch_len !== bad_touch.length);
@@ -398,6 +395,7 @@ export function interpret_clue(state, action) {
 	}
 	logger.highlight('blue', 'final inference on focused card', focused_card.inferred.map(c => logCard(c)).join(','));
 	logger.debug('hand state after clue', logHand(state.hands[target]));
+	state.hands[target].refresh_links();
 	update_hypo_stacks(state);
 }
 

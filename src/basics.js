@@ -3,7 +3,7 @@ import { find_possibilities } from './basics/helper.js';
 import { baseCount, visibleFind } from './basics/hanabi-util.js';
 import { cardCount } from './variants.js';
 import logger from './tools/logger.js';
-import { logCard } from './tools/log.js';
+import { logCard, logLinks } from './tools/log.js';
 import * as Utils from './tools/util.js';
 
 /**
@@ -206,7 +206,8 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 
 				const initial_focus = inferred_cards.filter(card => card.focused);
 
-				if (base_count + 1 === total_count && initial_focus.length === 1) {
+				// TODO: Check if "base_count + 1 === total_count" is needed?
+				if (initial_focus.length === 1) {
 					logger.info('eliminating from focus!');
 					inferred_cards = initial_focus;
 					focus_elim = true;
@@ -216,6 +217,7 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 
 					// Don't add duplicates of the same link
 					if (!state.hands[playerIndex].links.some(link => JSON.stringify(link) === JSON.stringify(new_link))) {
+						logger.info('adding link', logLinks([new_link]));
 						state.hands[playerIndex].links.push(new_link);
 					}
 				}

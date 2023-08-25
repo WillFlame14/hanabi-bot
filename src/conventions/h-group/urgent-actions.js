@@ -7,6 +7,7 @@ import * as Utils from '../../tools/util.js';
 import logger from '../../tools/logger.js';
 import { clue_safe } from './clue-finder/clue-safe.js';
 import { get_result } from './clue-finder/determine-clue.js';
+import { logHand } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -62,8 +63,8 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 	for (const clue of all_play_clues) {
 		const clue_value = find_clue_value(clue.result) + remainder_boost;
 
-		// Locked reduces needed clue value, only 1 clue token increases needed clue value
-		if (clue_value < (locked ? 0 : 1) + (state.clue_tokens === 1 ? 1 : 0)) {
+		// Locked reduces needed clue value (TODO: try readding only 1 clue token increases needed clue value?)
+		if (clue_value < (locked ? 0 : 1)) {
 			logger.debug('clue value', clue_value, 'skipping');
 			continue;
 		}
@@ -199,8 +200,10 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 					all_play_clues.push(Object.assign({}, save, { result: get_result(state, hypo_state, save, state.ourPlayerIndex )}));
 				}
 
+				logger.info('hand after save', logHand(hand_after_save));
+
 				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
-				const play_over_save = find_play_over_save(state, target, all_play_clues, false, hand_after_save.chopValue());
+				const play_over_save = find_play_over_save(state, target, all_play_clues, false, hand_after_save.chopValue({ afterClue: true }));
 				if (play_over_save !== undefined) {
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
 					continue;

@@ -198,7 +198,8 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 	}
 
 	const new_chop = hypo_state.hands[target].chop({ afterClue: true });
-	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, new_chop) : 4;
+	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, new_chop) :
+						hypo_state.hands[target].find_known_trash().length > 0 ? 0 : 4;
 
 	return { elim, new_touched, bad_touch, trash, finesses, playables, remainder };
 }

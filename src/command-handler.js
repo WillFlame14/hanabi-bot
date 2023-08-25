@@ -60,10 +60,10 @@ export const handle = {
 
 		// Invites the bot to a lobby (format: /join [password])
 		if (data.msg.startsWith('/join')) {
-			const table = Object.values(tables).find(table =>
+			const table = Utils.maxOn(Object.values(tables).filter(table =>
 				(table.players.includes(data.who) && !table.sharedReplay) ||
 				table.spectators.some(spec => spec.name === data.who)
-			);
+			), (table) => table.id);
 
 			if (!table) {
 				Utils.sendPM(data.who, 'Could not join, as you are not in a room.');
@@ -92,7 +92,7 @@ export const handle = {
 				return;
 			}
 
-			const table = Object.values(tables).find(table => table.players.includes(self.username));
+			const table = Utils.maxOn(Object.values(tables).filter(table => table.players.includes(self.username)), (table) => table.id);
 
 			if (!table) {
 				Utils.sendPM(data.who, 'Could not rejoin, as the bot is not a player in any currently open room.');

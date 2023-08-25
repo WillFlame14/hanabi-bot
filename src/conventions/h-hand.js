@@ -42,12 +42,13 @@ export class HGroup_Hand extends Hand {
 	}
 
 	/**
-	 * Returns the value of the chop card, or 4 if the hand is locked.
+	 * Returns the value of the chop card, 4 if the hand is locked, and 0 if no chop but loaded.
 	 * @param {{afterClue?: boolean}} options
 	 */
 	chopValue(options = {}) {
 		const index = this.chopIndex(options);
-		return index === -1 ? 4 : cardValue(this.state, this[index]);
+		return index !== -1 ? cardValue(this.state, this[index]) :
+				this.isLoaded() ? 0 : 4;
 	}
 
 	/**

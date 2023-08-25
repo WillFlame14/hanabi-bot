@@ -1,4 +1,3 @@
-import { CLUE } from '../../../constants.js';
 import { isCritical, playableAway, unique2 } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 

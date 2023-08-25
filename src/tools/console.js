@@ -1,6 +1,6 @@
 import * as readline from 'readline';
 import logger from './logger.js';
-import { logHand } from './log.js';
+import { logHand, logLinks } from './log.js';
 import * as Utils from './util.js';
 
 /**
@@ -52,7 +52,7 @@ export function initConsole() {
 							break;
 						}
 						const playerIndex = state.playerNames.indexOf(playerName);
-						console.log(logHand(state.hands[playerIndex]));
+						console.log(logHand(state.hands[playerIndex]), logLinks(state.hands[playerIndex].links));
 						break;
 					}
 					case 'state':

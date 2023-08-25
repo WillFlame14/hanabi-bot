@@ -11,6 +11,7 @@ import { globals } from './util.js';
  * @typedef {import('../types.js').BasicCard} BasicCard
  * @typedef {import('../types.js').PerformAction} PerformAction
  * @typedef {import('../types.js').Connection} Connection
+ * @typedef {import('../types.js').Link} Link
  */
 
 /**
@@ -200,4 +201,19 @@ export function logConnections(connections, nextIdentity) {
 	const showNext = globals.state.max_ranks[suitIndex] >= rank;
 
 	return `[${connections.map(conn => logConnection(conn)).join(' -> ')} ${showNext ? `-> ${logCard(nextIdentity)}?` : ''}]`;
+}
+
+/**
+ * @param {Link[]} links
+ */
+export function logLinks(links) {
+	return links.map(link => {
+		const { cards, identities, promised } = link;
+
+		return {
+			cards: cards.map(c => c.order),
+			identities: identities.map(i => logCard(i)),
+			promised
+		};
+	});
 }
