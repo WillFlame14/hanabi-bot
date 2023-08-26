@@ -8,6 +8,7 @@ import { cardTouched } from '../../../variants.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
+import { find_possibilities } from '../../../basics/helper.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -37,7 +38,7 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 			}
 
 			if (card.matches(suitIndex, rank, { symmetric: true, infer: true }) && (card.identity() === undefined || card.matches(suitIndex, rank))) {
-				return { type: 'known', reacting: playerIndex, card, identity: { suitIndex, rank } };
+				return { type: 'known', reacting: playerIndex, card, identities: [{ suitIndex, rank }] };
 			}
 		}
 	}
@@ -59,7 +60,7 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 		if (playables.length > 1 && state.hands[giver].some(c => c.clued && c.inferred.some(inf => inf.matches(suitIndex, rank)))) {
 			if (match !== undefined) {
 				// Everyone other than giver will recognize this card as the connection - stop looking further
-				return { type: 'terminate', reacting: null, card: null, identity: null };
+				return { type: 'terminate', reacting: null, card: null, identities: [] };
 			}
 			logger.warn(`disallowed hidden delayed play on ${logCard({ suitIndex, rank })}, could be duplicated in giver's hand`);
 			return;
@@ -69,7 +70,7 @@ function find_known_connecting(state, giver, suitIndex, rank, ignoreOrders = [])
 			if (match.hidden) {
 				logger.warn(`hidden connecting card ${logCard({suitIndex, rank})} in ${state.playerNames[playerIndex]}'s hand, might be confusing`);
 			}
-			return { type: 'playable', reacting: playerIndex, card: match, known: playables.length === 1, identity: { suitIndex, rank } };
+			return { type: 'playable', reacting: playerIndex, card: match, known: playables.length === 1, identities: [{ suitIndex, rank }] };
 		}
 	}
 }
@@ -93,7 +94,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 	// Prompt takes priority over finesse
 	if (prompt !== undefined) {
 		if (prompt.matches(suitIndex, rank)) {
-			return { type: 'prompt', reacting: playerIndex, card: prompt, identity: { suitIndex, rank } };
+			return { type: 'prompt', reacting: playerIndex, card: prompt, identities: [{ suitIndex, rank }] };
 		}
 
 		// Prompted card is delayed playable
@@ -103,7 +104,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 				logger.warn(`disallowed hidden prompt on ${logCard(prompt)}, could be duplicated in giver's hand`);
 				return;
 			}
-			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true, identity: prompt.raw() };
+			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true, identities: [prompt.raw()] };
 		}
 		else {
 			logger.warn(`wrong prompt on ${logCard(prompt)}`);
@@ -117,7 +118,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 				logger.warn(`found finesse ${logCard(finesse)} in ${state.playerNames[playerIndex]}'s hand, but not between giver and target`);
 				return;
 			}
-			return { type: 'finesse', reacting: playerIndex, card: finesse, identity: { suitIndex, rank } };
+			return { type: 'finesse', reacting: playerIndex, card: finesse, identities: [{ suitIndex, rank }] };
 		}
 		// Finessed card is delayed playable
 		else if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
@@ -126,7 +127,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, suitIndex, r
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)}, could be duplicated in giver's hand`);
 				return;
 			}
-			return { type: 'finesse', reacting: playerIndex, card: finesse, hidden: true, identity: finesse };
+			return { type: 'finesse', reacting: playerIndex, card: finesse, hidden: true, identities: [finesse] };
 		}
 	}
 }
@@ -217,11 +218,11 @@ export function find_connecting(state, giver, target, suitIndex, rank, looksDire
 				const ordered_1s = order_1s(state, playable_conns);
 
 				// Reorder to oldest 1 to avoid prompting
-				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: ordered_1s[0], known: playable_conns.length === 1, identity: { suitIndex, rank } }];
+				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: ordered_1s[0], known: playable_conns.length === 1, identities: [{ suitIndex, rank }] }];
 			}
 			else {
 				const playable_conn = playable_conns[0];
-				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: playable_conn, known: playable_conns.length === 1, identity: { suitIndex, rank } }];
+				return [{ type: 'playable', reacting: state.ourPlayerIndex, card: playable_conn, known: playable_conns.length === 1, identities: [{ suitIndex, rank }] }];
 			}
 		}
 	}
@@ -286,23 +287,34 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 			for (const connection of new_conns) {
 				connections.push(connection);
 
+				const { card, type } = connection;
+
 				if (connection.hidden) {
-					hypo_state.play_stacks[connection.card.suitIndex]++;
+					const id = card.identity({ infer: true });
+
+					if (id !== undefined) {
+						hypo_state.play_stacks[id.suitIndex]++;
+
+						// Everyone knows this card is playing
+						for (let i = 0; i < hypo_state.numPlayers; i++) {
+							hypo_state.hypo_stacks[i][id.suitIndex]++;
+						}
+					}
 				}
 				else {
 					allHidden = false;
 
 					// Assume this is actually the card
-					connection.card.intersect('inferred', [identity]);
+					card.intersect('inferred', [identity]);
 					for (let i = 0; i < state.numPlayers; i++) {
 						card_elim(hypo_state, i, suitIndex, next_rank);
 					}
 				}
 
-				if (connection.type === 'finesse') {
+				if (type === 'finesse') {
 					finesses++;
 				}
-				ignoreOrders.push(connection.card.order);
+				ignoreOrders.push(card.order);
 			}
 
 			if (allHidden) {
@@ -335,11 +347,11 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 						logger.warn(`blocked hidden finesse at level ${state.level}`);
 						return { feasible: false, connections: [] };
 					}
-					addConnections([{ type: 'known', reacting: state.ourPlayerIndex, card: prompt, hidden: true, self: true, identity: prompt.raw() }]);
+					addConnections([{ type: 'known', reacting: state.ourPlayerIndex, card: prompt, hidden: true, self: true, identities: [prompt.raw()] }]);
 					continue;
 				}
 				else if (prompt.identity() === undefined || prompt.matches(suitIndex, next_rank)) {
-					addConnections([{ type: 'prompt', reacting: hypo_state.ourPlayerIndex, card: prompt, self: true, identity }]);
+					addConnections([{ type: 'prompt', reacting: hypo_state.ourPlayerIndex, card: prompt, self: true, identities: [identity] }]);
 					continue;
 				}
 			}
@@ -369,7 +381,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 				}
 
 				if (prompt.identity({ symmetric: true }) === undefined || prompt.matches(suitIndex, next_rank)) {
-					addConnections([{ type: 'prompt', reacting: target, card: prompt, self: true, identity }]);
+					addConnections([{ type: 'prompt', reacting: target, card: prompt, self: true, identities: [identity] }]);
 					continue;
 				}
 			}
@@ -380,7 +392,7 @@ export function find_own_finesses(state, giver, target, suitIndex, rank, looksDi
 					if (state.level === 1 && ignoreOrders.length >= 1) {
 						return { feasible: false, connections: [] };
 					}
-					addConnections([{ type: 'finesse', reacting: target, card: finesse, self: true, identity }]);
+					addConnections([{ type: 'finesse', reacting: target, card: finesse, self: true, identities: [identity] }]);
 					continue;
 				}
 			}
@@ -427,7 +439,7 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 			logger.warn(`blocked layered finesse at level ${state.level}`);
 			return { feasible: false, connections: [] };
 		}
-		return { feasible: true, connections: [{ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, hidden: true, self: true, identity: finesse.raw() }] };
+		return { feasible: true, connections: [{ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, hidden: true, self: true, identities: [finesse.raw()] }] };
 	}
 
 	if (finesse?.inferred.some(p => p.matches(suitIndex, rank)) && (finesse.identity() === undefined || finesse.matches(suitIndex, rank))) {
@@ -448,10 +460,18 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 				let touched = list.includes(our_hand[index].order);
 
 				while ((matching ? !touched : touched)) {
-					connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: our_hand[index], hidden: true, self: true, identity });
+					let identities = state.hypo_stacks[state.ourPlayerIndex].map((stack_rank, index) => {
+						return { suitIndex: index, rank: stack_rank + 1 };
+					});
 
-					const playable_identities = state.hypo_stacks[state.ourPlayerIndex].map((stack_rank, index) => { return { suitIndex: index, rank: stack_rank + 1 }; });
-					our_hand[index].intersect('inferred', playable_identities);
+					// Touching a non-matching card - we know exactly what playbable identities it should be
+					if (!matching) {
+						const possibilities = find_possibilities(clue, state.suits);
+						identities = identities.filter(card => possibilities.some(p => p.suitIndex === card.suitIndex && p.rank === rank));
+					}
+
+					connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: our_hand[index], hidden: true, self: true, identities });
+					our_hand[index].intersect('inferred', identities);
 
 					ignoreOrders.push(our_hand[index].order);
 					index++;
@@ -464,13 +484,13 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 			// Assume next card is the finesse target
 			finesse = our_hand.find_finesse(ignoreOrders);
 
-			// Layered finesse is imposible
+			// Layered finesse is impossible
 			if (finesse === undefined) {
 				logger.warn(`couldn't find a valid finesse target after layers!`);
 				return { feasible: false, connections: [] };
 			}
 		}
-		connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, self: true, identity });
+		connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, self: true, identities: [identity] });
 	}
 
 	return { feasible: true, connections };

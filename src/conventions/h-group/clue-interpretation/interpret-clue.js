@@ -1,6 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
-import { interpret_tcm, interpret_5cm } from './interpret-cm.js';
+import { interpret_tcm, interpret_5cm, interpret_tccm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, looksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
@@ -219,15 +219,14 @@ export function interpret_clue(state, action) {
 	}
 
 	const focus_possible = find_focus_possible(state, action);
-	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) =>
-		logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
+	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) => logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
 
 	const matched_inferences = focus_possible.filter(p => focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank)));
 	const correct_match = matched_inferences.find(p => focused_card.matches(p.suitIndex, p.rank));
 	const matched_correct = target === state.ourPlayerIndex || correct_match !== undefined;
 
 	const old_state = state.minimalCopy();
-	const old_inferred = focused_card.inferred;
+	const old_inferred = focused_card.inferred.slice();
 
 	// Card matches an inference and not a save/stall
 	// If we know the identity of the card, one of the matched inferences must also be correct before we can give this clue.
@@ -256,7 +255,9 @@ export function interpret_clue(state, action) {
 		}
 		else if (target !== state.ourPlayerIndex && !correct_match.save) {
 			const selfRanks = Array.from(new Set(matched_inferences.flatMap(({ connections }) =>
-				connections.filter(conn => conn.type === 'finesse' && conn.reacting === target).map(conn => conn.identity.rank))
+				connections.filter(conn =>
+					conn.type === 'finesse' && conn.reacting === target && conn.identities.length === 1
+				).map(conn => conn.identities[0].rank))
 			));
 			const ownBlindPlays = correct_match.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length;
 			const symmetric_connections = find_symmetric_connections(old_state, action, focus_possible.some(fp => fp.save), selfRanks, ownBlindPlays);
@@ -283,42 +284,39 @@ export function interpret_clue(state, action) {
 			focus_possible.some(fp => fp.save));											// Looks like a save
 
 		if (target === state.ourPlayerIndex) {
-			// Only look for finesses if the card isn't trash
-			if (focused_card.inferred.some(c => !isBasicTrash(state, c.suitIndex, c.rank))) {
-				// We are the clue target, so we need to consider all the possibilities of the card
-				let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
-				let self = true;
+			// We are the clue target, so we need to consider all the possibilities of the card
+			let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
+			let self = true;
 
-				for (const card of focused_card.inferred) {
-					if (isBasicTrash(state, card.suitIndex, card.rank)) {
-						continue;
-					}
-
-					const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect);
-					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
-					logger.info('found connections:', logConnections(connections, card));
-
-					if (feasible) {
-						// Starts with self-finesse or self-prompt
-						if (connections[0]?.self) {
-							// TODO: This interpretation should always exist, but must wait for all players to ignore first
-							if (self && blind_plays < min_blind_plays) {
-								conn_save = { connections, suitIndex: card.suitIndex, rank: inference_rank(state, card.suitIndex, connections) };
-								min_blind_plays = blind_plays;
-							}
-						}
-						// Doesn't start with self
-						else {
-							// Temp: if a connection with no self-component exists, don't consider any connection with a self-component
-							self = false;
-							all_connections.push({ connections, suitIndex: card.suitIndex, rank: inference_rank(state, card.suitIndex, connections) });
-						}
-					}
+			for (const card of focused_card.inferred) {
+				if (isBasicTrash(state, card.suitIndex, card.rank)) {
+					continue;
 				}
 
-				if (self && conn_save !== undefined) {
-					all_connections.push(conn_save);
+				const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect);
+				const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
+				logger.info('found connections:', logConnections(connections, card));
+
+				if (feasible) {
+					// Starts with self-finesse or self-prompt
+					if (connections[0]?.self) {
+						// TODO: This interpretation should always exist, but must wait for all players to ignore first
+						if (self && blind_plays < min_blind_plays) {
+							conn_save = { connections, suitIndex: card.suitIndex, rank: inference_rank(state, card.suitIndex, connections) };
+							min_blind_plays = blind_plays;
+						}
+					}
+					// Doesn't start with self
+					else {
+						// Temp: if a connection with no self-component exists, don't consider any connection with a self-component
+						self = false;
+						all_connections.push({ connections, suitIndex: card.suitIndex, rank: inference_rank(state, card.suitIndex, connections) });
+					}
 				}
+			}
+
+			if (self && conn_save !== undefined) {
+				all_connections.push(conn_save);
 			}
 		}
 		// Someone else is the clue target, so we know exactly what card it is
@@ -378,7 +376,9 @@ export function interpret_clue(state, action) {
 			}
 			else if (target !== state.ourPlayerIndex && !correct_match2.save) {
 				const selfRanks = Array.from(new Set(all_connections.flatMap(({ connections }) =>
-					connections.filter(conn => conn.type === 'finesse' && conn.reacting === target).map(conn => conn.identity.rank))
+					connections.filter(conn =>
+						conn.type === 'finesse' && conn.reacting === target && conn.identities.length === 1
+					).map(conn => conn.identities[0].rank))
 				));
 				const ownBlindPlays = correct_match2.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length;
 				const symmetric_connections = find_symmetric_connections(old_state, action, focus_possible.some(fp => fp.save), selfRanks, ownBlindPlays);
@@ -394,9 +394,15 @@ export function interpret_clue(state, action) {
 		}
 	}
 	logger.highlight('blue', 'final inference on focused card', focused_card.inferred.map(c => logCard(c)).join(','));
-	logger.debug('hand state after clue', logHand(state.hands[target]));
+
 	state.hands[target].refresh_links();
 	update_hypo_stacks(state);
+
+	if (state.level >= LEVEL.TEMPO_CLUES) {
+		interpret_tccm(state, old_state, giver, target, list, focused_card);
+	}
+
+	logger.debug('hand state after clue', logHand(state.hands[target]));
 }
 
 /**

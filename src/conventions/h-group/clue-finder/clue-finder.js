@@ -3,7 +3,7 @@ import { LEVEL } from '../h-constants.js';
 import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { determine_clue, direct_clues, get_result } from './determine-clue.js';
-import { stall_severity } from '../hanabi-logic.js';
+import { stall_severity, valuable_tempo_clue } from '../hanabi-logic.js';
 import { cardValue, isBasicTrash, isCritical, isTrash, unique2, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
@@ -312,7 +312,13 @@ export function find_clues(state, options = {}) {
 				const { playables, elim, new_touched } = clue.result;
 
 				if (playables.length > 0) {
-					play_clues[target].push(clue);
+					const { tempo, valuable } = valuable_tempo_clue(state, clue, playables, card);
+					if (tempo && !valuable) {
+						stall_clues[1].push(clue);
+					}
+					else {
+						play_clues[target].push(clue);
+					}
 				}
 				// Stall clues
 				else if (severity > 0) {

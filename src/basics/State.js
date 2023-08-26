@@ -48,6 +48,12 @@ export class State {
 	cardOrder = 0;
 
 	/**
+	 * The orders of playable cards whose identities are not known, according to each player. Used for identifying TCCMs.
+	 * @type {number[][]}
+	 */
+	unknown_plays = [];
+
+	/**
 	 * The orders of cards to ignore in the next play clue.
 	 * @type {number[][]}
 	 */
@@ -110,6 +116,7 @@ export class State {
 			this.hands.push(new Hand(this, i));
 			this.all_possible.push(Utils.objClone(all_possible));
 			this.all_inferred.push(Utils.objClone(all_possible));
+			this.unknown_plays.push([]);
 		}
 	}
 
@@ -133,8 +140,8 @@ export class State {
 			throw new Error('Maximum recursive depth reached.');
 		}
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands',
-			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'turn_count', 'clue_tokens',
+			'strikes', 'early_game', 'rewindDepth', 'unknown_plays', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
@@ -149,7 +156,6 @@ export class State {
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;
 	}
-
 
 	/**
 	 * @abstract

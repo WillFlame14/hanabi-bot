@@ -7,6 +7,7 @@ import { logCard } from '../../tools/log.js';
  * @typedef {import('../h-group.js').default} State
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').TurnAction} TurnAction
+ * @typedef {import('../../types.js').Connection} Connection
  */
 
 /**
@@ -68,12 +69,12 @@ export function update_turn(state, action) {
 	/** @type {number[]} */
 	const to_remove = [];
 
-	/** @type {{card: Card, inferences: {suitIndex: number, rank: number}[]}[]} */
+	/** @type {{card: Card, inferences: {suitIndex: number, rank: number}[], connections: Connection[]}[]} */
 	const demonstrated = [];
 
 	for (let i = 0; i < state.waiting_connections.length; i++) {
 		const { connections, conn_index = 0, focused_card, inference, giver, action_index, fake, ambiguousPassback } = state.waiting_connections[i];
-		const { type, reacting, card: old_card, identity } = connections[conn_index];
+		const { type, reacting, card: old_card, identities } = connections[conn_index];
 		logger.info(`waiting for connecting ${logCard(old_card)} (${state.playerNames[reacting]}) for inference ${logCard(inference)}`);
 
 		// Card may have been updated, so need to find it again
@@ -99,11 +100,11 @@ export function update_turn(state, action) {
 						return;
 					}
 
-					const identity = wc.connections.find((conn, index) => index >= conn_index && conn.card.order === old_card.order)?.identity;
-					const unplayable = identity && playableAway(state, identity.suitIndex, identity.rank) > 0;
+					const identities = wc.connections.find((conn, index) => index >= conn_index && conn.card.order === old_card.order)?.identities;
+					const unplayable = identities && identities.some(i => playableAway(state, i.suitIndex, i.rank) > 0);
 
 					if (unplayable) {
-						logger.warn(logCard(identity), 'possibility not playable');
+						logger.warn(identities.map(i => logCard(i)), 'not all possibilities playable');
 					}
 
 					return unplayable;
@@ -144,8 +145,10 @@ export function update_turn(state, action) {
 			}
 			else {
 				// The card was played (and matches expectation)
-				if (state.last_actions[reacting].type === 'play' && state.last_actions[reacting].card.matches(identity.suitIndex, identity.rank)) {
-					logger.info(`waiting card ${logCard(identity)} played`);
+				if (state.last_actions[reacting].type === 'play' &&
+					identities.some(identity => state.last_actions[reacting].card.matches(identity.suitIndex, identity.rank))
+				) {
+					logger.info(`waiting card ${identities.length === 1 ? logCard(identities[0]) : '(unknown)'} played`);
 
 					state.waiting_connections[i].conn_index = conn_index + 1;
 					if (state.waiting_connections[i].conn_index === connections.length) {
@@ -164,7 +167,7 @@ export function update_turn(state, action) {
 						else {
 							const prev_card = demonstrated.find(({ card }) => card.order === focused_card.order);
 							if (prev_card === undefined) {
-								demonstrated.push({card: focused_card, inferences: [inference]});
+								demonstrated.push({ card: focused_card, inferences: [inference], connections: connections.slice(conn_index + 1) });
 							}
 							else {
 								prev_card.inferences.push(inference);
@@ -217,8 +220,22 @@ export function update_turn(state, action) {
 	}
 
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
-	for (const { card, inferences } of demonstrated) {
+	for (const { card, inferences, connections } of demonstrated) {
 		logger.info(`intersecting card ${logCard(card)} with inferences ${inferences.map(c => logCard(c)).join(',')}`);
+
+		for (const connection of connections) {
+			const { reacting, identities } = connection;
+			const actual_card = state.hands[reacting].findOrder(connection.card.order);
+
+			if (!actual_card.superposition) {
+				actual_card.intersect('inferred', identities);
+				actual_card.superposition = true;
+			}
+			else {
+				actual_card.union('inferred', identities);
+			}
+		}
+
 		if (!card.superposition) {
 			card.intersect('inferred', inferences);
 			card.superposition = true;

@@ -7,6 +7,7 @@ import { logHand } from '../../tools/log.js';
  * @typedef {import('../h-group.js').default} State
  * @typedef {import('../h-hand.js').HGroup_Hand} Hand
  * @typedef {import('../../basics/Card.js').Card} Card
+ * @typedef {import('../../types.js').Clue} Clue
  */
 
 /**
@@ -155,4 +156,34 @@ export function looksPlayable(state, rank, giver, target, focused_card) {
 
 		return playable_identity && other_visibles < cardCount(state.suits[suitIndex], rank) && matching_inference;
 	});
+}
+
+/**
+ * @param {State} state
+ * @param {Clue} clue
+ * @param {{playerIndex: number, card: Card}[]} playables
+ * @param {Card} focused_card
+ * 
+ * Returns whether a clue is a tempo clue, and if so, whether it's valuable.
+ */
+export function valuable_tempo_clue(state, clue, playables, focused_card) {
+	const { target } = clue;
+	const touch = state.hands[target].clueTouched(clue);
+
+	if (touch.some(card => !card.clued)) {
+		return { tempo: false, valuable: false };
+	}
+
+	const prompt = state.hands[target].find_prompt(focused_card.suitIndex, focused_card.rank, state.suits);
+
+	// No prompt exists for this card (i.e. it is a hard burn)
+	if (prompt === undefined) {
+		return { tempo: false, valuable: false };
+	}
+
+	const valuable = playables.length > 1 ||
+		prompt.order !== focused_card.order ||
+		playables.some(({card}) => card.chop_moved && card.newly_clued);
+
+	return { tempo: true, valuable };
 }

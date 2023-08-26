@@ -8,6 +8,7 @@ import logger from '../../tools/logger.js';
 import { clue_safe } from './clue-finder/clue-safe.js';
 import { get_result } from './clue-finder/determine-clue.js';
 import { logHand } from '../../tools/log.js';
+import { determine_focus, valuable_tempo_clue } from './hanabi-logic.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -134,9 +135,10 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
  * @param {Clue[][]} play_clues
  * @param {SaveClue[]} save_clues
  * @param {FixClue[][]} fix_clues
+ * @param {Clue[][]} stall_clues
  * @param {Card[][]} playable_priorities
  */
-export function find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities) {
+export function find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities) {
 	const urgent_actions = /** @type {PerformAction[][]} */ ([[], [], [], [], [], [], [], [], []]);
 
 	for (let i = 1; i < state.numPlayers; i++) {
@@ -200,7 +202,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 					all_play_clues.push(Object.assign({}, save, { result: get_result(state, hypo_state, save, state.ourPlayerIndex )}));
 				}
 
-				logger.info('hand after save', logHand(hand_after_save));
+				logger.debug('hand after save', logHand(hand_after_save));
 
 				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
 				const play_over_save = find_play_over_save(state, target, all_play_clues, false, hand_after_save.chopValue({ afterClue: true }));
@@ -237,6 +239,30 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, pl
 						urgent_actions[i === 1 ? 1 : 5].push({ tableID: state.tableID, type: ACTION.PLAY, target: ordered_1s[distance].order });
 						continue;
 					}
+				}
+			}
+
+			// Check if TCCM is available
+			if (state.level >= LEVEL.TEMPO_CLUES) {
+				let tccm = false;
+				for (const clue of stall_clues[1].filter(clue => clue.target === target)) {
+					if (clue.target !== target) {
+						continue;
+					}
+
+					const { playables } = clue.result;
+					const { focused_card } = determine_focus(hand, hand.clueTouched(clue).map(c => c.order), { beforeClue: true });
+					const { tempo, valuable } = valuable_tempo_clue(state, clue, playables, focused_card);
+
+					if (tempo && !valuable) {
+						urgent_actions[i === 1 ? 2 : 6].push(Utils.clueToAction(clue, state.tableID));
+						tccm = true;
+						break;
+					}
+				}
+
+				if (tccm) {
+					continue;
 				}
 			}
 

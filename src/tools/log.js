@@ -188,8 +188,10 @@ export function logAction(action) {
  * @param {Connection} connection
  */
 export function logConnection(connection) {
-	const { type, reacting, identity, card } = connection;
-	return `${card.order} ${logCard(identity)} ${type} (${globals.state.playerNames[reacting]})`;
+	const { type, reacting, identities, card } = connection;
+	const identity = identities.length === 1 ? logCard(identities[0]) : `[${identities.map(i => logCard(i))}]`;
+
+	return `${card.order} ${identity} ${type} (${globals.state.playerNames[reacting]})`;
 }
 
 /**

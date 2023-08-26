@@ -61,7 +61,7 @@ export function take_action(state) {
 	}
 
 	const playable_priorities = determine_playable_card(state, playable_cards);
-	const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
+	const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
 	if (urgent_actions.some(actions => actions.length > 0)) {
 		logger.info('all urgent actions', urgent_actions.map((actions, index) => actions.map(action => { return { [index]: logPerformAction(action) }; })).flat());
@@ -198,8 +198,28 @@ export function take_action(state) {
 	}
 
 	// Discard known trash at high pace, low clues
-	if (trash_cards.length > 0 && getPace(state) > state.numPlayers * 2 && state.clue_tokens <= 3) {
+	if (trash_cards.length > 0 && getPace(state) > state.numPlayers * 2 && state.clue_tokens <= 2) {
 		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
+	}
+
+	// Give TCCM on a valuable card that moves chop to trash
+	if (state.level >= LEVEL.TEMPO_CLUES && state.clue_tokens > 0 && stall_clues[1].length > 0) {
+		for (const clue of stall_clues[1]) {
+			const { target } = clue;
+
+			// Chop is trash, ignore
+			if (state.hands[target].chopValue() === 0) {
+				continue;
+			}
+
+			const new_hand = state.hands[target].clone();
+			new_hand.chop().chop_moved = true;
+
+			if (new_hand.chopValue() === 0) {
+				logger.highlight('yellow', `performing tccm on ${logCard(state.hands[target].chop())}`);
+				return Utils.clueToAction(clue, tableID);
+			}
+		}
 	}
 
 	// Playable card with any priority

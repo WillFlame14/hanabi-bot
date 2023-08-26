@@ -153,7 +153,7 @@ export function assign_connections(state, connections, options = {}) {
 	const hypo_stacks = Utils.objClone(state.hypo_stacks);
 
 	for (const connection of connections) {
-		const { type, reacting, hidden, card: conn_card, known, identity } = connection;
+		const { type, reacting, hidden, card: conn_card, known, identities } = connection;
 		// The connections can be cloned, so need to modify the card directly
 		const card = state.hands[reacting].findOrder(conn_card.order);
 
@@ -193,11 +193,11 @@ export function assign_connections(state, connections, options = {}) {
 		else {
 			// There are multiple possible connections on this card
 			if (card.superposition) {
-				card.union('inferred', [identity]);
+				card.union('inferred', identities);
 			}
 			else {
 				if (!(type === 'playable' && !known)) {
-					card.inferred = [new Card(identity.suitIndex, identity.rank)];
+					card.inferred = identities.map(i => new Card(i.suitIndex, i.rank));
 				}
 				card.superposition = true;
 			}

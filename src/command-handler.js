@@ -230,7 +230,7 @@ export const handle = {
 	 * Received when a table is removed.
 	 */
 	tableGone: (data) => {
-		tables[data.id] = undefined;
+		delete tables[data.id];
 	},
 	/**
 	 * @param {Table[]} data
@@ -324,11 +324,11 @@ function assignSettings(data, priv) {
 	if (settings.convention === 'HGroup') {
 		level = level ?? (Number(parts[2]) || 1);
 
-		if (level < 1 || level > 5) {
-			reply('This bot can currently only play between levels 1 and 5. Currently set to level ' + settings.level);
+		if (level < 1 || level > 6) {
+			reply('This bot can currently only play between levels 1 and 6. Currently set to level ' + settings.level);
 			return;
 		}
-		settings.level = Math.max(Math.min(level, 5), 1);
+		settings.level = Math.max(Math.min(level, 6), 1);
 	}
 
 	reply(`Currently playing with ${settingsString()} conventions.`);

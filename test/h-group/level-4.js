@@ -102,9 +102,9 @@ describe('trash chop move', () => {
 			play_stacks: [5, 1, 0, 2, 2]
 		});
 
-		const { play_clues, save_clues, fix_clues } = find_clues(state);
+		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(state);
 		const playable_priorities = determine_playable_card(state, state.hands[PLAYER.ALICE].find_playables());
-		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
+		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
 		assert.deepEqual(urgent_actions[1], []);
 		ExAsserts.objHasProperties(urgent_actions[2][0], { type: ACTION.COLOUR, value: 1 });
@@ -126,8 +126,8 @@ describe('giving order chop move', () => {
 		const our_hand = state.hands[state.ourPlayerIndex];
 
 		const playable_priorities = determine_playable_card(state, [our_hand[2], our_hand[3]]);
-		const { play_clues, save_clues, fix_clues } = find_clues(state);
-		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
+		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(state);
+		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
 		ExAsserts.objHasProperties(urgent_actions[1][0], { type: ACTION.PLAY, target: our_hand[2].order });
 	});
@@ -147,8 +147,8 @@ describe('giving order chop move', () => {
 		const our_hand = state.hands[PLAYER.ALICE];
 
 		const playable_priorities = determine_playable_card(state, [our_hand[1], our_hand[2], our_hand[3]]);
-		const { play_clues, save_clues, fix_clues } = find_clues(state);
-		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, playable_priorities);
+		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(state);
+		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
 		ExAsserts.objHasProperties(urgent_actions[5][0], { type: ACTION.PLAY, target: our_hand[1].order });
 	});

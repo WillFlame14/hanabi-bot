@@ -163,7 +163,7 @@ export function takeTurn(state, rawAction, draw = 'xx') {
 	}
 
 	const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.numPlayers;
-	state.handle_action({ type: 'turn', num: state.turn_count + 1, currentPlayerIndex: nextPlayerIndex });
+	state.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex });
 }
 
 /**

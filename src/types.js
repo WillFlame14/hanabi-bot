@@ -82,7 +82,7 @@
  * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate'} type
  * @property {number} reacting
  * @property {Card} card
- * @property {BasicCard} identity
+ * @property {BasicCard[]} identities
  * @property {boolean} [self]
  * @property {boolean} [hidden]
  * @property {boolean} [known]

@@ -152,11 +152,14 @@ export function good_touch_elim(state, playerIndex, suitIndex, rank, options = {
 
 /**
  * @param {State} state
+ * 
+ * Updates the hypo stacks for all players.
  */
 export function update_hypo_stacks(state) {
 	for (let i = 0; i < state.numPlayers; i++) {
 		// Reset hypo stacks to play stacks
 		const hypo_stacks = state.play_stacks.slice();
+		state.unknown_plays[i] = [];
 
 		let found_new_playable = true;
 		const good_touch_elim = [];
@@ -204,6 +207,7 @@ export function update_hypo_stacks(state) {
 						const id = card.identity({ infer: true, symmetric: i === hand.playerIndex });
 						if (id === undefined) {
 							// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
+							state.unknown_plays[i].push(card.order);
 							continue;
 						}
 

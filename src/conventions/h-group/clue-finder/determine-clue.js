@@ -184,7 +184,11 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 						if (hypo_card.finessed && !old_card.finessed) {
 							finesses++;
 						}
-						playables.push({ playerIndex, card: old_card });
+
+						// Only counts as a playable if it wasn't already playing
+						if (!state.unknown_plays[state.ourPlayerIndex].some(order => order === old_card.order)) {
+							playables.push({ playerIndex, card: old_card });
+						}
 						found = true;
 						break;
 					}
@@ -216,8 +220,7 @@ export function determine_clue(state, target, target_card, options) {
 	logger.info('determining clue to target card', logCard(target_card));
 	const hand = state.hands[target];
 
-	// All play clues should be safe, but save clues may not be (e.g. crit 4, 5 of different colour needs to identify that 5 is a valid clue)
-	const possible_clues = direct_clues(state, target, target_card, options).filter(clue => options.save ? true : clue_safe(state, clue));
+	const possible_clues = direct_clues(state, target, target_card, options);
 
 	/** @type {{ clue: Clue, result: ClueResult}[]} */
 	const results = [];
@@ -229,6 +232,11 @@ export function determine_clue(state, target, target_card, options) {
 		const { focused_card, chop } = determine_focus(hand, list, { beforeClue: true });
 		if (focused_card.order !== target_card.order) {
 			logger.info(`${logClue(clue)} focuses ${logCard(focused_card)} instead of ${logCard(target_card)}, ignoring`);
+			continue;
+		}
+
+		// All play clues should be safe, but save clues may not be (e.g. crit 4, 5 of different colour needs to identify that 5 is a valid clue)
+		if (!options.save && !clue_safe(state, clue)) {
 			continue;
 		}
 

@@ -31,7 +31,7 @@ function isStall(state, action, giver, severity, prev_state) {
 
 	const provisions = { touch: list.map(order => hand.findOrder(order)), list };
 	const clue_result = get_result(prev_state, state, Object.assign({}, action.clue, { target }), giver, provisions);
-	const { new_touched, elim } = clue_result;
+	const { new_touched, playables, elim } = clue_result;
 
 	if (severity >= 2) {
 		// 5 Stall was available on someone other than giver
@@ -48,7 +48,7 @@ function isStall(state, action, giver, severity, prev_state) {
 		}
 
 		// Tempo clue given
-		if (clue_result.playables.length > 0 && find_clue_value(clue_result) < minimum_clue_value(state)) {
+		if (playables.length > 0 && find_clue_value(clue_result) < minimum_clue_value(state)) {
 			logger.info('tempo clue stall! value', find_clue_value(clue_result));
 			return true;
 		}
