@@ -112,3 +112,29 @@ describe('guide principle', () => {
 		assert.equal(clue_safe(state, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);
 	});
 });
+
+describe('mistake recovery', () => {
+	it('should cancel an ambiguous self-finesse if a missed finesse is directly clued', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g3', 'g2', 'y1', 'r5', 'p4'],
+			['r3', 'r1', 'g4', 'b1', 'y2'],
+		], {
+			level: 2,
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(state, 'Cathy clues 3 to Bob');
+		takeTurn(state, 'Alice plays g1 (slot 1)');
+		takeTurn(state, 'Bob clues 5 to Alice (slot 5)');
+
+		// Alice should interpret g2 as an ambiguous finesse.
+		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g2']);
+
+		takeTurn(state, 'Cathy clues 2 to Bob');
+
+		// Alice should cancel ambiguous g2 in slot 2.
+		assert.ok(state.hands[PLAYER.ALICE][1].inferred.length > 1);
+		assert.equal(state.hands[PLAYER.ALICE][1].finessed, false);
+	});
+});

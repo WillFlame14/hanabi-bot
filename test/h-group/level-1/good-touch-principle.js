@@ -71,6 +71,22 @@ describe('good touch principle', () => {
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['y4']);
 	});
 
+	it('eliminates from focus and gets known trash', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y3', 'r4', 'y2', 'p1', 'g3']
+		], {
+			level: 1,
+			play_stacks: [4, 0, 0, 0, 0],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(state, 'Bob clues red to Alice (slots 4,5)');
+
+		const trash = state.hands[PLAYER.ALICE].find_known_trash();
+		assert.ok(trash[0]?.order === 1);
+	});
+
 	it('generates a link from GTP', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

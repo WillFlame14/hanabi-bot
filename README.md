@@ -10,7 +10,7 @@ https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-
 A game played at level 5 can be seen [here](https://github.com/WillFlame14/hanabi-bot/assets/25177576/1aa4f67e-aa66-4704-ba75-fe6edf403bfa).
 
 ## Bot features
-- Can play at different levels of the H-Group convention set. Currently, levels 1-5 are supported.
+- Can play at different levels of the H-Group convention set. Currently, levels 1-6 are supported.
 - Takes notes during the game on what it thinks each player knows about their own hand.
 - Internally rewinds to relevant turns to understand mistakes.
 - Can create and start games on its own (i.e. for playing bot-only games).

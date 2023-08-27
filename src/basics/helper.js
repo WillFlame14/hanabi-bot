@@ -139,6 +139,15 @@ export function good_touch_elim(state, playerIndex, suitIndex, rank, options = {
 
 			if (card.inferred.length === 0) {
 				card.reset = true;
+
+				if (card.finessed) {
+					card.finessed = false;
+					card.inferred = card.old_inferred;
+
+					// Filter out future waiting connections involving this card
+					state.waiting_connections = state.waiting_connections.filter(wc =>
+						!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === card.order));
+				}
 			}
 			// Newly eliminated
 			else if (card.inferred.length === 1 && pre_inferences > 1) {
@@ -218,7 +227,8 @@ export function update_hypo_stacks(state) {
 							hypo_stacks[suitIndex] = rank;
 						}
 						else {
-							logger.error(`tried to add new playable card ${logCard(card)} but didn't match hypo stacks`);
+							// e.g. a duplicated 1 before any 1s have played will have all bad possibilities eliminated by good touch
+							logger.debug(`tried to add new playable card ${logCard(card)} but was duplicated`);
 							continue;
 						}
 

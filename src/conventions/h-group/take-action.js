@@ -107,14 +107,24 @@ export function take_action(state) {
 						best_ocm_value = ocm_value;
 					}
 				}
-				logger.highlight('yellow', `performing ocm by playing ${best_ocm_index + 1}'th 1`);
+
+				if (best_ocm_index !== 0) {
+					logger.highlight('yellow', `performing ocm by playing ${best_ocm_index + 1}'th 1`);
+				}
+
 				best_playable_card = ordered_1s[best_ocm_index];
 			}
 		}
 
 		if (state.level >= LEVEL.INTERMEDIATE_FINESSES) {
-			while (priority === 0 && hand.some(c => c.finessed && c.finesse_index < best_playable_card.finesse_index)) {
-				logger.warn('older finesse could be layered, unable to play newer finesse', logCard(best_playable_card));
+			while (priority === 0) {
+				const older_finesse = hand.find(c => c.finessed && c.finesse_index < best_playable_card.finesse_index);
+
+				if (older_finesse === undefined) {
+					break;
+				}
+
+				logger.warn('older finesse', logCard(older_finesse), 'could be layered, unable to play newer finesse', logCard(best_playable_card));
 
 				// Remove from playable cards
 				playable_priorities[priority].splice(playable_priorities[priority].findIndex(c => c.order === best_playable_card.order), 1);
