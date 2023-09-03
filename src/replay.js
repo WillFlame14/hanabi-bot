@@ -5,6 +5,7 @@ import { Card } from './basics/Card.js';
 import { Hand } from './basics/Hand.js';
 
 import HGroup from './conventions/h-group.js';
+import PlayfulSieve from './conventions/playful-sieve.js';
 import { fetchVariants, getVariant } from './variants.js';
 import { initConsole } from './tools/console.js';
 import * as Utils from './tools/util.js';
@@ -15,6 +16,11 @@ import * as Utils from './tools/util.js';
  * @typedef {import('./types.js').BasicCard} BasicCard
  * @typedef {import('./basics/State.js').State} State
  */
+
+const conventions = {
+	HGroup,
+	PlayfulSieve
+};
 
 function fetchReplay(id) {
 	return new Promise((resolve, reject) => {
@@ -44,7 +50,7 @@ function fetchReplay(id) {
 }
 
 async function main() {
-	const { id, level, index } = Utils.parse_args();
+	const { id, level, index, convention = 'HGroup' } = Utils.parse_args();
 	fetchVariants();
 	initConsole();
 
@@ -67,7 +73,11 @@ async function main() {
 		throw new Error(`Replay only has ${players.length} players!`);
 	}
 
-	const state = new HGroup(Number(id), players, ourPlayerIndex, variant.suits, false, Number(level ?? 1));
+	if (conventions[convention] === undefined) {
+		throw new Error(`Convention ${convention} is not supported.`);
+	}
+
+	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant.suits, false, Number(level ?? 1));
 
 	Utils.globalModify({state});
 

@@ -1,6 +1,5 @@
 import { LEVEL } from '../h-constants.js';
-import { direct_clues } from './determine-clue.js';
-import { isBasicTrash, isSaved, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
+import { direct_clues, isBasicTrash, isSaved, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
 

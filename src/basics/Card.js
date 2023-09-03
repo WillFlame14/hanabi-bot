@@ -30,6 +30,7 @@ export class Card {
 	chop_when_first_clued = false;
 	superposition = false;	// Whether the card is currently in a superposition
 	hidden = false;
+	called_to_discard = false;
 
 	drawn_index = -1;	// Action index of when the card was drawn
 	finesse_index = -1;	// Action index of when the card was finessed

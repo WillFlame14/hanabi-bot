@@ -1,5 +1,5 @@
 import { Hand } from '../basics/Hand.js';
-import { cardValue, isCritical } from '../basics/hanabi-util.js';
+import { cardValue } from '../basics/hanabi-util.js';
 import { CLUE } from '../constants.js';
 
 /**
@@ -93,44 +93,5 @@ export class HGroup_Hand extends Hand {
 	 */
 	find_finesse(ignoreOrders = []) {
 		return this.find(card => !card.clued && !card.finessed && !ignoreOrders.includes(card.order));
-	}
-
-	/**
-	 * Finds the best discard in a locked hand.
-	 */
-	locked_discard() {
-		// If any card's crit% is 0
-		const crit_percents = Array.from(this.map(card => {
-			const possibilities = card.inferred.length === 0 ? card.possible : card.inferred;
-			const percent = possibilities.filter(p => isCritical(this.state, p.suitIndex, p.rank)).length / possibilities.length;
-
-			return { card, percent };
-		})).sort((a, b) => a.percent - b.percent);
-
-		const least_crits = crit_percents.filter(({ percent }) => percent === crit_percents[0].percent);
-
-		/**
-		 * @param {{suitIndex: number, rank: number}} possibility
-		 * @param {boolean} all_crit
-		 */
-		const distance = ({ suitIndex, rank }, all_crit) => {
-			return (all_crit ? rank * 5 : 0) + rank - this.state.hypo_stacks[this.playerIndex][suitIndex];
-		};
-
-		let max_dist = -1;
-
-		/** @type Card */
-		let furthest_card;
-
-		for (const { card } of least_crits) {
-			const possibilities = card.inferred.length === 0 ? card.possible : card.inferred;
-			const curr_distance = possibilities.reduce((sum, p) => sum += distance(p, crit_percents[0].percent === 1), 0);
-
-			if (curr_distance > max_dist) {
-				max_dist = curr_distance;
-				furthest_card = card;
-			}
-		}
-		return furthest_card;
 	}
 }

@@ -3,6 +3,7 @@ import logger from './tools/logger.js';
 import * as Utils from './tools/util.js';
 
 import HGroup from './conventions/h-group.js';
+import PlayfulSieve from './conventions/playful-sieve.js';
 
 /**
  * @typedef {import('./basics/State.js').State} State
@@ -13,7 +14,7 @@ import HGroup from './conventions/h-group.js';
  * @typedef {import('./types-live.js').Table} Table
  */
 
-const conventions = { HGroup };
+const conventions = { HGroup, PlayfulSieve };
 const settings = {
 	convention: 'HGroup',
 	level: 1
@@ -292,7 +293,7 @@ function assignSettings(data, priv) {
 	/** @type {(msg: string) => void} msg */
 	const reply = priv ? (msg) => Utils.sendPM(data.who, msg) : (msg) => Utils.sendChat(state.tableID, msg);
 
-	const settingsString = () => (settings.convention === 'HGroup') ? `H-Group level ${settings.level}` : 'Referential Sieve';
+	const settingsString = () => settings.convention + (settings.convention === 'HGroup' ? ` ${settings.level}` : '');
 
 	// Viewing settings
 	if (parts.length === 1) {

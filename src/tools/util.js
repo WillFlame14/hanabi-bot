@@ -214,3 +214,41 @@ export function clueToAction(clue, tableID) {
 	const { type, value, target } = clue;
 	return { tableID, type: /** @type {ACTION[keyof ACTION]} */ (type + 2), value, target };
 }
+
+/**
+ * Returns all indices of an array that satisfy the provided function.
+ * @template T
+ * @param  {T[]} arr 						The array of objects.
+ * @param  {(obj: T) => boolean} testFunc	A function that takes in an object and tests whether it satisfies the condition.
+ */
+export function findIndices(arr, testFunc) {
+	const indices = [];
+
+	for (let i = 0; i < arr.length; i++) {
+		if (testFunc(arr[i])) {
+			indices.push(i);
+		}
+	}
+	return indices;
+}
+
+/**
+ * Returns the next index of the array (with wraparound) that satisfies the provided function.
+ * (If wraparound isn't desired, use Array.findIndex() with a starting index.)
+ * Returns startIndex if no other element satsifies the function, or -1 if no element satisfies it.
+ * 
+ * @template T
+ * @param  {T[]} arr 						The array of objects.
+ * @param  {(obj: T) => boolean} testFunc	A function that takes in an object and tests whether it satisfies the condition.
+ * @param  {number} startIndex 				The index for which the next is desired (i.e. doesn't check itself).
+ */
+export function nextIndex(arr, testFunc, startIndex) {
+	for (let offset = 1; offset <= arr.length; offset++) {
+		const index = (startIndex + offset) % arr.length;
+
+		if (testFunc(arr[index])) {
+			return index;
+		}
+	}
+	return -1;
+}

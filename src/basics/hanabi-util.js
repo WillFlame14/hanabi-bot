@@ -1,9 +1,10 @@
-import { HAND_SIZE } from '../constants.js';
+import { CLUE, HAND_SIZE } from '../constants.js';
 import { Card } from './Card.js';
-import { cardCount } from '../variants.js';
+import { cardCount, cardTouched, isCluable } from '../variants.js';
 
 /**
  * @typedef {import('./State.js').State} State
+ * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('../types.js').BasicCard} BasicCard
  * 
  * @typedef {{symmetric?: number[], infer?: number[], ignore?: number[]}} FindOptions
@@ -159,9 +160,10 @@ export function unique2(state, card) {
  * TODO: Improve general algorithm. (e.g. having clued cards of a suit makes it better, a dead suit is worse)
  * @param  {State} state
  * @param  {BasicCard} card
+ * @param  {number} [order] 		The order of a card to ignore when checking if already saved.
  * @returns {number}
  */
-export function cardValue(state, card) {
+export function cardValue(state, card, order = -1) {
 	const { suitIndex, rank } = card;
 
 	// Unknown card in our hand, return average of possibilities
@@ -170,7 +172,7 @@ export function cardValue(state, card) {
 	}
 
 	// Basic trash, saved already, duplicate visible
-	if (isTrash(state, state.ourPlayerIndex, suitIndex, rank) || visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length > 1) {
+	if (isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) || visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length > 1) {
 		return 0;
 	}
 
@@ -184,4 +186,52 @@ export function cardValue(state, card) {
 
 	// Next playable rank is value 4, rank 4 with nothing on the stack is value 1
 	return 5 - (rank - state.hypo_stacks[state.ourPlayerIndex][suitIndex]);
+}
+
+/**
+ * Generates a list of clues that would touch the card.
+ * @param {State} state
+ * @param {number} target
+ * @param {Card} card
+ * @param {{ excludeColour?: boolean, excludeRank?: boolean, save?: boolean }} [options] 	Any additional options.
+ */
+export function direct_clues(state, target, card, options) {
+	const direct_clues = [];
+
+	if (!options?.excludeColour) {
+		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+			const clue = { type: CLUE.COLOUR, value: suitIndex, target };
+
+			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
+				direct_clues.push(clue);
+			}
+		}
+	}
+
+	if (!options?.excludeRank) {
+		for (let rank = 1; rank <= 5; rank++) {
+			const clue = { type: CLUE.RANK, value: rank, target };
+
+			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
+				direct_clues.push(clue);
+			}
+		}
+	}
+
+	return direct_clues;
+}
+
+/**
+ * Finds the index to the right referred to by the given index.
+ * @param  {Hand} hand
+ * @param  {number} index
+ */
+export function refer_right(hand, index) {
+	let target_index = (index + 1) % hand.length;
+
+	while(hand[target_index].clued && !hand[target_index].newly_clued) {
+		target_index = (target_index + 1) % hand.length;
+	}
+
+	return target_index;
 }

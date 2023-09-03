@@ -1,5 +1,5 @@
 import { cardTouched } from '../variants.js';
-import { isBasicTrash, unknownIdentities, visibleFind } from './hanabi-util.js';
+import { isBasicTrash, isCritical, unknownIdentities, visibleFind } from './hanabi-util.js';
 import * as Basics from '../basics.js';
 
 import { logCard } from '../tools/log.js';
@@ -235,5 +235,46 @@ export class Hand extends Array {
 		}
 
 		this.find_links();
+	}
+
+	/**
+	 * Finds the best discard in a locked hand.
+	 * Breaks ties using the leftmost card.
+	 */
+	locked_discard() {
+		// If any card's crit% is 0
+		const crit_percents = Array.from(this.map(card => {
+			const possibilities = card.inferred.length === 0 ? card.possible : card.inferred;
+			const percent = possibilities.filter(p => isCritical(this.state, p.suitIndex, p.rank)).length / possibilities.length;
+
+			return { card, percent };
+		})).sort((a, b) => a.percent - b.percent);
+
+		const least_crits = crit_percents.filter(({ percent }) => percent === crit_percents[0].percent);
+
+		/**
+		 * @param {{suitIndex: number, rank: number}} possibility
+		 * @param {boolean} all_crit
+		 */
+		const distance = ({ suitIndex, rank }, all_crit) => {
+			const crit_distance = (all_crit ? rank * 5 : 0) + rank - this.state.hypo_stacks[this.playerIndex][suitIndex];
+			return crit_distance < 0 ? 5 : crit_distance;
+		};
+
+		let max_dist = -1;
+
+		/** @type Card */
+		let furthest_card;
+
+		for (const { card } of least_crits) {
+			const possibilities = card.inferred.length === 0 ? card.possible : card.inferred;
+			const curr_distance = possibilities.reduce((sum, p) => sum += distance(p, crit_percents[0].percent === 1), 0);
+
+			if (curr_distance > max_dist) {
+				max_dist = curr_distance;
+				furthest_card = card;
+			}
+		}
+		return furthest_card;
 	}
 }

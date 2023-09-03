@@ -1,12 +1,11 @@
-import { CLUE } from '../../../constants.js';
 import { clue_safe } from './clue-safe.js';
 import { determine_focus, find_bad_touch } from '../hanabi-logic.js';
-import { cardTouched, isCluable } from '../../../variants.js';
-import { cardValue, isTrash } from '../../../basics/hanabi-util.js';
+import { cardValue, direct_clues, isTrash } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
+import { bad_touch_result, elim_result, playables_result } from '../../../basics/clue-result.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -17,39 +16,6 @@ import * as Utils from '../../../tools/util.js';
  *
  * @typedef {{ excludeColour: boolean, excludeRank: boolean, save: boolean }} ClueOptions
  */
-
-/**
- * Generates a list of clues that would touch the card.
- * @param {State} state
- * @param {number} target
- * @param {Card} card
- * @param {Partial<ClueOptions>} [options] 	Any additional options when determining clues.
- */
-export function direct_clues(state, target, card, options) {
-	const direct_clues = [];
-
-	if (!options?.excludeColour) {
-		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-			const clue = { type: CLUE.COLOUR, value: suitIndex, target };
-
-			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
-				direct_clues.push(clue);
-			}
-		}
-	}
-
-	if (!options?.excludeRank) {
-		for (let rank = 1; rank <= 5; rank++) {
-			const clue = { type: CLUE.RANK, value: rank, target };
-
-			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
-				direct_clues.push(clue);
-			}
-		}
-	}
-
-	return direct_clues;
-}
 
 /**
  * Evaluates the result of a clue. Returns the hypothetical state after the clue if correct, otherwise undefined.
@@ -128,78 +94,10 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 
 	const { focused_card } = determine_focus(hand, list, { beforeClue: true });
 	const bad_touch_cards = find_bad_touch(hypo_state, touch.filter(c => !c.clued), focused_card.order);
-	let elim = 0, new_touched = 0, bad_touch = 0, trash = 0;
 
-	// Count the number of cards that have increased elimination (i.e. cards that were "filled in")
-	for (let i = 0; i < state.hands[target].length; i++) {
-		const old_card = state.hands[target][i];
-		const hypo_card = hypo_state.hands[target][i];
-
-		if (hypo_card.clued && hypo_card.possible.length < old_card.possible.length && hypo_card.matches_inferences()) {
-			if (hypo_card.newly_clued && !hypo_card.finessed) {
-				new_touched++;
-			}
-			else if (list.includes(hypo_card.order)) {
-				elim++;
-			}
-		}
-	}
-
-	for (const card of hypo_state.hands[target]) {
-		if (bad_touch_cards.some(c => c.order === card.order)) {
-			// Known trash
-			if (card.possible.every(p => isTrash(hypo_state, target, p.suitIndex, p.rank, card.order))) {
-				trash++;
-			}
-			else {
-				// Don't double count bad touch when cluing two of the same card
-				// Focused card should not be bad touched?
-				if (bad_touch_cards.some(c => c.matches(card.suitIndex, card.rank) && c.order > card.order) || focused_card.order === card.order) {
-					continue;
-				}
-				bad_touch++;
-			}
-		}
-	}
-
-	let finesses = 0;
-	const playables = [];
-
-	// Count the number of finesses and newly known playable cards
-	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-		for (let rank = state.hypo_stacks[giver][suitIndex] + 1; rank <= hypo_state.hypo_stacks[giver][suitIndex]; rank++) {
-			// Find the card
-			let found = false;
-			for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
-				const hand = state.hands[playerIndex];
-
-				for (let j = 0; j < hand.length; j++) {
-					const old_card = hand[j];
-					const hypo_card = hypo_state.hands[playerIndex][j];
-
-					// TODO: This might not find the right card if it was duplicated...
-					if ((hypo_card.clued || hypo_card.finessed || hypo_card.chop_moved) &&
-						hypo_card.matches(suitIndex, rank, { infer: true })
-					) {
-						if (hypo_card.finessed && !old_card.finessed) {
-							finesses++;
-						}
-
-						// Only counts as a playable if it wasn't already playing
-						if (!state.unknown_plays[state.ourPlayerIndex].some(order => order === old_card.order)) {
-							playables.push({ playerIndex, card: old_card });
-						}
-						found = true;
-						break;
-					}
-				}
-
-				if (found) {
-					break;
-				}
-			}
-		}
-	}
+	const { new_touched, elim } = elim_result(state, hypo_state, target, list);
+	const { bad_touch, trash } = bad_touch_result(hypo_state, target, bad_touch_cards, [focused_card.order]);
+	const { finesses, playables } = playables_result(state, hypo_state, giver);
 
 	const new_chop = hypo_state.hands[target].chop({ afterClue: true });
 	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, new_chop) :
