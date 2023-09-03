@@ -1,11 +1,11 @@
 import { clue_safe } from './clue-safe.js';
 import { determine_focus, find_bad_touch } from '../hanabi-logic.js';
+import { bad_touch_result, elim_result, playables_result } from '../../../basics/clue-result.js';
 import { cardValue, direct_clues, isTrash } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
-import { bad_touch_result, elim_result, playables_result } from '../../../basics/clue-result.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
