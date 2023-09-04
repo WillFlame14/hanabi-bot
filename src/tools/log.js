@@ -52,7 +52,7 @@ export function logHand(hand) {
 
 		/** @type {string[]} */
 		new_card.flags = [];
-		for (const flag of ['clued', 'newly_clued', 'prompted', 'finessed', 'chop_moved', 'rewinded', 'hidden']) {
+		for (const flag of ['clued', 'newly_clued', 'prompted', 'finessed', 'chop_moved', 'rewinded', 'hidden', 'called_to_discard']) {
 			if (card[flag]) {
 				new_card.flags.push(flag);
 			}

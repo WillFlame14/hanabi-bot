@@ -1,16 +1,16 @@
 # hanabi-bot
 A deterministic NodeJS bot that plays on the [hanab.live](https://hanab.live/) interface. Basic structure and ideas were taken from [Zamiell's example bot](https://github.com/Zamiell/hanabi-live-bot) (Python). You can play with it by inviting any of the `will-bot`'s to your table.
 
-It follows [H-Group](https://hanabi.github.io/) conventions. The goal of the bot is to play with humans, so it can handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning" during a game.
+It can play with [H-Group](https://hanabi.github.io/) and [Playful Sieve](https://hackmd.io/@sodiumdebt/playful_sieve) conventions. The goal of the bot is to play with humans, so it can handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning" during a game.
 
-A demo game at level 3:
+A demo game at H-Group level 3:
 
 https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-92d0-e1d01291986e.mp4
 
-A game played at level 5 can be seen [here](https://github.com/WillFlame14/hanabi-bot/assets/25177576/1aa4f67e-aa66-4704-ba75-fe6edf403bfa).
+A game played at H-Group level 5 can be seen [here](https://github.com/WillFlame14/hanabi-bot/assets/25177576/1aa4f67e-aa66-4704-ba75-fe6edf403bfa).
 
 ## Bot features
-- Can play at different levels of the H-Group convention set. Currently, levels 1-6 are supported.
+- Can play with different conventions! Currently, Playful Sieve and HGroup levels 1 through 6 are supported.
 - Takes notes during the game on what it thinks each player knows about their own hand.
 - Internally rewinds to relevant turns to understand mistakes.
 - Can create and start games on its own (i.e. for playing bot-only games).
@@ -35,12 +35,12 @@ Send a PM to the bot on hanab.live (`/pm <HANABI_USERNAME> <message>`) to intera
 - `/leave` to kick the bot from your table.
 - `/create <name> <maxPlayers> <password>` to have the bot create a table. The name can't have spaces.
 - `/start` to have the bot start the game (only works if it is the table leader).
-- `/settings [conventions=HGroup] [level]` to set the bot's conventions. To view the current settings, provide no parameters. The bot remembers its settings between games, but plays with H-Group conventions at level 1 on first boot.
+- `/settings [conventions=HGroup,PlayfulSieve] [level]` to set the bot's conventions. To view the current settings, provide no parameters. The bot remembers its settings between games, but plays with H-Group conventions at level 1 on first boot.
     - If only a level is provided (without a convention set), H-Group is assumed.
 - `/restart` and `/remake` to have the bot perform the corresponding room actions after the game has finished (only works if it is the table leader).
 
 Some commands can be sent inside a room to affect all bots that have joined.
-- `/setall [conventions=HGroup] [level]` to set conventions and level for all bots.
+- `/setall [conventions=HGroup, PlayfulSieve] [level]` to set conventions and level for all bots.
 - `/leaveall` to kick all bots from the table.
 
 ## Watching replays
