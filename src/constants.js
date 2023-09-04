@@ -1,3 +1,6 @@
+export const MAX_H_LEVEL = 6;
+export const BOT_VERSION = '1.0.0';
+
 export const ACTION =  /** @type {const} */ ({
 	PLAY: 0,
 	DISCARD: 1,

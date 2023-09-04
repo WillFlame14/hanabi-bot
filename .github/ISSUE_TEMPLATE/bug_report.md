@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-**Version/Most recent commit** (check `git log`):
+**Version** (PM the bot with `/version`):
 **Convention settings:**
 **Steps to reproduce or replay link:**
 **Additional information:**

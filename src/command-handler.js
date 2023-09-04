@@ -4,6 +4,7 @@ import * as Utils from './tools/util.js';
 
 import HGroup from './conventions/h-group.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
+import { BOT_VERSION, MAX_H_LEVEL } from './constants.js';
 
 /**
  * @typedef {import('./basics/State.js').State} State
@@ -141,6 +142,10 @@ export const handle = {
 		}
 		if (data.msg.startsWith('/terminate')) {
 			Utils.sendCmd('tableTerminate', { tableID: state.tableID });
+			return;
+		}
+		if (data.msg.startsWith('/version')) {
+			Utils.sendPM(data.who, `v${BOT_VERSION}`);
 			return;
 		}
 
@@ -325,11 +330,11 @@ function assignSettings(data, priv) {
 	if (settings.convention === 'HGroup') {
 		level = level ?? (Number(parts[2]) || 1);
 
-		if (level < 1 || level > 6) {
-			reply('This bot can currently only play between levels 1 and 6. Currently set to level ' + settings.level);
+		if (level < 1 || level > MAX_H_LEVEL) {
+			reply(`This bot can currently only play between levels 1 and ${MAX_H_LEVEL}. Currently set to level ${settings.level}.`);
 			return;
 		}
-		settings.level = Math.max(Math.min(level, 6), 1);
+		settings.level = Math.max(Math.min(level, MAX_H_LEVEL), 1);
 	}
 
 	reply(`Currently playing with ${settingsString()} conventions.`);
