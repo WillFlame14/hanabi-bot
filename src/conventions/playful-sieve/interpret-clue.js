@@ -46,7 +46,19 @@ export function interpret_clue(state, action) {
 	const hand = state.hands[target];
 	const partner_hand = state.hands[giver];
 
+	const had_inferences = hand.filter(c => c.inferred.length > 0).map(c => c.order);
+	const old_playables = hand.find_playables().map(c => c.order);
+	const old_trash = hand.find_known_trash().map(c => c.order);
+
+	for (const card of state.hands[target]) {
+		if (card.inferred.length > 0) {
+			had_inferences.push(card.order);
+		}
+	}
+
 	Basics.onClue(state, action);
+
+	let fix = false;
 
 	let bad_touch = bad_touch_possibilities(state, giver, target);
 	let bad_touch_len;
@@ -59,6 +71,14 @@ export function interpret_clue(state, action) {
 		for (const card of state.hands[target]) {
 			if (card.inferred.length > 1 && (card.clued || card.chop_moved)) {
 				card.subtract('inferred', bad_touch);
+				reduced_inferences.push(card);
+			}
+
+			if (had_inferences.includes(card.order) && card.inferred.length === 0) {
+				fix = true;
+				card.inferred = Utils.objClone(card.possible);
+				card.subtract('inferred', bad_touch);
+				card.reset = true;
 				reduced_inferences.push(card);
 			}
 		}
@@ -86,18 +106,21 @@ export function interpret_clue(state, action) {
 		!list.includes(card.order) || card.inferred.every(inf => isTrash(state, state.ourPlayerIndex, inf.suitIndex, inf.rank, card.order)));
 
 	if (partner_hand.isLocked()) {
-		// Fill-in/trash reveal, no additional meaning
-		if (hand.find_known_trash().length + hand.filter(card => card.called_to_discard).length > 0) {
-			return;
-		}
-
 		if (clue.type === CLUE.RANK) {
+			// Rank fill-in/trash reveal, no additional meaning
+			if (hand.find_known_trash().length + hand.filter(card => card.called_to_discard).length > 0) {
+				return;
+			}
+
 			// Referential discard
 			if (newly_touched.length > 0 && !trash_push) {
 				const referred = newly_touched.map(index => Math.max(0, Utils.nextIndex(hand, (card) => !card.clued, index)));
 				const target_index = referred.reduce((min, curr) => Math.min(min, curr));
 
-				hand[target_index].called_to_discard = true;
+				// Don't call to discard if that's the only card touched
+				if (!newly_touched.every(index => index === target_index)) {
+					hand[target_index].called_to_discard = true;
+				}
 			}
 			else {
 				// Fill-in (locked hand ptd on slot 1)
@@ -113,6 +136,11 @@ export function interpret_clue(state, action) {
 				hand[0].intersect('inferred', [{ suitIndex, rank: state.hypo_stacks[state.ourPlayerIndex][suitIndex] + 1 }]);
 			}
 			else {
+				// Colour fill-in/trash reveal, no additional meaning
+				if (hand.find_known_trash().length + hand.filter(card => card.called_to_discard).length > 0) {
+					return;
+				}
+
 				// Fill-in (locked hand ptd on slot 1)
 				hand[0].called_to_discard = true;
 			}
@@ -120,8 +148,13 @@ export function interpret_clue(state, action) {
 		return;
 	}
 
-	if (!trash_push && hand.isLoaded()) {
-		logger.info('loaded, not continuing');
+	if (!trash_push && (hand.find_playables().length > old_playables.length || hand.find_known_trash().length > old_trash.length)) {
+		logger.info('new safe action provided, not continuing');
+		return;
+	}
+
+	if (fix) {
+		logger.info('fix clue, not continuing');
 		return;
 	}
 
@@ -176,5 +209,6 @@ export function interpret_clue(state, action) {
 		}
 	}
 
+	hand.refresh_links();
 	update_hypo_stacks(state);
 }

@@ -13,23 +13,26 @@ import { isTrash } from './hanabi-util.js';
  * @param  {number[]} list
  */
 export function elim_result(state, hypo_state, playerIndex, list) {
-	let new_touched = 0, elim = 0;
+	let new_touched = 0, fill = 0, elim = 0;
 
 	// Count the number of cards that have increased elimination (i.e. cards that were "filled in")
 	for (let i = 0; i < state.hands[playerIndex].length; i++) {
 		const old_card = state.hands[playerIndex][i];
 		const hypo_card = hypo_state.hands[playerIndex][i];
 
-		if (hypo_card.clued && hypo_card.possible.length < old_card.possible.length && hypo_card.matches_inferences()) {
+		if (hypo_card.clued && !hypo_card.called_to_discard && hypo_card.possible.length < old_card.possible.length && hypo_card.matches_inferences()) {
 			if (hypo_card.newly_clued && !hypo_card.finessed) {
 				new_touched++;
 			}
 			else if (list.includes(hypo_card.order)) {
+				fill++;
+			}
+			else {
 				elim++;
 			}
 		}
 	}
-	return { new_touched, elim };
+	return { new_touched, fill, elim };
 }
 
 /**

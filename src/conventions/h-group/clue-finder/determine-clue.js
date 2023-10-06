@@ -95,7 +95,7 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 	const { focused_card } = determine_focus(hand, list, { beforeClue: true });
 	const bad_touch_cards = find_bad_touch(hypo_state, touch.filter(c => !c.clued), focused_card.order);
 
-	const { new_touched, elim } = elim_result(state, hypo_state, target, list);
+	const { new_touched, fill } = elim_result(state, hypo_state, target, list);
 	const { bad_touch, trash } = bad_touch_result(hypo_state, target, bad_touch_cards, [focused_card.order]);
 	const { finesses, playables } = playables_result(state, hypo_state, giver);
 
@@ -103,7 +103,7 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, new_chop) :
 						hypo_state.hands[target].find_known_trash().length > 0 ? 0 : 4;
 
-	return { elim, new_touched, bad_touch, trash, finesses, playables, remainder };
+	return { elim: fill, new_touched, bad_touch, trash, finesses, playables, remainder };
 }
 
 /**

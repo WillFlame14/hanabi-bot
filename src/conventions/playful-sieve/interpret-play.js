@@ -27,6 +27,7 @@ export function unlock_promise(state, action, unlocked_hand, locked_hand) {
 
 	// Playing an unknown card doesn't unlock
 	if (card.identity({ symmetric: true, infer: true }) === undefined) {
+		logger.highlight('cyan', 'playing unknown card, not unlocking');
 		return;
 	}
 
@@ -39,11 +40,12 @@ export function unlock_promise(state, action, unlocked_hand, locked_hand) {
 	if (unlocked_hand.find_known_trash().length + unlocked_hand.filter(c => c.called_to_discard).length === 0 &&
 		card.order === playables_sorted[0].order
 	) {
+		logger.highlight('cyan', 'playing oldest/only safe playable, not unlocking');
 		return;
 	}
 
 	// Known connecting card
-	const match = locked_hand.find(card => card.matches(suitIndex, rank + 1, { infer: true }));
+	const match = locked_hand.find(card => card.matches(suitIndex, rank + 1, { infer: true, symmetric: true }));
 	if (match) {
 		return match;
 	}
@@ -71,7 +73,7 @@ export function unlock_promise(state, action, unlocked_hand, locked_hand) {
 	return;
 
 	// We have a known card in the same suitIndex, doesn't necessarily unlock
-	// const sameSuit = our_hand.find(card =>
+	// const sameSuit = other_hand.find(card =>
 	// 	card.clued &&
 	// 	card.clues.some(clue => clue.type === CLUE.COLOUR && clue.value === suitIndex) &&
 	// 	card.inferred.some(i => i.rank > rank + 1)
@@ -88,13 +90,13 @@ export function unlock_promise(state, action, unlocked_hand, locked_hand) {
 export function interpret_play(state, action) {
 	const { playerIndex, order, suitIndex, rank } = action;
 
-	const our_hand = state.hands[state.ourPlayerIndex];
-	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
-	const partner_hand = state.hands[partner];
+	const hand = state.hands[playerIndex];
+	const other = (playerIndex + 1) % state.numPlayers;
+	const other_hand = state.hands[other];
 
 	// Now that we know about this card, rewind from when the card was drawn
 	if (playerIndex === state.ourPlayerIndex) {
-		const card = our_hand.findOrder(order);
+		const card = hand.findOrder(order);
 		if ((card.inferred.length !== 1 || !card.inferred[0].matches(suitIndex, rank)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
 			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
@@ -105,28 +107,26 @@ export function interpret_play(state, action) {
 
 	const card = state.hands[playerIndex].findOrder(order);
 
-	const known_connecting = card.inferred.every(inf => our_hand.some(c =>
+	const known_connecting = card.inferred.every(inf => other_hand.some(c =>
 		c.inferred.every(i => playableAway(state, i.suitIndex, i.rank) === 0 ||
 			(i.suitIndex === inf.suitIndex && playableAway(state, i.suitIndex, i.rank) === 1))
 	));
 
 	// No safe action, chop is playable
-	if (!our_hand.isLoaded() && !our_hand.some(c => c.called_to_discard) && !known_connecting) {
-		const playable_possibilities = state.hypo_stacks[partner].map((rank, suitIndex) => {
+	if (!other_hand.isLocked() && !other_hand.isLoaded() && !other_hand.some(c => c.called_to_discard) && !known_connecting) {
+		const playable_possibilities = state.hypo_stacks[other].map((rank, suitIndex) => {
 			return { suitIndex, rank: rank + 1 };
 		});
-		our_hand[0].finessed = true;
-		our_hand[0].intersect('inferred', playable_possibilities);
+		other_hand[0].finessed = true;
+		other_hand[0].intersect('inferred', playable_possibilities);
 	}
 
-	if (our_hand.isLocked() && playerIndex === partner &&
-		partner_hand.findOrder(order).identity({ symmetric: true, infer: true }) !== undefined
-	) {
-		const unlocked = unlock_promise(state, action, partner_hand, our_hand);
+	if (other_hand.isLocked() && hand.findOrder(order).identity({ symmetric: true, infer: true }) !== undefined) {
+		const unlocked = unlock_promise(state, action, hand, other_hand);
 
 		if (unlocked) {
 			unlocked.intersect('inferred', [{ suitIndex, rank: rank + 1 }]);
-			logger.info('unlocking slot', our_hand.findIndex(c => c.order === unlocked.order) + 1, 'as', logCard({ suitIndex, rank: rank + 1}));
+			logger.info('unlocking slot', other_hand.findIndex(c => c.order === unlocked.order) + 1, 'as', logCard({ suitIndex, rank: rank + 1}));
 		}
 		else {
 			logger.info('failed to unlock');
