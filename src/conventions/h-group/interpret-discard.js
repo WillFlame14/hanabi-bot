@@ -1,5 +1,7 @@
 import { Card } from '../../basics/Card.js';
 import { isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
+import * as Basics from '../../basics.js';
+
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 
@@ -74,6 +76,8 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
  */
 export function interpret_discard(state, action, card) {
 	const { order, playerIndex, rank, suitIndex, failed } = action;
+
+	Basics.onDiscard(state, action);
 
 	const to_remove = [];
 	for (let i = 0; i < state.waiting_connections.length; i++) {

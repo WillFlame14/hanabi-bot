@@ -153,14 +153,17 @@ export class Hand extends Array {
 
 	/**
 	 * Finds known trash in the hand.
+	 * Uses asymmetric information (from the owning player's perspective) in other people's hands by default.
 	 */
-	find_known_trash() {
+	find_known_trash(global_info = false) {
 		const trash = [];
 
 		/** @type {(suitIndex: number, rank: number, order: number) => boolean} */
 		const visible_elsewhere = (suitIndex, rank, order) => {
+			const symmetric = global_info ? this.state.playerNames.map((_, i) => i) : [this.playerIndex];
+
 			// Visible in someone else's hand or visible in the same hand (but not part of a link)
-			return visibleFind(this.state, this.playerIndex, suitIndex, rank, { ignore: [this.playerIndex] }).some(c => (c.clued || c.finessed) && c.order !== order) ||
+			return visibleFind(this.state, this.playerIndex, suitIndex, rank, { ignore: [this.playerIndex], symmetric }).some(c => (c.clued || c.finessed) && c.order !== order) ||
 				this.findCards(suitIndex, rank, { infer: true, symmetric: true }).some(c =>
 					c.clued && c.order > order && !this.links.some(link => link.cards.some(lc => lc.order === order)));
 		};

@@ -1,15 +1,16 @@
 import { CLUE } from '../../constants.js';
+import { Card } from '../../basics/Card.js';
 import { isTrash, refer_right } from '../../basics/hanabi-util.js';
 import { bad_touch_possibilities, update_hypo_stacks } from '../../basics/helper.js';
 import * as Basics from '../../basics.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
+import { logCard, logHand } from '../../tools/log.js';
 
 
 /**
  * @typedef {import('../../basics/State.js').State} State
- * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Hand.js').Hand} Hand
  * @typedef {import('../../types.js').ClueAction} ClueAction
  * @typedef {import('../../types.js').Connection} Connection
@@ -56,6 +57,8 @@ export function interpret_clue(state, action) {
 		}
 	}
 
+	const no_info = hand.every(card => !list.includes(card.order) || card.clues.some(c => Utils.objEquals(c, clue)));
+
 	Basics.onClue(state, action);
 
 	let fix = false;
@@ -92,18 +95,36 @@ export function interpret_clue(state, action) {
 	}
 	while (bad_touch_len !== bad_touch.length);
 
-	// Revoke ctd if clued
 	for (const card of hand) {
+		// Revoke ctd if clued
 		if (card.called_to_discard && card.clued) {
 			card.called_to_discard = false;
+		}
+
+		const last_action = state.last_actions[giver];
+
+		// Revoke finesse if newly clued after a possibly matching play
+		if (card.finessed && card.newly_clued && last_action.type === 'play') {
+			const { suitIndex, rank } = state.last_actions[giver].card;
+
+			logger.warn('revoking finesse?', card.possible.map(p => logCard(p)), logCard({ suitIndex, rank }));
+
+			if (card.possible.some(c => c.matches(suitIndex, rank))) {
+				card.inferred = [new Card(suitIndex, rank)];
+				card.finessed = false;
+			}
 		}
 	}
 
 	update_hypo_stacks(state);
 
 	const newly_touched = Utils.findIndices(hand, (card) => card.newly_clued);
-	const trash_push = hand.every(card =>
-		!list.includes(card.order) || card.inferred.every(inf => isTrash(state, state.ourPlayerIndex, inf.suitIndex, inf.rank, card.order)));
+	const trash_push = hand.every(card => !list.includes(card.order) ||
+		(card.newly_clued && card.inferred.every(inf => isTrash(state, state.ourPlayerIndex, inf.suitIndex, inf.rank, card.order))));
+
+	if (trash_push) {
+		logger.highlight('cyan', 'trash push!')
+	}
 
 	if (partner_hand.isLocked()) {
 		if (clue.type === CLUE.RANK) {
@@ -148,61 +169,66 @@ export function interpret_clue(state, action) {
 		return;
 	}
 
-	if (!trash_push && (hand.find_playables().length > old_playables.length || hand.find_known_trash().length > old_trash.length)) {
+	if (!trash_push && (hand.find_playables().length > old_playables.length || hand.find_known_trash(true).length > old_trash.length)) {
 		logger.info('new safe action provided, not continuing');
-		return;
 	}
-
-	if (fix) {
+	else if (fix) {
 		logger.info('fix clue, not continuing');
-		return;
 	}
+	else if (no_info) {
+		logger.highlight('cyan', 'no info clue! trash dump');
 
-	const playable_possibilities = state.hypo_stacks[giver].map((rank, suitIndex) => {
-		return { suitIndex, rank: rank + 1 };
-	});
+		for (const card of hand) {
+			if (!card.clued && !card.finessed && !card.chop_moved) {
+				card.called_to_discard = true;
+			}
+		}
+	}
+	else {
+		const playable_possibilities = state.hypo_stacks[giver].map((rank, suitIndex) => {
+			return { suitIndex, rank: rank + 1 };
+		});
 
-	// Referential play (right)
-	if (clue.type === CLUE.COLOUR || trash_push) {
-		if (newly_touched.length > 0) {
-			const referred = newly_touched.map(index => refer_right(hand, index));
-			const target_index = referred.reduce((max, curr) => Math.max(max, curr));
+		// Referential play (right)
+		if (clue.type === CLUE.COLOUR || trash_push) {
+			if (newly_touched.length > 0) {
+				const referred = newly_touched.map(index => refer_right(hand, index));
+				const target_index = referred.reduce((max, curr) => Math.max(max, curr));
 
-			// Telling chop to play while not loaded, lock
-			if (target_index === 0 && !hand.isLoaded()) {
-				for (const card of hand) {
-					if (!card.clued) {
-						card.chop_moved = true;
+				// Telling chop to play while not loaded, lock
+				if (target_index === 0 && !hand.isLoaded()) {
+					for (const card of hand) {
+						if (!card.clued) {
+							card.chop_moved = true;
+						}
 					}
+					logger.highlight('yellow', 'lock!');
+					state.last_actions[giver].lock = true;
+					return;
 				}
-				logger.info('lock!');
+
+				hand[target_index].finessed = true;
+				hand[target_index].intersect('inferred', playable_possibilities);
+				logger.info(`ref play on ${state.playerNames[target]}'s slot ${target_index + 1}`);
 				return;
 			}
-
-			hand[target_index].finessed = true;
-			hand[target_index].intersect('inferred', playable_possibilities);
-			logger.info(`ref play on ${state.playerNames[target]}'s slot ${target_index + 1}`);
-			return;
-		}
-		else {
-			// Fill-in (anti-finesse)
-			if (!hand.isLoaded()) {
+			else {
+				// Fill-in (anti-finesse)
 				hand[0].called_to_discard = true;
 				return;
 			}
 		}
-	}
-	// Referential discard (right)
-	else {
-		if (newly_touched.length > 0) {
-			const referred = newly_touched.map(index => Math.max(0, Utils.nextIndex(hand, (card) => !card.clued, index)));
-			const target_index = referred.reduce((min, curr) => Math.min(min, curr));
-
-			hand[target_index].called_to_discard = true;
-		}
+		// Referential discard (right)
 		else {
-			// Fill-in (anti-finesse)
-			if (!hand.isLoaded()) {
+			if (newly_touched.length > 0) {
+				const referred = newly_touched.map(index => Math.max(0, Utils.nextIndex(hand, (card) => !card.clued, index)));
+				const target_index = referred.reduce((min, curr) => Math.min(min, curr));
+
+				hand[target_index].called_to_discard = true;
+				logger.info(`ref discard on ${state.playerNames[target]}'s slot ${target_index + 1}`);
+			}
+			else {
+				// Fill-in (anti-finesse)
 				hand[0].called_to_discard = true;
 				return;
 			}

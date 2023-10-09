@@ -3,7 +3,7 @@ import { playableAway } from '../../basics/hanabi-util.js';
 import { get_result } from './action-helper.js';
 
 import logger from '../../tools/logger.js';
-import { logCard, logClue, logHand } from '../../tools/log.js';
+import { logCard, logClue } from '../../tools/log.js';
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
@@ -53,7 +53,7 @@ export function find_fix_clue(state) {
 		const { hypo_state, value } = get_result(state, clue);
 		const fixed = fix_needed.some(c => {
 			const card = hypo_state.hands[partner].findOrder(c.order);
-			return card.matches_inferences() || card.inferred.length === 0;
+			return card.matches_inferences() || card.inferred.length === 0 || card.reset;
 		});
 
 		if (fixed) {
@@ -64,6 +64,10 @@ export function find_fix_clue(state) {
 			best_clue = clue;
 			best_clue_value = value;
 		}
+	}
+
+	if (best_clue === undefined) {
+		logger.warn('Unable to find fix clue!');
 	}
 	return best_clue;
 }

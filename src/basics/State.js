@@ -35,7 +35,7 @@ export class State {
 	all_inferred = /** @type {Card[][]} */ ([]);
 
 	actionList = /** @type {Action[]} */ ([]);
-	last_actions = /** @type {(Action & {card?: Card})[]} */ ([]);
+	last_actions = /** @type {(Action & {card?: Card, lock?: boolean})[]} */ ([]);
 	handHistory = /** @type {Hand[]} */ ([]);
 
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
@@ -140,7 +140,7 @@ export class State {
 			throw new Error('Maximum recursive depth reached.');
 		}
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'turn_count', 'clue_tokens',
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'turn_count', 'clue_tokens', 'last_actions',
 			'strikes', 'early_game', 'rewindDepth', 'unknown_plays', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
 		for (const property of minimalProps) {
@@ -259,7 +259,7 @@ export class State {
 
 			if (our_action) {
 				new_state.hands[this.ourPlayerIndex] = hypo_state.hands[this.ourPlayerIndex];
-				new_state.hands[this.ourPlayerIndex].state = this;
+				new_state.hands[this.ourPlayerIndex].state = new_state;
 			}
 		};
 

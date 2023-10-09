@@ -3,7 +3,7 @@ import { elim_result, playables_result } from '../../basics/clue-result.js';
 import { cardValue, isTrash, refer_right } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
-import { logCard, logClue, logHand } from '../../tools/log.js';
+import { logCard, logClue } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
 
 /**
@@ -42,7 +42,7 @@ export function get_result(state, clue) {
 		0.05*elim -
 		0.2*bad_touch.length;
 
-	logger.debug(logClue(clue), value, good_touch, playables.length, revealed_trash.length, elim, bad_touch.length);
+	logger.info(logClue(clue), value, good_touch, playables.length, revealed_trash.length, fill, elim, bad_touch.length);
 
 	return { hypo_state, value, referential: playables.length === 0 && revealed_trash.length === 0 };
 }

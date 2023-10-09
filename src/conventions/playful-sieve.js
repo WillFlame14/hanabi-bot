@@ -42,7 +42,7 @@ export default class PlayfulSieve extends State {
 			throw new Error('Maximum recursive depth reached.');
 		}
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands',
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'last_actions',
 			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'cardsLeft', 'locked_shifts'];
 
 		for (const property of minimalProps) {

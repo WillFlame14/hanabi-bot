@@ -120,8 +120,8 @@ export function take_action(state) {
 		for (const clue of clues) {
 			const touch = partner_hand.clueTouched(clue);
 
-			// Can't give empty clues or clues touching chop
-			if (touch.length === 0 || touch.some(card => card.order === chop.order)) {
+			// Can't give empty clues or colour clues touching chop
+			if (touch.length === 0 || (clue.type === CLUE.COLOUR && touch.some(card => card.order === chop.order))) {
 				continue;
 			}
 
@@ -177,12 +177,25 @@ export function take_action(state) {
 				return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 			}
 
+			const { type, card } = state.last_actions[partner];
+			if (state.clue_tokens === 0 || (state.clue_tokens === 1 && (type === 'discard' || (type === 'play' && card.rank === 5)))) {
+				return { tableID, type: ACTION.DISCARD, target: hand.locked_discard().order };
+			}
+
 			// Bomb a possibly playable chop
 			if (hand[0].inferred.some(c => playableAway(state, c.suitIndex, c.rank) === 0)) {
 				return { tableID, type: ACTION.PLAY, target: hand[0].order };
 			}
 
 			// Otherwise, try to give some clue?
+		}
+	}
+
+	if (chop_away === 1) {
+		const connecting = hand.findCards(chop.suitIndex, chop.rank - 1, { infer: true });
+
+		if (connecting.length > 0) {
+			return  { tableID, type: ACTION.PLAY, target: connecting[0].order };
 		}
 	}
 

@@ -1,15 +1,15 @@
-import { recursive_elim, update_hypo_stacks } from '../../basics/helper.js';
-
-import * as Basics from '../../basics.js';
-import logger from '../../tools/logger.js';
 import { CLUE } from '../../constants.js';
-import { logCard } from '../../tools/log.js';
+import { Card } from '../../basics/Card.js';
+import { recursive_elim, update_hypo_stacks } from '../../basics/helper.js';
 import { playableAway } from '../../basics/hanabi-util.js';
+import * as Basics from '../../basics.js';
+
+import logger from '../../tools/logger.js';
+import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
  * @typedef {import('../../basics/Hand.js').Hand} Hand
- * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').PlayAction} PlayAction
  */
 
@@ -113,10 +113,10 @@ export function interpret_play(state, action) {
 	));
 
 	// No safe action, chop is playable
-	if (!other_hand.isLocked() && !other_hand.isLoaded() && !other_hand.some(c => c.called_to_discard) && !known_connecting) {
-		const playable_possibilities = state.hypo_stacks[other].map((rank, suitIndex) => {
+	if (!other_hand.isLocked() && !other_hand.isLoaded() && !other_hand.some(c => c.called_to_discard) && !known_connecting && state.clue_tokens > 0) {
+		const playable_possibilities = [{ suitIndex, rank: rank + 1 }].concat(state.play_stacks.map((rank, suitIndex) => {
 			return { suitIndex, rank: rank + 1 };
-		});
+		}));
 		other_hand[0].finessed = true;
 		other_hand[0].intersect('inferred', playable_possibilities);
 	}
@@ -125,8 +125,30 @@ export function interpret_play(state, action) {
 		const unlocked = unlock_promise(state, action, hand, other_hand);
 
 		if (unlocked) {
-			unlocked.intersect('inferred', [{ suitIndex, rank: rank + 1 }]);
-			logger.info('unlocking slot', other_hand.findIndex(c => c.order === unlocked.order) + 1, 'as', logCard({ suitIndex, rank: rank + 1}));
+			const connecting = { suitIndex, rank: rank + 1 };
+			const slot = other_hand.findIndex(c => c.order === unlocked.order) + 1;
+
+			// Unlocked player might have another card connecting to this
+			if (hand.some(card => card.clued && card.inferred.some(c => c.matches(suitIndex, rank + 1)))) {
+				logger.info(`unlocked player may have connecting ${logCard(connecting)}, not unlocking yet`);
+			}
+			else {
+				if (!unlocked.inferred.some(c => c.matches(suitIndex, rank + 1))) {
+					logger.warn('no inferred connecting card!');
+
+					if (unlocked.possible.some(c => c.matches(suitIndex, rank + 1))) {
+						logger.info(`overwriting slot ${slot} as ${logCard(connecting)} from possiilities`);
+						unlocked.inferred = [new Card(suitIndex, rank + 1)];
+					}
+					else {
+						logger.warn('ignoring unlock promise');
+					}
+				}
+				else {
+					unlocked.intersect('inferred', [connecting]);
+					logger.info(`unlocking slot ${slot} as ${logCard(connecting)}`);
+				}
+			}
 		}
 		else {
 			logger.info('failed to unlock');

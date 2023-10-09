@@ -175,6 +175,10 @@ export class Card {
 			note = `[cm] [${note}]`;
 		}
 
+		if (this.called_to_discard) {
+			note = 'dc';
+		}
+
 		return note;
 	}
 }

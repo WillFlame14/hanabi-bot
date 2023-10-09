@@ -54,7 +54,6 @@ export function handle_action(action, catchup = false) {
 
 			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
-			Basics.onDiscard(this, action);
 			this.interpret_discard(this, action, card);
 			this.last_actions[playerIndex] = Object.assign(action, { card });
 			break;
@@ -137,7 +136,7 @@ export function handle_action(action, catchup = false) {
 			if (card === undefined) {
 				throw new Error('Could not find card to rewrite!');
 			}
-			logger.info(`identifying card with order ${order} as ${logCard({ suitIndex, rank })}`);
+			logger.info(`identifying card with order ${order} as ${logCard({ suitIndex, rank })}, infer? ${infer}`);
 			if (!infer) {
 				Object.assign(card, { suitIndex, rank });
 			}

@@ -1,5 +1,6 @@
 import { Card } from '../../basics/Card.js';
 import { isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
+import * as Basics from '../../basics.js';
 
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
@@ -67,6 +68,24 @@ function apply_unknown_sarcastic(state, sarcastic, suitIndex, rank) {
 }
 
 /**
+ * Locks the other player after a late sacrifice discard.
+ * @param  {State} state
+ * @param  {number} playerIndex 	The player that performed a sacrifice discard.
+ */
+function apply_locked_discard(state, playerIndex) {
+	const other = (playerIndex + 1) % state.numPlayers;
+
+	logger.highlight('cyan', `sacrifice discard, locking ${state.playerNames[other]}`);
+
+	// Chop move all cards
+	for (const card of state.hands[other]) {
+		if (!card.clued && !card.finessed && !card.chop_moved) {
+			card.chop_moved = true;
+		}
+	}
+}
+
+/**
  * Interprets (writes notes) for a discard of the given card.
  * @param {State} state
  * @param {import('../../types.js').DiscardAction} action
@@ -74,6 +93,11 @@ function apply_unknown_sarcastic(state, sarcastic, suitIndex, rank) {
  */
 export function interpret_discard(state, action, card) {
 	const { order, playerIndex, rank, suitIndex, failed } = action;
+	const other = (playerIndex + 1) % state.numPlayers;
+
+	const locked_discard = state.hands[playerIndex].isLocked() && !state.last_actions[other].lock;
+
+	Basics.onDiscard(this, action);
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
 	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order)))) {
@@ -105,6 +129,9 @@ export function interpret_discard(state, action, card) {
 				}
 				else {
 					apply_unknown_sarcastic(state, sarcastic, suitIndex, rank);
+					if (locked_discard) {
+						apply_locked_discard(state, playerIndex);
+					}
 				}
 			}
 			// Sarcastic discard to other (or known sarcastic discard to us)
@@ -121,7 +148,9 @@ export function interpret_discard(state, action, card) {
 						}
 						else {
 							apply_unknown_sarcastic(state, sarcastic, suitIndex, rank);
-							logger.info('unknown sarcastic');
+							if (locked_discard) {
+								apply_locked_discard(state, playerIndex);
+							}
 						}
 						return;
 					}
