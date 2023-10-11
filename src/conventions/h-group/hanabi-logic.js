@@ -1,11 +1,12 @@
-import { baseCount, getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 import { cardCount } from '../../variants.js';
+import { HGroup_Hand as Hand } from '../h-hand.js';
+import { baseCount, getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+
 import logger from '../../tools/logger.js';
 import { logHand } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
- * @typedef {import('../h-hand.js').HGroup_Hand} Hand
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').Clue} Clue
  */
@@ -109,7 +110,7 @@ export function stall_severity(state, giver) {
 	if (state.clue_tokens === 8 && state.turn_count !== 1) {
 		return 4;
 	}
-	if (state.hands[giver].isLocked()) {
+	if (Hand.isLocked(state, giver)) {
 		return 3;
 	}
 	if (inEndgame(state)) {
@@ -168,7 +169,7 @@ export function looksPlayable(state, rank, giver, target, focused_card) {
  */
 export function valuable_tempo_clue(state, clue, playables, focused_card) {
 	const { target } = clue;
-	const touch = state.hands[target].clueTouched(clue);
+	const touch = state.hands[target].clueTouched(clue, state.suits);
 
 	if (touch.some(card => !card.clued)) {
 		return { tempo: false, valuable: false };

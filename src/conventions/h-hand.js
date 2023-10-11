@@ -4,11 +4,12 @@ import { CLUE } from '../constants.js';
 
 /**
  * @typedef {import('../basics/Card.js').Card} Card
+ * @typedef {import('./h-group.js').default} State
  */
 
 export class HGroup_Hand extends Hand {
 	clone() {
-		const newHand = new HGroup_Hand(this.state, this.playerIndex);
+		const newHand = new HGroup_Hand();
 		for (const card of this) {
 			newHand.push(card.clone());
 		}
@@ -43,12 +44,14 @@ export class HGroup_Hand extends Hand {
 
 	/**
 	 * Returns the value of the chop card, 4 if the hand is locked, and 0 if no chop but loaded.
+	 * @param {State} state
+	 * @param {number} playerIndex
 	 * @param {{afterClue?: boolean}} options
 	 */
-	chopValue(options = {}) {
-		const index = this.chopIndex(options);
-		return index !== -1 ? cardValue(this.state, this[index]) :
-				this.isLoaded() ? 0 : 4;
+	static chopValue(state, playerIndex, options = {}) {
+		const index = state.hands[playerIndex].chopIndex(options);
+		return index !== -1 ? cardValue(state, state.hands[playerIndex][index]) :
+				Hand.isLoaded(state, playerIndex) ? 0 : 4;
 	}
 
 	/**

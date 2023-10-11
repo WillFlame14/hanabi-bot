@@ -77,7 +77,7 @@ export function handle_action(action, catchup = false) {
 			if (!catchup) {
 				// Update notes on cards
 				for (const card of this.hands.flat()) {
-					if (card.clued || card.finessed || card.chop_moved) {
+					if (card.clued || card.finessed || card.chop_moved || card.called_to_discard) {
 						const note = card.getNote();
 
 						if (this.notes[card.order] === undefined) {

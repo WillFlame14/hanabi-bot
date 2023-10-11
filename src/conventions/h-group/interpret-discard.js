@@ -23,9 +23,9 @@ function find_sarcastic(hand, suitIndex, rank) {
 		return known_sarcastic;
 	}
 	// Otherwise, find all cards that could match that identity
-	return hand.filter(c =>
+	return Array.from(hand.filter(c =>
 		c.clued && c.possible.some(p => p.matches(suitIndex, rank)) &&
-		!(c.inferred.length === 1 && c.inferred[0].rank < rank));		// Do not sarcastic on connecting cards
+		!(c.inferred.length === 1 && c.inferred[0].rank < rank)));		// Do not sarcastic on connecting cards
 }
 
 /**

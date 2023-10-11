@@ -82,7 +82,7 @@ export function interpret_play(state, action) {
 	}
 
 	// Resolve any links after playing
-	state.hands[playerIndex].refresh_links();
+	Basics.refresh_links(state, playerIndex);
 
 	// Update hypo stacks
 	update_hypo_stacks(this);

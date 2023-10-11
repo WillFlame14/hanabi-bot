@@ -126,7 +126,7 @@ async function main() {
  */
 function get_own_hand(state, deck) {
 	const ind = state.ourPlayerIndex;
-	return new Hand(state, ind, ...state.hands[ind].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order })));
+	return new Hand(...state.hands[ind].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order })));
 }
 
 /**
@@ -158,14 +158,14 @@ function parse_action(state, action, playerIndex, deck) {
 		case ACTION.RANK: {
 			const clue = { type: CLUE.RANK, value };
 			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = Array.from(hand.clueTouched(clue).map(c => c.order));
+			const list = hand.clueTouched(clue, state.suits).map(c => c.order);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
 		case ACTION.COLOUR: {
 			const clue = { type: CLUE.COLOUR, value };
 			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = Array.from(hand.clueTouched(clue).map(c => c.order));
+			const list = hand.clueTouched(clue, state.suits).map(c => c.order);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}

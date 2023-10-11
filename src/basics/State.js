@@ -15,6 +15,7 @@ import { logPerformAction } from '../tools/log.js';
  * @typedef {import('../types.js').PlayAction} PlayAction
  * @typedef {import('../types.js').PerformAction} PerformAction
  * @typedef {import('../types.js').WaitingConnection} WaitingConnection
+ * @typedef {import('../types.js').Link} Link
  */
 
 export class State {
@@ -25,6 +26,7 @@ export class State {
 	in_progress = false;
 
 	hands = /** @type {Hand[]} */ ([]);
+	links = /** @type {Link[][]} */ ([]);
 
 	play_stacks = /** @type {number[]} */ ([]);
 	hypo_stacks = /** @type {number[][]} */ ([]);
@@ -113,7 +115,8 @@ export class State {
 
 		for (let i = 0; i < this.numPlayers; i++) {
 			this.hypo_stacks.push([0, 0, 0, 0, 0]);
-			this.hands.push(new Hand(this, i));
+			this.hands.push(new Hand());
+			this.links.push([]);
 			this.all_possible.push(Utils.objClone(all_possible));
 			this.all_inferred.push(Utils.objClone(all_possible));
 			this.unknown_plays.push([]);
@@ -145,13 +148,6 @@ export class State {
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
-
-			// Rewrite reference to state in new hands
-			if (property === 'hands') {
-				for (const hand of newState.hands) {
-					hand.state = newState;
-				}
-			}
 		}
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;
@@ -247,7 +243,6 @@ export class State {
 
 			if (our_action) {
 				new_state.hands[this.ourPlayerIndex] = this.handHistory[new_state.turn_count];
-				new_state.hands[this.ourPlayerIndex].state = this;
 			}
 
 			new_state.handle_action(action, true);
@@ -259,7 +254,6 @@ export class State {
 
 			if (our_action) {
 				new_state.hands[this.ourPlayerIndex] = hypo_state.hands[this.ourPlayerIndex];
-				new_state.hands[this.ourPlayerIndex].state = new_state;
 			}
 		};
 

@@ -1,5 +1,6 @@
 import { CLUE } from '../../constants.js';
 import { Card } from '../../basics/Card.js';
+import { Hand } from '../../basics/Hand.js';
 import { recursive_elim, update_hypo_stacks } from '../../basics/helper.js';
 import { playableAway } from '../../basics/hanabi-util.js';
 import * as Basics from '../../basics.js';
@@ -9,7 +10,6 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
- * @typedef {import('../../basics/Hand.js').Hand} Hand
  * @typedef {import('../../types.js').PlayAction} PlayAction
  */
 
@@ -17,11 +17,11 @@ import { logCard } from '../../tools/log.js';
  * Determines the unlocked card, given a play action and the unlocked and locked hands.
  * @param  {State} state
  * @param  {PlayAction} action
- * @param  {Hand} unlocked_hand
- * @param  {Hand} locked_hand
+ * @param  {number} unlocked_player
+ * @param  {number} locked_player
  * @returns {Card | undefined} The unlocked card, or undefined if the unlock is not guaranteed.
  */
-export function unlock_promise(state, action, unlocked_hand, locked_hand) {
+export function unlock_promise(state, action, unlocked_player, locked_player) {
 	const { playerIndex, order, suitIndex, rank } = action;
 	const card = state.hands[playerIndex].findOrder(order);
 
@@ -31,18 +31,20 @@ export function unlock_promise(state, action, unlocked_hand, locked_hand) {
 		return;
 	}
 
-	const playables = unlocked_hand.find_playables();
+	const playables = Hand.find_playables(state, unlocked_player);
 
 	// Sorted from oldest to newest
 	const playables_sorted = playables.sort((a, b) => a.reasoning.at(-1) - b.reasoning.at(-1));
 
 	// Playing oldest (or only) playable, not guaranteed unlock
-	if (unlocked_hand.find_known_trash().length + unlocked_hand.filter(c => c.called_to_discard).length === 0 &&
+	if (Hand.find_known_trash(state, unlocked_player).length + state.hands[unlocked_player].filter(c => c.called_to_discard).length === 0 &&
 		card.order === playables_sorted[0].order
 	) {
 		logger.highlight('cyan', 'playing oldest/only safe playable, not unlocking');
 		return;
 	}
+
+	const locked_hand = state.hands[locked_player];
 
 	// Known connecting card
 	const match = locked_hand.find(card => card.matches(suitIndex, rank + 1, { infer: true, symmetric: true }));
@@ -71,16 +73,6 @@ export function unlock_promise(state, action, unlocked_hand, locked_hand) {
 
 	// No direct connections found
 	return;
-
-	// We have a known card in the same suitIndex, doesn't necessarily unlock
-	// const sameSuit = other_hand.find(card =>
-	// 	card.clued &&
-	// 	card.clues.some(clue => clue.type === CLUE.COLOUR && clue.value === suitIndex) &&
-	// 	card.inferred.some(i => i.rank > rank + 1)
-	// );
-	// if (sameSuit) {
-	// 	return;
-	// }
 }
 
 /**
@@ -113,7 +105,7 @@ export function interpret_play(state, action) {
 	));
 
 	// No safe action, chop is playable
-	if (!other_hand.isLocked() && !other_hand.isLoaded() && !other_hand.some(c => c.called_to_discard) && !known_connecting && state.clue_tokens > 0) {
+	if (!Hand.isLocked(state, other) && !Hand.isLoaded(state, other) && !other_hand.some(c => c.called_to_discard) && !known_connecting && state.clue_tokens > 0) {
 		const playable_possibilities = [{ suitIndex, rank: rank + 1 }].concat(state.play_stacks.map((rank, suitIndex) => {
 			return { suitIndex, rank: rank + 1 };
 		}));
@@ -121,8 +113,8 @@ export function interpret_play(state, action) {
 		other_hand[0].intersect('inferred', playable_possibilities);
 	}
 
-	if (other_hand.isLocked() && hand.findOrder(order).identity({ symmetric: true, infer: true }) !== undefined) {
-		const unlocked = unlock_promise(state, action, hand, other_hand);
+	if (Hand.isLocked(state, other) && hand.findOrder(order).identity({ symmetric: true, infer: true }) !== undefined) {
+		const unlocked = unlock_promise(state, action, playerIndex, other);
 
 		if (unlocked) {
 			const connecting = { suitIndex, rank: rank + 1 };
@@ -163,7 +155,7 @@ export function interpret_play(state, action) {
 	}
 
 	// Resolve any links after playing
-	state.hands[playerIndex].refresh_links();
+	Basics.refresh_links(state, playerIndex);
 
 	// Update hypo stacks
 	update_hypo_stacks(this);

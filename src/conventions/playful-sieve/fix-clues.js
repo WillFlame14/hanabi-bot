@@ -1,4 +1,5 @@
 import { CLUE } from '../../constants.js';
+import { Hand } from '../../basics/Hand.js';
 import { playableAway } from '../../basics/hanabi-util.js';
 import { get_result } from './action-helper.js';
 
@@ -15,9 +16,7 @@ import { logCard, logClue } from '../../tools/log.js';
  */
 export function find_fix_clue(state) {
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
-	const partner_hand = state.hands[partner];
-
-	const fix_needed = partner_hand.find_playables().filter(c => playableAway(state, c.suitIndex, c.rank) !== 0);
+	const fix_needed = Hand.find_playables(state, partner).filter(c => playableAway(state, c.suitIndex, c.rank) !== 0);
 
 	if (fix_needed.length === 0) {
 		logger.info('no fix needed');
@@ -43,7 +42,7 @@ export function find_fix_clue(state) {
 	}
 
 	for (const clue of clues) {
-		const touch = partner_hand.clueTouched(clue);
+		const touch = state.hands[partner].clueTouched(clue, state.suits);
 
 		// Can't give empty clues
 		if (touch.length === 0) {

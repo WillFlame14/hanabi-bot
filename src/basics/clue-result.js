@@ -1,3 +1,4 @@
+import { Hand } from './Hand.js';
 import { isTrash } from './hanabi-util.js';
 
 /**
@@ -71,7 +72,7 @@ export function bad_touch_result(state, playerIndex, bad_touch_cards, ignoreOrde
  */
 export function playables_result(state, hypo_state, giver) {
 	let finesses = 0;
-	const playables = [];
+	const playables = [], safe_playables = [];
 
 	/**
 	 * TODO: This might not find the right card if it was duplicated...
@@ -106,9 +107,13 @@ export function playables_result(state, hypo_state, giver) {
 			// Only counts as a playable if it wasn't already playing
 			if (!state.unknown_plays[state.ourPlayerIndex].some(order => order === old_card.order)) {
 				playables.push({ playerIndex, card: old_card });
+
+				if (Hand.isLoaded(state, playerIndex)) {
+					safe_playables.push({ playerIndex, card: old_card });
+				}
 			}
 		}
 	}
 
-	return { finesses, playables };
+	return { finesses, playables, safe_playables };
 }

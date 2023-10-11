@@ -1,6 +1,6 @@
 import { CLUE } from '../src/constants.js';
 import { cardCount } from '../src/variants.js';
-import { card_elim } from '../src/basics.js';
+import * as Basics from '../src/basics.js';
 import * as Utils from '../src/tools/util.js';
 import { logAction, logClue } from '../src/tools/log.js';
 
@@ -67,8 +67,8 @@ function init_state(state, options) {
 
 		// Card is now definitely known to everyone - eliminate
 		for (let i = 0; i < state.numPlayers; i++) {
-			card_elim(state, i, suitIndex, rank);
-			state.hands[i].refresh_links();
+			Basics.card_elim(state, i, suitIndex, rank);
+			Basics.refresh_links(state, i);
 		}
 
 		// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
@@ -226,9 +226,9 @@ export function parseAction(state, rawAction) {
 			}
 
 			if (target !== state.ourPlayerIndex) {
-				const list = state.hands[target].clueTouched(clue).map(c => c.order);
+				const list = state.hands[target].clueTouched(clue, state.suits).map(c => c.order);
 				if (list.length === 0) {
-					throw new Error(`Clue ${logClue(clue)} touches no cards in ${targetName}'s hand.`);
+					throw new Error(`Clue ${logClue(Object.assign({}, clue, { target }))} touches no cards.`);
 				}
 				return { type: 'clue', clue, giver: playerIndex, target, list };
 			}
@@ -272,7 +272,7 @@ export function parseAction(state, rawAction) {
 			}
 			else {
 				// e.g. "Alice plays y5 (slot 1)"
-				const slot = parseSlots(state, parts, 4, true, '(play from us)');
+				const slot = parseSlots(state, parts, 4, true, '(play from us)')[0];
 				const { order } = state.hands[state.ourPlayerIndex][slot - 1];
 
 				return { type: 'play', playerIndex, suitIndex, rank, order };
@@ -296,7 +296,7 @@ export function parseAction(state, rawAction) {
 					throw new Error(`Not enough arguments provided for a discard action from us, needs '(slot x)' at the end.`);
 				}
 
-				const slot = parseSlots(state, parts, 4, true, '(discard from us)');
+				const slot = parseSlots(state, parts, 4, true, '(discard from us)')[0];
 				const { order } = state.hands[state.ourPlayerIndex][slot - 1];
 
 				return { type: 'discard', playerIndex, suitIndex, rank, order, failed: parts[1] === 'bombs' };

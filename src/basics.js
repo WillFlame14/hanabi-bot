@@ -1,7 +1,8 @@
 import { Card } from './basics/Card.js';
-import { find_possibilities } from './basics/helper.js';
-import { baseCount, visibleFind } from './basics/hanabi-util.js';
 import { cardCount } from './variants.js';
+import { find_possibilities } from './basics/helper.js';
+import { baseCount, unknownIdentities, visibleFind } from './basics/hanabi-util.js';
+
 import logger from './tools/logger.js';
 import { logCard, logLinks } from './tools/log.js';
 import * as Utils from './tools/util.js';
@@ -49,7 +50,7 @@ export function onClue(state, action) {
 		if (previously_unknown && card.possible.length === 1) {
 			for (let i = 0; i < state.numPlayers; i++) {
 				card_elim(state, i, card.possible[0].suitIndex, card.possible[0].rank);
-				state.hands[i].refresh_links();
+				refresh_links(state, i);
 			}
 		}
 	}
@@ -70,7 +71,7 @@ export function onDiscard(state, action) {
 	// Card is now definitely known to everyone - eliminate
 	for (let i = 0; i < state.numPlayers; i++) {
 		card_elim(state, i, suitIndex, rank);
-		state.hands[i].refresh_links();
+		refresh_links(state, i);
 	}
 
 	// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
@@ -107,7 +108,7 @@ export function onDraw(state, action) {
 		for (let i = 0; i < state.numPlayers; i++) {
 			if (i !== playerIndex) {
 				card_elim(state, i, suitIndex, rank);
-				state.hands[i].refresh_links();
+				refresh_links(state, i);
 			}
 		}
 	}
@@ -131,7 +132,7 @@ export function onPlay(state, action) {
 	// Card is now definitely known to everyone - eliminate
 	for (let i = 0; i < state.numPlayers; i++) {
 		card_elim(state, i, suitIndex, rank);
-		state.hands[i].refresh_links();
+		refresh_links(state, i);
 	}
 
 	// Get a clue token back for playing a 5
@@ -216,9 +217,9 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 					const new_link = { cards: inferred_cards, identities: [{ suitIndex, rank }], promised: false };
 
 					// Don't add duplicates of the same link
-					if (!state.hands[playerIndex].links.some(link => JSON.stringify(link) === JSON.stringify(new_link))) {
+					if (!state.links[playerIndex].some(link => Utils.objEquals(link, new_link))) {
 						logger.info('adding link', logLinks([new_link]));
-						state.hands[playerIndex].links.push(new_link);
+						state.links[playerIndex].push(new_link);
 					}
 				}
 			}
@@ -251,4 +252,73 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 		}
 	}
 	return new_elims;
+}
+
+/**
+ * Finds good touch (non-promised) links in the hand.
+ * @param {State} state
+ * @param {number} playerIndex
+ */
+export function find_links(state, playerIndex) {
+	const hand = state.hands[playerIndex];
+	const links = state.links[playerIndex];
+
+	for (const card of hand) {
+		// Already in a link, ignore
+		if (links.some(({cards}) => cards.some(c => c.order === card.order))) {
+			continue;
+		}
+
+		// We know what this card is
+		if (card.identity() !== undefined) {
+			continue;
+		}
+
+		// Card has no inferences
+		if (card.inferred.length === 0) {
+			continue;
+		}
+
+		// Find all unknown cards with the same inferences
+		const linked_cards = Array.from(hand.filter(c =>
+			c.identity() === undefined &&
+			card.inferred.length === c.inferred.length &&
+			c.inferred.every(({suitIndex, rank}) => card.inferred.some(inf2 => inf2.matches(suitIndex, rank)))
+		));
+
+		// We have enough inferred cards to eliminate elsewhere
+		// TODO: Sudoku elim from this
+		if (linked_cards.length > card.inferred.reduce((sum, { suitIndex, rank }) => sum += unknownIdentities(state, playerIndex, suitIndex, rank), 0)) {
+			logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(inf => logCard(inf)));
+
+			links.push({ cards: linked_cards, identities: card.inferred.map(c => c.raw()), promised: false });
+		}
+	}
+}
+
+/**
+ * Refreshes the array of links based on new information (if any).
+ * @param {State} state
+ * @param {number} playerIndex
+ */
+export function refresh_links(state, playerIndex) {
+	const links = state.links[playerIndex];
+
+	// Get the link indices that we need to redo (after learning new things about them)
+	const redo_elim_indices = links.map(({cards, identities}, index) =>
+		// The card is globally known or an identity is no longer possible
+		cards.some(c => c.identity({ symmetric: true }) || identities.some(id => !c.possible.some(p => p.matches(id.suitIndex, id.rank)))) ? index : -1
+	).filter(index => index !== -1);
+
+	// Try eliminating all the identities again
+	const redo_elim_ids = redo_elim_indices.map(index => links[index].identities).flat();
+
+	// Clear links that we're redoing
+	state.links[playerIndex] = links.filter((_, index) => !redo_elim_indices.includes(index));
+
+	for (const id of redo_elim_ids) {
+		card_elim(state, playerIndex, id.suitIndex, id.rank);
+	}
+
+	find_links(state, playerIndex);
 }

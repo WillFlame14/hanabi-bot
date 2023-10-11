@@ -1,4 +1,5 @@
 import { CLUE } from '../../constants.js';
+import { Hand } from '../../basics/Hand.js';
 import { elim_result, playables_result } from '../../basics/clue-result.js';
 import { cardValue, isTrash, refer_right } from '../../basics/hanabi-util.js';
 
@@ -8,7 +9,6 @@ import * as Utils from '../../tools/util.js';
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
- * @typedef {import('../../basics/Hand.js').Hand} Hand
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').PerformAction} PerformAction
@@ -20,7 +20,7 @@ import * as Utils from '../../tools/util.js';
  */
 export function get_result(state, clue) {
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
-	const touch = state.hands[partner].clueTouched(clue);
+	const touch = state.hands[partner].clueTouched(clue, state.suits);
 
 	if (touch.length === 0) {
 		throw new Error(`Tried to get a result with a clue ${logClue(clue)} that touches no cards!`);
@@ -30,8 +30,8 @@ export function get_result(state, clue) {
 	const trash = bad_touch.filter(card => card.possible.every(p => isTrash(hypo_state, partner, p.suitIndex, p.rank, card.order)));
 
 	const { new_touched, fill, elim } = elim_result(state, hypo_state, partner, touch.map(c => c.order));
-	const revealed_trash = hypo_state.hands[partner].find_known_trash();
-	const { playables } = playables_result(state, hypo_state, state.ourPlayerIndex);
+	const revealed_trash = Hand.find_known_trash(hypo_state, partner);
+	const { safe_playables: playables } = playables_result(state, hypo_state, state.ourPlayerIndex);
 
 	const good_touch = new_touched - (bad_touch.length - trash.length);
 
@@ -54,7 +54,7 @@ export function get_result(state, clue) {
 export function clue_value(state, clue) {
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
 	const partner_hand = state.hands[partner];
-	const touch = partner_hand.clueTouched(clue);
+	const touch = partner_hand.clueTouched(clue, state.suits);
 
 	if (touch.length === 0) {
 		return -1;

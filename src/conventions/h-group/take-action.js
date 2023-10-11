@@ -1,18 +1,19 @@
 import { ACTION } from '../../constants.js';
 import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
+import { HGroup_Hand as Hand } from '../h-hand.js';
 import { select_play_clue, determine_playable_card, order_1s } from './action-helper.js';
 import { find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { inEndgame, minimum_clue_value } from './hanabi-logic.js';
 import { cardValue, getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
- * @typedef {import('../h-hand.js').HGroup_Hand} Hand
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').PerformAction} PerformAction
  */
@@ -28,8 +29,8 @@ export function take_action(state) {
 	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(state);
 
 	// Look for playables, trash and important discards in own hand
-	let playable_cards = hand.find_playables();
-	let trash_cards = state.hands[state.ourPlayerIndex].find_known_trash().filter(c => c.clued);
+	let playable_cards = Hand.find_playables(state, state.ourPlayerIndex);
+	let trash_cards = Hand.find_known_trash(state, state.ourPlayerIndex).filter(c => c.clued);
 
 	const discards = [];
 	for (const card of playable_cards) {
@@ -97,7 +98,9 @@ export function take_action(state) {
 
 					const newHand = state.hands[playerIndex].clone();
 					newHand.chop().chop_moved = true;
-					const new_chop_value = newHand.chopValue();
+
+					const new_chop = newHand.chop();
+					const new_chop_value = new_chop ? cardValue(state, new_chop) : Hand.isLoaded(state, playerIndex) ? 0 : 4;
 
 					const ocm_value = old_chop_value - new_chop_value;
 					const { suitIndex, rank, order } = old_chop;
@@ -198,8 +201,8 @@ export function take_action(state) {
 	// Forced discard if next player is locked
 	// TODO: Anxiety play
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-	if (state.clue_tokens === 0 && state.hands[nextPlayerIndex].isLocked()) {
-		discard_chop(hand, tableID);
+	if (state.clue_tokens === 0 && Hand.isLocked(state, nextPlayerIndex)) {
+		discard_chop(state, state.ourPlayerIndex, tableID);
 	}
 
 	// Playing a connecting card or playing a 5
@@ -218,14 +221,14 @@ export function take_action(state) {
 			const { target } = clue;
 
 			// Chop is trash, ignore
-			if (state.hands[target].chopValue() === 0) {
+			if (Hand.chopValue(state, target) === 0) {
 				continue;
 			}
 
-			const new_hand = state.hands[target].clone();
-			new_hand.chop().chop_moved = true;
+			const hypo_state = state.minimalCopy();
+			hypo_state.hands[target].chop().chop_moved = true;
 
-			if (new_hand.chopValue() === 0) {
+			if (Hand.chopValue(hypo_state, target) === 0) {
 				logger.highlight('yellow', `performing tccm on ${logCard(state.hands[target].chop())}`);
 				return Utils.clueToAction(clue, tableID);
 			}
@@ -281,7 +284,7 @@ export function take_action(state) {
 		}
 
 		// Locked hand
-		if (state.hands[state.ourPlayerIndex].isLocked()) {
+		if (Hand.isLocked(state, state.ourPlayerIndex)) {
 			return best_stall_clue;
 		}
 
@@ -302,17 +305,18 @@ export function take_action(state) {
 		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 	}
 
-	return discard_chop(hand, tableID);
+	return discard_chop(state, state.ourPlayerIndex, tableID);
 }
 
 /**
- * Discards the card on chop from the hand.
- * @param {Hand} hand
+ * Discards the card on chop for the given playerIndex.
+ * @param {State} state
+ * @param {number} playerIndex
  * @param {number} tableID
  */
-function discard_chop(hand, tableID) {
+function discard_chop(state, playerIndex, tableID) {
 	// Nothing else to do, so discard chop
-	const discard = hand.chop() ?? hand.locked_discard();
+	const discard = state.hands[playerIndex].chop() ?? Hand.locked_discard(state, playerIndex);
 
 	return { tableID, type: ACTION.DISCARD, target: discard.order };
 }

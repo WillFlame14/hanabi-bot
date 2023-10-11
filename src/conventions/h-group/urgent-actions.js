@@ -1,14 +1,16 @@
 import { ACTION } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
+import { HGroup_Hand as Hand } from '../h-hand.js';
+import { clue_safe } from './clue-finder/clue-safe.js';
+import { get_result } from './clue-finder/determine-clue.js';
+import { determine_focus, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue, playableAway } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
-import { clue_safe } from './clue-finder/clue-safe.js';
-import { get_result } from './clue-finder/determine-clue.js';
 import { logHand } from '../../tools/log.js';
-import { determine_focus, valuable_tempo_clue } from './hanabi-logic.js';
+
 
 /**
  * @typedef {import('../h-group.js').default} State
@@ -109,7 +111,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 		}
 
 		// Touches the chop card
-		if (!locked && state.hands[target].clueTouched(clue).some(c => c.order === state.hands[target].chop().order) && clue_safe(state, clue)) {
+		if (!locked && state.hands[target].clueTouched(clue, state.suits).some(c => c.order === state.hands[target].chop().order) && clue_safe(state, clue)) {
 			play_clues.push({ clue, playables: [] });
 		}
 	}
@@ -145,7 +147,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
 		// They are locked, we should try to unlock
-		if (state.hands[target].isLocked()) {
+		if (Hand.isLocked(state, target)) {
 			const unlock_action = find_unlock(state, target);
 			if (unlock_action !== undefined) {
 				urgent_actions[i === 1 ? 0 : 4].push(unlock_action);
@@ -176,7 +178,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 			const save = save_clues[target];
 
 			// They already have a playable or trash (i.e. early save)
-			if (hand.isLoaded()) {
+			if (Hand.isLoaded(state, target)) {
 				urgent_actions[8].push(Utils.clueToAction(save, state.tableID));
 				continue;
 			}
@@ -189,7 +191,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 				continue;
 			}
 
-			const list = state.hands[target].clueTouched(save).map(c => c.order);
+			const list = state.hands[target].clueTouched(save, state.suits).map(c => c.order);
 			const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, list, clue: save, target });
 			const hand_after_save = hypo_state.hands[target];
 
@@ -198,14 +200,14 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 				const all_play_clues = play_clues.flat();
 
 				// Save clue reveals a play
-				if (hand_after_save.find_playables().length > 0) {
+				if (Hand.find_playables(hypo_state, target).length > 0) {
 					all_play_clues.push(Object.assign({}, save, { result: get_result(state, hypo_state, save, state.ourPlayerIndex )}));
 				}
 
 				logger.debug('hand after save', logHand(hand_after_save));
 
 				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
-				const play_over_save = find_play_over_save(state, target, all_play_clues, false, hand_after_save.chopValue({ afterClue: true }));
+				const play_over_save = find_play_over_save(state, target, all_play_clues, false, Hand.chopValue(hypo_state, target, { afterClue: true }));
 				if (play_over_save !== undefined) {
 					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
 					continue;
@@ -232,7 +234,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 					const hand_after_ocm = Utils.objClone(hand);
 					hand_after_ocm.chop().chop_moved = true;
 
-					const [old_chop_value, new_chop_value] = [hand, hand_after_ocm].map(h => h.chopValue());
+					const [old_chop_value, new_chop_value] = [state, hypo_state].map(s => Hand.chopValue(s, target));
 
 					// Make sure the old chop is better than the new one
 					if (old_chop_value >= new_chop_value) {
@@ -251,7 +253,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 					}
 
 					const { playables } = clue.result;
-					const { focused_card } = determine_focus(hand, hand.clueTouched(clue).map(c => c.order), { beforeClue: true });
+					const { focused_card } = determine_focus(hand, hand.clueTouched(clue, state.suits).map(c => c.order), { beforeClue: true });
 					const { tempo, valuable } = valuable_tempo_clue(state, clue, playables, focused_card);
 
 					if (tempo && !valuable) {
@@ -266,9 +268,9 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 				}
 			}
 
-			const bad_save = hypo_state.hands[target].isLocked() ?
-				hand.chopValue() < cardValue(state, hypo_state.hands[target].locked_discard()) :
-				hand.chopValue() < hand_after_save.chopValue();
+			const bad_save = Hand.isLocked(hypo_state, target) ?
+				Hand.chopValue(state, target) < cardValue(state, Hand.locked_discard(hypo_state, target)) :
+				Hand.chopValue(state, target) < Hand.chopValue(hypo_state, target);
 
 			// Do not save at 1 clue if new chop or sacrifice discard are better than old chop
 			if (state.clue_tokens === 1 && save.cm.length === 0 && bad_save) {

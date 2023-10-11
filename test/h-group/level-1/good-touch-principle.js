@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import { PLAYER, expandShortCard, setup, takeTurn } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
+import { HGroup_Hand as Hand } from '../../../src/conventions/h-hand.js';
 
 import logger from '../../../src/tools/logger.js';
 
@@ -83,7 +84,7 @@ describe('good touch principle', () => {
 
 		takeTurn(state, 'Bob clues red to Alice (slots 4,5)');
 
-		const trash = state.hands[PLAYER.ALICE].find_known_trash();
+		const trash = Hand.find_known_trash(state, PLAYER.ALICE);
 		assert.ok(trash[0]?.order === 1);
 	});
 
@@ -102,9 +103,9 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p5.
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p5'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.hands[PLAYER.ALICE].links, expected_links);
+		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
 
-		const playables = state.hands[PLAYER.ALICE].find_playables();
+		const playables = Hand.find_playables(state, PLAYER.ALICE);
 		assert.deepEqual(playables.map(c => c.order), []);
 	});
 
@@ -123,14 +124,14 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p5 (see previous test).
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p5'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.hands[PLAYER.ALICE].links, expected_links);
+		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
 
 		takeTurn(state, 'Bob clues 5 to Alice (slot 3)');
 
 		// Link should be gone now
-		assert.deepEqual(state.hands[PLAYER.ALICE].links, []);
+		assert.deepEqual(state.links[PLAYER.ALICE], []);
 
-		const trash = state.hands[PLAYER.ALICE].find_known_trash();
+		const trash = Hand.find_known_trash(state, PLAYER.ALICE);
 		assert.deepEqual(trash.map(c => c.order), [2, 1]);
 	});
 
@@ -149,14 +150,14 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p5 (see previous test).
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p5'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.hands[PLAYER.ALICE].links, expected_links);
+		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
 
 		takeTurn(state, 'Bob clues 5 to Alice (slot 5)');
 
 		// Link should be gone now
-		assert.deepEqual(state.hands[PLAYER.ALICE].links, []);
+		assert.deepEqual(state.links[PLAYER.ALICE], []);
 
-		const trash = state.hands[PLAYER.ALICE].find_known_trash();
+		const trash = Hand.find_known_trash(state, PLAYER.ALICE);
 		assert.deepEqual(trash.map(c => c.order), [2]);
 	});
 
@@ -175,14 +176,14 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p5 (see previous test).
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p5'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.hands[PLAYER.ALICE].links, expected_links);
+		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
 
 		takeTurn(state, 'Bob discards y2', 'p5');
 
 		// Link should be gone now
-		assert.deepEqual(state.hands[PLAYER.ALICE].links, []);
+		assert.deepEqual(state.links[PLAYER.ALICE], []);
 
-		const trash = state.hands[PLAYER.ALICE].find_known_trash();
+		const trash = Hand.find_known_trash(state, PLAYER.ALICE);
 		assert.deepEqual(trash.map(c => c.order), [2, 1]);
 	});
 
@@ -201,12 +202,12 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p2.
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p2'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.hands[PLAYER.ALICE].links, expected_links);
+		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
 
 		takeTurn(state, 'Alice bombs p1 (slot 5)');
 
 		// Link should be gone now, Alice's new slot 5 should be p2.
-		assert.deepEqual(state.hands[PLAYER.ALICE].links, []);
+		assert.deepEqual(state.links[PLAYER.ALICE], []);
 		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['p2']);
 	});
 
@@ -222,7 +223,7 @@ describe('good touch principle', () => {
 
 		takeTurn(state, 'Bob clues 2 to Alice (slots 1,3)');
 
-		const playables = state.hands[PLAYER.ALICE].find_playables();
+		const playables = Hand.find_playables(state, PLAYER.ALICE);
 		assert.deepEqual(playables.map(c => c.order), [4]);
 	});
 
@@ -239,7 +240,7 @@ describe('good touch principle', () => {
 
 		takeTurn(state, 'Bob clues 2 to Alice (slots 1,3)');
 
-		const playables = state.hands[PLAYER.ALICE].find_playables();
+		const playables = Hand.find_playables(state, PLAYER.ALICE);
 		assert.deepEqual(playables.map(c => c.order), [4]);
 	});
 

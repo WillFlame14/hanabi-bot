@@ -5,6 +5,7 @@ import { PLAYER, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
+import { HGroup_Hand as Hand } from '../../src/conventions/h-hand.js';
 import logger from '../../src/tools/logger.js';
 
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
@@ -103,7 +104,7 @@ describe('trash chop move', () => {
 		});
 
 		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(state);
-		const playable_priorities = determine_playable_card(state, state.hands[PLAYER.ALICE].find_playables());
+		const playable_priorities = determine_playable_card(state, Hand.find_playables(state, PLAYER.ALICE));
 		const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
 		assert.deepEqual(urgent_actions[1], []);

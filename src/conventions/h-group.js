@@ -31,7 +31,7 @@ export default class HGroup extends State {
 
 		this.hands = [];
 		for (let i = 0; i < playerNames.length; i++) {
-			this.hands.push(new HGroup_Hand(this, i));
+			this.hands.push(new HGroup_Hand());
 		}
 
 		this.level = level;
@@ -51,18 +51,11 @@ export default class HGroup extends State {
 			throw new Error('Maximum recursive depth reached.');
 		}
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands','last_actions',
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'last_actions',
 			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
-
-			// Rewrite reference to state in new hands
-			if (property === 'hands') {
-				for (const hand of newState.hands) {
-					hand.state = newState;
-				}
-			}
 		}
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;

@@ -1,8 +1,9 @@
 import { CLUE } from '../../../constants.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
+import { update_hypo_stacks } from '../../../basics/helper.js';
+
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
-import { update_hypo_stacks } from '../../../basics/helper.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State

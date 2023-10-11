@@ -5,6 +5,7 @@ import { ACTION, CLUE } from '../../src/constants.js';
 import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
+import { HGroup_Hand as Hand } from '../../src/conventions/h-hand.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
@@ -138,7 +139,7 @@ describe('sacrifice discards', () => {
 		takeTurn(state, 'Cathy clues 4 to Alice (slots 2,4)');
 
 		// Alice should discard slot 2.
-		assert.equal(state.hands[PLAYER.ALICE].locked_discard().order, 3);
+		assert.equal(Hand.locked_discard(state, PLAYER.ALICE).order, 3);
 	});
 
 	it('discards the farthest critical card when locked with crits', () => {
@@ -156,6 +157,6 @@ describe('sacrifice discards', () => {
 		});
 
 		// Alice should discard y5.
-		assert.equal(state.hands[PLAYER.ALICE].locked_discard().order, 0);
+		assert.equal(Hand.locked_discard(state, PLAYER.ALICE).order, 0);
 	});
 });

@@ -52,7 +52,7 @@ export function initConsole() {
 							break;
 						}
 						const playerIndex = state.playerNames.indexOf(playerName);
-						console.log(logHand(state.hands[playerIndex]), logLinks(state.hands[playerIndex].links));
+						console.log(logHand(state.hands[playerIndex]), logLinks(state.links[playerIndex]));
 						break;
 					}
 					case 'state':

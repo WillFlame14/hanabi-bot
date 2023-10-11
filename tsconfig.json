@@ -8,6 +8,6 @@
     "resolveJsonModule": true,
     "strict": false
   },
-  "include": ["src/**/*.js", "src/**/*.d.ts"],
+  "include": ["src/**/*.js", "src/**/*.d.ts", "test/**/*.js"],
   "exclude": ["node_modules"]
 }

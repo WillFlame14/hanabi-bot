@@ -1,4 +1,5 @@
 import { Card } from '../../basics/Card.js';
+import { Hand } from '../../basics/Hand.js';
 import { isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
 import * as Basics from '../../basics.js';
 
@@ -7,7 +8,6 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../../basics/State.js').State} State
- * @typedef {import('../../basics/Hand.js').Hand} Hand
  */
 
 /**
@@ -23,9 +23,9 @@ export function find_sarcastic(hand, suitIndex, rank) {
 		return known_sarcastic;
 	}
 	// Otherwise, find all cards that could match that identity
-	return hand.filter(c =>
+	return Array.from(hand.filter(c =>
 		c.clued && c.possible.some(p => p.matches(suitIndex, rank)) &&
-		!(c.inferred.length === 1 && c.inferred[0].rank < rank));		// Do not sarcastic on connecting cards
+		!(c.inferred.length === 1 && c.inferred[0].rank < rank)));		// Do not sarcastic on connecting cards
 }
 
 /**
@@ -95,7 +95,7 @@ export function interpret_discard(state, action, card) {
 	const { order, playerIndex, rank, suitIndex, failed } = action;
 	const other = (playerIndex + 1) % state.numPlayers;
 
-	const locked_discard = state.hands[playerIndex].isLocked() && !state.last_actions[other].lock;
+	const locked_discard = Hand.isLocked(state, playerIndex) && !state.last_actions[other].lock;
 
 	Basics.onDiscard(this, action);
 

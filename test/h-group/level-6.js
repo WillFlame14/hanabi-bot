@@ -7,8 +7,9 @@ import * as ExAsserts from '../extra-asserts.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
-import logger from '../../src/tools/logger.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
+
+import logger from '../../src/tools/logger.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 

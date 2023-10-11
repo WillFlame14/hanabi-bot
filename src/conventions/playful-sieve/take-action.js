@@ -1,4 +1,5 @@
 import { ACTION, CLUE } from '../../constants.js';
+import { Hand } from '../../basics/Hand.js';
 import { clue_value } from './action-helper.js';
 import { isTrash, playableAway } from '../../basics/hanabi-util.js';
 import { find_sarcastic } from './interpret-discard.js';
@@ -12,7 +13,6 @@ import { find_fix_clue } from './fix-clues.js';
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
- * @typedef {import('../../basics/Hand.js').Hand} Hand
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').PerformAction} PerformAction
@@ -30,8 +30,8 @@ export function take_action(state) {
 	const partner_hand = state.hands[partner];
 
 	// Look for playables, trash and important discards in own hand
-	let playable_cards = hand.find_playables();
-	let trash_cards = hand.find_known_trash().filter(c => c.clued);
+	let playable_cards = Hand.find_playables(state, state.ourPlayerIndex);
+	let trash_cards = Hand.find_known_trash(state, state.ourPlayerIndex).filter(c => c.clued);
 
 	// Add cards called to discard
 	for (const card of hand) {
@@ -77,16 +77,18 @@ export function take_action(state) {
 
 	const fix_clue = find_fix_clue(state);
 
+	const locked_discard_action = { tableID, type: ACTION.DISCARD, target: Hand.locked_discard(state, state.ourPlayerIndex).order };
+
 	// Stalling situation
-	if (hand.isLocked()) {
+	if (Hand.isLocked(state, state.ourPlayerIndex)) {
 		// Forced discard
 		if (state.clue_tokens === 0) {
-			return { tableID, type: ACTION.DISCARD, target: hand.locked_discard().order };
+			return locked_discard_action;
 		}
 
 		// Bad situation (for now, just treat as forced discard)
-		if (partner_hand.isLocked()) {
-			return { tableID, type: ACTION.DISCARD, target: hand.locked_discard().order };
+		if (Hand.isLocked(state, partner)) {
+			return locked_discard_action;
 		}
 
 		const chop_trash = isTrash(state, state.ourPlayerIndex, chop.suitIndex, chop.rank, chop.order);
@@ -118,7 +120,7 @@ export function take_action(state) {
 		}
 
 		for (const clue of clues) {
-			const touch = partner_hand.clueTouched(clue);
+			const touch = partner_hand.clueTouched(clue, state.suits);
 
 			// Can't give empty clues or colour clues touching chop
 			if (touch.length === 0 || (clue.type === CLUE.COLOUR && touch.some(card => card.order === chop.order))) {
@@ -137,7 +139,7 @@ export function take_action(state) {
 			return Utils.clueToAction(best_clue, tableID);
 		}
 		else {
-			return { tableID, type: ACTION.DISCARD, target: hand.locked_discard().order };
+			return locked_discard_action;
 		}
 	}
 
@@ -147,15 +149,15 @@ export function take_action(state) {
 
 	logger.info('fix clue?', fix_clue ? logClue(fix_clue) : undefined);
 
-	if (partner_hand.isLoaded() || partner_hand.some(c => c.called_to_discard) || (chop_away === 0 && this.turn_count !== 1)) {
-		if (partner_hand.isLoaded()) {
-			const playables = partner_hand.find_playables();
+	if (Hand.isLoaded(state, partner) || partner_hand.some(c => c.called_to_discard) || (chop_away === 0 && this.turn_count !== 1)) {
+		if (Hand.isLoaded(state, partner)) {
+			const playables = Hand.find_playables(state, partner);
 
 			if (playables.length > 0) {
 				logger.info('partner loaded on playables:', playables.map(c => logCard(c)));
 			}
 			else {
-				const trash = partner_hand.find_known_trash();
+				const trash = Hand.find_known_trash(state, partner);
 				logger.info('partner loaded on trash:', trash.map(c => logCard(c)));
 			}
 		}
@@ -165,6 +167,11 @@ export function take_action(state) {
 		state.locked_shifts = 0;
 
 		if (playable_cards.length > 0) {
+			const sarcastic_chop = playable_cards.find(c => c.identity({ infer: true }).matches(chop.suitIndex, chop.rank));
+
+			if (sarcastic_chop) {
+				return { tableID, type: ACTION.DISCARD, target: sarcastic_chop.order };
+			}
 			return { tableID, type: ACTION.PLAY, target: playable_priorities[priority][0].order };
 		}
 
@@ -179,7 +186,7 @@ export function take_action(state) {
 
 			const { type, card } = state.last_actions[partner];
 			if (state.clue_tokens === 0 || (state.clue_tokens === 1 && (type === 'discard' || (type === 'play' && card.rank === 5)))) {
-				return { tableID, type: ACTION.DISCARD, target: hand.locked_discard().order };
+				return locked_discard_action;
 			}
 
 			// Bomb a possibly playable chop
@@ -199,7 +206,7 @@ export function take_action(state) {
 		}
 	}
 
-	if (partner_hand.isLocked()) {
+	if (Hand.isLocked(state, partner)) {
 		for (const playable of playable_cards) {
 			const identity = playable.identity({ infer: true });
 
@@ -210,7 +217,7 @@ export function take_action(state) {
 					playerIndex: state.ourPlayerIndex,
 					suitIndex: identity.suitIndex,
 					rank: identity.rank
-				}, hand, partner_hand);
+				}, state.ourPlayerIndex, partner);
 
 				if (unlocked?.matches(identity.suitIndex, identity.rank + 1)) {
 					return { tableID, type: ACTION.PLAY, target: playable.order };
@@ -234,7 +241,7 @@ export function take_action(state) {
 			return { tableID, type: ACTION.PLAY, target: Utils.maxOn(playable_cards, (card) => -card.reasoning.at(-1)).order };
 		}
 
-		return { tableID, type: ACTION.DISCARD, target: hand.locked_discard().order };
+		return locked_discard_action;
 	}
 
 	// Partner isn't loaded/locked and their chop isn't playable
@@ -258,7 +265,7 @@ export function take_action(state) {
 	}
 
 	if (state.clue_tokens === 0) {
-		return { tableID, type: ACTION.DISCARD, target: hand.locked_discard().order };
+		return locked_discard_action;
 	}
 
 	/** @type {Clue} */

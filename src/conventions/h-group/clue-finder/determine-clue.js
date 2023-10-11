@@ -1,8 +1,10 @@
+import { HGroup_Hand as Hand } from '../../h-hand.js';
 import { clue_safe } from './clue-safe.js';
 import { determine_focus, find_bad_touch } from '../hanabi-logic.js';
 import { bad_touch_result, elim_result, playables_result } from '../../../basics/clue-result.js';
 import { cardValue, direct_clues, isTrash } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
+
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
@@ -89,7 +91,7 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 	const { target } = clue;
 	const hand = state.hands[target];
 
-	const touch = provisions.touch ?? hand.clueTouched(clue);
+	const touch = provisions.touch ?? hand.clueTouched(clue, state.suits);
 	const list = provisions.list ?? touch.map(c => c.order);
 
 	const { focused_card } = determine_focus(hand, list, { beforeClue: true });
@@ -101,7 +103,7 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 
 	const new_chop = hypo_state.hands[target].chop({ afterClue: true });
 	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, new_chop) :
-						hypo_state.hands[target].find_known_trash().length > 0 ? 0 : 4;
+						Hand.find_known_trash(hypo_state, target).length > 0 ? 0 : 4;
 
 	return { elim: fill, new_touched, bad_touch, trash, finesses, playables, remainder };
 }
@@ -124,7 +126,7 @@ export function determine_clue(state, target, target_card, options) {
 	const results = [];
 
 	for (const clue of possible_clues) {
-		const touch = hand.clueTouched(clue);
+		const touch = hand.clueTouched(clue, state.suits);
 		const list = touch.map(c => c.order);
 
 		const { focused_card, chop } = determine_focus(hand, list, { beforeClue: true });

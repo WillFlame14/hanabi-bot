@@ -177,7 +177,9 @@ export function update_hypo_stacks(state) {
 		while (found_new_playable) {
 			found_new_playable = false;
 
-			for (const hand of state.hands) {
+			for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
+				const hand = state.hands[playerIndex];
+
 				for (const card of hand) {
 					if (!(card.clued || card.finessed || card.chop_moved) || good_touch_elim.some(e => e.matches(card.suitIndex, card.rank))) {
 						continue;
@@ -213,7 +215,7 @@ export function update_hypo_stacks(state) {
 					diff.subtract('inferred', fake_wcs.flatMap(wc => wc.inference));
 
 					if (diff.matches_inferences() && (delayed_playable(diff.possible) || delayed_playable(diff.inferred) || (diff.finessed && delayed_playable([card])))) {
-						const id = card.identity({ infer: true, symmetric: i === hand.playerIndex });
+						const id = card.identity({ infer: true, symmetric: i === playerIndex });
 						if (id === undefined) {
 							// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
 							state.unknown_plays[i].push(card.order);

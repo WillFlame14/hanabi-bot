@@ -47,13 +47,6 @@ export default class PlayfulSieve extends State {
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
-
-			// Rewrite reference to state in new hands
-			if (property === 'hands') {
-				for (const hand of newState.hands) {
-					hand.state = newState;
-				}
-			}
 		}
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;

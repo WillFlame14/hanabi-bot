@@ -6,6 +6,7 @@ import { determine_clue, get_result } from './determine-clue.js';
 import { stall_severity, valuable_tempo_clue } from '../hanabi-logic.js';
 import { cardValue, direct_clues, isBasicTrash, isCritical, isTrash, unique2, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
+
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
@@ -94,7 +95,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		logger.info('prefer direct save');
 		return;
 	}
-	else if (play_clues.some(clue => saved_cards.every(c => state.hands[target].clueTouched(clue).some(card => card.order === c.order)))) {
+	else if (play_clues.some(clue => saved_cards.every(c => state.hands[target].clueTouched(clue, state.suits).some(card => card.order === c.order)))) {
 		logger.info('prefer play clue to save');
 		return;
 	}
@@ -350,7 +351,7 @@ export function find_clues(state, options = {}) {
 
 		save_clues[target] = Utils.maxOn(saves.filter(c => c !== undefined), (save_clue) => {
 			const { type, value, target } = save_clue;
-			const list = state.hands[target].clueTouched(save_clue).map(c => c.order);
+			const list = hand.clueTouched(save_clue, state.suits).map(c => c.order);
 			const hypo_state = state.simulate_clue({ type: 'clue', clue: { type, value }, giver: state.ourPlayerIndex, target, list });
 			const result = get_result(state, hypo_state, save_clue, state.ourPlayerIndex);
 

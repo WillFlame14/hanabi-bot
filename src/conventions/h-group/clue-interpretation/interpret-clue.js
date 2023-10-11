@@ -395,7 +395,7 @@ export function interpret_clue(state, action) {
 	}
 	logger.highlight('blue', 'final inference on focused card', focused_card.inferred.map(c => logCard(c)).join(','));
 
-	state.hands[target].refresh_links();
+	Basics.refresh_links(state, target);
 	update_hypo_stacks(state);
 
 	if (state.level >= LEVEL.TEMPO_CLUES) {

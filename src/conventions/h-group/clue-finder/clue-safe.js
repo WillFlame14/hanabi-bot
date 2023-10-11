@@ -1,4 +1,6 @@
+import { HGroup_Hand as Hand } from '../../h-hand.js';
 import { isCritical, playableAway, unique2 } from '../../../basics/hanabi-util.js';
+
 import logger from '../../../tools/logger.js';
 
 /**
@@ -15,7 +17,7 @@ import logger from '../../../tools/logger.js';
 export function clue_safe(state, clue) {
 	const { target } = clue;
 
-	const list = state.hands[target].clueTouched(clue).map(c => c.order);
+	const list = state.hands[target].clueTouched(clue, state.suits).map(c => c.order);
 	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });	//, { simulatePlayerIndex: target });
 
 	let next_unoccupied = (state.ourPlayerIndex + 1) % state.numPlayers;
@@ -36,7 +38,7 @@ export function clue_safe(state, clue) {
 		}
 
 		// Dangerous and not loaded, clue is not fine
-		if (!hypo_state.hands[next_unoccupied].isLoaded()) {
+		if (!Hand.isLoaded(hypo_state, next_unoccupied)) {
 			logger.warn(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop and not loaded`);
 			return false;
 		}
@@ -71,8 +73,7 @@ export function clue_safe(state, clue) {
  */
 export function chopUnsafe(state, playerIndex) {
 	// Note that chop will be undefined if the entire hand is clued
-	const hand = state.hands[playerIndex];
-	const chop = hand.chop({ afterClue: true });
+	const chop = state.hands[playerIndex].chop({ afterClue: true });
 
 	return (chop && isCritical(state, chop.suitIndex, chop.rank) && !unique2(state, chop)) ||	// Crit or unique 2 on chop
 			(state.clue_tokens === 0 && chop === undefined);									// Locked with no clue tokens (TODO: See if a 5 can be played?)
