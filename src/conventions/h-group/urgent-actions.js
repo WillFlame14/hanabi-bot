@@ -31,18 +31,18 @@ function find_unlock(state, target) {
 	for (const card of state.hands[target]) {
 		const { suitIndex, rank } = card;
 
-		if (playableAway(state, suitIndex, rank) !== 1) {
+		if (playableAway(state, card) !== 1) {
 			continue;
 		}
 
 		// See if we have the connecting card (should be certain)
-		const our_connecting = state.hands[state.ourPlayerIndex].find(c => c.matches(suitIndex, rank - 1, { infer: true }));
+		const our_connecting = state.hands[state.ourPlayerIndex].find(c => c.matches({ suitIndex, rank: rank - 1 }, { infer: true }));
 		if (our_connecting === undefined) {
 			continue;
 		}
 
 		// The card must become playable
-		const known = card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0 || c.matches(suitIndex, rank));
+		const known = card.inferred.every(c => playableAway(state, c) === 0 || c.matches(card));
 		if (known) {
 			return { tableID: state.tableID, type: ACTION.PLAY, target: our_connecting.order };
 		}
@@ -75,7 +75,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 		const { playables } = clue.result;
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target).map(p => p.card);
 		const immediately_playable = target_cards.filter(card =>
-			playableAway(state, card.suitIndex, card.rank) === 0 && card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0));
+			playableAway(state, card) === 0 && card.inferred.every(c => playableAway(state, c) === 0));
 
 		// The card can be played without any additional help
 		if (immediately_playable.length > 0) {
@@ -90,7 +90,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 
 			for (let i = 1; i <= state.numPlayers; i++) {
 				const nextPlayer = (state.ourPlayerIndex + i) % state.numPlayers;
-				const current_playables = playables.filter(({ playerIndex, card }) => playerIndex === nextPlayer && card.matches(suitIndex, stackRank + 1));
+				const current_playables = playables.filter(({ playerIndex, card }) => playerIndex === nextPlayer && card.matches({ suitIndex, rank: stackRank + 1 }));
 
 				if (current_playables.length > 0) {
 					if (nextPlayer === target) {

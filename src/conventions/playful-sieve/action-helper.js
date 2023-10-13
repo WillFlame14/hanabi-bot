@@ -26,8 +26,8 @@ export function get_result(state, clue) {
 		throw new Error(`Tried to get a result with a clue ${logClue(clue)} that touches no cards!`);
 	}
 	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target: partner, list: touch.map(c => c.order), clue });
-	const bad_touch = touch.filter(card => !card.clued && isTrash(hypo_state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order));
-	const trash = bad_touch.filter(card => card.possible.every(p => isTrash(hypo_state, partner, p.suitIndex, p.rank, card.order)));
+	const bad_touch = touch.filter(card => !card.clued && isTrash(hypo_state, state.ourPlayerIndex, card, card.order));
+	const trash = bad_touch.filter(card => card.possible.every(p => isTrash(hypo_state, partner, p, card.order)));
 
 	const { new_touched, fill, elim } = elim_result(state, hypo_state, partner, touch.map(c => c.order));
 	const revealed_trash = Hand.find_known_trash(hypo_state, partner);
@@ -40,7 +40,7 @@ export function get_result(state, clue) {
 		0.5*revealed_trash.length +
 		0.25*fill +
 		0.05*elim -
-		0.2*bad_touch.length;
+		0.1*bad_touch.length;
 
 	logger.info(logClue(clue), value, good_touch, playables.length, revealed_trash.length, fill, elim, bad_touch.length);
 

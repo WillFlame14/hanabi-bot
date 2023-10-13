@@ -9,6 +9,7 @@ import * as Utils from './tools/util.js';
 
 /**
  * @typedef {import('./basics/State.js').State} State
+ * @typedef {import('./types.js').BasicCard} BasicCard
  * @typedef {import('./types.js').ClueAction} ClueAction
  * @typedef {import('./types.js').DiscardAction} DiscardAction
  * @typedef {import('./types.js').CardAction} DrawAction
@@ -49,7 +50,7 @@ export function onClue(state, action) {
 		// If card is now definitely known to everyone and wasn't previously - eliminate
 		if (previously_unknown && card.possible.length === 1) {
 			for (let i = 0; i < state.numPlayers; i++) {
-				card_elim(state, i, card.possible[0].suitIndex, card.possible[0].rank);
+				card_elim(state, i, card.possible[0].raw());
 				refresh_links(state, i);
 			}
 		}
@@ -70,12 +71,12 @@ export function onDiscard(state, action) {
 
 	// Card is now definitely known to everyone - eliminate
 	for (let i = 0; i < state.numPlayers; i++) {
-		card_elim(state, i, suitIndex, rank);
+		card_elim(state, i, { suitIndex, rank });
 		refresh_links(state, i);
 	}
 
 	// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
-	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits[suitIndex], rank) && state.max_ranks[suitIndex] > rank - 1) {
+	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, { suitIndex, rank }) && state.max_ranks[suitIndex] > rank - 1) {
 		state.max_ranks[suitIndex] = rank - 1;
 	}
 
@@ -95,10 +96,12 @@ export function onDiscard(state, action) {
  */
 export function onDraw(state, action) {
 	const { order, playerIndex, suitIndex, rank } = action;
-	const card = new Card(suitIndex, rank, {
+	const card = new Card({
+		suitIndex,
+		rank,
 		order,
-		possible: Utils.objClone(state.all_possible[playerIndex]),
-		inferred: Utils.objClone(state.all_inferred[playerIndex]),
+		possible: state.all_possible[playerIndex].slice(),
+		inferred: state.all_inferred[playerIndex].slice(),
 		drawn_index: state.actionList.length
 	});
 	state.hands[playerIndex].unshift(card);
@@ -107,7 +110,7 @@ export function onDraw(state, action) {
 	if (card.identity() !== undefined) {
 		for (let i = 0; i < state.numPlayers; i++) {
 			if (i !== playerIndex) {
-				card_elim(state, i, suitIndex, rank);
+				card_elim(state, i, { suitIndex, rank });
 				refresh_links(state, i);
 			}
 		}
@@ -131,7 +134,7 @@ export function onPlay(state, action) {
 
 	// Card is now definitely known to everyone - eliminate
 	for (let i = 0; i < state.numPlayers; i++) {
-		card_elim(state, i, suitIndex, rank);
+		card_elim(state, i, { suitIndex, rank });
 		refresh_links(state, i);
 	}
 
@@ -144,66 +147,65 @@ export function onPlay(state, action) {
 /**
  * @param {State} state
  * @param {number} playerIndex 		The index of the player performing elimination.
- * @param {number} suitIndex 		The suitIndex of the identity to be eliminated.
- * @param {number} rank 			The rank of the identity to be eliminated.
- * @returns {Card[]}				Any additional recursive eliminations performed.
+ * @param {BasicCard} identity 		The identity to be eliminated.
+ * @returns {Card[]}			Any additional recursive eliminations performed.
  */
-export function card_elim(state, playerIndex, suitIndex, rank) {
+export function card_elim(state, playerIndex, identity) {
 	// Skip if already eliminated
-	if (!state.all_possible[playerIndex].some(c => c.matches(suitIndex, rank))) {
+	if (!state.all_possible[playerIndex].some(c => c.matches(identity))) {
 		return [];
 	}
 
-	const base_count = baseCount(state, suitIndex, rank);
-	const certain_cards = visibleFind(state, playerIndex, suitIndex, rank, { infer: [] });
-	const total_count = cardCount(state.suits[suitIndex], rank);
+	const base_count = baseCount(state, identity);
+	const certain_cards = visibleFind(state, playerIndex, identity, { infer: [] });
+	const total_count = cardCount(state.suits, identity);
 
-	let new_elims = [];
+	let new_elims = /** @type {Card[]} */ ([]);
 
 	// All cards are known accounted for
 	if (base_count + certain_cards.length === total_count) {
 		// Remove it from the list of future possibilities (and inferences)
-		state.all_possible[playerIndex] = state.all_possible[playerIndex].filter(c => !c.matches(suitIndex, rank));
-		state.all_inferred[playerIndex] = state.all_inferred[playerIndex].filter(c => !c.matches(suitIndex, rank));
+		state.all_possible[playerIndex] = state.all_possible[playerIndex].filter(c => !c.matches(identity));
+		state.all_inferred[playerIndex] = state.all_inferred[playerIndex].filter(c => !c.matches(identity));
 
 		for (const card of state.hands[playerIndex]) {
 			if (card.possible.length > 1 && !certain_cards.some(c => c.order === card.order)) {
-				card.subtract('possible', [{suitIndex, rank}]);
-				card.subtract('inferred', [{suitIndex, rank}]);
+				card.subtract('possible', [identity]);
+				card.subtract('inferred', [identity]);
 
 				// Card can be further eliminated
 				if (card.inferred.length === 1 || card.possible.length === 1) {
-					const { suitIndex: suitIndex2, rank: rank2 } = card.identity({ symmetric: true, infer: true });
+					const identity2 = card.identity({ symmetric: true, infer: true });
 
 					// Do not further eliminate on a rewinded card proven to be a different identity
-					if (playerIndex === state.ourPlayerIndex && card.possible.length > 1 && !card.matches(suitIndex2, rank2)) {
+					if (playerIndex === state.ourPlayerIndex && card.possible.length > 1 && !card.matches(identity2)) {
 						continue;
 					}
 
-					new_elims.push({ suitIndex: suitIndex2, rank: rank2 });
+					new_elims.push(identity2);
 
 					for (let i = 0; i < state.numPlayers; i++) {
-						const recursive_elims = card_elim(state, i, suitIndex2, rank2).filter(c => !new_elims.some(elim => elim.suitIndex === c.suitIndex && elim.rank ===  c.rank));
+						const recursive_elims = card_elim(state, i, identity2.raw()).filter(c => !new_elims.some(elim => elim.matches(c)));
 						new_elims = new_elims.concat(recursive_elims);
 					}
 				}
 			}
 		}
-		logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future possibilities`);
+		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[playerIndex]}'s hand and future possibilities`);
 	}
 	else {
 		// Skip if already eliminated
-		if (!state.all_inferred[playerIndex].some(c => c.matches(suitIndex, rank))) {
+		if (!state.all_inferred[playerIndex].some(c => c.matches(identity))) {
 			return [];
 		}
 
-		let inferred_cards = visibleFind(state, playerIndex, suitIndex, rank).filter(c =>
-			!state.hands[state.ourPlayerIndex].some(card => card.order === c.order && card.rewinded && !card.matches(suitIndex, rank)));
+		let inferred_cards = visibleFind(state, playerIndex, identity).filter(c =>
+			!state.hands[state.ourPlayerIndex].some(card => card.order === c.order && card.rewinded && !card.matches(identity)));
 		let focus_elim = false;
 
 		if (base_count + inferred_cards.length >= total_count) {
 			if (base_count + inferred_cards.length > total_count) {
-				logger.warn(`inferring ${base_count + inferred_cards.length} copies of ${logCard({suitIndex, rank})}`);
+				logger.warn(`inferring ${base_count + inferred_cards.length} copies of ${logCard(identity)}`);
 
 				const initial_focus = inferred_cards.filter(card => card.focused);
 
@@ -214,7 +216,7 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 					focus_elim = true;
 				}
 				else {
-					const new_link = { cards: inferred_cards, identities: [{ suitIndex, rank }], promised: false };
+					const new_link = { cards: inferred_cards, identities: [identity], promised: false };
 
 					// Don't add duplicates of the same link
 					if (!state.links[playerIndex].some(link => Utils.objEquals(link, new_link))) {
@@ -225,30 +227,30 @@ export function card_elim(state, playerIndex, suitIndex, rank) {
 			}
 
 			// Remove it from the list of future inferences
-			state.all_inferred[playerIndex] = state.all_inferred[playerIndex].filter(c => !c.matches(suitIndex, rank));
+			state.all_inferred[playerIndex] = state.all_inferred[playerIndex].filter(c => !c.matches(identity));
 
 			for (const card of state.hands[playerIndex]) {
 				if ((card.inferred.length > 1 || focus_elim) && !inferred_cards.some(c => c.order === card.order)) {
-					card.subtract('inferred', [{suitIndex, rank}]);
+					card.subtract('inferred', [identity]);
 
 					// Card can be further eliminated
 					if (card.inferred.length === 1) {
-						if (card.identity() !== undefined && !card.matches(suitIndex, rank)) {
-							logger.warn(`incorrectly trying to elim card ${logCard(card)} as ${logCard({suitIndex, rank})}!`);
+						if (card.identity() !== undefined && !card.matches(identity)) {
+							logger.warn(`incorrectly trying to elim card ${logCard(card)} as ${logCard(identity)}!`);
 							continue;
 						}
 
-						const { suitIndex: suitIndex2, rank: rank2 } = card.inferred[0];
-						new_elims.push({ suitIndex: suitIndex2, rank: rank2 });
+						const identity2 = card.inferred[0];
+						new_elims.push(identity2);
 
 						for (let i = 0; i < state.numPlayers; i++) {
-							const recursive_elims = card_elim(state, i, suitIndex2, rank2).filter(c => !new_elims.some(elim => elim.suitIndex === c.suitIndex && elim.rank ===  c.rank));
+							const recursive_elims = card_elim(state, i, identity2.raw()).filter(c => !new_elims.some(elim => elim.matches(c)));
 							new_elims = new_elims.concat(recursive_elims);
 						}
 					}
 				}
 			}
-			logger.debug(`removing ${logCard({suitIndex, rank})} from ${state.playerNames[playerIndex]}'s hand and future inferences`);
+			logger.debug(`removing ${logCard(identity)} from ${state.playerNames[playerIndex]}'s hand and future inferences`);
 		}
 	}
 	return new_elims;
@@ -283,12 +285,12 @@ export function find_links(state, playerIndex) {
 		const linked_cards = Array.from(hand.filter(c =>
 			c.identity() === undefined &&
 			card.inferred.length === c.inferred.length &&
-			c.inferred.every(({suitIndex, rank}) => card.inferred.some(inf2 => inf2.matches(suitIndex, rank)))
+			c.inferred.every(inf => card.inferred.some(inf2 => inf2.matches(inf)))
 		));
 
 		// We have enough inferred cards to eliminate elsewhere
 		// TODO: Sudoku elim from this
-		if (linked_cards.length > card.inferred.reduce((sum, { suitIndex, rank }) => sum += unknownIdentities(state, playerIndex, suitIndex, rank), 0)) {
+		if (linked_cards.length > card.inferred.reduce((sum, inf) => sum += unknownIdentities(state, playerIndex, inf), 0)) {
 			logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(inf => logCard(inf)));
 
 			links.push({ cards: linked_cards, identities: card.inferred.map(c => c.raw()), promised: false });
@@ -307,7 +309,7 @@ export function refresh_links(state, playerIndex) {
 	// Get the link indices that we need to redo (after learning new things about them)
 	const redo_elim_indices = links.map(({cards, identities}, index) =>
 		// The card is globally known or an identity is no longer possible
-		cards.some(c => c.identity({ symmetric: true }) || identities.some(id => !c.possible.some(p => p.matches(id.suitIndex, id.rank)))) ? index : -1
+		cards.some(c => c.identity({ symmetric: true }) || identities.some(id => !c.possible.some(p => p.matches(id)))) ? index : -1
 	).filter(index => index !== -1);
 
 	// Try eliminating all the identities again
@@ -317,7 +319,7 @@ export function refresh_links(state, playerIndex) {
 	state.links[playerIndex] = links.filter((_, index) => !redo_elim_indices.includes(index));
 
 	for (const id of redo_elim_ids) {
-		card_elim(state, playerIndex, id.suitIndex, id.rank);
+		card_elim(state, playerIndex, id);
 	}
 
 	find_links(state, playerIndex);

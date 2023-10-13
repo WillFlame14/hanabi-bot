@@ -1,7 +1,7 @@
 import { ACTION, CLUE } from '../../constants.js';
 import { Hand } from '../../basics/Hand.js';
 import { clue_value } from './action-helper.js';
-import { isTrash, playableAway } from '../../basics/hanabi-util.js';
+import { getPace, isCritical, isTrash, playableAway } from '../../basics/hanabi-util.js';
 import { find_sarcastic } from './interpret-discard.js';
 import { unlock_promise } from './interpret-play.js';
 
@@ -35,7 +35,7 @@ export function take_action(state) {
 
 	// Add cards called to discard
 	for (const card of hand) {
-		if (!trash_cards.some(c => c.order === card.order) && card.called_to_discard) {
+		if (!trash_cards.some(c => c.order === card.order) && card.called_to_discard && card.possible.some(p => !isCritical(state, p))) {
 			trash_cards.push(card);
 		}
 	}
@@ -50,7 +50,7 @@ export function take_action(state) {
 		}
 
 		// If there isn't a matching playable card in our hand, we should discard it to sarcastic for someone else
-		if (!playable_cards.some(c => c.matches(id.suitIndex, id.rank, { infer: true }) && c.order !== card.order)) {
+		if (!playable_cards.some(c => c.duplicateOf(id, { infer: true }))) {
 			discards.push(card);
 		}
 	}
@@ -73,7 +73,7 @@ export function take_action(state) {
 	const priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 
 	const chop = partner_hand[0];
-	const chop_away = playableAway(state, chop.suitIndex, chop.rank);
+	const chop_away = playableAway(state, chop);
 
 	const fix_clue = find_fix_clue(state);
 
@@ -91,7 +91,7 @@ export function take_action(state) {
 			return locked_discard_action;
 		}
 
-		const chop_trash = isTrash(state, state.ourPlayerIndex, chop.suitIndex, chop.rank, chop.order);
+		const chop_trash = isTrash(state, state.ourPlayerIndex, chop, chop.order);
 
 		// Chop is delayed playable
 		if (!chop_trash && state.hypo_stacks[state.ourPlayerIndex][chop.suitIndex] + 1 === chop.rank) {
@@ -167,7 +167,7 @@ export function take_action(state) {
 		state.locked_shifts = 0;
 
 		if (playable_cards.length > 0) {
-			const sarcastic_chop = playable_cards.find(c => c.identity({ infer: true }).matches(chop.suitIndex, chop.rank));
+			const sarcastic_chop = playable_cards.find(c => c.identity({ infer: true })?.matches(chop));
 
 			if (sarcastic_chop) {
 				return { tableID, type: ACTION.DISCARD, target: sarcastic_chop.order };
@@ -175,7 +175,7 @@ export function take_action(state) {
 			return { tableID, type: ACTION.PLAY, target: playable_priorities[priority][0].order };
 		}
 
-		if (state.clue_tokens !== 8) {
+		if (state.clue_tokens !== 8 && getPace(state) !== 0) {
 			if (discards.length > 0) {
 				return { tableID, type: ACTION.DISCARD, target: discards[0].order };
 			}
@@ -190,7 +190,7 @@ export function take_action(state) {
 			}
 
 			// Bomb a possibly playable chop
-			if (hand[0].inferred.some(c => playableAway(state, c.suitIndex, c.rank) === 0)) {
+			if (hand[0].inferred.some(c => playableAway(state, c) === 0)) {
 				return { tableID, type: ACTION.PLAY, target: hand[0].order };
 			}
 
@@ -199,7 +199,7 @@ export function take_action(state) {
 	}
 
 	if (chop_away === 1) {
-		const connecting = hand.findCards(chop.suitIndex, chop.rank - 1, { infer: true });
+		const connecting = hand.findCards({ suitIndex: chop.suitIndex, rank: chop.rank - 1 }, { infer: true });
 
 		if (connecting.length > 0) {
 			return  { tableID, type: ACTION.PLAY, target: connecting[0].order };
@@ -219,7 +219,7 @@ export function take_action(state) {
 					rank: identity.rank
 				}, state.ourPlayerIndex, partner);
 
-				if (unlocked?.matches(identity.suitIndex, identity.rank + 1)) {
+				if (unlocked?.matches({ suitIndex: identity.suitIndex, rank: identity.rank + 1 })) {
 					return { tableID, type: ACTION.PLAY, target: playable.order };
 				}
 			}
@@ -256,9 +256,7 @@ export function take_action(state) {
 		}
 	}
 
-	const playable_sarcastic = discards.find(card =>
-		playableAway(state, card.suitIndex, card.rank) === 0 &&
-		find_sarcastic(hand, card.suitIndex, card.rank).length === 1);
+	const playable_sarcastic = discards.find(card => playableAway(state, card) === 0 && find_sarcastic(hand, card).length === 1);
 
 	if (playable_sarcastic !== undefined && state.clue_tokens !== 8) {
 		return { tableID, type: ACTION.DISCARD, target: playable_sarcastic.order };
@@ -351,7 +349,7 @@ function determine_playable_card(state, playable_cards) {
 			// Start at next player so that connecting in our hand has lowest priority
 			for (let i = 1; i < state.numPlayers + 1; i++) {
 				const target = (state.ourPlayerIndex + i) % state.numPlayers;
-				if (state.hands[target].findCards(suitIndex, rank + 1).length > 0) {
+				if (state.hands[target].findCards({ suitIndex, rank: rank + 1 }).length > 0) {
 					connected = true;
 
 					// Connecting in own hand, demote priority to 2

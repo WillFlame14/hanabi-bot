@@ -44,9 +44,10 @@ export function bad_touch_possibilities(state, giver, target, prev_found = []) {
 		// Find useless cards
 		for (let suitIndex = 0; suitIndex <= state.suits.length; suitIndex++) {
 			for (let rank = 1; rank <= 5; rank++) {
+				const identity = { suitIndex, rank };
 				// Cards that have already been played on the stack or can never be played
-				if (isBasicTrash(state, suitIndex, rank)) {
-					bad_touch.push({suitIndex, rank});
+				if (isBasicTrash(state, identity)) {
+					bad_touch.push(identity);
 				}
 			}
 		}
@@ -69,7 +70,7 @@ export function bad_touch_possibilities(state, giver, target, prev_found = []) {
 					({suitIndex, rank} = card.possible[0]);
 					method = 'elim';
 				}
-				else if (card.inferred.length === 1 && card.matches(card.inferred[0].suitIndex, card.inferred[0].rank, { infer: true })) {
+				else if (card.inferred.length === 1 && card.matches(card.inferred[0], { infer: true })) {
 					({suitIndex, rank} = card.inferred[0]);
 					method = 'inference';
 				}
@@ -96,20 +97,18 @@ export function bad_touch_possibilities(state, giver, target, prev_found = []) {
 /**
  * @param {State} state
  * @param {number} playerIndex
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  * @param {{ignore?: number[], hard?: boolean}} options
  */
-export function recursive_elim(state, playerIndex, suitIndex, rank, options = {}) {
-	let additional_elims = good_touch_elim(state, playerIndex, suitIndex, rank, options);
+export function recursive_elim(state, playerIndex, identity, options = {}) {
+	let additional_elims = good_touch_elim(state, playerIndex, identity, options);
 	let elim_index = 0;
 
 	while (elim_index < additional_elims.length) {
-		const { suitIndex, rank } = additional_elims[elim_index];
-
+		const identity = additional_elims[elim_index].raw();
 		for (let i = 0; i < state.numPlayers; i++) {
-			const extra_card_elims = Basics.card_elim(state, playerIndex, suitIndex, rank);
-			const extra_gtp_elims = good_touch_elim(state, playerIndex, suitIndex, rank);		// No ignoring or hard elims when recursing
+			const extra_card_elims = Basics.card_elim(state, playerIndex, identity);
+			const extra_gtp_elims = good_touch_elim(state, playerIndex, identity);		// No ignoring or hard elims when recursing
 
 			additional_elims = additional_elims.concat(extra_card_elims.concat(extra_gtp_elims));
 		}
@@ -120,11 +119,10 @@ export function recursive_elim(state, playerIndex, suitIndex, rank, options = {}
 /**
  * @param {State} state
  * @param {number} playerIndex
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  * @param {{ignore?: number[], hard?: boolean}} options
  */
-export function good_touch_elim(state, playerIndex, suitIndex, rank, options = {}) {
+export function good_touch_elim(state, playerIndex, identity, options = {}) {
 	const new_elims = [];
 
 	for (const card of state.hands[playerIndex]) {
@@ -135,7 +133,7 @@ export function good_touch_elim(state, playerIndex, suitIndex, rank, options = {
 		if ((card.clued || card.chop_moved || card.finessed) && (options.hard || card.inferred.length > 1)) {
 			const pre_inferences = card.inferred.length;
 
-			card.subtract('inferred', [{suitIndex, rank}]);
+			card.subtract('inferred', [identity]);
 
 			if (card.inferred.length === 0) {
 				card.reset = true;
@@ -181,7 +179,7 @@ export function update_hypo_stacks(state) {
 				const hand = state.hands[playerIndex];
 
 				for (const card of hand) {
-					if (!(card.clued || card.finessed || card.chop_moved) || good_touch_elim.some(e => e.matches(card.suitIndex, card.rank))) {
+					if (!(card.clued || card.finessed || card.chop_moved) || good_touch_elim.some(e => e.matches(card))) {
 						continue;
 					}
 
@@ -206,8 +204,7 @@ export function update_hypo_stacks(state) {
 
 					const fake_wcs = state.waiting_connections.filter(wc => {
 						const { fake, focused_card, inference } = wc;
-						return focused_card.order === card.order &&
-							(fake || !focused_card.matches(inference.suitIndex, inference.rank));
+						return focused_card.order === card.order && (fake || !focused_card.matches(inference));
 					});
 
 					// Ignore all waiting connections that will be proven wrong

@@ -72,14 +72,13 @@ export function find_bad_touch(state, cards, focusedCardOrder = -1) {
 			continue;
 		}
 
-		const { suitIndex, rank } = card;
 		// Card has already been played or can never be played
 		// Or someone else has the card finessed, clued or chop moved already
-		if (isTrash(state, state.ourPlayerIndex, suitIndex, rank, card.order)) {
+		if (isTrash(state, state.ourPlayerIndex, card, card.order)) {
 			bad_touch = true;
 		}
 		// Cluing both copies of a card (will return both as bad touch)
-		else if (cards.some(c => c.matches(suitIndex, rank) && c.order !== card.order)) {
+		else if (cards.some(c => c.duplicateOf(card))) {
 			bad_touch = true;
 		}
 		else {
@@ -87,7 +86,7 @@ export function find_bad_touch(state, cards, focusedCardOrder = -1) {
 			const our_hand = state.hands[state.ourPlayerIndex];
 
 			for (const card of our_hand) {
-				if (card.inferred.length <= 2 && card.inferred.some(c => c.matches(suitIndex, rank))) {
+				if (card.inferred.length <= 2 && card.inferred.some(c => c.matches(card))) {
 					bad_touch = true;
 					break;
 				}
@@ -150,12 +149,14 @@ export function minimum_clue_value(state) {
  */
 export function looksPlayable(state, rank, giver, target, focused_card) {
 	return state.hypo_stacks[giver].some((stack, suitIndex) => {
-		const playable_identity = stack + 1 === rank;
-		const other_visibles = baseCount(state, suitIndex, rank) +
-			visibleFind(state, target, suitIndex, rank).filter(c => c.order !== focused_card.order).length;
-		const matching_inference = focused_card.inferred.some(inf => inf.suitIndex === suitIndex && inf.rank === rank);
+		const identity = { suitIndex, rank };
 
-		return playable_identity && other_visibles < cardCount(state.suits[suitIndex], rank) && matching_inference;
+		const playable_identity = stack + 1 === rank;
+		const other_visibles = baseCount(state, identity) +
+			visibleFind(state, target, identity).filter(c => c.order !== focused_card.order).length;
+		const matching_inference = focused_card.inferred.some(inf => inf.matches(identity));
+
+		return playable_identity && other_visibles < cardCount(state.suits, identity) && matching_inference;
 	});
 }
 
@@ -175,7 +176,7 @@ export function valuable_tempo_clue(state, clue, playables, focused_card) {
 		return { tempo: false, valuable: false };
 	}
 
-	const prompt = state.hands[target].find_prompt(focused_card.suitIndex, focused_card.rank, state.suits);
+	const prompt = state.hands[target].find_prompt(focused_card, state.suits);
 
 	// No prompt exists for this card (i.e. it is a hard burn)
 	if (prompt === undefined) {

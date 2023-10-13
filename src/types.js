@@ -48,6 +48,7 @@
  * @property {BaseClue} clue
  * @property {boolean}  [mistake]
  * @property {boolean}  [ignoreStall]
+ * @property {boolean}	[lock]
  * 
  * @typedef CardAction
  * @property {number} order

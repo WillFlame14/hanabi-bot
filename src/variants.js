@@ -3,6 +3,7 @@ import { CLUE } from './constants.js';
 
 /**
  * @typedef {import('./types.js').Clue} Clue
+ * @typedef {import('./types.js').BasicCard} BasicCard
  * 
  * @typedef Variant
  * @property {number} id
@@ -136,12 +137,12 @@ export function isCluable(suits, clue) {
 }
 
 /**
- * Returns the total number of cards in a suit for a particular rank.
- * @param {string} suit
- * @param {number} rank
+ * Returns the total number of cards for an identity.
+ * @param {string[]} suits
+ * @param {BasicCard} identity
  */
-export function cardCount(suit, rank) {
-	if (suit === 'Black') {
+export function cardCount(suits, { suitIndex, rank }) {
+	if (suits[suitIndex] === 'Black') {
 		return 1;
 	}
 

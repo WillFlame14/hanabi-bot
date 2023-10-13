@@ -58,11 +58,12 @@ function check_ocm(state, action) {
  */
 export function interpret_play(state, action) {
 	const { playerIndex, order, suitIndex, rank } = action;
+	const identity = { suitIndex, rank };
 
 	// Now that we know about this card, rewind from when the card was drawn
 	if (playerIndex === state.ourPlayerIndex) {
 		const card = state.hands[playerIndex].findOrder(order);
-		if ((card.inferred.length !== 1 || !card.inferred[0].matches(suitIndex, rank)) && !card.rewinded) {
+		if ((card.inferred.length !== 1 || !card.inferred[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
 			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
 				return;
@@ -78,7 +79,7 @@ export function interpret_play(state, action) {
 
 	// Apply good touch principle on remaining possibilities
 	for (let i = 0; i < state.numPlayers; i++) {
-		recursive_elim(state, i, suitIndex, rank);
+		recursive_elim(state, i, identity);
 	}
 
 	// Resolve any links after playing

@@ -42,7 +42,7 @@ export function take_action(state) {
 		}
 
 		// If there isn't a matching playable card in our hand, we should discard it to sarcastic for someone else
-		if (!playable_cards.some(c => c.matches(id.suitIndex, id.rank, { infer: true }) && c.order !== card.order)) {
+		if (!playable_cards.some(c => c.matches(id, { infer: true }) && c.order !== card.order)) {
 			discards.push(card);
 		}
 	}
@@ -103,9 +103,8 @@ export function take_action(state) {
 					const new_chop_value = new_chop ? cardValue(state, new_chop) : Hand.isLoaded(state, playerIndex) ? 0 : 4;
 
 					const ocm_value = old_chop_value - new_chop_value;
-					const { suitIndex, rank, order } = old_chop;
 
-					if (!isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) && ocm_value > best_ocm_value) {
+					if (!isTrash(state, state.ourPlayerIndex, old_chop, old_chop.order) && ocm_value > best_ocm_value) {
 						best_ocm_index = i;
 						best_ocm_value = ocm_value;
 					}
@@ -182,11 +181,11 @@ export function take_action(state) {
 
 	// Sarcastic discard to someone else
 	if (state.level >= LEVEL.SARCASTIC && discards.length > 0) {
-		const { suitIndex, rank } = discards[0].identity({ infer: true });
-		const duplicates = visibleFind(state, state.ourPlayerIndex, suitIndex, rank, { ignore: [state.ourPlayerIndex] }).filter(c => c.clued);
+		const identity = discards[0].identity({ infer: true });
+		const duplicates = visibleFind(state, state.ourPlayerIndex, identity, { ignore: [state.ourPlayerIndex] }).filter(c => c.clued);
 
 		// If playing reveals duplicates are trash, playing is better for tempo in endgame
-		if (inEndgame(state) && duplicates.every(c => c.inferred.length === 0 || (c.inferred.length === 1 && c.inferred[0].matches(suitIndex, rank)))) {
+		if (inEndgame(state) && duplicates.every(c => c.inferred.length === 0 || (c.inferred.length === 1 && c.inferred[0].matches(identity)))) {
 			return { tableID, type: ACTION.PLAY, target: discards[0].order };
 		}
 

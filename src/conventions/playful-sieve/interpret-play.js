@@ -47,7 +47,7 @@ export function unlock_promise(state, action, unlocked_player, locked_player) {
 	const locked_hand = state.hands[locked_player];
 
 	// Known connecting card
-	const match = locked_hand.find(card => card.matches(suitIndex, rank + 1, { infer: true, symmetric: true }));
+	const match = locked_hand.find(card => card.matches({ suitIndex, rank: rank + 1 }, { infer: true, symmetric: true }));
 	if (match) {
 		return match;
 	}
@@ -81,6 +81,7 @@ export function unlock_promise(state, action, unlocked_player, locked_player) {
  */
 export function interpret_play(state, action) {
 	const { playerIndex, order, suitIndex, rank } = action;
+	const identity = { suitIndex, rank };
 
 	const hand = state.hands[playerIndex];
 	const other = (playerIndex + 1) % state.numPlayers;
@@ -89,7 +90,7 @@ export function interpret_play(state, action) {
 	// Now that we know about this card, rewind from when the card was drawn
 	if (playerIndex === state.ourPlayerIndex) {
 		const card = hand.findOrder(order);
-		if ((card.inferred.length !== 1 || !card.inferred[0].matches(suitIndex, rank)) && !card.rewinded) {
+		if ((card.inferred.length !== 1 || !card.inferred[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
 			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
 				return;
@@ -100,8 +101,8 @@ export function interpret_play(state, action) {
 	const card = state.hands[playerIndex].findOrder(order);
 
 	const known_connecting = card.inferred.every(inf => other_hand.some(c =>
-		c.inferred.every(i => playableAway(state, i.suitIndex, i.rank) === 0 ||
-			(i.suitIndex === inf.suitIndex && playableAway(state, i.suitIndex, i.rank) === 1))
+		c.inferred.every(i => playableAway(state, i) === 0 ||
+			(i.suitIndex === inf.suitIndex && playableAway(state, i) === 1))
 	));
 
 	// No safe action, chop is playable
@@ -121,16 +122,17 @@ export function interpret_play(state, action) {
 			const slot = other_hand.findIndex(c => c.order === unlocked.order) + 1;
 
 			// Unlocked player might have another card connecting to this
-			if (hand.some(card => card.clued && card.inferred.some(c => c.matches(suitIndex, rank + 1)))) {
+			if (hand.some(card => card.clued && card.inferred.some(c => c.matches(connecting))) &&
+				other_hand.some(card => card.inferred.some(c => c.suitIndex === suitIndex && c.rank > rank + 1))) {
 				logger.info(`unlocked player may have connecting ${logCard(connecting)}, not unlocking yet`);
 			}
 			else {
-				if (!unlocked.inferred.some(c => c.matches(suitIndex, rank + 1))) {
+				if (!unlocked.inferred.some(c => c.matches(connecting))) {
 					logger.warn('no inferred connecting card!');
 
-					if (unlocked.possible.some(c => c.matches(suitIndex, rank + 1))) {
+					if (unlocked.possible.some(c => c.matches(connecting))) {
 						logger.info(`overwriting slot ${slot} as ${logCard(connecting)} from possiilities`);
-						unlocked.inferred = [new Card(suitIndex, rank + 1)];
+						unlocked.assign('inferred', [connecting]);
 					}
 					else {
 						logger.warn('ignoring unlock promise');
@@ -151,7 +153,7 @@ export function interpret_play(state, action) {
 
 	// Apply good touch principle on remaining possibilities
 	for (let i = 0; i < state.numPlayers; i++) {
-		recursive_elim(state, i, suitIndex, rank);
+		recursive_elim(state, i, identity);
 	}
 
 	// Resolve any links after playing

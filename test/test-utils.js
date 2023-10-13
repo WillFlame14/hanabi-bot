@@ -61,18 +61,19 @@ function init_state(state, options) {
 
 	// Initialize discard stacks
 	for (const short of options.discarded ?? []) {
-		const { suitIndex, rank } = expandShortCard(short);
+		const identity = expandShortCard(short);
+		const { suitIndex, rank } = identity;
 
 		state.discard_stacks[suitIndex][rank - 1]++;
 
 		// Card is now definitely known to everyone - eliminate
 		for (let i = 0; i < state.numPlayers; i++) {
-			Basics.card_elim(state, i, suitIndex, rank);
+			Basics.card_elim(state, i, identity);
 			Basics.refresh_links(state, i);
 		}
 
 		// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
-		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits[suitIndex], rank) && state.max_ranks[suitIndex] > rank - 1) {
+		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, identity) && state.max_ranks[suitIndex] > rank - 1) {
 			state.max_ranks[suitIndex] = rank - 1;
 		}
 	}
@@ -244,7 +245,7 @@ export function parseAction(state, rawAction) {
 			const { suitIndex, rank } = expandShortCard(parts[2]);
 
 			if (playerIndex !== state.ourPlayerIndex) {
-				const matching = state.hands[playerIndex].filter(c => c.matches(suitIndex, rank));
+				const matching = state.hands[playerIndex].filter(c => c.matches({ suitIndex, rank }));
 
 				if (matching.length === 0) {
 					throw new Error(`Unable to find card ${parts[2]} to play in ${playerName}'s hand.`);
@@ -264,7 +265,7 @@ export function parseAction(state, rawAction) {
 					const slot = parseSlots(state, parts, 4, true, '(ambiguous identity)')[0];
 					const card = state.hands[playerIndex][slot - 1];
 
-					if (!card.matches(suitIndex, rank)) {
+					if (!card.matches({ suitIndex, rank })) {
 						throw new Error(`Identity ${parts[2]} is not in slot ${slot}, test written incorrectly?`);
 					}
 					return { type: 'play', playerIndex, suitIndex, rank, order: card.order };
@@ -282,7 +283,7 @@ export function parseAction(state, rawAction) {
 		case 'bombs': {
 			const { suitIndex, rank } = expandShortCard(parts[2]);
 			if (playerIndex !== state.ourPlayerIndex) {
-				const order = state.hands[playerIndex].find(c => c.matches(suitIndex, rank))?.order;
+				const order = state.hands[playerIndex].find(c => c.matches({ suitIndex, rank }))?.order;
 
 				if (order === undefined) {
 					throw new Error(`Unable to find card ${parts[2]} to play in ${playerName}'s hand.`);

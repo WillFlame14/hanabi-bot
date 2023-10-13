@@ -38,20 +38,22 @@ function find_colour_focus(state, suitIndex, action) {
 	let finesses = 0;
 
 	while (next_rank < state.max_ranks[suitIndex]) {
+		const identity = { suitIndex, rank: next_rank };
+
 		// Note that a colour clue always looks direct
 		const ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
 		const looksDirect = focused_card.identity({ symmetric: true }) === undefined;
-		const connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
+		const connecting = find_connecting(hypo_state, giver, target, identity, looksDirect, ignoreOrders);
 		if (connecting.length === 0) {
 			break;
 		}
 
 		const { type, card } = connecting.at(-1);
 
-		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_rank))) {
+		if (type === 'known' && card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(identity))) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
 			// e.g. If 2 reds are clued with only r5 remaining, the focus should not connect to the other card as r6
-			logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_rank})}`);
+			logger.warn(`blocked connection - focused card could be ${logCard(identity)}`);
 			break;
 		}
 		else if (type === 'finesse') {
@@ -71,7 +73,7 @@ function find_colour_focus(state, suitIndex, action) {
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
 
-	logger.info('found connections:', logConnections(connections, {suitIndex, rank: next_rank}));
+	logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
 
 	// Our card could be the final rank that we can't find
 	focus_possible.push({ suitIndex, rank: next_rank, save: false, connections });
@@ -102,7 +104,7 @@ function find_colour_focus(state, suitIndex, action) {
 			}
 
 			// Check if card is critical
-			if (isCritical(state, suitIndex, rank)) {
+			if (isCritical(state, { suitIndex, rank })) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 			}
 		}
@@ -127,8 +129,10 @@ function find_rank_focus(state, rank, action) {
 	// Save clue on chop
 	if (chop) {
 		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+			const identity = { suitIndex, rank };
+
 			// Don't need to consider save on playable cards
-			if (playableAway(state, suitIndex, rank) === 0) {
+			if (playableAway(state, identity) === 0) {
 				continue;
 			}
 
@@ -139,10 +143,10 @@ function find_rank_focus(state, rank, action) {
 
 			// Looks like a 2 save on any 2 not known to target
 			const find_opts = { infer: [target, giver, state.ourPlayerIndex], symmetric: [target, giver] };
-			const save2 = rank === 2 && visibleFind(state, target, suitIndex, 2, find_opts).filter(c => c.order !== focused_card.order).length === 0;
+			const save2 = rank === 2 && visibleFind(state, target, identity, find_opts).filter(c => c.order !== focused_card.order).length === 0;
 
 			// Critical save or 2 save
-			if (isCritical(state, suitIndex, rank) || save2) {
+			if (isCritical(state, identity) || save2) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				looksSave = true;
 			}
@@ -151,7 +155,7 @@ function find_rank_focus(state, rank, action) {
 	// Play clue
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 		// Critical cards on chop can never be given a play clue
-		if (chop && isCritical(state, suitIndex, rank)) {
+		if (chop && isCritical(state, { suitIndex, rank })) {
 			continue;
 		}
 
@@ -172,12 +176,12 @@ function find_rank_focus(state, rank, action) {
 
 			let ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
 			let looksDirect = focused_card.identity({ symmetric: true }) === undefined && (looksSave || looksPlayable(state, rank, giver, target, focused_card));
-			let connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
+			let connecting = find_connecting(hypo_state, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
 
 			while (connecting.length !== 0) {
 				const { type, card } = connecting.at(-1);
 
-				if (card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches(suitIndex, next_rank))) {
+				if (card.newly_clued && card.possible.length > 1 && focused_card.inferred.some(c => c.matches({ suitIndex, rank: next_rank }))) {
 					// Trying to use a newly known/playable connecting card, but the focused card could be that
 					// e.g. If two 4s are clued (all other 4s visible), the other 4 should not connect and render this card with only one inference
 					logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_rank})}`);
@@ -185,7 +189,7 @@ function find_rank_focus(state, rank, action) {
 				}
 
 				// Saving 2s or criticals will never cause a prompt or finesse.
-				if ((type === 'prompt' || type === 'finesse') && (rank === 2 || isCritical(state, suitIndex, rank))) {
+				if ((type === 'prompt' || type === 'finesse') && (rank === 2 || isCritical(state, { suitIndex, rank }))) {
 					break;
 				}
 
@@ -217,10 +221,10 @@ function find_rank_focus(state, rank, action) {
 				}
 
 				ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-				connecting = find_connecting(hypo_state, giver, target, suitIndex, next_rank, looksDirect, ignoreOrders);
+				connecting = find_connecting(hypo_state, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
 			}
 
-			logger.info('found connections:', logConnections(connections, {suitIndex, rank: next_rank}));
+			logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
 
 			// Connected cards can stack up to this rank
 			if (rank === next_rank) {

@@ -4,6 +4,7 @@ import * as HandUtils from './hand-utils.js';
 
 /**
  * @typedef {import('../types.js').BaseClue} BaseClue
+ * @typedef {import('../types.js').BasicCard} BasicCard
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').MatchOptions} MatchOptions
  */
@@ -60,13 +61,12 @@ export class Hand extends Array {
 	}
 
 	/**
-	 * Returns an array of cards matching the provided suitIndex and rank.
-	 * @param {number} suitIndex
-	 * @param {number} rank
+	 * Returns an array of cards matching the provided identity.
+	 * @param {BasicCard} identity
 	 * @param {MatchOptions} options
 	 */
-	findCards(suitIndex, rank, options = {}) {
-		return Array.from(this.filter(c => c.matches(suitIndex, rank, options)));
+	findCards(identity, options = {}) {
+		return Array.from(this.filter(c => c.matches(identity, options)));
 	}
 
 	/**

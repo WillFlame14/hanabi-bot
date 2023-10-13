@@ -3,8 +3,8 @@ import { logCard } from '../tools/log.js';
 /**
  * @typedef {{symmetric?: boolean, infer?: boolean}} MatchOptions
  * @typedef {import('../types.js').BaseClue} BaseClue
- * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').BasicCard} BasicCard
+ * @typedef {import('../types.js').Clue} Clue
  */
 
 /**
@@ -39,11 +39,9 @@ export class Card {
 	rewinded = false;								// Whether the card has ever been rewinded
 
 	/**
-	 * @param {number} suitIndex
-	 * @param {number} rank
-	 * @param {Partial<Card>} additions
+	 * @param {BasicCard & Partial<Card>} identity
 	 */
-	constructor(suitIndex, rank, additions = {}) {
+	constructor({ suitIndex, rank , ...additions }) {
 		this.suitIndex = suitIndex;
 		this.rank = rank;
 
@@ -54,26 +52,16 @@ export class Card {
 	 * Creates a deep copy of the card.
 	 */
 	clone() {
-		const new_card = new Card(this.suitIndex, this.rank, this);
+		const new_card = new Card(this);
 
-		for (const field of ['possible', 'inferred']) {
-			new_card[field] = [];
-			for (const card of this[field]) {
-				new_card[field].push(new Card(card.suitIndex, card.rank));
-			}
-		}
-
-		for (const field of ['clues', 'reasoning', 'reasoning_turn']) {
-			new_card[field] = [];
-			for (const obj of this[field]) {
-				new_card[field].push(JSON.parse(JSON.stringify(obj)));
-			}
+		for (const field of ['possible', 'inferred', 'clues', 'reasoning', 'reasoning_turn']) {
+			new_card[field] = this[field].slice();
 		}
 		return new_card;
 	}
 
 	raw() {
-		return { suitIndex: this.suitIndex, rank: this.rank };
+		return Object.freeze({ suitIndex: this.suitIndex, rank: this.rank });
 	}
 
 	/**
@@ -98,12 +86,11 @@ export class Card {
 	}
 
 	/**
-	 * Checks if the card matches the provided suitIndex and rank.
-	 * @param {number} suitIndex
-	 * @param {number} rank
+	 * Checks if the card matches the provided identity.
+	 * @param {BasicCard} identity
 	 * @param {MatchOptions} options
 	 */
-	matches(suitIndex, rank, options = {}) {
+	matches({ suitIndex, rank }, options = {}) {
 		const id = this.identity(options);
 
 		if (id === undefined) {
@@ -114,42 +101,60 @@ export class Card {
 	}
 
 	/**
+	 * Returns whether the card is a duplicate of the provided card (same suitIndex and rank, different order).
+	 * @param {Card} card
+	 * @param {MatchOptions} options
+	 */
+	duplicateOf(card, options = {}) {
+		return this.matches(card, options) && this.order !== card.order;
+	}
+
+	/**
 	 * Returns whether one of the card's inferences matches its actual suitIndex and rank.
 	 * Returns true if the card has only 1 possibility or the card is unknown (i.e. in our hand). 
 	 */
 	matches_inferences() {
-		return this.identity() === undefined || this.possible.length === 1 || this.inferred.some(c => c.matches(this.suitIndex, this.rank));
+		return this.identity() === undefined || this.possible.length === 1 || this.inferred.some(c => c.matches(this));
 	}
 
 	/**
-	 * Sets the inferences/possibilities to the intersection of the existing field and the provided array of cards.
+	 * Sets the inferences/possibilities to the intersection of the existing field and the provided array of identities.
 	 * @param {'possible' | 'inferred'} type
-	 * @param {BasicCard[]} cards
+	 * @param {BasicCard[]} identities
 	 */
-	intersect(type, cards) {
-		this[type] = this[type].filter(c1 => cards.some(c2 => c1.matches(c2.suitIndex, c2.rank)));
+	intersect(type, identities) {
+		this[type] = this[type].filter(c1 => identities.some(c2 => c1.matches(c2)));
 	}
 
 	/**
-	 * Sets the inferences/possibilities to the difference of the existing field and the provided array of cards.
+	 * Sets the inferences/possibilities to the difference of the existing field and the provided array of identities.
 	 * @param {'possible' | 'inferred'} type
-	 * @param {BasicCard[]} cards
+	 * @param {BasicCard[]} identities
 	 */
-	subtract(type, cards) {
-		this[type] = this[type].filter(c1 => !cards.some(c2 => c1.matches(c2.suitIndex, c2.rank)));
+	subtract(type, identities) {
+		this[type] = this[type].filter(c1 => !identities.some(c2 => c1.matches(c2)));
 	}
 
 	/**
-	 * Sets the inferences/possibilities to the union of the existing field and the provided array of cards.
+	 * Sets the inferences/possibilities to the union of the existing field and the provided array of identities.
 	 * @param {'possible' | 'inferred'} type
-	 * @param {BasicCard[]} cards
+	 * @param {BasicCard[]} identities
 	 */
-	union(type, cards) {
-		for (const { suitIndex, rank } of cards) {
-			if (!this[type].some(c => c.matches(suitIndex, rank))) {
-				this[type].push(new Card(suitIndex, rank));
+	union(type, identities) {
+		for (const card of identities) {
+			if (!this[type].some(c => c.matches(card))) {
+				this[type].push(Object.freeze(new Card({ suitIndex: card.suitIndex, rank: card.rank })));
 			}
 		}
+	}
+
+	/**
+	 * Sets the inferences/possibilities to the provided array of identities.
+	 * @param {'possible' | 'inferred'} type
+	 * @param {BasicCard[]} identities
+	 */
+	assign(type, identities) {
+		this[type] = identities.map(({ suitIndex, rank }) => Object.freeze(new Card({ suitIndex, rank })));
 	}
 
 	/**

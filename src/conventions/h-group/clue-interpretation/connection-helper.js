@@ -88,7 +88,7 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 	const non_self_connections = [];
 
 	for (const card of focused_card.inferred) {
-		if (isBasicTrash(state, card.suitIndex, card.rank)) {
+		if (isBasicTrash(state, card)) {
 			continue;
 		}
 
@@ -98,7 +98,7 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 			looksSave);																		// Looks like a save
 
 		logger.collect();
-		const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect, target, selfRanks);
+		const { feasible, connections } = find_own_finesses(state, giver, target, card, looksDirect, target, selfRanks);
 		logger.flush(false);
 
 		if (feasible) {
@@ -149,7 +149,6 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
  * @param {{symmetric?: boolean, target?: number, fake?: boolean}} [options] 	If this is a symmetric connection, this indicates the only player we should write notes on.
  */
 export function assign_connections(state, connections, options = {}) {
-	// let next_rank = state.play_stacks[suitIndex] + 1;
 	const hypo_stacks = Utils.objClone(state.hypo_stacks);
 
 	for (const connection of connections) {
@@ -166,7 +165,7 @@ export function assign_connections(state, connections, options = {}) {
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		if (!card.superposition) {
-			card.old_inferred = Utils.objClone(card.inferred);
+			card.old_inferred = card.inferred.slice();
 		}
 
 		if (type === 'finesse') {
@@ -197,7 +196,7 @@ export function assign_connections(state, connections, options = {}) {
 			}
 			else {
 				if (!(type === 'playable' && !known)) {
-					card.inferred = identities.map(i => new Card(i.suitIndex, i.rank));
+					card.assign('inferred', identities);
 				}
 				card.superposition = true;
 			}

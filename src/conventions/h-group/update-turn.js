@@ -101,7 +101,7 @@ export function update_turn(state, action) {
 					}
 
 					const identities = wc.connections.find((conn, index) => index >= conn_index && conn.card.order === old_card.order)?.identities;
-					const unplayable = identities && identities.some(i => playableAway(state, i.suitIndex, i.rank) > 0);
+					const unplayable = identities && identities.some(i => playableAway(state, i) > 0);
 
 					if (unplayable) {
 						logger.warn(identities.map(i => logCard(i)), 'not all possibilities playable');
@@ -146,7 +146,7 @@ export function update_turn(state, action) {
 			else {
 				// The card was played (and matches expectation)
 				if (state.last_actions[reacting].type === 'play' &&
-					identities.some(identity => state.last_actions[reacting].card.matches(identity.suitIndex, identity.rank))
+					identities.some(identity => state.last_actions[reacting].card.matches(identity))
 				) {
 					logger.info(`waiting card ${identities.length === 1 ? logCard(identities[0]) : '(unknown)'} played`);
 
@@ -176,7 +176,7 @@ export function update_turn(state, action) {
 					}
 				}
 				// The card was discarded and its copy is not visible
-				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.ourPlayerIndex, old_card.suitIndex, old_card.rank).length === 0) {
+				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.ourPlayerIndex, old_card).length === 0) {
 					logger.info(`waiting card ${logCard(old_card)} discarded?? removing finesse`);
 					remove_finesse(state, i);
 
@@ -192,10 +192,8 @@ export function update_turn(state, action) {
 				continue;
 			}
 
-			const { suitIndex, rank, card: giver_card } = last_action;
-
 			// The giver's card must have been known before the finesse was given
-			if (old_card.matches(suitIndex, rank, { infer: true }) && card.finessed && giver_card.reasoning[0] < action_index) {
+			if (old_card.matches(last_action, { infer: true }) && card.finessed && last_action.card.reasoning[0] < action_index) {
 				logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`);
 				// Advance connection
 				state.waiting_connections[i].conn_index = conn_index + 1;

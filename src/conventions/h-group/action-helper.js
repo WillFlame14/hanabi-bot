@@ -100,7 +100,7 @@ export function determine_playable_card(state, playable_cards) {
 		}
 
 		// Blind playing unknown chop moved cards should be a last resort with < 2 strikes
-		if (card.chop_moved && !card.clued && card.possible.some(p => playableAway(state, p.suitIndex, p.rank) !== 0)) {
+		if (card.chop_moved && !card.clued && card.possible.some(p => playableAway(state, p) !== 0)) {
 			if (state.strikes !== 2) {
 				priorities[5].push(card);
 			}
@@ -116,7 +116,7 @@ export function determine_playable_card(state, playable_cards) {
 			// Start at next player so that connecting in our hand has lowest priority
 			for (let i = 1; i < state.numPlayers + 1; i++) {
 				const target = (state.ourPlayerIndex + i) % state.numPlayers;
-				if (state.hands[target].findCards(suitIndex, rank + 1).length > 0) {
+				if (state.hands[target].findCards({ suitIndex, rank: rank + 1 }).length > 0) {
 					connected = true;
 
 					// Connecting in own hand, demote priority to 2

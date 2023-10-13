@@ -8,33 +8,32 @@ import { logCard } from '../../tools/log.js';
 /**
  * @typedef {import('../h-group.js').default} State
  * @typedef {import('../h-hand.js').HGroup_Hand} Hand
+ * @typedef {import('../../types.js').BasicCard} BasicCard
  */
 
 /**
  * Returns the cards in hand that could be targets for a sarcastic discard.
  * @param {Hand} hand
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-function find_sarcastic(hand, suitIndex, rank) {
+function find_sarcastic(hand, identity) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
-	const known_sarcastic = hand.findCards(suitIndex, rank, { symmetric: true, infer: true });
+	const known_sarcastic = hand.findCards(identity, { symmetric: true, infer: true });
 	if (known_sarcastic.length > 0) {
 		return known_sarcastic;
 	}
 	// Otherwise, find all cards that could match that identity
 	return Array.from(hand.filter(c =>
-		c.clued && c.possible.some(p => p.matches(suitIndex, rank)) &&
-		!(c.inferred.length === 1 && c.inferred[0].rank < rank)));		// Do not sarcastic on connecting cards
+		c.clued && c.possible.some(p => p.matches(identity)) &&
+		!(c.inferred.length === 1 && c.inferred[0].rank < identity.rank)));		// Do not sarcastic on connecting cards
 }
 
 /**
  * Reverts the hypo stacks of the given suitIndex to the given rank - 1, if it was originally above that.
  * @param {State} state
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-function undo_hypo_stacks(state, suitIndex, rank) {
+function undo_hypo_stacks(state, { suitIndex, rank }) {
 	logger.info(`discarded useful card ${logCard({suitIndex, rank})}, setting hypo stack to ${rank - 1}`);
 	for (const hypo_stacks of state.hypo_stacks) {
 		if (hypo_stacks[suitIndex] >= rank) {
@@ -47,24 +46,22 @@ function undo_hypo_stacks(state, suitIndex, rank) {
  * Adds the sarcastic discard inference to the given set of sarcastic cards.
  * @param {State} state
  * @param {Card[]} sarcastic
- * @param {number} playerIndex
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank) {
+function apply_unknown_sarcastic(state, sarcastic, identity) {
 	// Need to add the inference back if it was previously eliminated due to good touch
 	for (const s of sarcastic) {
-		s.union('inferred', [new Card(suitIndex, rank)]);
+		s.union('inferred', [identity]);
 	}
 
 	/** @param {Card} card */
 	const playable = (card) => {
-		return card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0);
+		return card.inferred.every(c => playableAway(state, c) === 0);
 	};
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
 	if (sarcastic.length === 0 || sarcastic.some(s => !playable(s))) {
-		undo_hypo_stacks(state, suitIndex, rank);
+		undo_hypo_stacks(state, identity);
 	}
 }
 
@@ -75,7 +72,8 @@ function apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank)
  * @param {Card} card
  */
 export function interpret_discard(state, action, card) {
-	const { order, playerIndex, rank, suitIndex, failed } = action;
+	const { order, playerIndex, suitIndex, rank,  failed } = action;
+	const identity = { suitIndex, rank };
 
 	Basics.onDiscard(state, action);
 
@@ -110,7 +108,7 @@ export function interpret_discard(state, action, card) {
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.ourPlayerIndex, card.suitIndex, card.rank, card.order)))) {
+	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.ourPlayerIndex, card, card.order)))) {
 		logger.info('all inferences', card.inferred.map(c => logCard(c)));
 
 		const action_index = card.drawn_index;
@@ -123,16 +121,16 @@ export function interpret_discard(state, action, card) {
 	// Discarding with a finesse will trigger the waiting connection to resolve.
 	if (card.clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
 		logger.warn('discarded useful card!');
-		const duplicates = visibleFind(state, playerIndex, suitIndex, rank);
+		const duplicates = visibleFind(state, playerIndex, identity);
 
 		// Card was bombed
 		if (failed) {
-			undo_hypo_stacks(state, suitIndex, rank);
+			undo_hypo_stacks(state, identity);
 		}
 		else {
 			// Unknown sarcastic discard to us
 			if (duplicates.length === 0) {
-				const sarcastic = find_sarcastic(state.hands[state.ourPlayerIndex], suitIndex, rank);
+				const sarcastic = find_sarcastic(state.hands[state.ourPlayerIndex], identity);
 
 				if (sarcastic.length === 1) {
 					const action_index = sarcastic[0].drawn_index;
@@ -144,23 +142,23 @@ export function interpret_discard(state, action, card) {
 					}
 				}
 				else {
-					apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);
+					apply_unknown_sarcastic(state, sarcastic, identity);
 				}
 			}
 			// Sarcastic discard to other (or known sarcastic discard to us)
 			else {
 				for (let i = 0; i < state.numPlayers; i++) {
 					const receiver = (state.ourPlayerIndex + i) % state.numPlayers;
-					const sarcastic = find_sarcastic(state.hands[receiver], suitIndex, rank);
+					const sarcastic = find_sarcastic(state.hands[receiver], identity);
 
-					if (sarcastic.some(c => c.matches(suitIndex, rank, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
+					if (sarcastic.some(c => c.matches(identity, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
 						// The matching card must be the only possible option in the hand to be known sarcastic
 						if (sarcastic.length === 1) {
-							sarcastic[0].inferred = [new Card(suitIndex, rank)];
-							logger.info(`writing ${logCard({suitIndex, rank})} from sarcastic discard`);
+							sarcastic[0].assign('inferred', [identity]);
+							logger.info(`writing ${logCard(identity)} from sarcastic discard`);
 						}
 						else {
-							apply_unknown_sarcastic(state, sarcastic, playerIndex, suitIndex, rank);
+							apply_unknown_sarcastic(state, sarcastic, identity);
 							logger.info('unknown sarcastic');
 						}
 						return;

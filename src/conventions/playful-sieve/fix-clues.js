@@ -16,7 +16,7 @@ import { logCard, logClue } from '../../tools/log.js';
  */
 export function find_fix_clue(state) {
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
-	const fix_needed = Hand.find_playables(state, partner).filter(c => playableAway(state, c.suitIndex, c.rank) !== 0);
+	const fix_needed = Hand.find_playables(state, partner).filter(c => playableAway(state, c) !== 0);
 
 	if (fix_needed.length === 0) {
 		logger.info('no fix needed');

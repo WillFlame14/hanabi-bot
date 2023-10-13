@@ -1,5 +1,4 @@
 import { CLUE } from '../../constants.js';
-import { Card } from '../../basics/Card.js';
 import { Hand } from '../../basics/Hand.js';
 import { isTrash, refer_right } from '../../basics/hanabi-util.js';
 import { bad_touch_possibilities, update_hypo_stacks } from '../../basics/helper.js';
@@ -21,19 +20,18 @@ import { logCard } from '../../tools/log.js';
 /**
  * @param {State} state
  * @param {number} playerIndex
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-function infer_elim(state, playerIndex, suitIndex, rank) {
+function infer_elim(state, playerIndex, identity) {
 	// We just learned about the card
 	if (playerIndex === state.ourPlayerIndex) {
 		for (let i = 0; i < state.numPlayers; i++) {
-			Basics.card_elim(state, i, suitIndex, rank);
+			Basics.card_elim(state, i, identity);
 		}
 	}
 	// Everyone already knew about the card except the person who drew it
 	else {
-		Basics.card_elim(state, playerIndex, suitIndex, rank);
+		Basics.card_elim(state, playerIndex, identity);
 	}
 }
 
@@ -78,7 +76,7 @@ export function interpret_clue(state, action) {
 
 			if (had_inferences.includes(card.order) && card.inferred.length === 0) {
 				fix = true;
-				card.inferred = Utils.objClone(card.possible);
+				card.inferred = card.possible.slice();
 				card.subtract('inferred', bad_touch);
 				card.reset = true;
 				reduced_inferences.push(card);
@@ -87,7 +85,7 @@ export function interpret_clue(state, action) {
 
 		for (const card of reduced_inferences) {
 			if (card.inferred.length === 1) {
-				infer_elim(state, target, card.inferred[0].suitIndex, card.inferred[0].rank);
+				infer_elim(state, target, card.inferred[0].raw());
 			}
 		}
 		bad_touch = bad_touch_possibilities(state, giver, target, bad_touch);
@@ -104,12 +102,12 @@ export function interpret_clue(state, action) {
 
 		// Revoke finesse if newly clued after a possibly matching play
 		if (card.finessed && card.newly_clued && last_action.type === 'play') {
-			const { suitIndex, rank } = state.last_actions[giver].card;
+			const identity = state.last_actions[giver].card;
 
-			logger.warn('revoking finesse?', card.possible.map(p => logCard(p)), logCard({ suitIndex, rank }));
+			logger.warn('revoking finesse?', card.possible.map(p => logCard(p)), logCard(identity));
 
-			if (card.possible.some(c => c.matches(suitIndex, rank))) {
-				card.inferred = [new Card(suitIndex, rank)];
+			if (card.possible.some(c => c.matches(identity))) {
+				card.assign('inferred', [identity]);
 				card.finessed = false;
 			}
 		}
@@ -119,7 +117,7 @@ export function interpret_clue(state, action) {
 
 	const newly_touched = Utils.findIndices(hand, (card) => card.newly_clued);
 	const trash_push = hand.every(card => !list.includes(card.order) ||
-		(card.newly_clued && card.inferred.every(inf => isTrash(state, state.ourPlayerIndex, inf.suitIndex, inf.rank, card.order))));
+		(card.newly_clued && card.inferred.every(inf => isTrash(state, state.ourPlayerIndex, inf, card.order))));
 
 	if (trash_push) {
 		logger.highlight('cyan', 'trash push!');
@@ -205,20 +203,18 @@ export function interpret_clue(state, action) {
 						}
 					}
 					logger.highlight('yellow', 'lock!');
-					state.last_actions[giver].lock = true;
-					return;
+					action.lock = true;
 				}
-
-				hand[target_index].finessed = true;
-				hand[target_index].intersect('inferred', playable_possibilities);
-				logger.info(`ref play on ${state.playerNames[target]}'s slot ${target_index + 1}`);
-				return;
+				else {
+					hand[target_index].finessed = true;
+					hand[target_index].intersect('inferred', playable_possibilities);
+					logger.info(`ref play on ${state.playerNames[target]}'s slot ${target_index + 1}`);
+				}
 			}
 			else {
 				// Fill-in (anti-finesse)
 				logger.info('colour fill in, anti-finesse on slot 1', logCard(hand[0]));
 				hand[0].called_to_discard = true;
-				return;
 			}
 		}
 		// Referential discard (right)
@@ -227,8 +223,14 @@ export function interpret_clue(state, action) {
 				const referred = newly_touched.map(index => Math.max(0, Utils.nextIndex(hand, (card) => !card.clued, index)));
 				const target_index = referred.reduce((min, curr) => Math.min(min, curr));
 
-				hand[target_index].called_to_discard = true;
-				logger.info(`ref discard on ${state.playerNames[target]}'s slot ${target_index + 1}`);
+				if (hand[target_index].newly_clued) {
+					logger.highlight('yellow', 'lock!');
+					action.lock = true;
+				}
+				else {
+					hand[target_index].called_to_discard = true;
+					logger.info(`ref discard on ${state.playerNames[target]}'s slot ${target_index + 1}`);
+				}
 			}
 			else {
 				// Fill-in (anti-finesse)

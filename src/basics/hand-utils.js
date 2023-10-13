@@ -1,7 +1,7 @@
 import { isBasicTrash, isCritical, unknownIdentities, visibleFind } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
-import { logCard, logHand } from '../tools/log.js';
+import { logCard } from '../tools/log.js';
 
 /**
  * @typedef {import('./State.js').State} State
@@ -45,7 +45,7 @@ export function find_playables(state, playerIndex) {
 
 	for (const { cards, identities } of links) {
 		// We aren't sure about the identities of these cards - at least one is bad touched
-		if (cards.length > identities.reduce((sum, { suitIndex, rank }) => sum += unknownIdentities(state, playerIndex, suitIndex, rank), 0)) {
+		if (cards.length > identities.reduce((sum, identity) => sum += unknownIdentities(state, playerIndex, identity), 0)) {
 			cards.forEach(c => linked_orders.add(c.order));
 		}
 	}
@@ -94,12 +94,12 @@ export function find_playables(state, playerIndex) {
 export function find_known_trash(state, playerIndex, global_info = false) {
 	const trash = [];
 
-	/** @type {(suitIndex: number, rank: number, order: number) => boolean} */
-	const visible_elsewhere = (suitIndex, rank, order) => {
+	/** @type {(identity: BasicCard, order: number) => boolean} */
+	const visible_elsewhere = (identity, order) => {
 		const symmetric = global_info ? state.playerNames.map((_, i) => i) : [playerIndex];
 
-		const visible_other = visibleFind(state, playerIndex, suitIndex, rank, { ignore: [playerIndex], symmetric });
-		const visible_same = state.hands[playerIndex].findCards(suitIndex, rank, { infer: true, symmetric: true });
+		const visible_other = visibleFind(state, playerIndex, identity, { ignore: [playerIndex], symmetric });
+		const visible_same = state.hands[playerIndex].findCards(identity, { infer: true, symmetric: true });
 
 		// Visible in someone else's hand or visible in the same hand (but not part of a link)
 		return visible_other.some(c => (c.clued || c.finessed) && c.order !== order) ||
@@ -110,8 +110,8 @@ export function find_known_trash(state, playerIndex, global_info = false) {
 		const possibilities = (card.inferred.length === 0 || playerIndex !== state.ourPlayerIndex) ? card.possible : card.inferred;
 
 		// Every possibility is trash or known duplicated somewhere
-		if (possibilities.every(c => isBasicTrash(state, c.suitIndex, c.rank) || visible_elsewhere(c.suitIndex, c.rank, card.order))) {
-			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => logCard(c)).join()}, results ${possibilities.map(c => isBasicTrash(state, c.suitIndex, c.rank) + '|' + visible_elsewhere(c.suitIndex, c.rank, card.order)).join()}`);
+		if (possibilities.every(c => isBasicTrash(state, c) || visible_elsewhere(c, card.order))) {
+			logger.debug(`order ${card.order} is trash, possibilities ${possibilities.map(c => logCard(c)).join()}, results ${possibilities.map(c => isBasicTrash(state, c) + '|' + visible_elsewhere(c, card.order)).join()}`);
 			trash.push(card);
 		}
 	}
@@ -128,7 +128,7 @@ export function locked_discard(state, playerIndex) {
 	// If any card's crit% is 0
 	const crit_percents = Array.from(state.hands[playerIndex].map(card => {
 		const possibilities = card.inferred.length === 0 ? card.possible : card.inferred;
-		const percent = possibilities.filter(p => isCritical(state, p.suitIndex, p.rank)).length / possibilities.length;
+		const percent = possibilities.filter(p => isCritical(state, p)).length / possibilities.length;
 
 		return { card, percent };
 	})).sort((a, b) => a.percent - b.percent);

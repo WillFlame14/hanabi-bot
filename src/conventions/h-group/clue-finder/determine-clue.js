@@ -50,9 +50,9 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 		return !((!card.reset && card.matches_inferences()) || 											// Matches inferences
 			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||		// Didn't match inference even before clue
 			card.chop_moved ||																			// Chop moved (might have become trash)
-			(old_card.clued && isTrash(state, state.ourPlayerIndex, card.suitIndex, card.rank)) ||		// Previously-clued duplicate or recently became basic trash
+			(old_card.clued && isTrash(state, state.ourPlayerIndex, card)) ||		// Previously-clued duplicate or recently became basic trash
 			bad_touch_cards.some(c => c.order === card.order) ||										// Bad touched
-			card.possible.every(c => isTrash(hypo_state, target, c.suitIndex, c.rank, card.order)));	// Known trash
+			card.possible.every(c => isTrash(hypo_state, target, c, card.order)));	// Known trash
 	});
 
 	// Print out logs if the result is correct
@@ -67,7 +67,7 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 			reason = `card ${logCard(incorrect_card)} has inferences [${incorrect_card.inferred.map(c => logCard(c)).join(',')}], doesn't match`;
 		}
 		else {
-			const not_trash_possibility = incorrect_card.possible.find(c => !isTrash(hypo_state, target, c.suitIndex, c.rank, incorrect_card.order));
+			const not_trash_possibility = incorrect_card.possible.find(c => !isTrash(hypo_state, target, c, incorrect_card.order));
 			if (not_trash_possibility !== undefined) {
 				reason = `card ${logCard(incorrect_card)} has ${not_trash_possibility} possibility not trash`;
 			}

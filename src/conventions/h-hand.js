@@ -5,6 +5,7 @@ import { CLUE } from '../constants.js';
 /**
  * @typedef {import('../basics/Card.js').Card} Card
  * @typedef {import('./h-group.js').default} State
+ * @typedef {import('../types.js').BasicCard} BasicCard
  */
 
 export class HGroup_Hand extends Hand {
@@ -56,12 +57,13 @@ export class HGroup_Hand extends Hand {
 
 	/**
 	 * Finds a prompt in the hand for the given suitIndex and rank, or undefined if no card is a valid prompt.
-	 * @param {number} suitIndex
-	 * @param {number} rank
+	 * @param {BasicCard} identity
 	 * @param {string[]} suits 			All suits in the current game.
 	 * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
 	 */
-	find_prompt(suitIndex, rank, suits, ignoreOrders = []) {
+	find_prompt(identity, suits, ignoreOrders = []) {
+		const { suitIndex, rank } = identity;
+
 		return this.find(card => {
 			const { clued, newly_clued, order, inferred, possible, clues } = card;
 			// Ignore unclued, newly clued, and known cards (also intentionally ignored cards)
@@ -70,12 +72,12 @@ export class HGroup_Hand extends Hand {
 			}
 
 			// Ignore cards that don't match the inference
-			if (!possible.some(p => p.matches(suitIndex, rank))) {
+			if (!possible.some(p => p.matches(identity))) {
 				return false;
 			}
 
 			// Ignore cards that don't match and have information lock
-			if (inferred.length === 1 && !(inferred[0].suitIndex === suitIndex && inferred[0].rank === rank)) {
+			if (inferred.length === 1 && !(inferred[0].matches(identity))) {
 				return false;
 			}
 

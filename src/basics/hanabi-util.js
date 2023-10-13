@@ -17,11 +17,10 @@ import { cardCount, cardTouched, isCluable } from '../variants.js';
  * Returns an array of cards in everyone's hands that match the given suitIndex and rank.
  * @param {State} state
  * @param {number} inferringPlayerIndex     The inferring player (i.e. can only infer on their own cards).
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  * @param {FindOptions} options
  */
-export function visibleFind(state, inferringPlayerIndex, suitIndex, rank, options = {}) {
+export function visibleFind(state, inferringPlayerIndex, identity, options = {}) {
 	/** @type {Card[]} */
 	let found = [];
 
@@ -35,7 +34,7 @@ export function visibleFind(state, inferringPlayerIndex, suitIndex, rank, option
 			infer: (options.infer ?? [inferringPlayerIndex, state.ourPlayerIndex]).includes(i),
 			symmetric: (options.symmetric ?? [inferringPlayerIndex]).includes(i)
 		};
-		found = found.concat(hand.findCards(suitIndex, rank, find_options));
+		found = found.concat(hand.findCards(identity, find_options));
 	}
 	return found;
 }
@@ -43,10 +42,9 @@ export function visibleFind(state, inferringPlayerIndex, suitIndex, rank, option
 /**
  * Returns the number of cards matching an identity on either the play stacks or the discard stacks.
  * @param {State} state
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-export function baseCount(state, suitIndex, rank) {
+export function baseCount(state, { suitIndex, rank }) {
 	return (state.play_stacks[suitIndex] >= rank ? 1 : 0) + state.discard_stacks[suitIndex][rank - 1];
 }
 
@@ -54,31 +52,28 @@ export function baseCount(state, suitIndex, rank) {
  * Returns the number of cards still unknown that could be this identity according to a player.
  * @param {State} state
  * @param {number} playerIndex
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-export function unknownIdentities(state, playerIndex, suitIndex, rank) {
-	const visibleCount = visibleFind(state, playerIndex, suitIndex, rank, { ignore: [playerIndex] }).length;
-	return cardCount(state.suits[suitIndex], rank) - baseCount(state, suitIndex, rank) - visibleCount;
+export function unknownIdentities(state, playerIndex, identity) {
+	const visibleCount = visibleFind(state, playerIndex, identity, { ignore: [playerIndex] }).length;
+	return cardCount(state.suits, identity) - baseCount(state, identity) - visibleCount;
 }
 
 /**
  * Returns whether the given suitIndex and rank is currently critical.
  * @param {State} state
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-export function isCritical(state, suitIndex, rank) {
-	return state.discard_stacks[suitIndex][rank - 1] === (cardCount(state.suits[suitIndex], rank) - 1);
+export function isCritical(state, { suitIndex, rank }) {
+	return state.discard_stacks[suitIndex][rank - 1] === (cardCount(state.suits, { suitIndex, rank }) - 1);
 }
 
 /**
- * Returns whether the given suitIndex and rank is basic trash (has been played already or can never be played).
+ * Returns whether the given identity is basic trash (has been played already or can never be played).
  * @param {State} state
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-export function isBasicTrash(state, suitIndex, rank) {
+export function isBasicTrash(state, { suitIndex, rank }) {
 	return rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
 }
 
@@ -86,16 +81,15 @@ export function isBasicTrash(state, suitIndex, rank) {
  * Returns whether the given suitIndex and rank has already been 'saved' in someone's hand (i.e. won't discard).
  * @param {State} state
  * @param {number} inferringPlayerIndex     The inferring player (i.e. can only infer on their own cards).
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  * @param {number} [order] 					A card's order to exclude from search.
  * @param {FindOptions & {ignoreCM?: boolean}} [options]
  */
-export function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1, options = {}) {
-	return visibleFind(state, inferringPlayerIndex, suitIndex, rank, options).some(c => {
+export function isSaved(state, inferringPlayerIndex, identity, order = -1, options = {}) {
+	return visibleFind(state, inferringPlayerIndex, identity, options).some(c => {
 		return c.order !== order &&
 			(c.finessed || c.clued || (options.ignoreCM ? false : c.chop_moved)) &&
-			(c.identity() === undefined || c.matches(suitIndex, rank));         // If we know the card's identity, it must match
+			(c.identity() === undefined || c.matches(identity));         // If we know the card's identity, it must match
 	});
 }
 
@@ -104,22 +98,20 @@ export function isSaved(state, inferringPlayerIndex, suitIndex, rank, order = -1
  * according to the inferring player.
  * @param {State} state
  * @param {number} inferringPlayerIndex
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  * @param {number} [order]                The order of the card to ignore (usually itself)
  * @param {FindOptions} [options]
  */
-export function isTrash(state, inferringPlayerIndex, suitIndex, rank, order, options) {
-	return isBasicTrash(state, suitIndex, rank) || isSaved(state, inferringPlayerIndex, suitIndex, rank, order, options);
+export function isTrash(state, inferringPlayerIndex, identity, order = -1, options = {}) {
+	return isBasicTrash(state, identity) || isSaved(state, inferringPlayerIndex, identity, order, options);
 }
 
 /**
- * Returns how far the given suitIndex and rank are from playable. 0 means it is currently playable.
+ * Returns how far the given identity are from playable. 0 means it is currently playable.
  * @param {State} state
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-export function playableAway(state, suitIndex, rank) {
+export function playableAway(state, { suitIndex, rank }) {
 	return rank - (state.play_stacks[suitIndex] + 1);
 }
 
@@ -151,8 +143,8 @@ export function unique2(state, card) {
 
 	return rank === 2 &&
         state.play_stacks[suitIndex] === 0 &&                                                       // play stack at 0
-        visibleFind(state, state.ourPlayerIndex, suitIndex, 2).length === 1 &&                      // other copy isn't visible
-        !state.hands[state.ourPlayerIndex].some(c => c.matches(suitIndex, rank, { infer: true }));  // not in our hand
+        visibleFind(state, state.ourPlayerIndex, card).length === 1 &&                      // other copy isn't visible
+        !state.hands[state.ourPlayerIndex].some(c => c.matches(card, { infer: true }));  // not in our hand
 }
 
 /**
@@ -172,11 +164,11 @@ export function cardValue(state, card, order = -1) {
 	}
 
 	// Basic trash, saved already, duplicate visible
-	if (isTrash(state, state.ourPlayerIndex, suitIndex, rank, order) || visibleFind(state, state.ourPlayerIndex, suitIndex, rank).length > 1) {
+	if (isTrash(state, state.ourPlayerIndex, card, order) || visibleFind(state, state.ourPlayerIndex, card).length > 1) {
 		return 0;
 	}
 
-	if (isCritical(state, suitIndex, rank)) {
+	if (isCritical(state, card)) {
 		return 5;
 	}
 

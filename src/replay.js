@@ -22,6 +22,10 @@ const conventions = {
 	PlayfulSieve
 };
 
+/**
+ * Fetches a replay from hanab.live, given its id.
+ * @param {string} id
+ */
 function fetchReplay(id) {
 	return new Promise((resolve, reject) => {
 		const req = https.request(`https://hanab.live/export/${id}`, (res) => {
@@ -126,11 +130,11 @@ async function main() {
  */
 function get_own_hand(state, deck) {
 	const ind = state.ourPlayerIndex;
-	return new Hand(...state.hands[ind].map(c => new Card(deck[c.order].suitIndex, deck[c.order].rank, { order: c.order })));
+	return new Hand(...state.hands[ind].map(c => new Card(Object.assign({}, deck[c.order], { order: c.order }))));
 }
 
 /**
- * [parse_action description]
+ * Parses an action taken from the hanab.live API and adds missing components so it can be used by the action handler.
  * @param  {State} state
  * @param  {PerformAction} action
  * @param  {number} playerIndex

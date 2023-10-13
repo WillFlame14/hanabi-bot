@@ -7,13 +7,11 @@ import { find_focus_possible } from './focus-possible.js';
 import { find_own_finesses } from './connecting-cards.js';
 import { assign_connections, inference_known, inference_rank, find_symmetric_connections, add_symmetric_connections } from './connection-helper.js';
 import { bad_touch_possibilities, update_hypo_stacks, recursive_elim } from '../../../basics/helper.js';
-import { isBasicTrash, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
-import { cardCount } from '../../../variants.js';
+import { isBasicTrash, isTrash, playableAway, unknownIdentities } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
 import * as Basics from '../../../basics.js';
 import { logCard, logConnections, logHand } from '../../../tools/log.js';
-import * as Utils from '../../../tools/util.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -28,19 +26,18 @@ import * as Utils from '../../../tools/util.js';
 /**
  * @param {State} state
  * @param {number} playerIndex
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-function infer_elim(state, playerIndex, suitIndex, rank) {
+function infer_elim(state, playerIndex, identity) {
 	// We just learned about the card
 	if (playerIndex === state.ourPlayerIndex) {
 		for (let i = 0; i < state.numPlayers; i++) {
-			Basics.card_elim(state, i, suitIndex, rank);
+			Basics.card_elim(state, i, identity);
 		}
 	}
 	// Everyone already knew about the card except the person who drew it
 	else {
-		Basics.card_elim(state, playerIndex, suitIndex, rank);
+		Basics.card_elim(state, playerIndex, identity);
 	}
 }
 
@@ -67,7 +64,7 @@ function apply_good_touch(state, action) {
 			const old_card = had_inferences.find(({ order }) => order === card.order);
 
 			if (old_card.inferences > 1) {
-				infer_elim(state, target, card.inferred[0].suitIndex, card.inferred[0].rank);
+				infer_elim(state, target, card.inferred[0].raw());
 			}
 		}
 	}
@@ -103,7 +100,7 @@ function apply_good_touch(state, action) {
 
 		for (const card of reduced_inferences) {
 			if (card.inferred.length === 1) {
-				infer_elim(state, target, card.inferred[0].suitIndex, card.inferred[0].rank);
+				infer_elim(state, target, card.inferred[0].raw());
 			}
 		}
 
@@ -113,18 +110,16 @@ function apply_good_touch(state, action) {
 				// Lost all inferences, revert to good touch principle (must not have been known trash)
 				if (card.inferred.length === 0 && had_inferences.some(({ order }) => order === card.order) && !card.reset) {
 					fix = true;
-					card.inferred = Utils.objClone(card.possible);
+					card.inferred = card.possible.slice();
 					card.subtract('inferred', bad_touch);
 					card.reset = true;
 					continue;
 				}
 				// Directly revealing a duplicated card in someone else's hand (if we're using an inference, the card must match the inference, unless it's unknown)
 				else if (card.possible.length === 1) {
-					const { suitIndex, rank } = card.possible[0];
-
 					// The fix can be in anyone's hand except the giver's
 					fix = state.hands.some((hand, index) =>
-						index !== giver && hand.some(c => (c.clued || c.finessed) && c.matches(suitIndex, rank, { infer: true }) && c.order !== card.order)
+						index !== giver && hand.some(c => (c.clued || c.finessed) && c.matches(card.possible[0], { infer: true }) && c.order !== card.order)
 					);
 				}
 			}
@@ -171,7 +166,7 @@ export function interpret_clue(state, action) {
 	}
 
 	if (focused_card.inferred.length === 0) {
-		focused_card.inferred = Utils.objClone(focused_card.possible);
+		focused_card.inferred = focused_card.possible.slice();
 		logger.warn('focused card had no inferences after applying good touch');
 	}
 
@@ -181,11 +176,10 @@ export function interpret_clue(state, action) {
 		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
 		// FIX: Rewind to when the earliest card was clued so that we don't perform false eliminations
 		if (focused_card.inferred.length === 1) {
-			const { suitIndex, rank } = focused_card.inferred[0];
 			update_hypo_stacks(state);
 
 			// TODO: Revise, should we always hard elim?
-			team_elim(state, focused_card, giver, target, suitIndex, rank);
+			team_elim(state, focused_card, giver, target, focused_card.inferred[0]);
 		}
 
 		// Focus doesn't matter for a fix clue
@@ -204,8 +198,8 @@ export function interpret_clue(state, action) {
 	if (state.level >= LEVEL.BASIC_CM) {
 		// Trash chop move
 		if (focused_card.newly_clued &&
-			focused_card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, focused_card.order, { infer: [] })) &&
-			!(focused_card.inferred.every(c => playableAway(state, c.suitIndex, c.rank) === 0))
+			focused_card.possible.every(c => isTrash(state, target, c, focused_card.order, { infer: [] })) &&
+			!(focused_card.inferred.every(c => playableAway(state, c) === 0))
 		) {
 			interpret_tcm(state, target);
 			return;
@@ -221,8 +215,8 @@ export function interpret_clue(state, action) {
 	const focus_possible = find_focus_possible(state, action);
 	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) => logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
 
-	const matched_inferences = focus_possible.filter(p => focused_card.inferred.some(c => c.matches(p.suitIndex, p.rank)));
-	const correct_match = matched_inferences.find(p => focused_card.matches(p.suitIndex, p.rank));
+	const matched_inferences = focus_possible.filter(p => focused_card.inferred.some(c => c.matches(p)));
+	const correct_match = matched_inferences.find(p => focused_card.matches(p));
 	const matched_correct = target === state.ourPlayerIndex || correct_match !== undefined;
 
 	const old_state = state.minimalCopy();
@@ -237,7 +231,7 @@ export function interpret_clue(state, action) {
 			const { suitIndex, rank, connections, save = false } = inference;
 
 			if (!save) {
-				if ((target === state.ourPlayerIndex || focused_card.matches(suitIndex, rank))) {
+				if ((target === state.ourPlayerIndex || focused_card.matches(inference))) {
 					assign_connections(state, connections);
 				}
 
@@ -250,8 +244,7 @@ export function interpret_clue(state, action) {
 
 		// We can update hypo stacks
 		if (inference_known(matched_inferences)) {
-			const { suitIndex, rank } = matched_inferences[0];
-			team_elim(state, focused_card, giver, target, suitIndex, rank);
+			team_elim(state, focused_card, giver, target, matched_inferences[0]);
 		}
 		else if (target !== state.ourPlayerIndex && !correct_match.save) {
 			const selfRanks = Array.from(new Set(matched_inferences.flatMap(({ connections }) =>
@@ -289,11 +282,11 @@ export function interpret_clue(state, action) {
 			let self = true;
 
 			for (const card of focused_card.inferred) {
-				if (isBasicTrash(state, card.suitIndex, card.rank)) {
+				if (isBasicTrash(state, card)) {
 					continue;
 				}
 
-				const { feasible, connections } = find_own_finesses(state, giver, target, card.suitIndex, card.rank, looksDirect);
+				const { feasible, connections } = find_own_finesses(state, giver, target, card, looksDirect);
 				const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 				logger.info('found connections:', logConnections(connections, card));
 
@@ -320,14 +313,14 @@ export function interpret_clue(state, action) {
 			}
 		}
 		// Someone else is the clue target, so we know exactly what card it is
-		else if (!isBasicTrash(state, focused_card.suitIndex, focused_card.rank)) {
-			const { suitIndex, rank } = focused_card;
-			const { feasible, connections } = find_own_finesses(state, giver, target, suitIndex, rank, looksDirect);
+		else if (!isBasicTrash(state, focused_card)) {
+			const { suitIndex } = focused_card;
+			const { feasible, connections } = find_own_finesses(state, giver, target, focused_card, looksDirect);
 
-			logger.info('found connections:', logConnections(connections, { suitIndex, rank }));
+			logger.info('found connections:', logConnections(connections, focused_card));
 
 			if (feasible) {
-				all_connections.push({ connections, suitIndex: suitIndex, rank: inference_rank(state, suitIndex, connections) });
+				all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections) });
 			}
 		}
 
@@ -367,12 +360,11 @@ export function interpret_clue(state, action) {
 				}
 			}
 
-			const correct_match2 = all_connections.find(p => focused_card.matches(p.suitIndex, p.rank));
+			const correct_match2 = all_connections.find(p => focused_card.matches(p));
 
 			// Only one set of connections (and without prompt/finesse), so can elim safely
 			if (inference_known(all_connections)) {
-				const { suitIndex, rank } = all_connections[0];
-				team_elim(state, focused_card, giver, target, suitIndex, rank);
+				team_elim(state, focused_card, giver, target, all_connections[0]);
 			}
 			else if (target !== state.ourPlayerIndex && !correct_match2.save) {
 				const selfRanks = Array.from(new Set(all_connections.flatMap(({ connections }) =>
@@ -411,23 +403,19 @@ export function interpret_clue(state, action) {
  * @param {Card} focused_card
  * @param {number} giver 		The clue receiver. They can elim only if they know/infer the focused card's identity.
  * @param {number} target 		The clue giver. They cannot elim on any of their own clued cards.
- * @param {number} suitIndex
- * @param {number} rank
+ * @param {BasicCard} identity
  */
-function team_elim(state, focused_card, giver, target, suitIndex, rank) {
+function team_elim(state, focused_card, giver, target, identity) {
 	for (let i = 0; i < state.numPlayers; i++) {
 		// Giver cannot elim own cards unless all identities can be seen
-		if (i === giver) {
-			const count = state.discard_stacks[suitIndex][rank - 1] + (state.play_stacks[suitIndex] >= rank ? 1 : 0) + visibleFind(state, giver, suitIndex, rank).length;
-			if (count < cardCount(state.suits[suitIndex], rank)) {
-				continue;
-			}
+		if (i === giver && unknownIdentities(state, giver, identity) > 0) {
+			continue;
 		}
 
 		// Target can elim only if inference is known, everyone else can elim
 		if (i !== target || focused_card.inferred.length === 1) {
 			// Don't elim on the focused card, but hard elim every other card
-			recursive_elim(state, i, suitIndex, rank, {ignore: [focused_card.order], hard: true });
+			recursive_elim(state, i, identity, { ignore: [focused_card.order], hard: true });
 		}
 	}
 }

@@ -94,10 +94,10 @@ export class State {
 		this.waiting_connections = [];
 
 		/** @type {number} */
-		this.cardsLeft = this.suits.reduce((acc, suit) => {
+		this.cardsLeft = this.suits.reduce((acc, _, suitIndex) => {
 			let cards = 0;
 			for (let rank = 1; rank <= 5; rank++) {
-				cards += cardCount(suit, rank);
+				cards += cardCount(suits, { suitIndex, rank });
 			}
 			return acc + cards;
 		}, 0);
@@ -109,7 +109,7 @@ export class State {
 			this.max_ranks.push(5);
 
 			for (let rank = 1; rank <= 5; rank++) {
-				all_possible.push(new Card(suitIndex, rank));
+				all_possible.push(Object.freeze(new Card({ suitIndex, rank })));
 			}
 		}
 
@@ -117,8 +117,8 @@ export class State {
 			this.hypo_stacks.push([0, 0, 0, 0, 0]);
 			this.hands.push(new Hand());
 			this.links.push([]);
-			this.all_possible.push(Utils.objClone(all_possible));
-			this.all_inferred.push(Utils.objClone(all_possible));
+			this.all_possible.push(all_possible.slice());
+			this.all_inferred.push(all_possible.slice());
 			this.unknown_plays.push([]);
 		}
 	}

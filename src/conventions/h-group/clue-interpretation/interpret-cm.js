@@ -21,7 +21,7 @@ export function interpret_tcm(state, target) {
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
 		const card = state.hands[target][i];
 
-		if (card.newly_clued && card.possible.every(c => isTrash(state, target, c.suitIndex, c.rank, card.order))) {
+		if (card.newly_clued && card.possible.every(c => isTrash(state, target, c, card.order))) {
 			oldest_trash_index = i;
 			break;
 		}
@@ -71,7 +71,7 @@ export function interpret_5cm(state, target) {
 			if (distance_from_chop === 1) {
 				const saved_card = state.hands[target][chopIndex];
 
-				if (saved_card.possible.every(p => isTrash(state, target, p.suitIndex, p.rank, saved_card.order))) {
+				if (saved_card.possible.every(p => isTrash(state, target, p, saved_card.order))) {
 					logger.info(`saved card ${logCard(saved_card)} has only trash possibilities, not 5cm`);
 					return false;
 				}
@@ -135,7 +135,7 @@ export function interpret_tccm(state, old_state, giver, target, list, focused_ca
 	}
 
 	// The card was not a 5 and not promptable (valuable)
-	const prompt = old_state.hands[target].find_prompt(focused_card.suitIndex, focused_card.rank, state.suits);
+	const prompt = old_state.hands[target].find_prompt(focused_card, state.suits);
 	if (prompt && prompt.rank !== 5 && prompt.order !== focused_card.order) {
 		logger.info('targeted a out-of-order card not a 5, not tccm');
 		return false;
