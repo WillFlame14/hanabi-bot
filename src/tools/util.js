@@ -144,7 +144,7 @@ export function maxOn(arr, valueFunc) {
 
 	let max_value = valueFunc(arr[0]), max = arr[0];
 
-	for (let i = 0; i < arr.length; i++) {
+	for (let i = 1; i < arr.length; i++) {
 		const curr = valueFunc(arr[i]);
 
 		if (curr > max_value) {

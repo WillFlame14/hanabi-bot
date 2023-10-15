@@ -137,6 +137,11 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
  * @returns {SaveClue | undefined} The 5CM if valid, otherwise undefined.
  */
 function find_5cm(state, target, chop, cardIndex) {
+	if (state.hypo_stacks[state.ourPlayerIndex].every((stack, index) => stack >= (state.max_ranks[index] - 1))) {
+		logger.info(`looks like stall or direct play`);
+		return;
+	}
+
 	// Card to be chop moved is basic trash or already saved
 	if (isTrash(state, state.ourPlayerIndex, chop, chop.order)) {
 		return;
@@ -152,17 +157,9 @@ function find_5cm(state, target, chop, cardIndex) {
 		break;
 	}
 
-	// 5cm to lock for unique 2 or critical
-	if (new_chop === undefined) {
-		if (cardValue(state, chop) >= 4) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop], safe: true };
-		}
-	}
-	else {
-		// 5cm if new chop is less valuable than old chop
-		if (cardValue(state, chop) >= cardValue(state, new_chop)) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop], safe: true };
-		}
+	// 5cm if new chop is less valuable than old chop (or lock for unique 2/critical)
+	if (cardValue(state, chop) >= (new_chop ? cardValue(state, new_chop) : 4)) {
+		return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop], safe: true };
 	}
 
 	return;
@@ -180,12 +177,9 @@ function find_5cm(state, target, chop, cardIndex) {
  * @param {{ignorePlayerIndex?: number, ignoreCM?: boolean}} options
  */
 export function find_clues(state, options = {}) {
-	/** @type Clue[][] */
-	const play_clues = [];
-	/** @type SaveClue[] */
-	const save_clues = [];
-	/** @type Clue[][] */
-	const stall_clues = [[], [], [], []];
+	const play_clues = /** @type Clue[][] */ 	([]);
+	const save_clues = /** @type SaveClue[] */ 	([]);
+	const stall_clues = /** @type Clue[][] */ 	([[], [], [], []]);
 
 	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, state.hypo_stacks, state.max_ranks);
 
@@ -207,15 +201,15 @@ export function find_clues(state, options = {}) {
 
 		for (let cardIndex = hand.length - 1; cardIndex >= 0; cardIndex--) {
 			const card = hand[cardIndex];
-			const { suitIndex, rank, order, finessed } = card;
+			const { rank, order, finessed } = card;
 
 			const duplicated = visibleFind(state, state.ourPlayerIndex, card).some(c => (c.clued || c.finessed) && c.order !== card.order);
 
 			const in_finesse = state.waiting_connections.some(w_conn => {
 				const { fake, focused_card, inference } = w_conn;
-				const matches = focused_card.identity() === undefined || focused_card.matches(inference);
+				const matches = focused_card.matches(inference, { assume: true });
 
-				return !fake && matches && suitIndex === inference.suitIndex && rank <= inference.rank;
+				return !fake && matches && card.playedBefore(inference, { equal: true });
 			});
 
 			// Ignore finessed cards (do not ignore cm'd cards), cards visible elsewhere, or cards possibly part of a finesse (that we either know for certain or in our hand)
@@ -234,8 +228,8 @@ export function find_clues(state, options = {}) {
 				// Trash card (not conventionally play)
 				if (isBasicTrash(state, card)) {
 					// Trash chop move (we only want to find the rightmost tcm)
-					if (!(card.clued || card.chop_moved) && cardIndex !== chopIndex && !found_tcm) {
-						const saved_cards = hand.slice(cardIndex + 1).filter(c => !(c.clued || c.chop_moved));
+					if (!card.saved && cardIndex !== chopIndex && !found_tcm) {
+						const saved_cards = hand.slice(cardIndex + 1).filter(c => !c.saved);
 						saves.push(find_tcm(state, target, saved_cards, card, play_clues[target]));
 
 						found_tcm = true;
@@ -246,35 +240,28 @@ export function find_clues(state, options = {}) {
 				}
 
 				// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
-				if (!tried_5cm && rank === 5 && !(card.clued || card.chop_moved)) {
+				if (!tried_5cm && rank === 5 && !card.saved && severity === 0) {
 					logger.info('trying 5cm with 5 at index', cardIndex);
 					tried_5cm = true;
 
-					// Can only perform a 5cm at severity 0 (otherwise, looks like 5 stall)
-					// Allow giving direct 5 clues when every hypo stack is at (max - 1) or above
-					if (severity === 0 && !state.hypo_stacks[state.ourPlayerIndex].every((stack, index) => stack >= (state.max_ranks[index] - 1))) {
-						// Find where chop is, relative to the rightmost clued 5
-						let distance_from_chop = 0;
-						for (let j = cardIndex; j < chopIndex; j++) {
-							// Skip clued cards
-							if (hand[j].clued) {
-								continue;
-							}
-							distance_from_chop++;
+					// Find where chop is, relative to the rightmost clued 5
+					let distance_from_chop = 0;
+					for (let j = cardIndex; j < chopIndex; j++) {
+						// Skip clued cards
+						if (hand[j].clued) {
+							continue;
 						}
+						distance_from_chop++;
+					}
 
-						if (distance_from_chop === 1) {
-							saves.push(find_5cm(state, target, hand[chopIndex], cardIndex));
+					if (distance_from_chop === 1) {
+						saves.push(find_5cm(state, target, hand[chopIndex], cardIndex));
 
-							logger.info('found 5cm');
-							interpreted_5cm = true;
-						}
-						else {
-							logger.info(`rightmost 5 is ${distance_from_chop} from chop, cannot 5cm`);
-						}
+						logger.info('found 5cm');
+						interpreted_5cm = true;
 					}
 					else {
-						logger.info(`looks like stall or direct play`);
+						logger.info(`rightmost 5 is ${distance_from_chop} from chop, cannot 5cm`);
 					}
 				}
 			}

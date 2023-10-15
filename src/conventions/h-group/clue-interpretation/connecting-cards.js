@@ -36,7 +36,7 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 				continue;
 			}
 
-			if (card.matches(identity, { symmetric: true, infer: true }) && (card.identity() === undefined || card.matches(identity))) {
+			if (card.matches(identity, { symmetric: true, infer: true }) && card.matches(identity, { assume: true })) {
 				return { type: 'known', reacting: playerIndex, card, identities: [identity] };
 			}
 		}
@@ -209,7 +209,7 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 		const playable_conns = state.hands[state.ourPlayerIndex].filter(card =>
 			!ignoreOrders.includes(card.order) &&
 			card.inferred.some(inf => inf.matches(identity)) &&					// At least one inference must match
-			(card.identity() === undefined || card.matches(identity)) &&		// If we know the card (from a rewind), it must match
+			card.matches(identity, { assume: true }) &&		// If we know the card (from a rewind), it must match
 			(card.inferred.every(c => playableAway(state, c) === 0) || card.finessed));	// Must be playable
 
 		if (playable_conns.length > 0) {
@@ -348,7 +348,7 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 					addConnections([{ type: 'known', reacting: state.ourPlayerIndex, card: prompt, hidden: true, self: true, identities: [prompt.raw()] }]);
 					continue;
 				}
-				else if (prompt.identity() === undefined || prompt.matches(next_identity)) {
+				else if (prompt.matches(next_identity, { assume: true })) {
 					addConnections([{ type: 'prompt', reacting: hypo_state.ourPlayerIndex, card: prompt, self: true, identities: [next_identity] }]);
 					continue;
 				}
@@ -440,7 +440,7 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 		return { feasible: true, connections: [{ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, hidden: true, self: true, identities: [finesse.raw()] }] };
 	}
 
-	if (finesse?.inferred.some(p => p.matches(identity)) && (finesse.identity() === undefined || finesse.matches(identity))) {
+	if (finesse?.inferred.some(p => p.matches(identity)) && finesse.matches(identity, { assume: true })) {
 		if (state.level === 1 && ignoreOrders.length >= 1) {
 			logger.warn(`blocked ${finesses >= 1 ? 'double finesse' : 'prompt + finesse'} at level 1`);
 			return { feasible: false, connections: [] };

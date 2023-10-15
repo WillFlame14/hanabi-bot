@@ -1,7 +1,7 @@
 import { logCard } from '../tools/log.js';
 
 /**
- * @typedef {{symmetric?: boolean, infer?: boolean}} MatchOptions
+ * @typedef {{symmetric?: boolean, infer?: boolean, assume?: boolean}} MatchOptions
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').BasicCard} BasicCard
  * @typedef {import('../types.js').Clue} Clue
@@ -64,6 +64,17 @@ export class Card {
 		return Object.freeze({ suitIndex: this.suitIndex, rank: this.rank });
 	}
 
+	get possibilities() {
+		return this.inferred.length === 0 ? this.possible : this.inferred;
+	}
+
+	/**
+	 * Returns whether the card has been "saved" (i.e. clued, finessed or chop moved).
+	 */
+	get saved() {
+		return this.clued || this.finessed || this.chop_moved;
+	}
+
 	/**
 	 * Returns the identity of the card (if known/inferred).
 	 * 
@@ -94,7 +105,7 @@ export class Card {
 		const id = this.identity(options);
 
 		if (id === undefined) {
-			return false;
+			return options.assume ?? false;
 		}
 
 		return id.suitIndex === suitIndex && id.rank === rank;
@@ -115,6 +126,16 @@ export class Card {
 	 */
 	matches_inferences() {
 		return this.identity() === undefined || this.possible.length === 1 || this.inferred.some(c => c.matches(this));
+	}
+
+	/**
+	 * Returns whether the card would be played on the stacks before the given identity.
+	 * Always returns false if the two cards are of different suits.
+	 * @param {BasicCard} identity
+	 * @param {{ equal?: boolean }} options
+	 */
+	playedBefore({ suitIndex, rank }, options = {}) {
+		return this.suitIndex === suitIndex && (options.equal ? (this.rank <= rank) : (this.rank < rank));
 	}
 
 	/**

@@ -89,7 +89,7 @@ export function isSaved(state, inferringPlayerIndex, identity, order = -1, optio
 	return visibleFind(state, inferringPlayerIndex, identity, options).some(c => {
 		return c.order !== order &&
 			(c.finessed || c.clued || (options.ignoreCM ? false : c.chop_moved)) &&
-			(c.identity() === undefined || c.matches(identity));         // If we know the card's identity, it must match
+			c.matches(identity, { assume: true });         // If we know the card's identity, it must match
 	});
 }
 
@@ -142,9 +142,9 @@ export function unique2(state, card) {
 	const { suitIndex, rank } = card;
 
 	return rank === 2 &&
-        state.play_stacks[suitIndex] === 0 &&                                                       // play stack at 0
-        visibleFind(state, state.ourPlayerIndex, card).length === 1 &&                      // other copy isn't visible
-        !state.hands[state.ourPlayerIndex].some(c => c.matches(card, { infer: true }));  // not in our hand
+        state.play_stacks[suitIndex] === 0 &&											// play stack at 0
+        visibleFind(state, state.ourPlayerIndex, card).length === 1 &&					// other copy isn't visible
+        !state.hands[state.ourPlayerIndex].some(c => c.matches(card, { infer: true }));	// not in our hand
 }
 
 /**

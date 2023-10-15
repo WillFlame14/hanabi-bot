@@ -130,7 +130,7 @@ export function good_touch_elim(state, playerIndex, identity, options = {}) {
 			continue;
 		}
 
-		if ((card.clued || card.chop_moved || card.finessed) && (options.hard || card.inferred.length > 1)) {
+		if (card.saved && (options.hard || card.inferred.length > 1)) {
 			const pre_inferences = card.inferred.length;
 
 			card.subtract('inferred', [identity]);
@@ -179,7 +179,7 @@ export function update_hypo_stacks(state) {
 				const hand = state.hands[playerIndex];
 
 				for (const card of hand) {
-					if (!(card.clued || card.finessed || card.chop_moved) || good_touch_elim.some(e => e.matches(card))) {
+					if (!card.saved || good_touch_elim.some(e => e.matches(card))) {
 						continue;
 					}
 

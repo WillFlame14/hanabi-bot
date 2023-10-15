@@ -1,4 +1,5 @@
-import { isBasicTrash, isCritical, unknownIdentities, visibleFind } from './hanabi-util.js';
+import { isBasicTrash, isCritical, playableAway, unknownIdentities, visibleFind } from './hanabi-util.js';
+import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
@@ -13,13 +14,12 @@ import { logCard } from '../tools/log.js';
  */
 
 /**
- * Returns whether the hand is locked (i.e. every card is clued, chop moved, or an unplayable finesse AND not loaded).
+ * Returns whether the hand is locked (i.e. every card is clued, chop moved, or finessed AND not loaded).
  * @param {State} state
  * @param {number} playerIndex
  */
 export function isLocked(state, playerIndex) {
-	return state.hands[playerIndex].every(c => c.clued || c.chop_moved || (c.finessed && state.play_stacks[c.suitIndex] < c.rank)) &&
-		!isLoaded(state, playerIndex);
+	return state.hands[playerIndex].every(c => c.saved) && !isLoaded(state, playerIndex);
 }
 
 /**
@@ -37,10 +37,7 @@ export function isLoaded(state, playerIndex) {
  * @param {number} playerIndex
  */
 export function find_playables(state, playerIndex) {
-	const hand = state.hands[playerIndex];
 	const links = state.links[playerIndex];
-
-	const playables = [];
 	const linked_orders = new Set();
 
 	for (const { cards, identities } of links) {
@@ -50,38 +47,7 @@ export function find_playables(state, playerIndex) {
 		}
 	}
 
-	for (const card of hand) {
-		if (linked_orders.has(card.order)) {
-			continue;
-		}
-
-		let playable = true;
-
-		// Card is probably trash
-		if (card.inferred.length === 0) {
-			// Still, double check if all possibilities are playable
-			for (const possible of card.possible) {
-				if (state.play_stacks[possible.suitIndex] + 1 !== possible.rank) {
-					playable = false;
-					break;
-				}
-			}
-		}
-		else {
-			for (const inferred of card.inferred) {
-				// Note: Do NOT use hypo stacks
-				if (state.play_stacks[inferred.suitIndex] + 1 !== inferred.rank) {
-					playable = false;
-					break;
-				}
-			}
-		}
-
-		if (playable) {
-			playables.push(card);
-		}
-	}
-	return playables;
+	return Array.from(state.hands[playerIndex].filter(card => !linked_orders.has(card.order) && card.possibilities.every(p => playableAway(state, p) === 0)));
 }
 
 /**
@@ -127,9 +93,7 @@ export function find_known_trash(state, playerIndex, global_info = false) {
 export function locked_discard(state, playerIndex) {
 	// If any card's crit% is 0
 	const crit_percents = Array.from(state.hands[playerIndex].map(card => {
-		const possibilities = card.inferred.length === 0 ? card.possible : card.inferred;
-		const percent = possibilities.filter(p => isCritical(state, p)).length / possibilities.length;
-
+		const percent = card.possibilities.filter(p => isCritical(state, p)).length / card.possibilities.length;
 		return { card, percent };
 	})).sort((a, b) => a.percent - b.percent);
 
@@ -144,19 +108,8 @@ export function locked_discard(state, playerIndex) {
 		return crit_distance < 0 ? 5 : crit_distance;
 	};
 
-	let max_dist = -1;
+	const { card: furthest_card } = Utils.maxOn(least_crits, ({ card }) =>
+		card.possibilities.reduce((sum, p) => sum += distance(p, crit_percents[0].percent === 1), 0));
 
-	/** @type Card */
-	let furthest_card;
-
-	for (const { card } of least_crits) {
-		const possibilities = card.inferred.length === 0 ? card.possible : card.inferred;
-		const curr_distance = possibilities.reduce((sum, p) => sum += distance(p, crit_percents[0].percent === 1), 0);
-
-		if (curr_distance > max_dist) {
-			max_dist = curr_distance;
-			furthest_card = card;
-		}
-	}
 	return furthest_card;
 }

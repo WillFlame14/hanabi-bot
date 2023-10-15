@@ -86,9 +86,8 @@ export function playables_result(state, hypo_state, giver) {
 			for (let j = 0; j < hand.length; j++) {
 				const old_card = hand[j];
 				const hypo_card = hypo_state.hands[playerIndex][j];
-				const { clued, finessed, chop_moved } = hypo_card;
 
-				if ((clued || finessed || chop_moved) && hypo_card.matches(identity, { infer: true })) {
+				if (hypo_card.saved && hypo_card.matches(identity, { infer: true })) {
 					return { playerIndex, old_card, hypo_card };
 				}
 			}

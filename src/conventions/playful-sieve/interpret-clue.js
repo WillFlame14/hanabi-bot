@@ -43,18 +43,13 @@ function infer_elim(state, playerIndex, identity) {
 export function interpret_clue(state, action) {
 	const { clue, giver, list, target } = action;
 	const hand = state.hands[target];
+	const touch = Array.from(hand.filter(c => list.includes(c.order)));
 
 	const had_inferences = hand.filter(c => c.inferred.length > 0).map(c => c.order);
 	const old_playables = Hand.find_playables(state, target).map(c => c.order);
 	const old_trash = Hand.find_known_trash(state, target).map(c => c.order);
 
-	for (const card of hand) {
-		if (card.inferred.length > 0) {
-			had_inferences.push(card.order);
-		}
-	}
-
-	const no_info = hand.every(card => !list.includes(card.order) || card.clues.some(c => Utils.objEquals(c, clue)));
+	const no_info = touch.every(card => card.clues.some(c => Utils.objEquals(c, clue)));
 
 	Basics.onClue(state, action);
 
@@ -116,8 +111,7 @@ export function interpret_clue(state, action) {
 	update_hypo_stacks(state);
 
 	const newly_touched = Utils.findIndices(hand, (card) => card.newly_clued);
-	const trash_push = hand.every(card => !list.includes(card.order) ||
-		(card.newly_clued && card.inferred.every(inf => isTrash(state, state.ourPlayerIndex, inf, card.order))));
+	const trash_push = touch.every(card => (card.newly_clued && card.inferred.every(inf => isTrash(state, state.ourPlayerIndex, inf, card.order))));
 
 	if (trash_push) {
 		logger.highlight('cyan', 'trash push!');
