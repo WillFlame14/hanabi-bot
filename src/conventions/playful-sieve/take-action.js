@@ -50,7 +50,7 @@ export function take_action(state) {
 		}
 
 		// If there isn't a matching playable card in our hand, we should discard it to sarcastic for someone else
-		if (!playable_cards.some(c => c.duplicateOf(id, { infer: true }))) {
+		if (!playable_cards.some(c => c.matches(id, { infer: true }) && c.order !== card.order)) {
 			discards.push(card);
 		}
 	}
@@ -164,7 +164,6 @@ export function take_action(state) {
 		else {
 			logger.info('partner loaded', (partner_hand.some(c => c.called_to_discard) ? 'on ptd' : 'on playable slot 1'));
 		}
-		state.locked_shifts = 0;
 
 		if (playable_cards.length > 0) {
 			const sarcastic_chop = playable_cards.find(c => c.identity({ infer: true })?.matches(chop));
@@ -217,16 +216,12 @@ export function take_action(state) {
 					playerIndex: state.ourPlayerIndex,
 					suitIndex: identity.suitIndex,
 					rank: identity.rank
-				}, state.ourPlayerIndex, partner);
+				}, state.ourPlayerIndex, partner, state.locked_shifts[playable.order]);
 
 				if (unlocked?.matches({ suitIndex: identity.suitIndex, rank: identity.rank + 1 })) {
 					return { tableID, type: ACTION.PLAY, target: playable.order };
 				}
 			}
-		}
-
-		if (playable_cards.length > 0) {
-			state.locked_shifts++;
 		}
 
 		if (discards.length > 0) {
@@ -245,7 +240,6 @@ export function take_action(state) {
 	}
 
 	// Partner isn't loaded/locked and their chop isn't playable
-	state.locked_shifts = 0;
 
 	if (chop_away === 1) {
 		const connecting_playable = playable_cards.find(card =>

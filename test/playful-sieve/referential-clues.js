@@ -45,6 +45,20 @@ describe('ref play', () => {
 		assert.equal(state.hands[PLAYER.BOB][4].finessed, true);
 		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][4], ['b1']);
 	});
+
+	it('understands a loaded colour clue', () => {
+		const state = setup(PlayfulSieve, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g2', 'b1', 'r2', 'r3', 'b2']
+		]);
+
+		takeTurn(state, 'Alice clues green to Bob');
+		takeTurn(state, 'Bob clues 1 to Alice (slot 5)');
+		takeTurn(state, 'Alice clues red to Bob');
+
+		assert.equal(state.hands[PLAYER.BOB][4].finessed, true);
+		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][4], ['y1', 'b2', 'p1']);
+	});
 });
 
 describe('ref discard', () => {

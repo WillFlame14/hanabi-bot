@@ -19,9 +19,10 @@ import { logCard } from '../../tools/log.js';
  * @param  {PlayAction} action
  * @param  {number} unlocked_player
  * @param  {number} locked_player
+ * @param  {number} locked_shifts
  * @returns {Card | undefined} The unlocked card, or undefined if the unlock is not guaranteed.
  */
-export function unlock_promise(state, action, unlocked_player, locked_player) {
+export function unlock_promise(state, action, unlocked_player, locked_player, locked_shifts) {
 	const { playerIndex, order, suitIndex, rank } = action;
 	const card = state.hands[playerIndex].findOrder(order);
 
@@ -41,6 +42,11 @@ export function unlock_promise(state, action, unlocked_player, locked_player) {
 		card.order === playables_sorted[0].order
 	) {
 		logger.highlight('cyan', 'playing oldest/only safe playable, not unlocking');
+
+		// All other known playables get shifted
+		for (const card of playables_sorted.slice(1).filter(card => card.identity({ symmetric: true, infer: true }) !== undefined)) {
+			state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
+		}
 		return;
 	}
 
@@ -52,26 +58,29 @@ export function unlock_promise(state, action, unlocked_player, locked_player) {
 		return match;
 	}
 
+	const possible_matches = locked_hand.filter(card => card.clued && card.clues.some(clue =>
+		(clue.type === CLUE.RANK && clue.value === rank + 1) ||
+		(clue.type === CLUE.COLOUR && clue.value === suitIndex))
+	).map(c => c.order);
+
 	let shifts = 0;
 
 	for (let i = locked_hand.length - 1; i >= 0; i--) {
 		const card = locked_hand[i];
 
-		// Looks like a direct connection
-		if (card.inferred.length > 1 && card.clued && card.clues.some(clue =>
-			(clue.type === CLUE.RANK && clue.value === rank + 1) ||
-			(clue.type === CLUE.COLOUR && clue.value === suitIndex)
-		)) {
-			if (shifts < state.locked_shifts) {
+		// Looks like a connection
+		if (card.inferred.some(inf => inf.matches({ suitIndex, rank: rank + 1 })) &&
+			(possible_matches.length === 0 || possible_matches.some(order => card.order === order) || shifts >= possible_matches.length)
+		) {
+			if (shifts < locked_shifts) {
 				shifts++;
 				continue;
 			}
-
 			return card;
 		}
 	}
 
-	// No direct connections found
+	// No connections found
 	return;
 }
 
@@ -100,10 +109,13 @@ export function interpret_play(state, action) {
 
 	const card = state.hands[playerIndex].findOrder(order);
 
+	const locked_shifts = state.locked_shifts[card.order];
+	if (locked_shifts !== undefined) {
+		delete state.locked_shifts[card.order];
+	}
+
 	const known_connecting = card.inferred.every(inf => other_hand.some(c =>
-		c.inferred.every(i => playableAway(state, i) === 0 ||
-			(i.suitIndex === inf.suitIndex && playableAway(state, i) === 1))
-	));
+		c.inferred.every(i => playableAway(state, i) === 0 || (i.suitIndex === inf.suitIndex && playableAway(state, i) === 1))));
 
 	// No safe action, chop is playable
 	if (!Hand.isLocked(state, other) && !Hand.isLoaded(state, other) && !other_hand.some(c => c.called_to_discard) && !known_connecting && state.clue_tokens > 0) {
@@ -114,15 +126,15 @@ export function interpret_play(state, action) {
 		other_hand[0].intersect('inferred', playable_possibilities);
 	}
 
-	if (Hand.isLocked(state, other) && hand.findOrder(order).identity({ symmetric: true, infer: true }) !== undefined) {
-		const unlocked = unlock_promise(state, action, playerIndex, other);
+	if (Hand.isLocked(state, other)) {
+		const unlocked = unlock_promise(state, action, playerIndex, other, locked_shifts);
 
 		if (unlocked) {
 			const connecting = { suitIndex, rank: rank + 1 };
 			const slot = other_hand.findIndex(c => c.order === unlocked.order) + 1;
 
 			// Unlocked player might have another card connecting to this
-			if (hand.some(card => card.clued && card.inferred.some(c => c.matches(connecting))) &&
+			if (hand.some(card => card.identity({ infer: true, symmetric: true })?.matches(connecting)) &&
 				other_hand.some(card => card.inferred.some(c => c.suitIndex === suitIndex && c.rank > rank + 1))) {
 				logger.info(`unlocked player may have connecting ${logCard(connecting)}, not unlocking yet`);
 			}
@@ -141,12 +153,24 @@ export function interpret_play(state, action) {
 				else {
 					unlocked.intersect('inferred', [connecting]);
 					logger.info(`unlocking slot ${slot} as ${logCard(connecting)}`);
+					state.locked_shifts = [];
 				}
 			}
 		}
 		else {
 			logger.info('failed to unlock');
+
+			// Shift all other playable cards
+			for (const card of Hand.find_playables(state, playerIndex)) {
+				if (card.order === order) {
+					continue;
+				}
+				state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
+			}
 		}
+	}
+	else {
+		state.locked_shifts = [];
 	}
 
 	Basics.onPlay(this, action);

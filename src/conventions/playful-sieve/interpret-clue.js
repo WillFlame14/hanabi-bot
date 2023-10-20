@@ -117,10 +117,12 @@ export function interpret_clue(state, action) {
 		logger.highlight('cyan', 'trash push!');
 	}
 
+	const known_trash = Hand.find_known_trash(state, target);
+
 	if (Hand.isLocked(state, giver)) {
 		if (clue.type === CLUE.RANK) {
 			// Rank fill-in/trash reveal, no additional meaning
-			if (Hand.find_known_trash(state, target).length + hand.filter(card => card.called_to_discard).length > 0) {
+			if (known_trash.length + hand.filter(card => card.called_to_discard).length > 0) {
 				return;
 			}
 
@@ -148,10 +150,17 @@ export function interpret_clue(state, action) {
 			// Slot 1 is playable
 			if (hand[0].newly_clued) {
 				hand[0].intersect('inferred', [{ suitIndex, rank: state.hypo_stacks[state.ourPlayerIndex][suitIndex] + 1 }]);
+				const locked_hand_ptd = hand.find(c => !c.clued);
+
+				if (locked_hand_ptd) {
+					locked_hand_ptd.called_to_discard = true;
+					logger.info('locked hand ptd on', logCard(locked_hand_ptd));
+				}
 			}
 			else {
 				// Colour fill-in/trash reveal, no additional meaning
-				if (Hand.find_known_trash(state, target).length + hand.filter(card => card.called_to_discard).length > 0) {
+				if (known_trash.length + hand.filter(card => card.called_to_discard).length > 0) {
+					logger.info('colour fill in while loaded on', (known_trash.length > 0 ? `kt ${known_trash.map(c => logCard(c))}` : `ptd on slot ${hand.findIndex(card => card.called_to_discard) + 1}`));
 					return;
 				}
 

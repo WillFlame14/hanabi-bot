@@ -14,7 +14,8 @@ export default class PlayfulSieve extends State {
 	update_turn = update_turn;
 	interpret_play = interpret_play;
 
-	locked_shifts = 0;
+	/** @type {number[]} */
+	locked_shifts = [];
 
 	/**
 	 * @param {number} tableID

@@ -7,7 +7,7 @@ import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 
 /**
- * @typedef {import('../../basics/State.js').State} State
+ * @typedef {import('../playful-sieve.js').default} State
  * @typedef {import('../../types.js').BasicCard} BasicCard
  */
 
@@ -156,6 +156,15 @@ export function interpret_discard(state, action, card) {
 				}
 				logger.warn(`couldn't find a valid target for sarcastic discard`);
 			}
+		}
+	}
+
+	// Discarding while partner is locked and having a playable card
+	if (Hand.isLocked(state, other)) {
+		const playables = Hand.find_playables(state, playerIndex);
+
+		for (const card of playables) {
+			state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
 		}
 	}
 }
