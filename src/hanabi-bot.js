@@ -5,7 +5,6 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { handle } from './command-handler.js';
-import { fetchVariants } from './variants.js';
 import { initConsole } from './tools/console.js';
 import * as Utils from './tools/util.js';
 
@@ -61,7 +60,6 @@ async function main() {
 	const args = Utils.parse_args();
 
 	let cookie = connect(args.index);
-	fetchVariants();
 
 	// Connect to server using credentials
 	try {

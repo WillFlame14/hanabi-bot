@@ -1,21 +1,12 @@
 import * as https from 'https';
 
-import { ACTION, CLUE, END_CONDITION, HAND_SIZE } from './constants.js';
-import { Card } from './basics/Card.js';
-import { Hand } from './basics/Hand.js';
+import { ACTION, END_CONDITION, HAND_SIZE } from './constants.js';
 
 import HGroup from './conventions/h-group.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
-import { fetchVariants, getVariant } from './variants.js';
+import { getVariant } from './variants.js';
 import { initConsole } from './tools/console.js';
 import * as Utils from './tools/util.js';
-
-/**
- * @typedef {import('./types.js').Action} Action
- * @typedef {import('./types.js').PerformAction} PerformAction
- * @typedef {import('./types.js').BasicCard} BasicCard
- * @typedef {import('./basics/State.js').State} State
- */
 
 const conventions = {
 	HGroup,
@@ -55,7 +46,6 @@ function fetchReplay(id) {
 
 async function main() {
 	const { id, level, index, convention = 'HGroup' } = Utils.parse_args();
-	fetchVariants();
 	initConsole();
 
 	let game_data;
@@ -103,7 +93,7 @@ async function main() {
 		if (turn !== 0) {
 			state.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
 		}
-		state.handle_action(parse_action(state, action, currentPlayerIndex, deck), true);
+		state.handle_action(Utils.performToAction(state, action, currentPlayerIndex, deck), true);
 
 		if ((action.type === ACTION.PLAY || action.type === ACTION.DISCARD) && order < deck.length) {
 			const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
@@ -120,62 +110,6 @@ async function main() {
 
 	if (actions.at(-1).type !== 'gameOver') {
 		state.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.NORMAL, votes: -1 });
-	}
-}
-
-/**
- * [get_own_hand description]
- * @param  {State} state
- * @param  {BasicCard[]} deck
- */
-function get_own_hand(state, deck) {
-	const ind = state.ourPlayerIndex;
-	return new Hand(...state.hands[ind].map(c => new Card(Object.assign({}, deck[c.order], { order: c.order }))));
-}
-
-/**
- * Parses an action taken from the hanab.live API and adds missing components so it can be used by the action handler.
- * @param  {State} state
- * @param  {PerformAction} action
- * @param  {number} playerIndex
- * @param  {BasicCard[]} deck
- * @returns {Action}
- */
-function parse_action(state, action, playerIndex, deck) {
-	const { type, target, value } = action;
-
-	switch(type) {
-		case ACTION.PLAY: {
-			const { suitIndex, rank } = deck[target];
-
-			if (state.play_stacks[suitIndex] + 1 === rank) {
-				return { type: 'play', playerIndex, order: target, suitIndex, rank };
-			}
-			else {
-				return { type: 'discard', playerIndex, order: target, suitIndex, rank, failed: true };
-			}
-		}
-		case ACTION.DISCARD: {
-			const { suitIndex, rank } = deck[target];
-			return { type: 'discard', playerIndex, order: target, suitIndex, rank, failed: false };
-		}
-		case ACTION.RANK: {
-			const clue = { type: CLUE.RANK, value };
-			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = hand.clueTouched(clue, state.suits).map(c => c.order);
-
-			return { type: 'clue', giver: playerIndex, target, clue, list };
-		}
-		case ACTION.COLOUR: {
-			const clue = { type: CLUE.COLOUR, value };
-			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = hand.clueTouched(clue, state.suits).map(c => c.order);
-
-			return { type: 'clue', giver: playerIndex, target, clue, list };
-		}
-		case ACTION.END_GAME: {
-			return { type: 'gameOver', playerIndex: target, endCondition: value, votes: -1 };
-		}
 	}
 }
 

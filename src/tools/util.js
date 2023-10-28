@@ -1,10 +1,12 @@
 import { Card } from '../basics/Card.js';
 import { Hand } from '../basics/Hand.js';
+import { ACTION, CLUE } from '../constants.js';
 import logger from './logger.js';
 
 /**
  * @typedef {typeof import('../constants.js').ACTION} ACTION
  * @typedef {import('../basics/State.js').State} State
+ * @typedef {import('../types.js').BasicCard} BasicCard
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').PerformAction} PerformAction
@@ -120,13 +122,14 @@ export function objClone(obj, depth = 0) {
  * Returns a copy of the object, keeping only the attributes whose names were provided.
  * @template T
  * @template {keyof T} K
- * @param {T} 	obj 			The base object.
- * @param {K[]} attributes 		The keys of the base object that you want to keep.
+ * @param {T} 	obj 						The base object.
+ * @param {K[]} attributes 					The keys of the base object that you want to keep.
+ * @param {{ default?: T[K] }} options 	The default value to set if the base object doesn't contain the attribute.
  */
-export function objPick(obj, attributes) {
+export function objPick(obj, attributes, options = {}) {
 	const new_obj = /** @type {Pick<T, K>} */ ({});
 	for (const attr of attributes) {
-		new_obj[attr] = obj[attr];
+		new_obj[attr] = obj[attr] ?? options.default;
 	}
 	return new_obj;
 }
@@ -213,6 +216,62 @@ export function objEquals(obj1, obj2) {
 export function clueToAction(clue, tableID) {
 	const { type, value, target } = clue;
 	return { tableID, type: /** @type {ACTION[keyof ACTION]} */ (type + 2), value, target };
+}
+
+/**
+ * Returns the visible hand of the owning player (since it is typically unknown).
+ * @param  {State} state
+ * @param  {BasicCard[]} deck
+ */
+function get_own_hand(state, deck) {
+	const ind = state.ourPlayerIndex;
+	return new Hand(...state.hands[ind].map(c => new Card(Object.assign({}, deck[c.order], { order: c.order }))));
+}
+
+/**
+ * Converts a PerformAction to an Action.
+ * @param  {State} state
+ * @param  {PerformAction} action
+ * @param  {number} playerIndex
+ * @param  {BasicCard[]} deck
+ * @returns {Action}
+ */
+export function performToAction(state, action, playerIndex, deck) {
+	const { type, target, value } = action;
+
+	switch(type) {
+		case ACTION.PLAY: {
+			const { suitIndex, rank } = deck[target];
+
+			if (state.play_stacks[suitIndex] + 1 === rank) {
+				return { type: 'play', playerIndex, order: target, suitIndex, rank };
+			}
+			else {
+				return { type: 'discard', playerIndex, order: target, suitIndex, rank, failed: true };
+			}
+		}
+		case ACTION.DISCARD: {
+			const { suitIndex, rank } = deck[target];
+			return { type: 'discard', playerIndex, order: target, suitIndex, rank, failed: false };
+		}
+		case ACTION.RANK: {
+			const clue = { type: CLUE.RANK, value };
+			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
+			const list = hand.clueTouched(clue, state.suits).map(c => c.order);
+
+			return { type: 'clue', giver: playerIndex, target, clue, list };
+		}
+		case ACTION.COLOUR: {
+			const clue = { type: CLUE.COLOUR, value };
+			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
+			const list = hand.clueTouched(clue, state.suits).map(c => c.order);
+
+			return { type: 'clue', giver: playerIndex, target, clue, list };
+		}
+		case ACTION.END_GAME: {
+			return { type: 'gameOver', playerIndex: target, endCondition: value, votes: -1 };
+		}
+	}
 }
 
 /**

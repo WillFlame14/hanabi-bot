@@ -308,7 +308,7 @@ export function take_action(state) {
 	logger.info('best clue', logClue(best_clue), 'value', best_clue_value);
 
 	// Best clue is too low value, lock
-	if (best_clue_value <= 0.25) {
+	if (best_clue_value <= 0.25 && lock_clue !== undefined) {
 		return Utils.clueToAction(lock_clue, tableID);
 	}
 

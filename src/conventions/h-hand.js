@@ -26,8 +26,8 @@ export class HGroup_Hand extends Hand {
 	 */
 	chopIndex(options = {}) {
 		for (let i = this.length - 1; i >= 0; i--) {
-			const { clued, newly_clued, chop_moved } = this[i];
-			if (chop_moved || (clued && (options.afterClue ? true : !newly_clued))) {
+			const { clued, newly_clued, chop_moved, finessed } = this[i];
+			if (chop_moved || (clued && (options.afterClue ? true : !newly_clued)) || finessed) {
 				continue;
 			}
 			return i;

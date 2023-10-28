@@ -230,6 +230,7 @@ export function find_clues(state, options = {}) {
 					// Trash chop move (we only want to find the rightmost tcm)
 					if (!card.saved && cardIndex !== chopIndex && !found_tcm) {
 						const saved_cards = hand.slice(cardIndex + 1).filter(c => !c.saved);
+
 						saves.push(find_tcm(state, target, saved_cards, card, play_clues[target]));
 
 						found_tcm = true;

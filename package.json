@@ -13,6 +13,7 @@
   "scripts": {
     "start": "node src/hanabi-bot.js",
     "replay": "node src/replay.js",
+    "self-play": "node src/self-play.js",
     "lint": "eslint .",
     "test": "node --test"
   }

@@ -19,39 +19,32 @@ import { CLUE } from './constants.js';
 const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/data/src/json/variants.json';
 
 /** @type {Promise<Variant[]>} */
-let variants_promise;
+const variants_promise = new Promise((resolve, reject) => {
+	https.get(variantsURL, (res) => {
+		const { statusCode } = res;
 
-/**
- * Sends an asynchronous request to fetch the list of variants.
- */
-export function fetchVariants() {
-	variants_promise = new Promise((resolve, reject) => {
-		https.get(variantsURL, (res) => {
-			const { statusCode } = res;
+		if (statusCode !== 200) {
+			// Consume response data to free up memory
+			res.resume();
+			reject(`Failed to retrieve variants. Status Code: ${statusCode}`);
+		}
 
-			if (statusCode !== 200) {
-				// Consume response data to free up memory
-				res.resume();
-				reject(`Failed to retrieve variants. Status Code: ${statusCode}`);
+		res.setEncoding('utf8');
+
+		let rawData = '';
+		res.on('data', (chunk) => { rawData += chunk; });
+		res.on('end', () => {
+			try {
+				const parsedData = JSON.parse(rawData);
+				resolve(parsedData);
+			} catch (e) {
+				reject(e.message);
 			}
-
-			res.setEncoding('utf8');
-
-			let rawData = '';
-			res.on('data', (chunk) => { rawData += chunk; });
-			res.on('end', () => {
-				try {
-					const parsedData = JSON.parse(rawData);
-					resolve(parsedData);
-				} catch (e) {
-					reject(e.message);
-				}
-			});
-		}).on('error', (e) => {
-			console.error(`Error when retrieving variants: ${e.message}`);
 		});
+	}).on('error', (e) => {
+		console.error(`Error when retrieving variants: ${e.message}`);
 	});
-}
+});
 
 /**
  * Returns a variant's properties, given its name.
