@@ -23,7 +23,7 @@ const conventions = /** @type {const} */ ({
 const playerNames = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily', 'Fred'];
 
 async function main() {
-	const { convention = 'HGroup', level: lStr = '1', games = '10', players: pStr = '2', variant: vStr = 'No Variant' } = Utils.parse_args();
+	const { convention = 'HGroup', level: lStr = '1', games = '10', players: pStr = '2', seed, variant: vStr = 'No Variant' } = Utils.parse_args();
 	const variant = await getVariant(vStr);
 
 	if (conventions[convention] === undefined) {
@@ -59,14 +59,28 @@ async function main() {
 
 	fs.mkdir('./seeds', { recursive: true }, (err) => console.log(err));
 
-	for (let i = 0; i < Number(games); i++) {
+	if (seed !== undefined) {
 		const players = playerNames.slice(0, numPlayers);
-		const shuffled = shuffle(deck, `${i}`);
+		const shuffled = shuffle(deck, seed);
+
 		const { score, strikeout, actions } =
 			simulate_game(players, shuffled, variant.suits, /** @type {keyof typeof conventions} */ (convention), level);
 
-		fs.writeFileSync(`seeds/seed_${i}.json`, JSON.stringify({ players, deck: shuffled, actions }));
+		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions }));
 		console.log(score, strikeout);
+	}
+	else {
+		for (let i = 0; i < Number(games); i++) {
+			const players = playerNames.slice(0, numPlayers);
+			const shuffled = shuffle(deck, `${i}`);
+			const { score, strikeout, actions } =
+				simulate_game(players, shuffled, variant.suits, /** @type {keyof typeof conventions} */ (convention), level);
+
+			if (score !== 25) {
+				fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions }));
+			}
+			console.log(score, strikeout);
+		}
 	}
 }
 
@@ -104,11 +118,12 @@ function simulate_game(playerNames, deck, suits, convention, level) {
 	}
 
 	let currentPlayerIndex = 0, turn = 0, endgameTurns = -1;
+	const _state = states[0].state;
 
 	/** @type {Pick<PerformAction, 'type' | 'target' | 'value'>[]} */
 	const actions = [];
 
-	while (endgameTurns !== 0 && states[0].state.strikes !== 3) {
+	while (endgameTurns !== 0 && _state.strikes !== 3 && _state.score !== _state.suits.length * 5) {
 		if (turn !== 0) {
 			states.forEach(({ state }) => {
 				Utils.globalModify({ state });
@@ -125,6 +140,8 @@ function simulate_game(playerNames, deck, suits, convention, level) {
 		for (let stateIndex = 0; stateIndex < playerNames.length; stateIndex++) {
 			const { state, order } = states[stateIndex];
 			const action = Utils.performToAction(state, performAction, currentPlayerIndex, deck);
+
+			// logger.setLevel(stateIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
 
 			Utils.globalModify({ state });
 			state.handle_action(action, true);
@@ -144,6 +161,7 @@ function simulate_game(playerNames, deck, suits, convention, level) {
 		}
 
 		currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.length;
+		// logger.setLevel(currentPlayerIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
 		turn++;
 	}
 
@@ -154,7 +172,7 @@ function simulate_game(playerNames, deck, suits, convention, level) {
 	});
 
 	return {
-		score: states[0].state.play_stacks.reduce((acc, stack) => acc + stack),
+		score: states[0].state.score,
 		strikeout: states[0].state.strikes === 3,
 		actions
 	};

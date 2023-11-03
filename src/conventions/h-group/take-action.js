@@ -1,8 +1,7 @@
-import { ACTION } from '../../constants.js';
-import { CLUE } from '../../constants.js';
-import { LEVEL } from './h-constants.js';
+import { ACTION, CLUE } from '../../constants.js';
+import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
 import { HGroup_Hand as Hand } from '../h-hand.js';
-import { select_play_clue, determine_playable_card, order_1s } from './action-helper.js';
+import { select_play_clue, determine_playable_card, order_1s, find_clue_value } from './action-helper.js';
 import { find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { inEndgame, minimum_clue_value } from './hanabi-logic.js';
@@ -69,6 +68,7 @@ export function take_action(state) {
 	}
 
 	let priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
+	const actionPrioritySize = Object.keys(ACTION_PRIORITY).length;
 
 	/** @type {Card} */
 	let best_playable_card;
@@ -81,32 +81,34 @@ export function take_action(state) {
 			if (ordered_1s.length > 0) {
 				let best_ocm_index = 0, best_ocm_value = -0.1;
 
-				// Try to find a non-negative value OCM
-				for (let i = 1; i < ordered_1s.length; i++) {
-					const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
+				if (state.level >= LEVEL.BASIC_CM) {
+					// Try to find a non-negative value OCM
+					for (let i = 1; i < ordered_1s.length; i++) {
+						const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
 
-					if (playerIndex === state.ourPlayerIndex) {
-						break;
-					}
+						if (playerIndex === state.ourPlayerIndex) {
+							break;
+						}
 
-					const old_chop = state.hands[playerIndex].chop();
-					// Player is locked, OCM is meaningless
-					if (old_chop === undefined) {
-						continue;
-					}
-					const old_chop_value = cardValue(state, old_chop);
+						const old_chop = state.hands[playerIndex].chop();
+						// Player is locked, OCM is meaningless
+						if (old_chop === undefined) {
+							continue;
+						}
+						const old_chop_value = cardValue(state, old_chop);
 
-					const newHand = state.hands[playerIndex].clone();
-					newHand.chop().chop_moved = true;
+						const newHand = state.hands[playerIndex].clone();
+						newHand.chop().chop_moved = true;
 
-					const new_chop = newHand.chop();
-					const new_chop_value = new_chop ? cardValue(state, new_chop) : Hand.isLoaded(state, playerIndex) ? 0 : 4;
+						const new_chop = newHand.chop();
+						const new_chop_value = new_chop ? cardValue(state, new_chop) : Hand.isLoaded(state, playerIndex) ? 0 : 4;
 
-					const ocm_value = old_chop_value - new_chop_value;
+						const ocm_value = old_chop_value - new_chop_value;
 
-					if (!isTrash(state, state.ourPlayerIndex, old_chop, old_chop.order) && ocm_value > best_ocm_value) {
-						best_ocm_index = i;
-						best_ocm_value = ocm_value;
+						if (!isTrash(state, state.ourPlayerIndex, old_chop, old_chop.order) && ocm_value > best_ocm_value) {
+							best_ocm_index = i;
+							best_ocm_value = ocm_value;
+						}
 					}
 				}
 
@@ -154,13 +156,13 @@ export function take_action(state) {
 	}
 
 	// Unlock next player
-	if (urgent_actions[0].length > 0) {
-		return urgent_actions[0][0];
+	if (urgent_actions[ACTION_PRIORITY.UNLOCK].length > 0) {
+		return urgent_actions[ACTION_PRIORITY.UNLOCK][0];
 	}
 
 	// Urgent save for next player
 	if (state.clue_tokens > 0) {
-		for (let i = 1; i < 4; i++) {
+		for (let i = 1; i < actionPrioritySize; i++) {
 			const actions = urgent_actions[i];
 			if (actions.length > 0) {
 				return actions[0];
@@ -193,8 +195,8 @@ export function take_action(state) {
 	}
 
 	// Unlock other player than next
-	if (urgent_actions[4].length > 0) {
-		return urgent_actions[4][0];
+	if (urgent_actions[ACTION_PRIORITY.UNLOCK + actionPrioritySize].length > 0) {
+		return urgent_actions[ACTION_PRIORITY.UNLOCK + actionPrioritySize][0];
 	}
 
 	// Forced discard if next player is locked
@@ -215,12 +217,12 @@ export function take_action(state) {
 	}
 
 	// Give TCCM on a valuable card that moves chop to trash
-	if (state.level >= LEVEL.TEMPO_CLUES && state.clue_tokens > 0 && stall_clues[1].length > 0) {
+	if (state.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && state.clue_tokens > 0) {
 		for (const clue of stall_clues[1]) {
 			const { target } = clue;
 
-			// Chop is trash, ignore
-			if (Hand.chopValue(state, target) === 0) {
+			// Chop doesn't exist or is trash, ignore
+			if (state.hands[target].chop() === undefined || Hand.chopValue(state, target) === 0) {
 				continue;
 			}
 
@@ -234,6 +236,11 @@ export function take_action(state) {
 		}
 	}
 
+	// Any play clue in 2 players
+	if (state.numPlayers === 2 && state.clue_tokens > 0 && (best_play_clue || stall_clues[1].length > 0)) {
+		return Utils.clueToAction(best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result)), tableID);
+	}
+
 	// Playable card with any priority
 	if (best_playable_card !== undefined) {
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
@@ -242,7 +249,7 @@ export function take_action(state) {
 	if (state.clue_tokens > 0) {
 		for (let i = 5; i < 9; i++) {
 			// Give play clue (at correct priority level)
-			if (i === (state.clue_tokens > 1 ? 5 : 8) && best_play_clue !== undefined) {
+			if (i === (state.clue_tokens > 1 ? actionPrioritySize + 1 : actionPrioritySize * 2) && best_play_clue !== undefined) {
 				if (clue_value >= minimum_clue_value(state)) {
 					return Utils.clueToAction(best_play_clue, state.tableID);
 				}
@@ -253,7 +260,7 @@ export function take_action(state) {
 			}
 
 			// Go through rest of actions in order of priority (except early save)
-			if (i !== 8 && urgent_actions[i].length > 0) {
+			if (i !== actionPrioritySize * 2 && urgent_actions[i].length > 0) {
 				return urgent_actions[i][0];
 			}
 		}
@@ -267,8 +274,8 @@ export function take_action(state) {
 	}
 
 	// Early save
-	if (state.clue_tokens > 0 && urgent_actions[8].length > 0) {
-		return urgent_actions[8][0];
+	if (state.clue_tokens > 0 && urgent_actions[actionPrioritySize * 2].length > 0) {
+		return urgent_actions[actionPrioritySize * 2][0];
 	}
 
 	const best_stall_severity = stall_clues.findIndex(clues => clues.length > 0);

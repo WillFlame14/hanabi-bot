@@ -167,7 +167,16 @@ export function interpret_clue(state, action) {
 
 	if (focused_card.inferred.length === 0) {
 		focused_card.inferred = focused_card.possible.slice();
-		logger.warn('focused card had no inferences after applying good touch');
+		logger.warn(`focused card had no inferences after applying good touch (previously ${prev_state.hands[target].findOrder(focused_card.order).inferred.map(c => logCard(c)).join()})`);
+
+		// There is a waiting connection that depends on this card
+		if (focused_card.possible.length === 1 && state.waiting_connections.some(wc =>
+			wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === focused_card.order))
+		) {
+			const { suitIndex, rank } = focused_card.possible[0];
+			state.rewind(focused_card.drawn_index, { type: 'identify', order: focused_card.order, playerIndex: target, suitIndex, rank });
+			return;
+		}
 	}
 
 	logger.debug('pre-inferences', focused_card.inferred.map(c => logCard(c)).join());
@@ -237,7 +246,7 @@ export function interpret_clue(state, action) {
 
 				// Multiple inferences, we need to wait for connections
 				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
-					state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1 });
+					state.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1 });
 				}
 			}
 		}
@@ -265,11 +274,10 @@ export function interpret_clue(state, action) {
 	}
 	// Card doesn't match any inferences
 	else {
-		logger.info(`card ${logCard(focused_card)} order ${focused_card.order} doesn't match any inferences!`);
+		logger.info(`card ${logCard(focused_card)} order ${focused_card.order} doesn't match any inferences! currently ${focused_card.inferred.map(c => logCard(c)).join(',')}`);
 
 		/** @type {FocusPossibility[]} */
 		const all_connections = [];
-		logger.info(`inferences ${focused_card.inferred.map(c => logCard(c)).join(',')}`);
 
 		const looksDirect = focused_card.identity({ symmetric: true }) === undefined && (	// Focused card must be unknown AND
 			action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
@@ -356,7 +364,7 @@ export function interpret_clue(state, action) {
 
 				// Multiple possible sets, we need to wait for connections
 				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
-					state.waiting_connections.push({ connections, focused_card, inference, giver, action_index: state.actionList.length - 1 });
+					state.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, action_index: state.actionList.length - 1 });
 				}
 			}
 
@@ -390,7 +398,7 @@ export function interpret_clue(state, action) {
 	Basics.refresh_links(state, target);
 	update_hypo_stacks(state);
 
-	if (state.level >= LEVEL.TEMPO_CLUES) {
+	if (state.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2) {
 		interpret_tccm(state, old_state, giver, target, list, focused_card);
 	}
 

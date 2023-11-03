@@ -1,4 +1,5 @@
 import * as https from 'https';
+import * as fs from 'fs';
 
 import { ACTION, END_CONDITION, HAND_SIZE } from './constants.js';
 
@@ -45,13 +46,22 @@ function fetchReplay(id) {
 }
 
 async function main() {
-	const { id, level, index, convention = 'HGroup' } = Utils.parse_args();
+	const { id, file, level, index, convention = 'HGroup' } = Utils.parse_args();
 	initConsole();
 
 	let game_data;
 
+	if (id !== undefined && file !== undefined) {
+		throw new Error('Both id and file provided, only provide one.');
+	}
+
 	try {
-		game_data = await fetchReplay(id);
+		if (id !== undefined) {
+			game_data = await fetchReplay(id);
+		}
+		else {
+			game_data = JSON.parse(fs.readFileSync(file, 'utf8'));
+		}
 	}
 	catch (err) {
 		throw new Error(err);

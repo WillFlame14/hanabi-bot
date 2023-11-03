@@ -56,6 +56,18 @@ export function order_1s(state, cards) {
 
 	return unknown_1s.sort((c1, c2) => {
 		const [c1_start, c2_start] = [c1, c2].map(c => inStartingHand(state, c));
+		if (c1.finessed && c2.finessed) {
+			return c1.finesse_index - c2.finesse_index;
+		}
+
+		if (c1.finessed) {
+			return -1;
+		}
+
+		if (c2.finessed) {
+			return 1;
+		}
+
 		// c1 is chop focus
 		if (c1.chop_when_first_clued) {
 			return -1;

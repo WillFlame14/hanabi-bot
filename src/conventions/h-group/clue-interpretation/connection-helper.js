@@ -62,7 +62,7 @@ export function add_symmetric_connections(state, symmetric_connections, existing
 			continue;
 		}
 
-		state.waiting_connections.push({ connections, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake });
+		state.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake });
 	}
 }
 

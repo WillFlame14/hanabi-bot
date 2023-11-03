@@ -158,7 +158,7 @@ export function logAction(action) {
 
 			switch(endCondition) {
 				case END_CONDITION.NORMAL:
-					return `Players score ${state.play_stacks.reduce((acc, stack) => acc += stack, 0)} points.`;
+					return `Players score ${state.score} points.`;
 				case END_CONDITION.STRIKEOUT:
 					return `Players lose!`;
 				case END_CONDITION.TERMINATED:

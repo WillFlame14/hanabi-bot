@@ -61,9 +61,7 @@ function find_save(state, target, card) {
 			return;
 		}
 
-		if (state.play_stacks[suitIndex] + 1 === rank || (state.ourPlayerIndex + 1) % state.numPlayers !== target) {
-			return Object.assign(save_clue, { playable: true, cm: [], safe: clue_safe(state, save_clue) });
-		}
+		return Object.assign(save_clue, { playable: true, cm: [], safe: clue_safe(state, save_clue) });
 	}
 	else if (unique2(state, card)) {
 		logger.highlight('yellow', 'saving unique 2', logCard(card));
@@ -333,7 +331,7 @@ export function find_clues(state, options = {}) {
 		logger.info('found save clues', save_clues.filter(clue => clue !== undefined).map(clue => logClue(clue)));
 	}
 	if (fix_clues.some(clues => clues.length > 0)) {
-		logger.info('found fix clues', fix_clues.map(clues => clues.map(clue => logClue(clue))).flat());
+		logger.info('found fix clues', fix_clues.map(clues => clues.map(clue => logClue(clue) + (clue.trash ? ' (trash)' : ''))).flat());
 	}
 	if (stall_clues.some(clues => clues.length > 0)) {
 		logger.info('found stall clues', stall_clues.map(clues => clues.map(clue => logClue(clue))).flat());

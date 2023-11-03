@@ -47,7 +47,10 @@ export function find_playables(state, playerIndex) {
 		}
 	}
 
-	return Array.from(state.hands[playerIndex].filter(card => !linked_orders.has(card.order) && card.possibilities.every(p => playableAway(state, p) === 0)));
+	return Array.from(state.hands[playerIndex].filter(card =>
+		!linked_orders.has(card.order) &&
+		card.possibilities.every(p => playableAway(state, p) === 0) &&
+		card.matches_inferences()));
 }
 
 /**

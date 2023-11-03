@@ -73,9 +73,9 @@ export function update_turn(state, action) {
 	const demonstrated = [];
 
 	for (let i = 0; i < state.waiting_connections.length; i++) {
-		const { connections, conn_index = 0, focused_card, inference, giver, action_index, fake, ambiguousPassback } = state.waiting_connections[i];
+		const { connections, conn_index, focused_card, inference, giver, action_index, fake, ambiguousPassback } = state.waiting_connections[i];
 		const { type, reacting, card: old_card, identities } = connections[conn_index];
-		logger.info(`waiting for connecting ${logCard(old_card)} (${state.playerNames[reacting]}) for inference ${logCard(inference)}`);
+		logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(c => logCard(c))} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
 
 		// Card may have been updated, so need to find it again
 		const card = state.hands[reacting].findOrder(old_card.order);
@@ -94,22 +94,6 @@ export function update_turn(state, action) {
 						!ambiguousPassback;							// haven't already tried to pass back
 				};
 
-				// Determines if the card could be superpositioned on a finesse that is not yet playable.
-				const unknown_finesse = () => state.waiting_connections.some((wc, index) => {
-					if (index === i) {
-						return;
-					}
-
-					const identities = wc.connections.find((conn, index) => index >= conn_index && conn.card.order === old_card.order)?.identities;
-					const unplayable = identities && identities.some(i => playableAway(state, i) > 0);
-
-					if (unplayable) {
-						logger.warn(identities.map(i => logCard(i)), 'not all possibilities playable');
-					}
-
-					return unplayable;
-				});
-
 				// Didn't play into finesse
 				if (type === 'finesse') {
 					if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
@@ -122,18 +106,26 @@ export function update_turn(state, action) {
 						logger.warn(`${state.playerNames[reacting]} didn't play into finesse but they need to play multiple non-hidden cards, passing back`);
 						state.waiting_connections[i].ambiguousPassback = true;
 					}
-					else if (unknown_finesse()) {
-						logger.info(`${state.playerNames[reacting]} cannot play finesse due to additional possibilities, continuing to wait`);
-					}
 					else {
-						logger.info(`${state.playerNames[reacting]} didn't play into finesse, removing inference ${logCard(inference)}`);
-						if (reacting === state.ourPlayerIndex) {
-							to_remove.push(i);
+						// Check if the card could be superpositioned on a finesse that is not yet playable.
+						const unplayable_connections = state.waiting_connections.filter((wc, index) =>
+							index !== i && wc.connections.some((conn, index) =>
+								index >= conn_index && conn.card.order === old_card.order && conn.identities.some(i => playableAway(state, i) > 0)));
+
+						if (unplayable_connections.length > 0) {
+							logger.warn(unplayable_connections.map(wc =>
+								logCard(wc.connections.find((conn, index) => index >= conn_index && conn.card.order === old_card.order).card)), 'not all possibilities playable');
 						}
 						else {
-							const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
-							state.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects });
-							return;
+							logger.info(`${state.playerNames[reacting]} didn't play into finesse, removing inference ${logCard(inference)}`);
+							if (reacting === state.ourPlayerIndex) {
+								to_remove.push(i);
+							}
+							else {
+								const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
+								state.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects });
+								return;
+							}
 						}
 					}
 				}
@@ -150,8 +142,11 @@ export function update_turn(state, action) {
 				) {
 					logger.info(`waiting card ${identities.length === 1 ? logCard(identities[0]) : '(unknown)'} played`);
 
-					state.waiting_connections[i].conn_index = conn_index + 1;
-					if (state.waiting_connections[i].conn_index === connections.length) {
+					// Advance waiting connection to next card that still exists
+					state.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
+						index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
+
+					if (state.waiting_connections[i].conn_index === -1) {
 						to_remove.push(i);
 					}
 
@@ -195,23 +190,30 @@ export function update_turn(state, action) {
 			// The giver's card must have been known before the finesse was given
 			if (old_card.matches(last_action, { infer: true }) && card.finessed && last_action.card.reasoning[0] < action_index) {
 				logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`);
-				// Advance connection
-				state.waiting_connections[i].conn_index = conn_index + 1;
-				if (state.waiting_connections[i].conn_index === connections.length) {
+
+				// Advance waiting connection to next card that still exists
+				state.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
+					index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
+
+				if (state.waiting_connections[i].conn_index === -1) {
 					to_remove.push(i);
 				}
 
 				if (!fake) {
 					// Remove finesse
-					if (card.old_inferred !== undefined) {
-						// Restore old inferences
-						card.inferred = card.old_inferred;
-						card.old_inferred = undefined;
+					card.subtract('inferred', identities);
+
+					if (card.inferred.length === 0) {
+						if (card.old_inferred !== undefined) {
+							// Restore old inferences
+							card.inferred = card.old_inferred;
+							card.old_inferred = undefined;
+						}
+						else {
+							logger.error(`no old inferences on card ${logCard(card)}! current inferences ${card.inferred.map(c => logCard(c))}`);
+						}
+						card.finessed = false;
 					}
-					else {
-						logger.error(`no old inferences on card ${logCard(card)}! current inferences ${card.inferred.map(c => logCard(c))}`);
-					}
-					card.finessed = false;
 				}
 			}
 		}
@@ -224,6 +226,10 @@ export function update_turn(state, action) {
 		for (const connection of connections) {
 			const { reacting, identities } = connection;
 			const actual_card = state.hands[reacting].findOrder(connection.card.order);
+
+			if (actual_card === undefined) {
+				continue;
+			}
 
 			if (!actual_card.superposition) {
 				actual_card.intersect('inferred', identities);

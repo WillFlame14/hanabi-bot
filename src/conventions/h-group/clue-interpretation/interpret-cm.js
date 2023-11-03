@@ -109,7 +109,7 @@ export function interpret_tccm(state, old_state, giver, target, list, focused_ca
 
 	// Target was locked
 	if (chop === undefined) {
-		logger.info('target locked, not tccm');
+		// logger.info('target locked, not tccm');
 		return false;
 	}
 
@@ -117,7 +117,7 @@ export function interpret_tccm(state, old_state, giver, target, list, focused_ca
 
 	// At least one card touched was newly clued
 	if (touched_cards.some(card => card.newly_clued)) {
-		logger.info('at least one newly touched, not tccm');
+		// logger.info('at least one newly touched, not tccm');
 		return false;
 	}
 
@@ -130,14 +130,14 @@ export function interpret_tccm(state, old_state, giver, target, list, focused_ca
 
 	// The new state does not have exactly 1 extra play
 	if (sum_plays(state) !== sum_plays(old_state) + 1) {
-		logger.info(`sum_plays was ${sum_plays(state)} whereas old_plays was ${sum_plays(old_state) + 1}, not tccm`);
+		// logger.info(`sum_plays was ${sum_plays(state)} whereas old_plays was ${sum_plays(old_state) + 1}, not tccm`);
 		return false;
 	}
 
 	// The card was not a 5 and not promptable (valuable)
 	const prompt = old_state.hands[target].find_prompt(focused_card, state.suits);
 	if (prompt && prompt.rank !== 5 && prompt.order !== focused_card.order) {
-		logger.info('targeted a out-of-order card not a 5, not tccm');
+		// logger.info('targeted a out-of-order card not a 5, not tccm');
 		return false;
 	}
 

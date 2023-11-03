@@ -79,7 +79,7 @@ export function interpret_discard(state, action, card) {
 
 	const to_remove = [];
 	for (let i = 0; i < state.waiting_connections.length; i++) {
-		const { connections, conn_index = 0, inference, action_index } = state.waiting_connections[i];
+		const { connections, conn_index, inference, action_index } = state.waiting_connections[i];
 
 		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.card.order === order);
 		if (dc_conn_index !== -1) {

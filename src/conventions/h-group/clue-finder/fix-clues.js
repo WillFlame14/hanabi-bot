@@ -31,7 +31,7 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 		fix_clues[target] = [];
 
-		if (state.level <= LEVEL.FIX || target === options.ignorePlayerIndex) {
+		if (state.level < LEVEL.FIX || target === options.ignorePlayerIndex) {
 			continue;
 		}
 
@@ -50,7 +50,7 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 
 			if (card.inferred.length === 0) {
 				// TODO
-				logger.error(`card ${logCard(card)} order ${card.order} need fix??`);
+				logger.debug(`card ${logCard(card)} order ${card.order} need fix??`);
 			}
 			else {
 				const seems_playable = card.inferred.every(p => {

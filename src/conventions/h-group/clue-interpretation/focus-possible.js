@@ -216,7 +216,7 @@ function find_rank_focus(state, rank, action) {
 				hypo_state.play_stacks[suitIndex]++;
 
 				if (next_rank > rank) {
-					logger.warn('stacked beyond clued rank, deciding to ignore possibility');
+					logger.warn(`stacked beyond clued rank ${logConnections(connections, { suitIndex, rank: next_rank})}, ignoring`);
 					break;
 				}
 
@@ -224,7 +224,9 @@ function find_rank_focus(state, rank, action) {
 				connecting = find_connecting(hypo_state, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
 			}
 
-			logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
+			if (next_rank <= rank) {
+				logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
+			}
 
 			// Connected cards can stack up to this rank
 			if (rank === next_rank) {

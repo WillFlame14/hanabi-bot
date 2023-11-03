@@ -123,6 +123,10 @@ export class State {
 		}
 	}
 
+	get score() {
+		return this.play_stacks.reduce((sum, stack) => sum + stack);
+	}
+
 	/**
 	 * Returns a blank copy of the state, as if the game had restarted.
 	 */

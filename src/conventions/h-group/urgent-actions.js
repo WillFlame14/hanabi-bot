@@ -1,5 +1,5 @@
 import { ACTION } from '../../constants.js';
-import { LEVEL } from './h-constants.js';
+import { ACTION_PRIORITY as PRIORITY, LEVEL } from './h-constants.js';
 import { HGroup_Hand as Hand } from '../h-hand.js';
 import { clue_safe } from './clue-finder/clue-safe.js';
 import { get_result } from './clue-finder/determine-clue.js';
@@ -141,28 +141,43 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
  * @param {Card[][]} playable_priorities
  */
 export function find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities) {
-	const urgent_actions = /** @type {PerformAction[][]} */ ([[], [], [], [], [], [], [], [], []]);
+	const prioritySize = Object.keys(PRIORITY).length;
+	const urgent_actions = /** @type {PerformAction[][]} */ (Array.from({ length: prioritySize * 2 + 1 }, _ => []));
 
 	for (let i = 1; i < state.numPlayers; i++) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
+
+		// If there is at least one non-finessed player with 1 clue (or 2 non-finessed players with 0 clues) between us and target, lower priority
+		let playerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
+		let high_priority = true;
+
+		while (playerIndex !== target) {
+			if (!state.hands[playerIndex].some(c => c.finessed && playableAway(state, c) === 0)) {
+				high_priority = false;
+				break;
+			}
+			playerIndex = (playerIndex + 1) % state.numPlayers;
+		}
+
+		const nextPriority = high_priority ? 0 : prioritySize;
 
 		// They are locked, we should try to unlock
 		if (Hand.isLocked(state, target)) {
 			const unlock_action = find_unlock(state, target);
 			if (unlock_action !== undefined) {
-				urgent_actions[i === 1 ? 0 : 4].push(unlock_action);
+				urgent_actions[PRIORITY.UNLOCK + nextPriority].push(unlock_action);
 				continue;
 			}
 
 			const play_over_save = find_play_over_save(state, target, play_clues.flat(), true, 0);
 			if (play_over_save !== undefined) {
-				urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
+				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
 				continue;
 			}
 
 			const trash_fix = fix_clues[target].find(clue => clue.trash);
 			if (trash_fix !== undefined) {
-				urgent_actions[i === 1 ? 2 : 6].push(Utils.clueToAction(trash_fix, state.tableID));
+				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, state.tableID));
 				continue;
 			}
 			continue;
@@ -179,7 +194,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 
 			// They already have a playable or trash (i.e. early save)
 			if (Hand.isLoaded(state, target)) {
-				urgent_actions[8].push(Utils.clueToAction(save, state.tableID));
+				urgent_actions[prioritySize * 2].push(Utils.clueToAction(save, state.tableID));
 				continue;
 			}
 
@@ -187,37 +202,17 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 			// Although this is only optimal for the next player, it is often a "good enough" action for future players.
 			const unlock_action = find_unlock(state, target);
 			if (unlock_action !== undefined) {
-				urgent_actions[i === 1 ? 0 : 4].push(unlock_action);
+				urgent_actions[PRIORITY.UNLOCK + nextPriority].push(unlock_action);
 				continue;
 			}
 
 			const list = state.hands[target].clueTouched(save, state.suits).map(c => c.order);
 			const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, list, clue: save, target });
-			const hand_after_save = hypo_state.hands[target];
-
-			// Try to give a play clue involving them (if 2 players, too risky to try play over save at 1 clue)
-			if (state.clue_tokens >= (state.numPlayers > 2 ? 1 : 2)) {
-				const all_play_clues = play_clues.flat();
-
-				// Save clue reveals a play
-				if (Hand.find_playables(hypo_state, target).length > 0) {
-					all_play_clues.push(Object.assign({}, save, { result: get_result(state, hypo_state, save, state.ourPlayerIndex )}));
-				}
-
-				logger.debug('hand after save', logHand(hand_after_save));
-
-				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
-				const play_over_save = find_play_over_save(state, target, all_play_clues, false, Hand.chopValue(hypo_state, target, { afterClue: true }));
-				if (play_over_save !== undefined) {
-					urgent_actions[i === 1 ? 2 : 6].push(play_over_save);
-					continue;
-				}
-			}
 
 			// Give them a fix clue with known trash if possible (TODO: Re-examine if this should only be urgent fixes)
 			const trash_fix = fix_clues[target].find(clue => clue.trash);
 			if (trash_fix !== undefined) {
-				urgent_actions[i === 1 ? 2 : 6].push(Utils.clueToAction(trash_fix, state.tableID));
+				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, state.tableID));
 				continue;
 			}
 
@@ -236,34 +231,51 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 
 					const [old_chop_value, new_chop_value] = [state, hypo_state].map(s => Hand.chopValue(s, target));
 
-					// Make sure the old chop is better than the new one
+					// Make sure the old chop is equal or better than the new one
 					if (old_chop_value >= new_chop_value) {
-						urgent_actions[i === 1 ? 1 : 5].push({ tableID: state.tableID, type: ACTION.PLAY, target: ordered_1s[distance].order });
+						urgent_actions[PRIORITY.ONLY_SAVE + nextPriority].push({ tableID: state.tableID, type: ACTION.PLAY, target: ordered_1s[distance].order });
 						continue;
 					}
 				}
 			}
 
 			// Check if TCCM is available
-			if (state.level >= LEVEL.TEMPO_CLUES) {
+			if (state.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2) {
 				let tccm = false;
 				for (const clue of stall_clues[1].filter(clue => clue.target === target)) {
-					if (clue.target !== target) {
-						continue;
-					}
-
 					const { playables } = clue.result;
 					const { focused_card } = determine_focus(hand, hand.clueTouched(clue, state.suits).map(c => c.order), { beforeClue: true });
 					const { tempo, valuable } = valuable_tempo_clue(state, clue, playables, focused_card);
 
-					if (tempo && !valuable) {
-						urgent_actions[i === 1 ? 2 : 6].push(Utils.clueToAction(clue, state.tableID));
+					if (tempo && !valuable && clue_safe(state, clue)) {
+						urgent_actions[PRIORITY.ONLY_SAVE + nextPriority].push(Utils.clueToAction(clue, state.tableID));
 						tccm = true;
 						break;
 					}
 				}
 
 				if (tccm) {
+					continue;
+				}
+			}
+
+			const hand_after_save = hypo_state.hands[target];
+
+			// Try to give a play clue involving them (if 2 players, too risky to try play over save at 1 clue)
+			if (state.clue_tokens >= (state.numPlayers > 2 ? 1 : 2)) {
+				const all_play_clues = play_clues.flat();
+
+				// Save clue reveals a play
+				if (Hand.find_playables(hypo_state, target).length > 0) {
+					all_play_clues.push(Object.assign({}, save, { result: get_result(state, hypo_state, save, state.ourPlayerIndex )}));
+				}
+
+				logger.debug('hand after save', logHand(hand_after_save));
+
+				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
+				const play_over_save = find_play_over_save(state, target, all_play_clues, false, Hand.chopValue(hypo_state, target, { afterClue: true }));
+				if (play_over_save !== undefined) {
+					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
 					continue;
 				}
 			}
@@ -283,7 +295,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 			}
 
 			// No alternative, have to give save
-			urgent_actions[i === 1 ? 1 : 5].push(Utils.clueToAction(save_clues[target], state.tableID));
+			urgent_actions[PRIORITY.ONLY_SAVE + nextPriority].push(Utils.clueToAction(save_clues[target], state.tableID));
 		}
 
 		// They require a fix clue
@@ -292,12 +304,12 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 
 			// Urgent fix on the next player is particularly urgent, but we should prioritize urgent fixes for others too
 			if (urgent_fix !== undefined) {
-				urgent_actions[i === 1 ? 3 : 7].push(Utils.clueToAction(urgent_fix, state.tableID));
+				urgent_actions[PRIORITY.URGENT_FIX + nextPriority].push(Utils.clueToAction(urgent_fix, state.tableID));
 				continue;
 			}
 
 			// No urgent fixes required
-			urgent_actions[7].push(Utils.clueToAction(fix_clues[target][0], state.tableID));
+			urgent_actions[PRIORITY.URGENT_FIX + prioritySize].push(Utils.clueToAction(fix_clues[target][0], state.tableID));
 		}
 	}
 	return urgent_actions;

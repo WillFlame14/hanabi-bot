@@ -120,9 +120,8 @@ export function playableAway(state, { suitIndex, rank }) {
  * @param {State} state
  */
 export function getPace(state) {
-	const currScore = state.play_stacks.reduce((acc, curr) => acc + curr);
 	const maxScore = state.max_ranks.reduce((acc, curr) => acc + curr);
-	return currScore + state.cardsLeft + state.numPlayers - maxScore;
+	return state.score + state.cardsLeft + state.numPlayers - maxScore;
 }
 
 /**
@@ -142,7 +141,7 @@ export function unique2(state, card) {
 	const { suitIndex, rank } = card;
 
 	return rank === 2 &&
-        state.play_stacks[suitIndex] === 0 &&											// play stack at 0
+        state.play_stacks[suitIndex] < 2 &&												// play stack not yet at 2
         visibleFind(state, state.ourPlayerIndex, card).length === 1 &&					// other copy isn't visible
         !state.hands[state.ourPlayerIndex].some(c => c.matches(card, { infer: true }));	// not in our hand
 }

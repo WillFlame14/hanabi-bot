@@ -1,4 +1,3 @@
-import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { take_action } from '../../src/conventions/playful-sieve/take-action.js';
