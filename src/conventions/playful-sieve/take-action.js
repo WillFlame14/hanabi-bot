@@ -40,20 +40,14 @@ export function take_action(state) {
 		}
 	}
 
-	const discards = [];
-	for (const card of playable_cards) {
+	// Discards must be inferred, playable, trash and duplicated in our hand
+	const discards = playable_cards.filter(card => {
 		const id = card.identity({ infer: true });
 
-		// Skip non-trash cards and cards we don't know the identity of
-		if (!trash_cards.some(c => c.order === card.order) || id === undefined) {
-			continue;
-		}
-
-		// If there isn't a matching playable card in our hand, we should discard it to sarcastic for someone else
-		if (!playable_cards.some(c => c.matches(id, { infer: true }) && c.order !== card.order)) {
-			discards.push(card);
-		}
-	}
+		return id !== undefined &&
+			trash_cards.some(c => c.order === card.order) &&
+			playable_cards.some(c => c.matches(id, { infer: true }) && c.order !== card.order);
+	});
 
 	// Remove trash cards from playables and discards from trash cards
 	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order));

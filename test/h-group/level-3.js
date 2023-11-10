@@ -8,6 +8,7 @@ import HGroup from '../../src/conventions/h-group.js';
 import logger from '../../src/tools/logger.js';
 
 import { order_1s } from '../../src/conventions/h-group/action-helper.js';
+import { logHand } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -124,8 +125,8 @@ describe('sarcastic discard', () => {
 			starting: PLAYER.CATHY
 		});
 
-		// pace = currScore (4) + state.cardsLeft (19) + state.numPlayers (2) - maxScore (25) = 0
-		state.cardsLeft = 19;
+		// pace = currScore (4) + state.cardsLeft (18) + state.numPlayers (3) - maxScore (25) = 0
+		state.cardsLeft = 18;
 
 		// Bob's y4 is clued yellow.
 		state.hands[PLAYER.BOB][3].intersect('inferred', ['y4'].map(expandShortCard));
@@ -142,5 +143,29 @@ describe('sarcastic discard', () => {
 		// Alice should play slot 5 instead of discarding for tempo.
 		const action = state.take_action(state);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 0 });
+	});
+
+	it('prefers playing when holding both copies in endgame', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'b4', 'y1', 'g4', 'p4'],
+			['g4', 'b2', 'y1', 'y2', 'p1']
+		], {
+			level: 3,
+			play_stacks: [0, 3, 0, 0, 5],
+			starting: PLAYER.BOB
+		});
+
+		// pace = currScore (8) + state.cardsLeft (14) + state.numPlayers (3) - maxScore (25) = 0
+		state.cardsLeft = 14;
+
+		takeTurn(state, 'Bob clues yellow to Alice (slots 4,5)');
+		takeTurn(state, 'Cathy clues 4 to Alice (slots 4,5)');
+
+		logger.info('hand', logHand(state.hands[PLAYER.ALICE]));
+
+		// Alice should play slot 4 instead of discarding for tempo.
+		const action = state.take_action(state);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
 });

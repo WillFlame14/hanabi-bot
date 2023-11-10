@@ -4,7 +4,7 @@ import { HGroup_Hand as Hand } from '../h-hand.js';
 import { select_play_clue, determine_playable_card, order_1s, find_clue_value } from './action-helper.js';
 import { find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { inEndgame, minimum_clue_value } from './hanabi-logic.js';
+import { inEndgame, minimum_clue_value, stall_severity } from './hanabi-logic.js';
 import { cardValue, getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
@@ -31,24 +31,24 @@ export function take_action(state) {
 	let playable_cards = Hand.find_playables(state, state.ourPlayerIndex);
 	let trash_cards = Hand.find_known_trash(state, state.ourPlayerIndex).filter(c => c.clued);
 
-	const discards = [];
-	for (const card of playable_cards) {
+	// Discards must be inferred, playable, trash and not duplicated in our hand
+	const discards = playable_cards.filter(card => {
 		const id = card.identity({ infer: true });
 
-		// Skip non-trash cards and cards we don't know the identity of
-		if (!trash_cards.some(c => c.order === card.order) || id === undefined) {
-			continue;
-		}
+		return id !== undefined &&
+			trash_cards.some(c => c.order === card.order) &&
+			!playable_cards.some(c => c.matches(id, { infer: true }) && c.order !== card.order);
+	});
 
-		// If there isn't a matching playable card in our hand, we should discard it to sarcastic for someone else
-		if (!playable_cards.some(c => c.matches(id, { infer: true }) && c.order !== card.order)) {
-			discards.push(card);
-		}
-	}
+	// Pick the leftmost of all playable trash cards
+	const playable_trash = playable_cards.filter(card => {
+		const id = card.identity({ infer: true });
+		return id !== undefined && playable_cards.some(c => c.matches(id, { infer: true }) && c.order < card.order);
+	});
 
-	// Remove trash cards from playables and discards from trash cards
-	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order));
-	trash_cards = trash_cards.filter(tc => !discards.some(dc => dc.order === tc.order));
+	// Remove trash from playables (but not playable trash) and discards and playable trash from trash cards
+	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order) || playable_trash.some(pt => pt.order === pc.order));
+	trash_cards = trash_cards.filter(tc => !discards.some(dc => dc.order === tc.order) && !playable_trash.some(pt => pt.order === tc.order));
 
 	if (playable_cards.length > 0) {
 		logger.info('playable cards', logHand(playable_cards));
@@ -251,7 +251,7 @@ export function take_action(state) {
 			// Give play clue (at correct priority level)
 			if (i === (state.clue_tokens > 1 ? actionPrioritySize + 1 : actionPrioritySize * 2) && best_play_clue !== undefined) {
 				if (clue_value >= minimum_clue_value(state)) {
-					return Utils.clueToAction(best_play_clue, state.tableID);
+					return Utils.clueToAction(best_play_clue, tableID);
 				}
 				else {
 					logger.info('clue too low value', logClue(best_play_clue), clue_value);
@@ -278,31 +278,21 @@ export function take_action(state) {
 		return urgent_actions[actionPrioritySize * 2][0];
 	}
 
-	const best_stall_severity = stall_clues.findIndex(clues => clues.length > 0);
+	const severity = stall_severity(state, state.ourPlayerIndex);
+	const endgame_stall = inEndgame(state) && state.hypo_stacks[state.ourPlayerIndex].some((stack, index) => stack > state.play_stacks[index]);
 
 	// Stalling situations
-	if (state.clue_tokens > 0 && best_stall_severity !== -1) {
-		const best_stall_clue = Utils.clueToAction(stall_clues[best_stall_severity][0], state.tableID);
+	if (state.clue_tokens > 0 && (severity > 0 || endgame_stall)) {
+		const validStall = stall_clues.find((clues, index) => (index <= severity && clues.length > 0))?.[0];
 
-		// 8 clues or locked hand
+		// 8 clues, must stall
 		if (state.clue_tokens === 8) {
-			return best_stall_clue;
+			return validStall ? Utils.clueToAction(validStall, tableID) :
+				{ type: ACTION.RANK, value: state.hands[nextPlayerIndex].at(-1).rank, target: nextPlayerIndex, tableID };
 		}
 
-		// Locked hand
-		if (Hand.isLocked(state, state.ourPlayerIndex)) {
-			return best_stall_clue;
-		}
-
-		// Endgame (and stalling is effective)
-		if (inEndgame(state) && state.hypo_stacks[state.ourPlayerIndex].some((stack, index) => stack > state.play_stacks[index])) {
-			logger.info('endgame stall');
-			return best_stall_clue;
-		}
-
-		// Early game
-		if (state.early_game && best_stall_severity === 0) {
-			return best_stall_clue;
+		if (validStall) {
+			return Utils.clueToAction(validStall, tableID);
 		}
 	}
 
