@@ -5,7 +5,7 @@ import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { determine_clue, get_result } from './determine-clue.js';
 import { stall_severity, valuable_tempo_clue } from '../hanabi-logic.js';
-import { cardValue, direct_clues, isBasicTrash, isCritical, isTrash, unique2, visibleFind } from '../../../basics/hanabi-util.js';
+import { cardValue, direct_clues, isBasicTrash, isCritical, isTrash, save2, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 
 import logger from '../../../tools/logger.js';
@@ -63,7 +63,7 @@ function find_save(state, target, card) {
 
 		return Object.assign(save_clue, { playable: true, cm: [], safe: clue_safe(state, save_clue) });
 	}
-	else if (unique2(state, card)) {
+	else if (save2(state, card)) {
 		logger.highlight('yellow', 'saving unique 2', logCard(card));
 
 		const safe = clue_safe(state, { type: CLUE.RANK, value: 2 , target });
@@ -87,7 +87,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 	const chop = saved_cards.at(-1);
 
 	// Critical cards and unique 2s can be saved directly if touching all cards
-	if ((isCritical(state, chop) || (unique2(state, chop) && clue_safe(state, { type: CLUE.RANK, value: 2, target }))) &&
+	if ((isCritical(state, chop) || (save2(state, chop) && clue_safe(state, { type: CLUE.RANK, value: 2, target }))) &&
 		(direct_clues(state, target, chop).some(clue => saved_cards.every(c => cardTouched(c, state.suits, clue))))
 	) {
 		logger.info('prefer direct save');

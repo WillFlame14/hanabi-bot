@@ -1,5 +1,7 @@
 import { Card } from './Card.js';
 import { Hand } from './Hand.js';
+import { Player } from './Player.js';
+
 import { handle_action } from '../action-handler.js';
 import { cardCount } from '../variants.js';
 import logger from '../tools/logger.js';
@@ -9,6 +11,7 @@ import { logPerformAction } from '../tools/log.js';
 /**
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').BaseClue} BaseClue
+ * @typedef {import('../types.js').BasicCard} BasicCard
  * @typedef {import('../types.js').ClueAction} ClueAction
  * @typedef {import('../types.js').DiscardAction} DiscardAction
  * @typedef {import('../types.js').TurnAction} TurnAction
@@ -24,6 +27,9 @@ export class State {
 	strikes = 0;
 	early_game = true;
 	in_progress = false;
+
+	players = /** @type {Player[]} */ ([]);
+	deck = /** @type {BasicCard[]} */ ([]);
 
 	hands = /** @type {Hand[]} */ ([]);
 	links = /** @type {Link[][]} */ ([]);
@@ -119,8 +125,15 @@ export class State {
 			this.links.push([]);
 			this.all_possible.push(all_possible.slice());
 			this.all_inferred.push(all_possible.slice());
+			this.players[i] = new Player(i, []);
+			this.players[i].all_possible = all_possible.slice();
+			this.players[i].all_inferred = all_possible.slice();
 			this.unknown_plays.push([]);
 		}
+
+		this.common = new Player(-1, []);
+		this.common.all_possible = all_possible.slice();
+		this.common.all_inferred =all_possible.slice();
 	}
 
 	get score() {

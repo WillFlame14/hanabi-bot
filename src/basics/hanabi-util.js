@@ -5,38 +5,26 @@ import { cardCount, cardTouched, isCluable } from '../variants.js';
 /**
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Hand.js').Hand} Hand
+ * @typedef {import('./Player.js').Player} Player
  * @typedef {import('../types.js').BasicCard} BasicCard
  * 
  * @typedef {{symmetric?: number[], infer?: number[], ignore?: number[]}} FindOptions
  * The 'ignore' option can store an array of player indexes whose hands should be ignored during search.
  * 
  * The 'symmetric' and 'infer' options are for card identification (see Card.identity() for more details).
+ * 
+ * @typedef {{symmetric?: boolean, infer?: boolean, assume?: boolean}} MatchOptions
  */
 
 /**
  * Returns an array of cards in everyone's hands that match the given suitIndex and rank.
  * @param {State} state
- * @param {number} inferringPlayerIndex     The inferring player (i.e. can only infer on their own cards).
+ * @param {Player} player     The inferring player.
  * @param {BasicCard} identity
- * @param {FindOptions} options
+ * @param {MatchOptions} [options]
  */
-export function visibleFind(state, inferringPlayerIndex, identity, options = {}) {
-	/** @type {Card[]} */
-	let found = [];
-
-	for (let i = 0; i < state.numPlayers; i++) {
-		if (options.ignore?.includes(i)) {
-			continue;
-		}
-
-		const hand = state.hands[i];
-		const find_options = {
-			infer: (options.infer ?? [inferringPlayerIndex, state.ourPlayerIndex]).includes(i),
-			symmetric: (options.symmetric ?? [inferringPlayerIndex]).includes(i)
-		};
-		found = found.concat(hand.findCards(identity, find_options));
-	}
-	return found;
+export function visibleFind(state, player, identity, options = {}) {
+	return state.hands.flat().filter(c => player.thoughts[c.order].matches(identity, options));
 }
 
 /**
@@ -51,11 +39,11 @@ export function baseCount(state, { suitIndex, rank }) {
 /**
  * Returns the number of cards still unknown that could be this identity according to a player.
  * @param {State} state
- * @param {number} playerIndex
+ * @param {Player} player
  * @param {BasicCard} identity
  */
-export function unknownIdentities(state, playerIndex, identity) {
-	const visibleCount = visibleFind(state, playerIndex, identity, { ignore: [playerIndex] }).length;
+export function unknownIdentities(state, player, identity) {
+	const visibleCount = state.hands.flat().filter(c => player.thoughts[c.order].matches(identity)).length;
 	return cardCount(state.suits, identity) - baseCount(state, identity) - visibleCount;
 }
 
@@ -80,30 +68,28 @@ export function isBasicTrash(state, { suitIndex, rank }) {
 /**
  * Returns whether the given suitIndex and rank has already been 'saved' in someone's hand (i.e. won't discard).
  * @param {State} state
- * @param {number} inferringPlayerIndex     The inferring player (i.e. can only infer on their own cards).
+ * @param {Player} player     				The inferring player.
  * @param {BasicCard} identity
  * @param {number} [order] 					A card's order to exclude from search.
- * @param {FindOptions & {ignoreCM?: boolean}} [options]
+ * @param {MatchOptions & {ignoreCM?: boolean}} [options]
  */
-export function isSaved(state, inferringPlayerIndex, identity, order = -1, options = {}) {
-	return visibleFind(state, inferringPlayerIndex, identity, options).some(c => {
-		return c.order !== order &&
-			(c.finessed || c.clued || (options.ignoreCM ? false : c.chop_moved)) &&
-			c.matches(identity, { assume: true });         // If we know the card's identity, it must match
-	});
+export function isSaved(state, player, identity, order = -1, options = {}) {
+	return visibleFind(state, player, identity).some(c =>
+		c.order !== order && (c.finessed || c.clued || (options.ignoreCM ? false : c.chop_moved))
+	);
 }
 
 /**
  * Returns whether the given suitIndex and rank is trash (either basic trash or already saved),
  * according to the inferring player.
  * @param {State} state
- * @param {number} inferringPlayerIndex
+ * @param {Player} player
  * @param {BasicCard} identity
  * @param {number} [order]                The order of the card to ignore (usually itself)
  * @param {FindOptions} [options]
  */
-export function isTrash(state, inferringPlayerIndex, identity, order = -1, options = {}) {
-	return isBasicTrash(state, identity) || isSaved(state, inferringPlayerIndex, identity, order, options);
+export function isTrash(state, player, identity, order = -1, options = {}) {
+	return isBasicTrash(state, identity) || isSaved(state, player, identity, order, options);
 }
 
 /**
@@ -133,45 +119,47 @@ export function inStartingHand(state, card) {
 }
 
 /**
- * Returns whether a card is a unique 2 on the board, according to us.
+ * Returns whether an identity needs to be saved as a unique 2 on the board, according to a player.
  * @param  {State} state
- * @param  {BasicCard} card
+ * @param  {Player} player
+ * @param  {BasicCard} identity
  */
-export function unique2(state, card) {
-	const { suitIndex, rank } = card;
+export function save2(state, player, identity) {
+	const { suitIndex, rank } = identity;
 
 	return rank === 2 &&
-        state.play_stacks[suitIndex] < 2 &&												// play stack not yet at 2
-        visibleFind(state, state.ourPlayerIndex, card).length === 1 &&					// other copy isn't visible
-        !state.hands[state.ourPlayerIndex].some(c => c.matches(card, { infer: true }));	// not in our hand
+        state.play_stacks[suitIndex] < 2 &&						// play stack not yet at 2
+        visibleFind(state, player, identity).length === 1;		// other copy isn't visible
 }
 
 /**
- * Returns the relative "value" of a card. 0 is worthless, 5 is critical.
+ * Returns the relative "value" of an identity. 0 is worthless, 5 is critical.
  * TODO: Improve general algorithm. (e.g. having clued cards of a suit makes it better, a dead suit is worse)
  * @param  {State} state
- * @param  {BasicCard} card
- * @param  {number} [order] 		The order of a card to ignore when checking if already saved.
+ * @param  {Player} player
+ * @param  {BasicCard} identity
+ * @param  {number} [order] 		The order of the card (if checking the value of a card).
  * @returns {number}
  */
-export function cardValue(state, card, order = -1) {
-	const { suitIndex, rank } = card;
+export function cardValue(state, player, identity, order = -1) {
+	const { suitIndex, rank } = identity;
 
 	// Unknown card in our hand, return average of possibilities
-	if (suitIndex === -1 && card instanceof Card) {
+	if (suitIndex === -1 && rank === -1 && order !== -1) {
+		const card = player.thoughts[order];
 		return card.possible.reduce((sum, curr) => sum += cardValue(state, curr), 0) / card.possible.length;
 	}
 
 	// Basic trash, saved already, duplicate visible
-	if (isTrash(state, state.ourPlayerIndex, card, order) || visibleFind(state, state.ourPlayerIndex, card).length > 1) {
+	if (isTrash(state, player, identity, order) || visibleFind(state, player, identity).length > 1) {
 		return 0;
 	}
 
-	if (isCritical(state, card)) {
+	if (isCritical(state, identity)) {
 		return 5;
 	}
 
-	if (unique2(state, card)) {
+	if (save2(state, player, identity)) {
 		return 4;
 	}
 

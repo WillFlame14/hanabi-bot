@@ -6,6 +6,7 @@ import { logClue } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
+ * @typedef {import('../../basics/Player.js').Player} Player
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').ClueResult} ClueResult
  * @typedef {import('../../types.js').Clue} Clue
@@ -49,13 +50,16 @@ export function select_play_clue(play_clues) {
 /**
  * Given a set of playable cards, returns the unknown 1s in the order that they should be played.
  * @param  {State} state
+ * @param  {Player} player
  * @param  {Card[]} cards
  */
-export function order_1s(state, cards) {
+export function order_1s(state, player, cards) {
 	const unknown_1s = cards.filter(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
 
-	return unknown_1s.sort((c1, c2) => {
-		const [c1_start, c2_start] = [c1, c2].map(c => inStartingHand(state, c));
+	return unknown_1s.sort((card1, card2) => {
+		const [c1_start, c2_start] = [card1, card2].map(c => inStartingHand(state, c));
+		const [c1, c2] = [card1, card2].map(c => player.thoughts[c.order]);
+
 		if (c1.finessed && c2.finessed) {
 			return c1.finesse_index - c2.finesse_index;
 		}
@@ -95,15 +99,16 @@ export function order_1s(state, cards) {
 /**
  * Returns the playable cards categorized by priority.
  * @param {State} state
+ * @param {Player} player
  * @param {Card[]} playable_cards
  */
-export function determine_playable_card(state, playable_cards) {
+export function determine_playable_card(state, player, playable_cards) {
 	/** @type {Card[][]} */
 	const priorities = [[], [], [], [], [], []];
 
 	let min_rank = 5;
-	for (const card of playable_cards) {
-		const possibilities = card.inferred.length > 0 ? card.inferred : card.possible;
+	for (const c of playable_cards) {
+		const card = player.thoughts[c.order];
 
 		// Part of a finesse
 		if (card.finessed) {
@@ -112,7 +117,7 @@ export function determine_playable_card(state, playable_cards) {
 		}
 
 		// Blind playing unknown chop moved cards should be a last resort with < 2 strikes
-		if (card.chop_moved && !card.clued && card.possible.some(p => playableAway(state, p) !== 0)) {
+		if (card.chop_moved && !c.clued && card.possible.some(p => playableAway(state, p) !== 0)) {
 			if (state.strikes !== 2) {
 				priorities[5].push(card);
 			}
@@ -120,7 +125,7 @@ export function determine_playable_card(state, playable_cards) {
 		}
 
 		let priority = 1;
-		for (const inference of possibilities) {
+		for (const inference of card.possibilities) {
 			const { suitIndex, rank } = inference;
 
 			let connected = false;
@@ -151,7 +156,7 @@ export function determine_playable_card(state, playable_cards) {
 		}
 
 		// Find the lowest possible rank for the card
-		const rank = possibilities.reduce((lowest_rank, card) => card.rank < lowest_rank ? card.rank : lowest_rank, 5);
+		const rank = card.possibilities.reduce((lowest_rank, card) => card.rank < lowest_rank ? card.rank : lowest_rank, 5);
 
 		// Playing a 5
 		if (rank === 5) {
@@ -160,7 +165,7 @@ export function determine_playable_card(state, playable_cards) {
 		}
 
 		// Unknown card
-		if (possibilities.length > 1) {
+		if (card.possibilities.length > 1) {
 			priorities[4].push(card);
 			continue;
 		}

@@ -1,4 +1,6 @@
 import { State } from '../basics/State.js';
+import { Player } from '../basics/Player.js';
+
 import { interpret_clue } from './playful-sieve/interpret-clue.js';
 import { interpret_discard } from './playful-sieve/interpret-discard.js';
 import { interpret_play } from './playful-sieve/interpret-play.js';
@@ -26,6 +28,10 @@ export default class PlayfulSieve extends State {
 	 */
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress) {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
+
+		for (let i = 0; i < this.numPlayers; i++) {
+			this.players.push(new Player(i, []));
+		}
 	}
 
 	createBlank() {

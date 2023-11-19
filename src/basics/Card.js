@@ -7,23 +7,36 @@ import { logCard } from '../tools/log.js';
  * @typedef {import('../types.js').Clue} Clue
  */
 
+export class ActualCard {
+	order = -1;
+	clued = false;
+	newly_clued = false;
+
+	clues = /** @type {BaseClue[]} */ ([]);			// List of clues that have touched this card
+	drawn_index = -1;
+
+	/**
+	 * @param {number} [suitIndex]	The index of the card's suit
+	 * @param {number} [rank]		The rank of the card
+	 */
+	constructor(suitIndex, rank) {
+		this.suitIndex = suitIndex;
+		this.rank = rank;
+	}
+}
+
 /**
  * Class for a single card (i.e. a suitIndex and rank). Other attributes are optional.
  */
-export class Card {
-	suitIndex = -1;		// The index of the card's suit
-	rank = -1;			// The rank of the card
+export class Card extends ActualCard {
 	order = -1;			// The ordinal number of the card
 
-	clues = /** @type {BaseClue[]} */ ([]);			// List of clues that have touched this card
 	possible = /** @type {Card[]} */ ([]);						// All possibilities of the card (from positive/negative information)
 	inferred = /** @type {Card[]} */ ([]);						// All inferences of the card (from conventions)
 	old_inferred = /** @type {Card[] | undefined} */ (undefined);		// Only used when undoing a finesse
 
 	// Boolean flags about the state of the card
 	focused = false;
-	clued = false;
-	newly_clued = false;
 	finessed = false;
 	chop_moved = false;
 	reset = false;			// Whether the card has previously lost all inferences
@@ -42,8 +55,7 @@ export class Card {
 	 * @param {BasicCard & Partial<Card>} identity
 	 */
 	constructor({ suitIndex, rank , ...additions }) {
-		this.suitIndex = suitIndex;
-		this.rank = rank;
+		super(suitIndex, rank);
 
 		Object.assign(this, additions);
 	}

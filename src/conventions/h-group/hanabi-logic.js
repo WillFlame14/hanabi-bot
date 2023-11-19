@@ -1,12 +1,13 @@
 import { cardCount } from '../../variants.js';
 import { HGroup_Hand as Hand } from '../h-hand.js';
-import { baseCount, getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+import { baseCount, getPace, visibleFind } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logHand } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
+ * @typedef {import('../../basics/Player.js').Player} Player
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').Clue} Clue
  */
@@ -55,61 +56,16 @@ export function determine_focus(hand, list, options = {}) {
 }
 
 /**
- * Returns all cards that would be bad touch if clued. In the case of duplicates, both will be returned.
- * @param {State} state
- * @param {Card[]} cards
- * @param {number} [focusedCardOrder]	The order of the focused card of a clue (will never be considered for bad touch).
- */
-export function find_bad_touch(state, cards, focusedCardOrder = -1) {
-	/** @type {Card[]} */
-	const bad_touch_cards = [];
-
-	for (const card of cards) {
-		let bad_touch = false;
-
-		// Assume focused card cannot be bad touched
-		if (card.order === focusedCardOrder) {
-			continue;
-		}
-
-		// Card has already been played or can never be played
-		// Or someone else has the card finessed, clued or chop moved already
-		if (isTrash(state, state.ourPlayerIndex, card, card.order)) {
-			bad_touch = true;
-		}
-		// Cluing both copies of a card (will return both as bad touch)
-		else if (cards.some(c => c.duplicateOf(card))) {
-			bad_touch = true;
-		}
-		else {
-			// The card is inferred in our hand with high likelihood
-			const our_hand = state.hands[state.ourPlayerIndex];
-
-			for (const card of our_hand) {
-				if (card.inferred.length <= 2 && card.inferred.some(c => c.matches(card))) {
-					bad_touch = true;
-					break;
-				}
-			}
-		}
-
-		if (bad_touch) {
-			bad_touch_cards.push(card);
-		}
-	}
-	return bad_touch_cards;
-}
-
-/**
  * Returns the current stall severity for the giver. [None, Early game, DDA/SDCM, Locked hand, 8 clues]
  * @param {State} state
+ * @param {Player} player
  * @param {number} giver
  */
-export function stall_severity(state, giver) {
+export function stall_severity(state, player, giver) {
 	if (state.clue_tokens === 8 && state.turn_count !== 1) {
 		return 4;
 	}
-	if (Hand.isLocked(state, giver)) {
+	if (player.thinksLocked(state, giver)) {
 		return 3;
 	}
 	if (inEndgame(state)) {
@@ -143,18 +99,16 @@ export function minimum_clue_value(state) {
 /**
  * @param {State} state
  * @param {number} rank
- * @param {number} giver
- * @param {number} target
  * @param {Card} focused_card
  */
-export function looksPlayable(state, rank, giver, target, focused_card) {
-	return state.hypo_stacks[giver].some((stack, suitIndex) => {
+export function rankLooksPlayable(state, rank, focused_card) {
+	return state.common.hypo_stacks.some((stack, suitIndex) => {
 		const identity = { suitIndex, rank };
 
 		const playable_identity = stack + 1 === rank;
 		const other_visibles = baseCount(state, identity) +
-			visibleFind(state, target, identity).filter(c => c.order !== focused_card.order).length;
-		const matching_inference = focused_card.inferred.some(inf => inf.matches(identity));
+			visibleFind(state, state.common, identity).filter(c => c.order !== focused_card.order).length;
+		const matching_inference = state.common.thoughts[focused_card.order].inferred.some(inf => inf.matches(identity));
 
 		return playable_identity && other_visibles < cardCount(state.suits, identity) && matching_inference;
 	});
