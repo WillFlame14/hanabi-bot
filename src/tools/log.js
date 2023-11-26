@@ -1,14 +1,16 @@
 import { ACTION, CLUE, END_CONDITION } from '../constants.js';
+import { Card } from '../basics/Card.js';
 import { shortForms } from '../variants.js';
 import { globals } from './util.js';
 
 /**
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../basics/Hand.js').Hand} Hand
+ * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../basics/Card.js').Card} Card
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
- * @typedef {import('../types.js').BasicCard} BasicCard
+ * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').PerformAction} PerformAction
  * @typedef {import('../types.js').Connection} Connection
  * @typedef {import('../types.js').Link} Link
@@ -16,7 +18,7 @@ import { globals } from './util.js';
 
 /**
  * Returns a log-friendly representation of a card.
- * @param {{suitIndex: number, rank: number} & Partial<Card>} card
+ * @param {{suitIndex: number, rank: number} | ActualCard | Card} card
  */
 export function logCard(card) {
 	let suitIndex, rank, append;
@@ -24,11 +26,11 @@ export function logCard(card) {
 	if (card.suitIndex !== -1) {
 		({ suitIndex, rank } = card);
 	}
-	else if (card?.possible?.length === 1) {
+	else if (card instanceof Card && card.possible.length === 1) {
 		({ suitIndex, rank } = card.possible[0]);
 		append = '(known)';
 	}
-	else if (card?.inferred?.length === 1) {
+	else if (card instanceof Card && card.inferred.length === 1) {
 		({ suitIndex, rank } = card.inferred[0]);
 		append = '(inferred)';
 	}
@@ -40,12 +42,13 @@ export function logCard(card) {
 
 /**
  * Returns a log-friendly representation of a hand.
- * @param {Card[]} hand
+ * @param {ActualCard[]} hand
  */
 export function logHand(hand) {
 	const new_hand = [];
 
-	for (const card of hand) {
+	for (const { order } of hand) {
+		const card = globals.state.common.thoughts[order];
 		const new_card = {};
 		new_card.visible = (card.suitIndex === -1 ? 'unknown' : logCard(card));
 		new_card.order = card.order;
@@ -96,13 +99,13 @@ export function logPerformAction(action) {
 	switch(type) {
 		case ACTION.PLAY: {
 			const slot = hand.findIndex(card => card.order === target) + 1;
-			const card = hand[slot - 1];
+			const card = globals.state.common.thoughts[hand[slot - 1].order];
 
 			return `Play slot ${slot}, inferences [${card.inferred.map(c => logCard(c))}]`;
 		}
 		case ACTION.DISCARD: {
 			const slot = hand.findIndex(card => card.order === target) + 1;
-			const card = hand[slot - 1];
+			const card = globals.state.common.thoughts[hand[slot - 1].order];
 
 			return `Discard slot ${slot}, inferences [${card.inferred.map(c => logCard(c))}]`;
 		}
@@ -196,7 +199,7 @@ export function logConnection(connection) {
 
 /**
  * @param {Connection[]} connections
- * @param {BasicCard} nextIdentity
+ * @param {Identity} nextIdentity
  */
 export function logConnections(connections, nextIdentity) {
 	const { suitIndex, rank } = nextIdentity;

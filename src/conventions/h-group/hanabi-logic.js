@@ -1,14 +1,14 @@
 import { cardCount } from '../../variants.js';
-import { HGroup_Hand as Hand } from '../h-hand.js';
+import { Hand } from '../../basics/Hand.js';
 import { baseCount, getPace, visibleFind } from '../../basics/hanabi-util.js';
 
-import logger from '../../tools/logger.js';
 import { logHand } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
- * @typedef {import('../../basics/Player.js').Player} Player
+ * @typedef {import('../h-player.js').HGroup_Player} Player
  * @typedef {import('../../basics/Card.js').Card} Card
+ * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').Clue} Clue
  */
 
@@ -18,16 +18,16 @@ import { logHand } from '../../tools/log.js';
  * The 'beforeClue' option is needed if this is called before the clue has been interpreted
  * to prevent focusing a previously clued card.
  * @param {Hand} hand
+ * @param {Player} player
  * @param {number[]} list 	The orders of all cards that were just clued.
  * @param {{beforeClue?: boolean}} options
  */
-export function determine_focus(hand, list, options = {}) {
-	const chopIndex = hand.chopIndex();
-	logger.debug('determining focus with chopIndex', chopIndex, 'list', list, 'hand', logHand(hand));
+export function determine_focus(hand, player, list, options = {}) {
+	const chop = player.chop(hand);
 
 	// Chop card exists, check for chop focus
-	if (chopIndex !== -1 && list.includes(hand[chopIndex].order)) {
-		return { focused_card: hand[chopIndex], chop: true };
+	if (list.includes(chop.order)) {
+		return { focused_card: chop, chop: true };
 	}
 
 	// Check for leftmost newly clued
@@ -39,7 +39,7 @@ export function determine_focus(hand, list, options = {}) {
 
 	// Check for leftmost chop moved
 	for (const card of hand) {
-		if (card.chop_moved && list.includes(card.order)) {
+		if (player.thoughts[card.order].chop_moved && list.includes(card.order)) {
 			return { focused_card: card, chop: false };
 		}
 	}
@@ -99,16 +99,16 @@ export function minimum_clue_value(state) {
 /**
  * @param {State} state
  * @param {number} rank
- * @param {Card} focused_card
+ * @param {number} order 	The order to exclude when searching for duplicates.
  */
-export function rankLooksPlayable(state, rank, focused_card) {
+export function rankLooksPlayable(state, rank, order) {
 	return state.common.hypo_stacks.some((stack, suitIndex) => {
 		const identity = { suitIndex, rank };
 
 		const playable_identity = stack + 1 === rank;
 		const other_visibles = baseCount(state, identity) +
-			visibleFind(state, state.common, identity).filter(c => c.order !== focused_card.order).length;
-		const matching_inference = state.common.thoughts[focused_card.order].inferred.some(inf => inf.matches(identity));
+			visibleFind(state, state.common, identity).filter(c => c.order !== order).length;
+		const matching_inference = state.common.thoughts[order].inferred.some(inf => inf.matches(identity));
 
 		return playable_identity && other_visibles < cardCount(state.suits, identity) && matching_inference;
 	});
@@ -116,13 +116,14 @@ export function rankLooksPlayable(state, rank, focused_card) {
 
 /**
  * @param {State} state
+ * @param {Player} player
  * @param {Clue} clue
  * @param {{playerIndex: number, card: Card}[]} playables
- * @param {Card} focused_card
+ * @param {ActualCard} focused_card
  * 
  * Returns whether a clue is a tempo clue, and if so, whether it's valuable.
  */
-export function valuable_tempo_clue(state, clue, playables, focused_card) {
+export function valuable_tempo_clue(state, player, clue, playables, focused_card) {
 	const { target } = clue;
 	const touch = state.hands[target].clueTouched(clue, state.suits);
 
@@ -130,7 +131,7 @@ export function valuable_tempo_clue(state, clue, playables, focused_card) {
 		return { tempo: false, valuable: false };
 	}
 
-	const prompt = state.hands[target].find_prompt(focused_card, state.suits);
+	const prompt = player.find_prompt(state.hands[target], focused_card, state.suits);
 
 	// No prompt exists for this card (i.e. it is a hard burn)
 	if (prompt === undefined) {

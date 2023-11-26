@@ -1,11 +1,11 @@
-import { Card } from './basics/Card.js';
+import { ActualCard, Card } from './basics/Card.js';
 import { cardCount } from './variants.js';
 import { find_possibilities } from './basics/helper.js';
 
 /**
  * @typedef {import('./basics/State.js').State} State
  * @typedef {import('./basics/Player.js').Player} Player
- * @typedef {import('./types.js').BasicCard} BasicCard
+ * @typedef {import('./types.js').Identity} Identity
  * @typedef {import('./types.js').ClueAction} ClueAction
  * @typedef {import('./types.js').DiscardAction} DiscardAction
  * @typedef {import('./types.js').CardAction} DrawAction
@@ -40,7 +40,7 @@ export function onClue(state, action) {
 
 			// If card is now known to everyone and wasn't previously - eliminate
 			if (previously_unknown && card.possible.length === 1) {
-				player.card_elim(state, card.identity());
+				player.card_elim(state);
 				player.refresh_links(state);
 			}
 		}
@@ -61,7 +61,7 @@ export function onDiscard(state, action) {
 
 	// Card is now definitely known to everyone - eliminate
 	for (const player of state.players.concat([state.common])) {
-		player.card_elim(state, { suitIndex, rank });
+		player.card_elim(state);
 		player.refresh_links(state);
 	}
 
@@ -86,12 +86,12 @@ export function onDiscard(state, action) {
  */
 export function onDraw(state, action) {
 	const { order, playerIndex, suitIndex, rank } = action;
-	const card = new Card({
+	const card = new ActualCard(
 		suitIndex,
 		rank,
 		order,
-		drawn_index: state.actionList.length
-	});
+		state.actionList.length
+	);
 	state.hands[playerIndex].unshift(card);
 
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -108,7 +108,7 @@ export function onDraw(state, action) {
 
 		// If we know what the card is, everyone (except player that drew) can eliminate
 		if (playerIndex !== state.ourPlayerIndex && i !== playerIndex) {
-			player.card_elim(state, { suitIndex, rank });
+			player.card_elim(state);
 			player.refresh_links(state);
 		}
 	}
@@ -121,6 +121,8 @@ export function onDraw(state, action) {
 		inferred: state.common.all_inferred.slice(),
 		drawn_index: state.actionList.length
 	});
+
+	console.log('adding thoughts on order', order);
 
 	state.cardOrder = order;
 	state.cardsLeft--;
@@ -140,7 +142,7 @@ export function onPlay(state, action) {
 
 	// Card is now definitely known to everyone - eliminate
 	for (const player of state.players.concat([state.common])) {
-		player.card_elim(state, { suitIndex, rank });
+		player.card_elim(state);
 		player.refresh_links(state);
 	}
 

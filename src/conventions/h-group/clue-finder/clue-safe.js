@@ -1,20 +1,21 @@
-import { HGroup_Hand as Hand } from '../../h-hand.js';
-import { isCritical, playableAway, unique2 } from '../../../basics/hanabi-util.js';
+import { isCritical, playableAway, save2 } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
+ * @typedef {import('../../h-player.js').HGroup_Player} Player
  * @typedef {import('../../../types.js').Clue} Clue
- * @typedef {import('../../../types.js').BasicCard} BasicCard
+ * @typedef {import('../../../types.js').Identity} Identity
  */
 
 /**
  * Determines if the clue is safe to give (i.e. doesn't put a critical on chop with nothing to do)
  * @param {State} state
+ * @param {Player} player
  * @param {Clue} clue
  */
-export function clue_safe(state, clue) {
+export function clue_safe(state, player, clue) {
 	const { target } = clue;
 
 	const list = state.hands[target].clueTouched(clue, state.suits).map(c => c.order);
@@ -23,13 +24,13 @@ export function clue_safe(state, clue) {
 	/** @param {number} startIndex */
 	const getNextUnoccupied = (startIndex) => {
 		let nextIndex = (startIndex + 1) % state.numPlayers;
-		let finessed_card = hypo_state.hands[nextIndex].find(c => c.finessed && playableAway(hypo_state, c) === 0);
+		let finessed_card = hypo_state.hands[nextIndex].find(c => player.thoughts[c.order].finessed && playableAway(hypo_state, c) === 0);
 
 		// Find the next player without a playable finessed card
 		while (finessed_card && nextIndex !== state.ourPlayerIndex) {
 			nextIndex = (nextIndex + 1) % state.numPlayers;
 			hypo_state.play_stacks[finessed_card.suitIndex]++;
-			finessed_card = hypo_state.hands[nextIndex].find(c => c.finessed && playableAway(hypo_state, c) === 0);
+			finessed_card = hypo_state.hands[nextIndex].find(c => player.thoughts[c.order].finessed && playableAway(hypo_state, c) === 0);
 		}
 		return nextIndex;
 	};
@@ -42,12 +43,12 @@ export function clue_safe(state, clue) {
 	}
 
 	// Not dangerous, clue is fine to give
-	if (!chopUnsafe(hypo_state, next_unoccupied)) {
+	if (!chopUnsafe(hypo_state, player, next_unoccupied)) {
 		return true;
 	}
 
 	// Dangerous and not loaded, clue is not fine
-	if (!Hand.isLoaded(hypo_state, next_unoccupied)) {
+	if (!player.thinksLoaded(hypo_state, next_unoccupied)) {
 		logger.warn(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop and not loaded`);
 		return false;
 	}
@@ -59,21 +60,22 @@ export function clue_safe(state, clue) {
 		return true;
 	}
 
-	logger.info(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop but loaded, next next ${state.playerNames[next_unoccupied2]} has ${chopUnsafe(hypo_state, next_unoccupied2) ? 'unsafe' : 'safe'} chop with ${hypo_state.clue_tokens} clues`);
+	logger.info(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop but loaded, next next ${state.playerNames[next_unoccupied2]} has ${chopUnsafe(hypo_state, player, next_unoccupied2) ? 'unsafe' : 'safe'} chop with ${hypo_state.clue_tokens} clues`);
 
 	// Safe chop or can be saved
-	return !chopUnsafe(hypo_state, next_unoccupied2) || hypo_state.clue_tokens > 0;
+	return !chopUnsafe(hypo_state, player, next_unoccupied2) || hypo_state.clue_tokens > 0;
 }
 
 /**
- * Checks if a player's chop is safe after a clue, according to us.
+ * Checks if a player's chop is safe after a clue, according to a player.
  * @param {State} state
+ * @param {Player} player
  * @param {number} playerIndex
  */
-export function chopUnsafe(state, playerIndex) {
+export function chopUnsafe(state, player, playerIndex) {
 	// Note that chop will be undefined if the entire hand is clued
-	const chop = state.hands[playerIndex].chop({ afterClue: true });
+	const chop = player.chop(state.hands[playerIndex], { afterClue: true });
 
-	return (chop && (isCritical(state, chop) || unique2(state, chop))) ||	// Crit or unique 2 on chop
+	return (chop && (isCritical(state, chop) || save2(state, player, chop))) ||	// Crit or unique 2 on chop
 			(state.clue_tokens === 0 && chop === undefined);				// Locked with no clue tokens (TODO: See if a 5 can be played?)
 }

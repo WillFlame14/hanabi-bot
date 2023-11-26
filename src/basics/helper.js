@@ -1,5 +1,4 @@
 import { cardTouched } from '../variants.js';
-import { isBasicTrash } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
@@ -8,90 +7,32 @@ import { logCard } from '../tools/log.js';
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
+ * @typedef {import('./Card.js').BasicCard} BasicCard
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Clue} Clue
- * @typedef {import('../types.js').BasicCard} BasicCard
+ * @typedef {import('../types.js').Identity} Identity
  */
+
+/**
+ * @param {string[]} suits
+ */
+export function all_identities(suits) {
+	const identities = [];
+
+	for (let suitIndex = 0; suitIndex < suits.length; suitIndex++) {
+		for (let rank = 1; rank <= 5; rank++) {
+			identities.push({ suitIndex, rank });
+		}
+	}
+	return identities;
+}
 
 /**
  * @param {BaseClue} clue
  * @param {string[]} suits
  */
 export function find_possibilities(clue, suits) {
-	const new_possible = [];
-
-	for (let suitIndex = 0; suitIndex < suits.length; suitIndex++) {
-		for (let rank = 1; rank <= 5; rank++) {
-			const card = {suitIndex, rank};
-			if (cardTouched(card, suits, clue)) {
-				new_possible.push(card);
-			}
-		}
-	}
-	return new_possible;
-}
-
-/**
- * @param {State} state
- * @param {number} giver
- * @param {number} target
- * @param {BasicCard[]} prev_found	All previously found bad touch possibiltiies.
- */
-export function bad_touch_possibilities(state, giver, target, prev_found = []) {
-	const bad_touch = prev_found;
-
-	if (bad_touch.length === 0) {
-		// Find useless cards
-		for (let suitIndex = 0; suitIndex <= state.suits.length; suitIndex++) {
-			for (let rank = 1; rank <= 5; rank++) {
-				const identity = { suitIndex, rank };
-				// Cards that have already been played on the stack or can never be played
-				if (isBasicTrash(state, identity)) {
-					bad_touch.push(identity);
-				}
-			}
-		}
-	}
-
-	// Find cards clued in other hands (or inferred cards in our hand or giver's hand)
-	for (let i = 0; i < state.numPlayers; i++) {
-		const hand = state.hands[i];
-
-		for (let j = 0; j < hand.length; j++) {
-			const card = hand[j];
-			if (!(card.clued || card.finessed)) {
-				continue;
-			}
-
-			let suitIndex, rank, method;
-			// Cards in our hand and the giver's hand are not known
-			if ([state.ourPlayerIndex, giver, target].includes(i)) {
-				if (card.possible.length === 1) {
-					({suitIndex, rank} = card.possible[0]);
-					method = 'elim';
-				}
-				else if (card.inferred.length === 1 && card.matches(card.inferred[0], { infer: true })) {
-					({suitIndex, rank} = card.inferred[0]);
-					method = 'inference';
-				}
-				else {
-					continue;
-				}
-			} else {
-				({suitIndex, rank} = card);
-				method = 'known';
-			}
-
-			if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
-				if (!bad_touch.some(c => c.suitIndex === suitIndex && c.rank === rank)) {
-					logger.debug(`adding ${logCard({suitIndex, rank})} to bad touch via ${method} (slot ${j + 1} in ${state.playerNames[i]}'s hand)`);
-					bad_touch.push({suitIndex, rank});
-				}
-			}
-		}
-	}
-
-	return bad_touch;
+	return all_identities(suits).filter(id => cardTouched(id, suits, clue));
 }
 
 /**
@@ -101,9 +42,11 @@ export function bad_touch_possibilities(state, giver, target, prev_found = []) {
  */
 export function update_hypo_stacks(state) {
 	for (let i = 0; i < state.numPlayers; i++) {
+		const player = state.players[i];
+
 		// Reset hypo stacks to play stacks
 		const hypo_stacks = state.play_stacks.slice();
-		state.unknown_plays[i] = [];
+		const unknown_plays = [];
 
 		let found_new_playable = true;
 		const good_touch_elim = [];
@@ -120,7 +63,7 @@ export function update_hypo_stacks(state) {
 				}
 
 				// Delayed playable if all possibilities have been either eliminated by good touch or are playable (but not all eliminated)
-				/** @param {Card[]} poss */
+				/** @param {BasicCard[]} poss */
 				const delayed_playable = (poss) => {
 					let all_trash = true;
 					for (const c of poss) {
@@ -151,7 +94,7 @@ export function update_hypo_stacks(state) {
 					const id = card.identity({ infer: true });
 					if (id === undefined) {
 						// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
-						state.unknown_plays[i].push(card.order);
+						unknown_plays.push(card.order);
 						continue;
 					}
 
@@ -172,6 +115,23 @@ export function update_hypo_stacks(state) {
 				}
 			}
 		}
-		state.players[i].hypo_stacks = hypo_stacks;
+		player.hypo_stacks = hypo_stacks;
+		player.unknown_plays = unknown_plays;
+	}
+}
+
+/**
+ * Updates all players with info from common knowledge.
+ * @param {State} state
+ */
+export function team_elim(state) {
+	for (const player of state.players) {
+		for (let i = 0; i < state.common.thoughts.length; i++) {
+			player.thoughts[i].intersect('inferred', state.common.thoughts[i].inferred);
+			player.thoughts[i].intersect('possible', state.common.thoughts[i].possible);
+		}
+
+		player.infer_elim(state);
+		player.good_touch_elim(state);
 	}
 }

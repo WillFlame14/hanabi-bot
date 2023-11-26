@@ -10,7 +10,7 @@ import logger from './tools/logger.js';
 
 /**
  * @typedef {import('./basics/State.js').State} State
- * @typedef {import('./types.js').BasicCard} BasicCard
+ * @typedef {import('./types.js').Identity} Identity
  * @typedef {import('./types.js').Action} Action
  * @typedef {import('./types.js').PerformAction} PerformAction
  */
@@ -42,7 +42,7 @@ async function main() {
 		throw new Error(`Invalid level provided (${lStr}). Please enter a number from 1-${MAX_H_LEVEL}.`);
 	}
 
-	/** @type {BasicCard[]} */
+	/** @type {Identity[]} */
 	const deck = [];
 
 	for (let suitIndex = 0; suitIndex < variant.suits.length; suitIndex++) {
@@ -88,7 +88,7 @@ async function main() {
  * Given a deck, simulates the outcome of the game in self-play with the provided conventions.
  * Returns the score of the game.
  * @param {string[]} playerNames
- * @param {BasicCard[]} deck
+ * @param {Identity[]} deck
  * @param {string[]} suits
  * @param {keyof typeof conventions} convention
  * @param {number} level

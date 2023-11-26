@@ -1,12 +1,13 @@
-import { Card } from '../basics/Card.js';
+import { ActualCard } from '../basics/Card.js';
 import { Hand } from '../basics/Hand.js';
+import { Player } from '../basics/Player.js';
 import { ACTION, CLUE } from '../constants.js';
 import logger from './logger.js';
 
 /**
  * @typedef {typeof import('../constants.js').ACTION} ACTION
  * @typedef {import('../basics/State.js').State} State
- * @typedef {import('../types.js').BasicCard} BasicCard
+ * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').PerformAction} PerformAction
@@ -99,7 +100,7 @@ export function objClone(obj, depth = 0) {
 		throw new Error('Maximum recursion depth reached.');
 	}
 	if (typeof obj === 'object') {
-		if (obj instanceof Card || obj instanceof Hand) {
+		if (obj instanceof ActualCard || obj instanceof Hand || obj instanceof Player) {
 			return /** @type {T} */ (obj.clone());
 		}
 		else if (Array.isArray(obj)) {
@@ -221,11 +222,11 @@ export function clueToAction(clue, tableID) {
 /**
  * Returns the visible hand of the owning player (since it is typically unknown).
  * @param  {State} state
- * @param  {BasicCard[]} deck
+ * @param  {Identity[]} deck
  */
 function get_own_hand(state, deck) {
 	const ind = state.ourPlayerIndex;
-	return new Hand(...state.hands[ind].map(c => new Card(Object.assign({}, deck[c.order], { order: c.order }))));
+	return new Hand(...state.hands[ind].map(c => new ActualCard(deck[c.order].suitIndex, deck[c.order].rank, c.order)));
 }
 
 /**
@@ -233,7 +234,7 @@ function get_own_hand(state, deck) {
  * @param  {State} state
  * @param  {PerformAction} action
  * @param  {number} playerIndex
- * @param  {BasicCard[]} deck
+ * @param  {Identity[]} deck
  * @returns {Action}
  */
 export function performToAction(state, action, playerIndex, deck) {

@@ -8,13 +8,13 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
- * @typedef {import('../../types.js').BasicCard} BasicCard
+ * @typedef {import('../../types.js').Identity} Identity
  */
 
 /**
  * Returns the cards in hand that could be targets for a sarcastic discard.
  * @param {Hand} hand
- * @param {BasicCard} identity
+ * @param {Identity} identity
  */
 export function find_sarcastic(hand, identity) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
@@ -31,7 +31,7 @@ export function find_sarcastic(hand, identity) {
 /**
  * Reverts the hypo stacks of the given suitIndex to the given rank - 1, if it was originally above that.
  * @param {State} state
- * @param {BasicCard} identity
+ * @param {Identity} identity
  */
 function undo_hypo_stacks(state, { suitIndex, rank }) {
 	logger.info(`discarded useful card ${logCard({suitIndex, rank})}, setting hypo stack to ${rank - 1}`);
@@ -46,7 +46,7 @@ function undo_hypo_stacks(state, { suitIndex, rank }) {
  * Adds the sarcastic discard inference to the given set of sarcastic cards.
  * @param {State} state
  * @param {Card[]} sarcastic
- * @param {BasicCard} identity
+ * @param {Identity} identity
  */
 function apply_unknown_sarcastic(state, sarcastic, identity) {
 	// Need to add the inference back if it was previously eliminated due to good touch

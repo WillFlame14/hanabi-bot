@@ -1,4 +1,4 @@
-import { Card } from './Card.js';
+import { BasicCard, Card } from './Card.js';
 import { Hand } from './Hand.js';
 import { Player } from './Player.js';
 
@@ -9,9 +9,10 @@ import * as Utils from '../tools/util.js';
 import { logPerformAction } from '../tools/log.js';
 
 /**
+ * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').BaseClue} BaseClue
- * @typedef {import('../types.js').BasicCard} BasicCard
+ * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').ClueAction} ClueAction
  * @typedef {import('../types.js').DiscardAction} DiscardAction
  * @typedef {import('../types.js').TurnAction} TurnAction
@@ -29,21 +30,15 @@ export class State {
 	in_progress = false;
 
 	players = /** @type {Player[]} */ ([]);
-	deck = /** @type {BasicCard[]} */ ([]);
-
+	deck = /** @type {Identity[]} */ ([]);
 	hands = /** @type {Hand[]} */ ([]);
-	links = /** @type {Link[][]} */ ([]);
 
 	play_stacks = /** @type {number[]} */ ([]);
-	hypo_stacks = /** @type {number[][]} */ ([]);
 	discard_stacks = /** @type {number[][]} */ ([]);
 	max_ranks = /** @type {number[]} */ ([]);
 
-	all_possible = /** @type {Card[][]} */ ([]);
-	all_inferred = /** @type {Card[][]} */ ([]);
-
 	actionList = /** @type {Action[]} */ ([]);
-	last_actions = /** @type {(Action & {card?: Card, lock?: boolean})[]} */ ([]);
+	last_actions = /** @type {(Action & {card?: ActualCard, lock?: boolean})[]} */ ([]);
 	handHistory = /** @type {Hand[]} */ ([]);
 
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
@@ -54,12 +49,6 @@ export class State {
 
 	currentPlayerIndex = 0;
 	cardOrder = 0;
-
-	/**
-	 * The orders of playable cards whose identities are not known, according to each player. Used for identifying TCCMs.
-	 * @type {number[][]}
-	 */
-	unknown_plays = [];
 
 	/**
 	 * The orders of cards to ignore in the next play clue.
@@ -115,25 +104,24 @@ export class State {
 			this.max_ranks.push(5);
 
 			for (let rank = 1; rank <= 5; rank++) {
-				all_possible.push(Object.freeze(new Card({ suitIndex, rank })));
+				all_possible.push(Object.freeze(new BasicCard(suitIndex, rank)));
 			}
 		}
 
 		for (let i = 0; i < this.numPlayers; i++) {
-			this.hypo_stacks.push([0, 0, 0, 0, 0]);
 			this.hands.push(new Hand());
-			this.links.push([]);
-			this.all_possible.push(all_possible.slice());
-			this.all_inferred.push(all_possible.slice());
-			this.players[i] = new Player(i, []);
+			this.players[i] = new Player(i);
 			this.players[i].all_possible = all_possible.slice();
 			this.players[i].all_inferred = all_possible.slice();
-			this.unknown_plays.push([]);
 		}
 
-		this.common = new Player(-1, []);
+		this.common = new Player(-1);
 		this.common.all_possible = all_possible.slice();
-		this.common.all_inferred =all_possible.slice();
+		this.common.all_inferred = all_possible.slice();
+	}
+
+	get me() {
+		return this.players[this.ourPlayerIndex];
 	}
 
 	get score() {
@@ -160,7 +148,7 @@ export class State {
 			throw new Error('Maximum recursive depth reached.');
 		}
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'turn_count', 'clue_tokens', 'last_actions',
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'turn_count', 'clue_tokens', 'last_actions',
 			'strikes', 'early_game', 'rewindDepth', 'unknown_plays', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
 		for (const property of minimalProps) {
@@ -183,7 +171,7 @@ export class State {
 	 * @abstract
 	 * @param {State} _state
 	 * @param {Omit<DiscardAction, "type">} _action
-	 * @param {Card} _card
+	 * @param {ActualCard} _card
 	 */
 	interpret_discard(_state, _action, _card) {
 		throw new Error('must be implemented by subclass!');

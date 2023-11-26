@@ -7,9 +7,10 @@ import { logCard } from '../tools/log.js';
 
 /**
  * @typedef {import('./State.js').State} State
+ * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
- * @typedef {import('./Card.js').MatchOptions} MatchOptions
- * @typedef {import('../types.js').BasicCard} BasicCard
+ * @typedef {import('./Card.js').BasicCard} BasicCard
+ * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Link} Link
  */
@@ -23,13 +24,14 @@ export class Player {
 
 	/**
 	 * @param {number} playerIndex
-	 * @param {Card[]} thoughts
+	 * @param {Card[]} [thoughts]
 	 * @param {Link[]} [links]
 	 * @param {number[]} [hypo_stacks]
-	 * @param {Card[]} all_possible
-	 * @param {Card[]} all_inferred
+	 * @param {BasicCard[]} all_possible
+	 * @param {BasicCard[]} all_inferred
+	 * @param {number[]} unknown_plays
 	 */
-	constructor(playerIndex, thoughts, links = [], hypo_stacks = [], all_possible = [], all_inferred = []) {
+	constructor(playerIndex, thoughts = [], links = [], hypo_stacks = [], all_possible = [], all_inferred = [], unknown_plays = []) {
 		this.playerIndex = playerIndex;
 
 		this.thoughts = thoughts;
@@ -38,15 +40,24 @@ export class Player {
 		this.hypo_stacks = hypo_stacks;
 		this.all_possible = all_possible;
 		this.all_inferred = all_inferred;
+
+		/**
+		 * The orders of playable cards whose identities are not known, according to each player. Used for identifying TCCMs.
+		 */
+		this.unknown_plays = unknown_plays;
 	}
 
 	clone() {
 		return new Player(this.playerIndex,
 			this.thoughts.map(infs => infs.clone()),
-			this.links.slice(),
+			this.links.map(link => Utils.objClone(link)),
 			this.hypo_stacks.slice(),
 			this.all_possible.slice(),
 			this.all_inferred.slice());
+	}
+
+	get hypo_score() {
+		return this.hypo_stacks.reduce((sum, stack) => sum + stack) + this.unknown_plays.length;
 	}
 
 	/**
@@ -75,7 +86,7 @@ export class Player {
 	thinksPlayables(state, playerIndex) {
 		const linked_orders = new Set();
 
-		for (const { cards, identities } of state.links[playerIndex]) {
+		for (const { cards, identities } of state.players[playerIndex].links) {
 			// We aren't sure about the identities of these cards - at least one is bad touched
 			if (cards.length > identities.reduce((sum, identity) => sum += unknownIdentities(state, this, identity), 0)) {
 				cards.forEach(c => linked_orders.add(c.order));
@@ -94,12 +105,12 @@ export class Player {
 	}
 
 	/**
-	 * Finds trash in the given player's hand, according to this player.
+	 * Finds trash in the given hand, according to this player.
 	 * @param {State} state
 	 * @param {number} playerIndex
 	 */
 	thinksTrash(state, playerIndex) {
-		/** @type {(identity: BasicCard, order: number) => boolean} */
+		/** @type {(identity: Identity, order: number) => boolean} */
 		const visible_elsewhere = (identity, order) =>
 			state.hands.flat().some(c => {
 				const card = this.thoughts[c.order];
@@ -128,10 +139,11 @@ export class Player {
 	 * Finds the best discard in a locked hand.
 	 * Breaks ties using the leftmost card.
 	 * @param {State} state
+	 * @param {Hand} hand
 	 */
-	lockedDiscard(state) {
+	lockedDiscard(state, hand) {
 		// If any card's crit% is 0
-		const crit_percents = Array.from(state.hands[this.playerIndex].map(c => {
+		const crit_percents = Array.from(hand.map(c => {
 			const poss = this.thoughts[c.order].possibilities;
 			const percent = poss.filter(p => isCritical(state, p)).length / poss.length;
 
@@ -145,7 +157,7 @@ export class Player {
 		 * @param {boolean} all_crit
 		 */
 		const distance = ({ suitIndex, rank }, all_crit) => {
-			const crit_distance = (all_crit ? rank * 5 : 0) + rank - state.hypo_stacks[this.playerIndex][suitIndex];
+			const crit_distance = (all_crit ? rank * 5 : 0) + rank - this.hypo_stacks[suitIndex];
 			return crit_distance < 0 ? 5 : crit_distance;
 		};
 

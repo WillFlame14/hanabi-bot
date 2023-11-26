@@ -30,7 +30,7 @@ export default class PlayfulSieve extends State {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
 
 		for (let i = 0; i < this.numPlayers; i++) {
-			this.players.push(new Player(i, []));
+			this.players.push(new Player(i));
 		}
 	}
 

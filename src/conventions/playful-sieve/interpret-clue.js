@@ -13,14 +13,14 @@ import { logCard } from '../../tools/log.js';
  * @typedef {import('../../basics/State.js').State} State
  * @typedef {import('../../types.js').ClueAction} ClueAction
  * @typedef {import('../../types.js').Connection} Connection
- * @typedef {import('../../types.js').BasicCard} BasicCard
+ * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').FocusPossibility} FocusPossibility
  */
 
 /**
  * @param {State} state
  * @param {number} playerIndex
- * @param {BasicCard} identity
+ * @param {Identity} identity
  */
 function infer_elim(state, playerIndex, identity) {
 	// We just learned about the card

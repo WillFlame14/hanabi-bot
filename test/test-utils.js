@@ -1,8 +1,8 @@
 import { CLUE } from '../src/constants.js';
 import { cardCount } from '../src/variants.js';
-import * as Basics from '../src/basics.js';
 import * as Utils from '../src/tools/util.js';
 import { logAction, logClue } from '../src/tools/log.js';
+import { team_elim } from '../src/basics/helper.js';
 
 /**
  * @typedef {import ('../src/basics/State.js').State} State
@@ -55,7 +55,7 @@ function init_state(state, options) {
 	if (options.play_stacks) {
 		state.play_stacks = options.play_stacks;
 		for (let i = 0; i < state.numPlayers; i++) {
-			state.hypo_stacks[i] = options.play_stacks.slice();
+			state.players[i].hypo_stacks = options.play_stacks.slice();
 		}
 	}
 
@@ -66,17 +66,19 @@ function init_state(state, options) {
 
 		state.discard_stacks[suitIndex][rank - 1]++;
 
-		// Card is now definitely known to everyone - eliminate
-		for (let i = 0; i < state.numPlayers; i++) {
-			Basics.card_elim(state, i, identity);
-			Basics.refresh_links(state, i);
-		}
-
 		// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
 		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, identity) && state.max_ranks[suitIndex] > rank - 1) {
 			state.max_ranks[suitIndex] = rank - 1;
 		}
 	}
+
+	state.common.infer_elim(state);
+
+	for (let i = 0; i < state.numPlayers; i++) {
+		state.players[i].refresh_links(state);
+	}
+
+	team_elim(state);
 
 	state.currentPlayerIndex = options.starting ?? 0;
 	state.clue_tokens = options.clue_tokens ?? 8;

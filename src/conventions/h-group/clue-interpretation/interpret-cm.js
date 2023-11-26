@@ -7,6 +7,8 @@ import { logCard } from '../../../tools/log.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
+ * @typedef {import('../../h-player.js').HGroup_Player} Player
+ * @typedef {import('../../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../../basics/Card.js').Card} Card
  */
 
@@ -21,7 +23,7 @@ export function interpret_tcm(state, target) {
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
 		const card = state.hands[target][i];
 
-		if (card.newly_clued && card.possible.every(c => isTrash(state, target, c, card.order))) {
+		if (card.newly_clued && state.common.thoughts[card.order].possible.every(c => isTrash(state, state.common, c, card.order))) {
 			oldest_trash_index = i;
 			break;
 		}
@@ -36,7 +38,7 @@ export function interpret_tcm(state, target) {
 		const card = state.hands[target][i];
 
 		if (!card.clued) {
-			card.chop_moved = true;
+			state.common.thoughts[card.order].chop_moved = true;
 			cm_cards.push(logCard(card));
 		}
 	}
@@ -52,7 +54,7 @@ export function interpret_tcm(state, target) {
 export function interpret_5cm(state, target) {
 	logger.info('interpreting potential 5cm');
 	const hand = state.hands[target];
-	const chopIndex = hand.chopIndex();
+	const chopIndex = state.common.chopIndex(hand);
 
 	// Find the oldest 5 clued and its distance from chop
 	let distance_from_chop = 0;
@@ -69,15 +71,15 @@ export function interpret_5cm(state, target) {
 		// However, this requires that there is some kind of finesse/prompt to prove it is not 5cm
 		if (card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5)) {
 			if (distance_from_chop === 1) {
-				const saved_card = state.hands[target][chopIndex];
+				const saved_card = state.common.thoughts[state.hands[target][chopIndex].order];
 
-				if (saved_card.possible.every(p => isTrash(state, target, p, saved_card.order))) {
+				if (saved_card.possible.every(p => isTrash(state, state.common, p, saved_card.order))) {
 					logger.info(`saved card ${logCard(saved_card)} has only trash possibilities, not 5cm`);
 					return false;
 				}
 
 				logger.info(`5cm, saving ${logCard(saved_card)}`);
-				state.hands[target][chopIndex].chop_moved = true;
+				saved_card.chop_moved = true;
 				return true;
 			}
 			else {
@@ -92,20 +94,19 @@ export function interpret_5cm(state, target) {
 
 /**
  * @param {State} state
- * @param {State} old_state
- * @param {number} giver
+ * @param {Player} oldCommon
  * @param {number} target
  * @param {number[]} list
- * @param {Card} focused_card
+ * @param {ActualCard} focused_card
  */
-export function interpret_tccm(state, old_state, giver, target, list, focused_card) {
+export function interpret_tccm(state, oldCommon, target, list, focused_card) {
 	// Some hypo stacks went down, assume fix
-	if (old_state.hypo_stacks[giver].some((stack, index) => stack > state.hypo_stacks[giver][index])) {
-		logger.info(`hypo stacks went from ${old_state.hypo_stacks[giver]} to ${state.hypo_stacks[giver]}, not tccm`);
+	if (oldCommon.hypo_stacks.some((stack, index) => stack > state.common.hypo_stacks[index])) {
+		logger.info(`hypo stacks went from ${oldCommon.hypo_stacks} to ${state.common.hypo_stacks}, not tccm`);
 		return false;
 	}
 
-	const chop = state.hands[target].chop({ afterClue: true });
+	const chop = state.common.chop(state.hands[target], { afterClue: true });
 
 	// Target was locked
 	if (chop === undefined) {
@@ -121,21 +122,14 @@ export function interpret_tccm(state, old_state, giver, target, list, focused_ca
 		return false;
 	}
 
-	/**
-	 * @param {State} state
-	 */
-	function sum_plays(state) {
-		return state.hypo_stacks[giver].reduce((sum, curr) => sum + curr, 0) + state.unknown_plays[giver].length;
-	}
-
 	// The new state does not have exactly 1 extra play
-	if (sum_plays(state) !== sum_plays(old_state) + 1) {
+	if (state.common.hypo_score !== oldCommon.hypo_score + 1) {
 		// logger.info(`sum_plays was ${sum_plays(state)} whereas old_plays was ${sum_plays(old_state) + 1}, not tccm`);
 		return false;
 	}
 
 	// The card was not a 5 and not promptable (valuable)
-	const prompt = old_state.hands[target].find_prompt(focused_card, state.suits);
+	const prompt = oldCommon.find_prompt(state.hands[target], focused_card, state.suits);
 	if (prompt && prompt.rank !== 5 && prompt.order !== focused_card.order) {
 		// logger.info('targeted a out-of-order card not a 5, not tccm');
 		return false;
@@ -143,14 +137,18 @@ export function interpret_tccm(state, old_state, giver, target, list, focused_ca
 
 	// Check for double tempo clue
 	if (list.length > 1) {
-		const possibly_playable = touched_cards.filter(card =>
-			card.inferred.length > 1 &&
-			card.inferred.some(i => i.rank === state.hypo_stacks[target][i.suitIndex] + 1));
+		const possibly_playable = touched_cards.filter(({ order }) => {
+			const card = state.common.thoughts[order];
+			return card.inferred.length > 1 &&
+				card.inferred.some(i => i.rank === state.common.hypo_stacks[i.suitIndex] + 1);
+		});
 
 		if (possibly_playable.length > 0) {
 			// All touched cards must be delayed playable
-			for (const card of possibly_playable) {
-				card.inferred = card.inferred.filter(inf => inf.rank === state.hypo_stacks[target][inf.suitIndex] + 1);
+			for (const { order } of possibly_playable) {
+				const card = state.common.thoughts[order];
+
+				card.inferred = card.inferred.filter(inf => inf.rank === state.common.hypo_stacks[inf.suitIndex] + 1);
 				update_hypo_stacks(state);
 			}
 			const slots = possibly_playable.map(c => state.hands[target].findIndex(card => card.order === c.order) + 1);
@@ -160,7 +158,7 @@ export function interpret_tccm(state, old_state, giver, target, list, focused_ca
 	}
 
 	// Valid tempo clue chop move
-	chop.chop_moved = true;
-	logger.info('tccm, chop moving', target === state.ourPlayerIndex ? `slot ${state.hands[target].chopIndex({ afterClue: true })}` : logCard(chop));
+	state.common.thoughts[chop.order].chop_moved = true;
+	logger.info('tccm, chop moving', target === state.ourPlayerIndex ? `slot ${state.common.chopIndex(state.hands[target], { afterClue: true })}` : logCard(chop));
 	return true;
 }

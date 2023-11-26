@@ -76,7 +76,8 @@ export function handle_action(action, catchup = false) {
 
 			if (!catchup) {
 				// Update notes on cards
-				for (const card of this.hands.flat()) {
+				for (const { order } of this.hands.flat()) {
+					const card = this.common.thoughts[order];
 					if (card.saved || card.called_to_discard) {
 						const note = card.getNote();
 
@@ -132,8 +133,8 @@ export function handle_action(action, catchup = false) {
 		case 'identify': {
 			const { order, playerIndex, suitIndex, rank, infer = false } = action;
 
-			const card = this.hands[playerIndex].findOrder(order);
-			if (card === undefined) {
+			const card = this.common.thoughts[order];
+			if (!this.hands[playerIndex].some(c => c.order === order)) {
 				throw new Error('Could not find card to rewrite!');
 			}
 			logger.info(`identifying card with order ${order} as ${logCard({ suitIndex, rank })}, infer? ${infer}`);

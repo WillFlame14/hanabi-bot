@@ -5,7 +5,7 @@ import { interpret_play } from './h-group/interpret-play.js';
 import { take_action } from './h-group/take-action.js';
 import { update_turn } from './h-group/update-turn.js';
 
-import { HGroup_Hand } from './h-hand.js';
+import { HGroup_Player } from './h-player.js';
 import * as Utils from '../tools/util.js';
 
 export default class HGroup extends State {
@@ -15,8 +15,10 @@ export default class HGroup extends State {
 	update_turn = update_turn;
 	interpret_play = interpret_play;
 
-	hand_history = /** @type {HGroup_Hand[]} */ ([]);
-	hands = /** @type {HGroup_Hand[]} */ ([]);
+	player_history = /** @type {HGroup_Player[]} */ ([]);
+	players = /** @type {HGroup_Player[]} */ ([]);
+
+	common = new HGroup_Player(-1);
 
 	/**
 	 * @param {number} tableID
@@ -29,12 +31,17 @@ export default class HGroup extends State {
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress, level = 1) {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
 
-		this.hands = [];
+		this.players = [];
 		for (let i = 0; i < playerNames.length; i++) {
-			this.hands.push(new HGroup_Hand());
+			this.players.push(new HGroup_Player(i));
 		}
 
+		this.common = new HGroup_Player(-1);
 		this.level = level;
+	}
+
+	get me() {
+		return this.players[this.ourPlayerIndex];
 	}
 
 	createBlank() {
@@ -51,10 +58,13 @@ export default class HGroup extends State {
 			throw new Error('Maximum recursive depth reached.');
 		}
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'last_actions',
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'players', 'last_actions',
 			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
 		for (const property of minimalProps) {
+			if (property === 'players') {
+				console.log('copying players');
+			}
 			newState[property] = Utils.objClone(this[property]);
 		}
 		newState.copyDepth = this.copyDepth + 1;

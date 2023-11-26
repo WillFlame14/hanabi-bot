@@ -8,6 +8,7 @@ import { logClue } from '../../tools/log.js';
  * @typedef {import('../h-group.js').default} State
  * @typedef {import('../../basics/Player.js').Player} Player
  * @typedef {import('../../basics/Card.js').Card} Card
+ * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').ClueResult} ClueResult
  * @typedef {import('../../types.js').Clue} Clue
  */
@@ -51,7 +52,7 @@ export function select_play_clue(play_clues) {
  * Given a set of playable cards, returns the unknown 1s in the order that they should be played.
  * @param  {State} state
  * @param  {Player} player
- * @param  {Card[]} cards
+ * @param  {ActualCard[]} cards
  */
 export function order_1s(state, player, cards) {
 	const unknown_1s = cards.filter(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
@@ -107,9 +108,7 @@ export function determine_playable_card(state, player, playable_cards) {
 	const priorities = [[], [], [], [], [], []];
 
 	let min_rank = 5;
-	for (const c of playable_cards) {
-		const card = player.thoughts[c.order];
-
+	for (const card of playable_cards) {
 		// Part of a finesse
 		if (card.finessed) {
 			priorities[0].push(card);
@@ -117,7 +116,7 @@ export function determine_playable_card(state, player, playable_cards) {
 		}
 
 		// Blind playing unknown chop moved cards should be a last resort with < 2 strikes
-		if (card.chop_moved && !c.clued && card.possible.some(p => playableAway(state, p) !== 0)) {
+		if (card.chop_moved && !card.clued && card.possible.some(p => playableAway(state, p) !== 0)) {
 			if (state.strikes !== 2) {
 				priorities[5].push(card);
 			}

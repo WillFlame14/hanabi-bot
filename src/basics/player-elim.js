@@ -1,41 +1,42 @@
 import { cardCount } from '../variants.js';
-import { baseCount, unknownIdentities } from './hanabi-util.js';
-import * as Basics from '../basics.js';
+import { baseCount, unknownIdentities, visibleFind } from './hanabi-util.js';
 import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
 import { logCard, logLinks } from '../tools/log.js';
+import { all_identities } from './helper.js';
 
 /**
  * @typedef {import('./Card.js').Card} Card
+ * @typedef {import('./Card.js').ActualCard} ActualCard
+ * @typedef {import('./Card.js').BasicCard} BasicCard
  * @typedef {import('./Player.js').Player} Player
  * @typedef {import('./State.js').State} State
- * @typedef {import('../types.js').BasicCard} BasicCard
+ * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Link} Link
  */
 
 /**
+ * Eliminates card identities using only possible information.
  * @this {Player}
  * @param {State} state
- * @param {BasicCard} identity 		The identity to be eliminated.
- * @returns {Card[]}				Any additional recursive eliminations performed.
  */
-export function card_elim(state, identity) {
-	// Skip if already eliminated
-	if (!this.all_possible.some(c => c.matches(identity))) {
-		return [];
-	}
+export function card_elim(state) {
+	const identities = all_identities(state.suits).filter(id => this.all_possible.some(c => c.matches(id)));
 
-	const base_count = baseCount(state, identity);
-	const certain_cards = state.hands.flat().filter(c => this.thoughts[c.order].matches(identity, { infer: true }));
-	const total_count = cardCount(state.suits, identity);
+	for (let i = 0; i < identities.length; i++) {
+		const identity = identities[i];
 
-	let new_elims = /** @type {Card[]} */ ([]);
+		const base_count = baseCount(state, identity);
+		const certain_cards = visibleFind(state, this, identity);
+		const total_count = cardCount(state.suits, identity);
 
-	// All cards are known accounted for
-	if (base_count + certain_cards.length === total_count) {
+		if (base_count + certain_cards.length !== total_count) {
+			return;
+		}
+
 		// Remove it from the list of future possibilities
-		this.all_possible = this.all_possible.filter(c => !c.matches(identity));
+		this.all_possible.splice(this.all_possible.findIndex(c => c.matches(identity)), 1);
 
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];
@@ -46,43 +47,37 @@ export function card_elim(state, identity) {
 
 				// Card can be further eliminated
 				if (card.possible.length === 1) {
-					const identity2 = card.identity();
-					new_elims.push(identity2);
-
-					for (let i = 0; i < state.numPlayers; i++) {
-						const recursive_elims = this.card_elim(state, identity2.raw()).filter(c => !new_elims.some(elim => elim.matches(c)));
-						new_elims = new_elims.concat(recursive_elims);
-					}
+					identities.push(card.identity());
 				}
 			}
 		}
 		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} possibilities`);
 	}
-	return new_elims;
 }
 
 /**
+ * Eliminates card identities using inferred and possible information.
  * @this {Player}
  * @param {State} state
- * @param {BasicCard} identity 		The identity to be eliminated.
- * @returns {Card[]}				Any additional recursive eliminations performed.
  */
-export function infer_elim(state, identity) {
-	this.card_elim(state, identity);
+export function infer_elim(state) {
+	const identities = all_identities(state.suits).filter(id => this.all_inferred.some(c => c.matches(id)));
 
-	// Skip if already eliminated
-	if (!this.all_inferred.some(c => c.matches(identity))) {
-		return [];
-	}
+	for (let i = 0; i < identities.length; i++) {
+		const identity = identities[i];
 
-	const base_count = baseCount(state, identity);
-	let inferred_cards = state.hands.flat().filter(c => this.thoughts[c.order].matches(identity, { infer: true }));
-	const total_count = cardCount(state.suits, identity);
-	let focus_elim = false;
+		const base_count = baseCount(state, identity);
+		let inferred_cards = visibleFind(state, this, identity, { infer: true });
+		const total_count = cardCount(state.suits, identity);
+		let focus_elim = false;
 
-	let new_elims = /** @type {Card[]} */ ([]);
+		if (base_count + inferred_cards.length < total_count) {
+			return [];
+		}
 
-	if (base_count + inferred_cards.length >= total_count) {
+		// Remove it from the list of future inferences
+		this.all_inferred.splice(this.all_inferred.findIndex(c => c.matches(identity)), 1);
+
 		if (base_count + inferred_cards.length > total_count) {
 			logger.warn(`inferring ${base_count + inferred_cards.length} copies of ${logCard(identity)}`);
 
@@ -105,101 +100,74 @@ export function infer_elim(state, identity) {
 			}
 		}
 
-		// Remove it from the list of future inferences
-		this.all_inferred = this.all_inferred.filter(c => !c.matches(identity));
-
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];
 
 			if ((card.inferred.length > 1 || focus_elim) && !inferred_cards.some(c => c.order === card.order)) {
+				card.subtract('possible', [identity]);
 				card.subtract('inferred', [identity]);
 
 				// Card can be further eliminated
 				if (card.inferred.length === 1) {
-					if (card.identity() !== undefined && !card.matches(identity)) {
+					if (!card.matches(identity, { assume: true })) {
 						logger.warn(`incorrectly trying to elim card ${logCard(card)} as ${logCard(identity)}!`);
 						continue;
 					}
-
-					const identity2 = card.inferred[0];
-					new_elims.push(identity2);
-
-					for (let i = 0; i < state.numPlayers; i++) {
-						const recursive_elims = this.infer_elim(state, identity2.raw()).filter(c => !new_elims.some(elim => elim.matches(c)));
-						new_elims = new_elims.concat(recursive_elims);
-					}
+					identities.push(card.inferred[0]);
+					this.card_elim(state);
 				}
 			}
 		}
 		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} inferences`);
 	}
-	return new_elims;
 }
 
 /**
+ * Eliminates card identities based on Good Touch Principle.
+ * Returns the orders of the cards that lost all inferences (were reset).
  * @this {Player}
  * @param {State} state
- * @param {number} playerIndex
- * @param {BasicCard} identity
- * @param {{ignore?: number[], hard?: boolean}} options
  */
-export function good_touch_elim(state, playerIndex, identity, options = {}) {
-	let additional_elims = gt_helper(state, this, identity, options);
-	let elim_index = 0;
+export function good_touch_elim(state) {
+	const identities = all_identities(state.suits).filter(id => this.all_inferred.some(c => c.matches(id)));
+	const resets = /** @type {Set<number>} */ (new Set());
 
-	while (elim_index < additional_elims.length) {
-		const identity = additional_elims[elim_index].raw();
-		for (let i = 0; i < state.numPlayers; i++) {
-			const extra_card_elims = Basics.card_elim(state, playerIndex, identity);
-			const extra_gtp_elims = gt_helper(state, this, identity);		// No ignoring or hard elims when recursing
+	for (let i = 0; i < identities.length; i++) {
+		const identity = identities[i];
 
-			additional_elims = additional_elims.concat(extra_card_elims.concat(extra_gtp_elims));
-		}
-		elim_index++;
-	}
-}
+		for (const { order } of state.hands.flat()) {
+			const card = this.thoughts[order];
 
-/**
- * @param {State} state
- * @param {Player} player
- * @param {BasicCard} identity
- * @param {{ignore?: number[], hard?: boolean}} options
- */
-function gt_helper(state, player, identity, options = {}) {
-	const new_elims = [];
+			if (card.saved && card.inferred.length > 1) {
+				const pre_inferences = card.inferred.length;
 
-	for (const { order } of state.hands[player.playerIndex]) {
-		const card = player.thoughts[order];
+				card.subtract('inferred', [identity]);
 
-		if (options.ignore?.includes(card.order)) {
-			continue;
-		}
+				if (card.inferred.length === 0) {
+					card.reset = true;
+					resets.add(card.order);
 
-		if (card.saved && (options.hard || card.inferred.length > 1)) {
-			const pre_inferences = card.inferred.length;
+					if (card.finessed) {
+						card.finessed = false;
+						card.inferred = card.old_inferred;
 
-			card.subtract('inferred', [identity]);
-
-			if (card.inferred.length === 0) {
-				card.reset = true;
-
-				if (card.finessed) {
-					card.finessed = false;
-					card.inferred = card.old_inferred;
-
-					// Filter out future waiting connections involving this card
-					state.waiting_connections = state.waiting_connections.filter(wc =>
-						!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === card.order));
+						// Filter out future waiting connections involving this card
+						state.waiting_connections = state.waiting_connections.filter(wc =>
+							!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === card.order));
+					}
+					else {
+						card.inferred = card.possible.slice();
+					}
+				}
+				// Newly eliminated
+				else if (card.inferred.length === 1 && pre_inferences > 1) {
+					identities.push(card.inferred[0]);
 				}
 			}
-			// Newly eliminated
-			else if (card.inferred.length === 1 && pre_inferences > 1) {
-				new_elims.push(card.inferred[0]);
-			}
 		}
 	}
 
-	return new_elims;
+	return Array.from(resets);
 }
 
 /**
@@ -208,6 +176,10 @@ function gt_helper(state, player, identity, options = {}) {
  * @param {State} state
  */
 export function find_links(state) {
+	if (this.playerIndex === -1) {
+		return;
+	}
+
 	const hand = state.hands[this.playerIndex];
 
 	for (const { order } of hand) {
@@ -253,21 +225,23 @@ export function find_links(state) {
  * @param {State} state
  */
 export function refresh_links(state) {
-	// Get the link indices that we need to redo (after learning new things about them)
-	const redo_elim_indices = this.links.map(({cards, identities}, index) =>
-		// The card is globally known or an identity is no longer possible
-		cards.some(c => c.identity({ symmetric: true }) || identities.some(id => !c.possible.some(p => p.matches(id)))) ? index : -1
-	).filter(index => index !== -1);
+	if (this.playerIndex === -1) {
+		return;
+	}
 
-	// Try eliminating all the identities again
-	const redo_elim_ids = redo_elim_indices.map(index => this.links[index].identities).flat();
+	// Get the link indices that we need to redo (after learning new things about them)
+	const redo_elim_indices = Utils.findIndices(this.links, ({cards, identities}) =>
+		cards.some(c => {
+			const card = this.thoughts[c.order];
+
+			// The card is globally known or an identity is no longer possible
+			return card.identity() || identities.some(id => !card.possible.some(p => p.matches(id)));
+		})
+	);
 
 	// Clear links that we're redoing
 	this.links = this.links.filter((_, index) => !redo_elim_indices.includes(index));
 
-	for (const id of redo_elim_ids) {
-		this.infer_elim(state, id);
-	}
-
+	this.infer_elim(state);
 	this.find_links(state);
 }

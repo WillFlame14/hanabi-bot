@@ -1,27 +1,20 @@
 import logger from '../tools/logger.js';
 import { cardTouched } from '../variants.js';
-import * as HandUtils from './hand-utils.js';
 
 /**
  * @typedef {import('../types.js').BaseClue} BaseClue
- * @typedef {import('../types.js').BasicCard} BasicCard
- * @typedef {import('./Card.js').Card} Card
+ * @typedef {import('../types.js').Identity} Identity
+ * @typedef {import('./Card.js').ActualCard} ActualCard
  * @typedef {import('./Card.js').MatchOptions} MatchOptions
  */
 
 /**
  * An array of Cards, with some helper functions attached.
- * @extends Array<Card>
+ * @extends Array<ActualCard>
  */
 export class Hand extends Array {
-	static isLocked = HandUtils.isLocked;
-	static isLoaded = HandUtils.isLoaded;
-	static find_playables = HandUtils.find_playables;
-	static find_known_trash = HandUtils.find_known_trash;
-	static locked_discard = HandUtils.locked_discard;
-
 	/**
-	 * @param {Card[]} args
+	 * @param {ActualCard[]} args
 	 */
 	constructor( ...args) {
 		super(...args);
@@ -62,7 +55,7 @@ export class Hand extends Array {
 
 	/**
 	 * Returns an array of cards matching the provided identity.
-	 * @param {BasicCard} identity
+	 * @param {Identity} identity
 	 * @param {MatchOptions} options
 	 */
 	findCards(identity, options = {}) {

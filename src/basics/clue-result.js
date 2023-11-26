@@ -5,7 +5,7 @@ import { isTrash } from './hanabi-util.js';
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Player.js').Player} Player
  * @typedef {import('./Card.js').Card} Card
- * @typedef {import('../types.js').BasicCard} BasicCard
+ * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Clue} Clue
  */
 
@@ -41,18 +41,23 @@ export function elim_result(player, hypo_player, hand, list) {
  * @param  {State} state
  * @param  {Player} hypo_player
  * @param  {Hand} hand
+ * @param  {number} focus_order
  */
-export function bad_touch_result(state, hypo_player, hand) {
+export function bad_touch_result(state, hypo_player, hand, focus_order) {
 	let bad_touch = 0, trash = 0;
 
 	for (const { order } of hand) {
+		// Focused card can't be bad touched
+		if (order === focus_order) {
+			continue;
+		}
+
 		const hypo_card = hypo_player.thoughts[order];
 
 		if (hypo_card.possible.every(p => isTrash(state, hypo_player, p, order))) {
 			trash++;
 		}
 		// TODO: Don't double count bad touch when cluing two of the same card
-		// Focused card should not be bad touched?
 		else if (isTrash(state, hypo_player, hypo_card.raw(), order)) {
 			bad_touch++;
 		}
@@ -73,7 +78,7 @@ export function playables_result(state, player, hypo_player, target) {
 
 	/**
 	 * TODO: This might not find the right card if it was duplicated...
-	 * @param  {BasicCard} identity
+	 * @param  {Identity} identity
 	 */
 	function find_card(identity) {
 		for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
