@@ -5,8 +5,9 @@ import { cardValue, direct_clues, isTrash } from '../../../basics/hanabi-util.js
 import { find_clue_value } from '../action-helper.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logClue } from '../../../tools/log.js';
+import { logCard, logClue, logHand } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
+import { CLUE } from '../../../constants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -58,7 +59,7 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 	});
 
 	// Print out logs if the result is correct
-	logger.flush(incorrect_card === undefined);
+	logger.flush(incorrect_card === undefined || (clue.target === 2 && clue.type === CLUE.COLOUR));
 
 	if (incorrect_card) {
 		let reason = '';
@@ -105,7 +106,7 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 	const { finesses, playables } = playables_result(hypo_state, state.common, hypo_state.common, giver);
 
 	const new_chop = state.common.chop(hand, { afterClue: true });
-	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, hypo_state.common, new_chop) :
+	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, hypo_state.me, state.me.thoughts[new_chop.order], new_chop.order) :
 						state.common.thinksTrash(hypo_state, target).length > 0 ? 0 : 4;
 
 	return { elim: fill, new_touched, bad_touch, trash, finesses, playables, remainder };
@@ -154,7 +155,7 @@ export function determine_clue(state, target, target_card, options) {
 			continue;
 		}
 
-		const interpret = state.common.thoughts[target_card.order].inferred;
+		const interpret = hypo_state.common.thoughts[target_card.order].inferred;
 		const result = get_result(state, hypo_state, clue, state.ourPlayerIndex);
 
 		const { elim, new_touched, bad_touch, trash, finesses, playables } = result;
@@ -184,6 +185,10 @@ export function determine_clue(state, target, target_card, options) {
 
 	const { clue, result: best_result } = Utils.maxOn(results, ({ result }) => find_clue_value(result));
 	logger.info('preferring', logClue(clue));
+
+	// if (logCard(target_card) === 'y1' && target === 2) {
+	// 	process.exit(0);
+	// }
 
 	// Change type from CLUE to ACTION
 	return { type: clue.type, value: clue.value, target: clue.target, result: best_result };

@@ -105,7 +105,7 @@ export function playables_result(state, player, hypo_player, target) {
 			}
 
 			// Only counts as a playable if it wasn't already playing
-			if (!state.unknown_plays[state.ourPlayerIndex].some(order => order === old_card.order)) {
+			if (!player.unknown_plays.some(order => order === old_card.order)) {
 				playables.push({ playerIndex, card: old_card });
 
 				if (hypo_player.thinksLoaded(state, target)) {

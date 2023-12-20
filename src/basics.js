@@ -122,7 +122,7 @@ export function onDraw(state, action) {
 		drawn_index: state.actionList.length
 	});
 
-	console.log('adding thoughts on order', order);
+	console.log('drawing order', order, state.common.thoughts[order].order);
 
 	state.cardOrder = order;
 	state.cardsLeft--;

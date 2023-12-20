@@ -93,7 +93,7 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 			continue;
 		}
 
-		const looksDirect = focused_card.identity({ symmetric: true }) === undefined && (		// Focus must be unknown AND
+		const looksDirect = focused_card.identity() === undefined && (		// Focus must be unknown AND
 			action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
 			state.common.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
 			looksSave);																		// Looks like a save

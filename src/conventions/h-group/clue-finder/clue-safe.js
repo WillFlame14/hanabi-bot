@@ -1,4 +1,5 @@
 import { isCritical, playableAway, save2 } from '../../../basics/hanabi-util.js';
+import { logHand } from '../../../tools/log.js';
 
 import logger from '../../../tools/logger.js';
 

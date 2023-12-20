@@ -57,6 +57,7 @@ function init_state(state, options) {
 		for (let i = 0; i < state.numPlayers; i++) {
 			state.players[i].hypo_stacks = options.play_stacks.slice();
 		}
+		state.common.hypo_stacks = options.play_stacks.slice();
 	}
 
 	// Initialize discard stacks

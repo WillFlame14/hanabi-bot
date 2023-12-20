@@ -3,6 +3,8 @@ import { Player } from '../basics/Player.js';
 import { cardValue } from '../basics/hanabi-util.js';
 import { CLUE } from '../constants.js';
 
+import * as Utils from '../tools/util.js';
+
 /**
  * @typedef {import('../basics/Card.js').Card} Card
  * @typedef {import('./h-group.js').default} State
@@ -11,7 +13,13 @@ import { CLUE } from '../constants.js';
 
 export class HGroup_Player extends Player {
 	clone() {
-		return new HGroup_Player(this.playerIndex, this.thoughts, this.links, this.hypo_stacks, this.all_possible, this.all_inferred, this.unknown_plays);
+		return new HGroup_Player(this.playerIndex,
+			this.thoughts.map(infs => infs.clone()),
+			this.links.map(link => Utils.objClone(link)),
+			this.hypo_stacks.slice(),
+			this.all_possible.slice(),
+			this.all_inferred.slice(),
+			this.unknown_plays);
 	}
 
 	/**
@@ -25,10 +33,6 @@ export class HGroup_Player extends Player {
 	chopIndex(hand, options = {}) {
 		for (let i = hand.length - 1; i >= 0; i--) {
 			const { clued, newly_clued } = hand[i];
-			console.log('trying to get thoughts on order', hand[i].order, 'playerIndex', this.playerIndex);
-			if (this.thoughts[hand[i].order] === undefined) {
-				console.log(this.thoughts);
-			}
 			const { chop_moved, finessed } = this.thoughts[hand[i].order];
 
 			if (chop_moved || (clued && (options.afterClue ? true : !newly_clued)) || finessed) {

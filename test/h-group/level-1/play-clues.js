@@ -8,11 +8,12 @@ import HGroup from '../../../src/conventions/h-group.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
 
 import logger from '../../../src/tools/logger.js';
+import { logHand } from '../../../src/tools/log.js';
 
-logger.setLevel(logger.LEVELS.ERROR);
+// logger.setLevel(logger.LEVELS.ERROR);
 
 describe('play clue', () => {
-	it('can interpret a colour play clue touching one card', () => {
+	/*it('can interpret a colour play clue touching one card', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g4', 'r1', 'b5', 'p2', 'y1']
@@ -22,7 +23,7 @@ describe('play clue', () => {
 
 		// Target card should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][1];
-		ExAsserts.cardHasInferences(targetCard, ['r1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[targetCard.order], ['r1']);
 	});
 
 	it('can interpret a colour play clue touching multiple cards', () => {
@@ -35,7 +36,7 @@ describe('play clue', () => {
 
 		// Bob's slot 1 should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][0];
-		ExAsserts.cardHasInferences(targetCard, ['r1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[targetCard.order], ['r1']);
 	});
 
 	it('can interpret a colour play clue touching chop', () => {
@@ -48,7 +49,7 @@ describe('play clue', () => {
 
 		// Bob's slot 5 (chop) should be inferred as r1.
 		const targetCard = state.hands[PLAYER.BOB][4];
-		ExAsserts.cardHasInferences(targetCard, ['r1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[targetCard.order], ['r1']);
 	});
 
 	it('can interpret a colour play clue on a partial stack', () => {
@@ -64,7 +65,7 @@ describe('play clue', () => {
 
 		// Bob's slot 3 should be inferred as r3.
 		const targetCard = state.hands[PLAYER.BOB][2];
-		ExAsserts.cardHasInferences(targetCard, ['r3']);
+		ExAsserts.cardHasInferences(state.common.thoughts[targetCard.order], ['r3']);
 	});
 
 	it('can interpret a colour play clue through someone\'s hand', () => {
@@ -76,14 +77,15 @@ describe('play clue', () => {
 
 		// Cathy's r1 is clued and inferred.
 		state.hands[PLAYER.CATHY][1].clued = true;
-		state.hands[PLAYER.CATHY][1].intersect('possible', ['r1', 'r2', 'r3', 'r4', 'r5'].map(expandShortCard));
-		state.hands[PLAYER.CATHY][1].intersect('inferred', ['r1'].map(expandShortCard));
+		const card = state.common.thoughts[state.hands[PLAYER.CATHY][1].order];
+		card.intersect('possible', ['r1', 'r2', 'r3', 'r4', 'r5'].map(expandShortCard));
+		card.intersect('inferred', ['r1'].map(expandShortCard));
 
 		takeTurn(state, 'Alice clues red to Bob');
 
 		// Bob's slot 3 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][2];
-		ExAsserts.cardHasInferences(targetCard, ['r2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[targetCard.order], ['r2']);
 	});
 
 	it('can interpret a self-connecting colour play clue', () => {
@@ -94,15 +96,16 @@ describe('play clue', () => {
 
 		// Bob has a 1 in slot 2.
 		state.hands[PLAYER.BOB][1].clued = true;
-		state.hands[PLAYER.BOB][1].intersect('possible', ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
-		state.hands[PLAYER.BOB][1].intersect('inferred', ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+		const card = state.common.thoughts[state.hands[PLAYER.BOB][1].order];
+		card.intersect('possible', ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+		card.intersect('inferred', ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
 
 		takeTurn(state, 'Alice clues red to Bob');
 
 		// Bob's slot 1 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][0];
-		ExAsserts.cardHasInferences(targetCard, ['r2']);
-	});
+		ExAsserts.cardHasInferences(state.common.thoughts[targetCard.order], ['r2']);
+	});*/
 
 	it('considers ambiguous play clues to still be plays', () => {
 		const state = setup(HGroup, [

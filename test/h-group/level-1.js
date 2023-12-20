@@ -10,7 +10,7 @@ import { take_action } from '../../src/conventions/h-group/take-action.js';
 import logger from '../../src/tools/logger.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 
-logger.setLevel(logger.LEVELS.ERROR);
+// logger.setLevel(logger.LEVELS.ERROR);
 
 describe('save clue', () => {
 	it('prefers play over save with >1 clues', () => {

@@ -6,7 +6,7 @@ import { handle_action } from '../action-handler.js';
 import { cardCount } from '../variants.js';
 import logger from '../tools/logger.js';
 import * as Utils from '../tools/util.js';
-import { logPerformAction } from '../tools/log.js';
+import { logCard, logHand, logPerformAction } from '../tools/log.js';
 
 /**
  * @typedef {import('../basics/Card.js').ActualCard} ActualCard
@@ -85,9 +85,6 @@ export class State {
 
 		this.in_progress = in_progress;
 
-		/** @type {WaitingConnection[]} */
-		this.waiting_connections = [];
-
 		/** @type {number} */
 		this.cardsLeft = this.suits.reduce((acc, _, suitIndex) => {
 			let cards = 0;
@@ -113,11 +110,13 @@ export class State {
 			this.players[i] = new Player(i);
 			this.players[i].all_possible = all_possible.slice();
 			this.players[i].all_inferred = all_possible.slice();
+			this.players[i].hypo_stacks = Array.from({ length: this.suits.length }, _ => 0)
 		}
 
 		this.common = new Player(-1);
 		this.common.all_possible = all_possible.slice();
 		this.common.all_inferred = all_possible.slice();
+		this.common.hypo_stacks = Array.from({ length: this.suits.length }, _ => 0);
 	}
 
 	get me() {
@@ -161,9 +160,10 @@ export class State {
 	/**
 	 * @abstract
 	 * @param {State} _state
+	 * @param {Player} _player
 	 * @param {Omit<ClueAction, "type">} _action
 	 */
-	interpret_clue(_state, _action) {
+	interpret_clue(_state, _player, _action) {
 		throw new Error('must be implemented by subclass!');
 	}
 

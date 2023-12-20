@@ -3,11 +3,12 @@ import { Card } from '../basics/Card.js';
 import { shortForms } from '../variants.js';
 import { globals } from './util.js';
 
+import logger from './logger.js';
+
 /**
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../basics/Hand.js').Hand} Hand
  * @typedef {import('../basics/Card.js').ActualCard} ActualCard
- * @typedef {import('../basics/Card.js').Card} Card
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').Identity} Identity

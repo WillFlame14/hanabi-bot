@@ -6,7 +6,7 @@ import { playableAway } from '../../../basics/hanabi-util.js';
 import { cardTouched } from '../../../variants.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard } from '../../../tools/log.js';
+import { logCard, logHand } from '../../../tools/log.js';
 import { find_possibilities } from '../../../basics/helper.js';
 
 /**
@@ -26,18 +26,20 @@ import { find_possibilities } from '../../../basics/helper.js';
  * @returns {Connection | undefined}
  */
 function find_known_connecting(state, giver, identity, ignoreOrders = []) {
+	const { common } = state;
+
 	// Globally known
 	for (let i = 0; i < state.numPlayers; i++) {
 		const playerIndex = (giver + i) % state.numPlayers;
 
-		for (const card of state.hands[playerIndex]) {
-			if (ignoreOrders.includes(card.order)) {
-				continue;
-			}
+		const globally_known = state.hands[playerIndex].find(({ order }) =>
+			!ignoreOrders.includes(order) && common.thoughts[order].matches(identity, { infer: true }));
 
-			if (state.common.thoughts[card.order].matches(identity, { infer: true }) && state.me.thoughts[card.order].matches(identity, { assume: true })) {
-				return { type: 'known', reacting: playerIndex, card, identities: [identity] };
-			}
+		// state.me.thoughts[order].matches(identity, { assume: true })
+
+		if (globally_known) {
+			logger.info('globally known thoughts', logHand([common.thoughts[globally_known.order]]));
+			return { type: 'known', reacting: playerIndex, card: globally_known, identities: [identity] };
 		}
 	}
 
@@ -69,7 +71,7 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 		}
 
 		if (match !== undefined) {
-			if (state.common.thoughts[match.order].hidden) {
+			if (common.thoughts[match.order].hidden) {
 				logger.warn(`hidden connecting card ${logCard(identity)} in ${state.playerNames[playerIndex]}'s hand, might be confusing`);
 			}
 			return { type: 'playable', reacting: playerIndex, card: match, known: playables.length === 1, identities: [identity] };

@@ -1,4 +1,5 @@
 import { CLUE, HAND_SIZE } from '../constants.js';
+import { logHand } from '../tools/log.js';
 import { cardCount, cardTouched, isCluable } from '../variants.js';
 
 /**
@@ -147,6 +148,8 @@ export function save2(state, player, identity) {
  */
 export function cardValue(state, player, identity, order = -1) {
 	const { suitIndex, rank } = identity;
+
+	console.log(suitIndex, rank, order);
 
 	// Unknown card in our hand, return average of possibilities
 	if (suitIndex === -1 && rank === -1 && order !== -1) {

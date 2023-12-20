@@ -1,10 +1,9 @@
 import { cardCount } from '../variants.js';
-import { baseCount, unknownIdentities, visibleFind } from './hanabi-util.js';
+import { baseCount, isSaved, unknownIdentities, visibleFind } from './hanabi-util.js';
 import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
 import { logCard, logLinks } from '../tools/log.js';
-import { all_identities } from './helper.js';
 
 /**
  * @typedef {import('./Card.js').Card} Card
@@ -22,17 +21,14 @@ import { all_identities } from './helper.js';
  * @param {State} state
  */
 export function card_elim(state) {
-	const identities = all_identities(state.suits).filter(id => this.all_possible.some(c => c.matches(id)));
+	const identities = this.all_possible.slice();
 
 	for (let i = 0; i < identities.length; i++) {
 		const identity = identities[i];
-
-		const base_count = baseCount(state, identity);
 		const certain_cards = visibleFind(state, this, identity);
-		const total_count = cardCount(state.suits, identity);
 
-		if (base_count + certain_cards.length !== total_count) {
-			return;
+		if (baseCount(state, identity) + certain_cards.length !== cardCount(state.suits, identity)) {
+			continue;
 		}
 
 		// Remove it from the list of future possibilities
@@ -61,7 +57,7 @@ export function card_elim(state) {
  * @param {State} state
  */
 export function infer_elim(state) {
-	const identities = all_identities(state.suits).filter(id => this.all_inferred.some(c => c.matches(id)));
+	const identities = this.all_inferred.slice();
 
 	for (let i = 0; i < identities.length; i++) {
 		const identity = identities[i];
@@ -72,7 +68,7 @@ export function infer_elim(state) {
 		let focus_elim = false;
 
 		if (base_count + inferred_cards.length < total_count) {
-			return [];
+			continue;
 		}
 
 		// Remove it from the list of future inferences
@@ -129,40 +125,50 @@ export function infer_elim(state) {
  * @param {State} state
  */
 export function good_touch_elim(state) {
-	const identities = all_identities(state.suits).filter(id => this.all_inferred.some(c => c.matches(id)));
+	const identities = this.all_inferred.slice();
 	const resets = /** @type {Set<number>} */ (new Set());
 
 	for (let i = 0; i < identities.length; i++) {
 		const identity = identities[i];
 
+		const matches = state.hands.flat().filter(c => {
+			const card = this.thoughts[c.order];
+			return card.matches(identity) && card.saved;
+		});
+
+		if (matches.length === 0) {
+			continue;
+		}
+
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];
 
-			if (card.saved && card.inferred.length > 1) {
-				const pre_inferences = card.inferred.length;
+			if (!card.saved || matches.some(c => c.order === order) || card.inferred.length === 0 || !card.inferred.some(c => c.matches(identity))) {
+				continue;
+			}
 
-				card.subtract('inferred', [identity]);
+			const pre_inferences = card.inferred.length;
+			card.subtract('inferred', [identity]);
 
-				if (card.inferred.length === 0) {
-					card.reset = true;
-					resets.add(card.order);
+			if (card.inferred.length === 0) {
+				card.reset = true;
+				resets.add(card.order);
 
-					if (card.finessed) {
-						card.finessed = false;
-						card.inferred = card.old_inferred;
+				if (card.finessed) {
+					card.finessed = false;
+					card.inferred = card.old_inferred;
 
-						// Filter out future waiting connections involving this card
-						state.waiting_connections = state.waiting_connections.filter(wc =>
-							!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === card.order));
-					}
-					else {
-						card.inferred = card.possible.slice();
-					}
+					// Filter out future waiting connections involving this card
+					this.waiting_connections = this.waiting_connections.filter(wc =>
+						!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === card.order));
 				}
-				// Newly eliminated
-				else if (card.inferred.length === 1 && pre_inferences > 1) {
-					identities.push(card.inferred[0]);
+				else {
+					card.inferred = card.possible.slice();
 				}
+			}
+			// Newly eliminated
+			else if (card.inferred.length === 1 && pre_inferences > 1) {
+				identities.push(card.inferred[0]);
 			}
 		}
 	}

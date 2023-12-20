@@ -18,8 +18,6 @@ export default class HGroup extends State {
 	player_history = /** @type {HGroup_Player[]} */ ([]);
 	players = /** @type {HGroup_Player[]} */ ([]);
 
-	common = new HGroup_Player(-1);
-
 	/**
 	 * @param {number} tableID
 	 * @param {string[]} playerNames
@@ -36,7 +34,15 @@ export default class HGroup extends State {
 			this.players.push(new HGroup_Player(i));
 		}
 
-		this.common = new HGroup_Player(-1);
+		this.common = new HGroup_Player(
+			this.common.playerIndex,
+			this.common.thoughts,
+			this.common.links,
+			this.common.hypo_stacks,
+			this.common.all_possible,
+			this.common.all_inferred,
+			this.common.unknown_plays);
+
 		this.level = level;
 	}
 
@@ -62,9 +68,6 @@ export default class HGroup extends State {
 			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
 		for (const property of minimalProps) {
-			if (property === 'players') {
-				console.log('copying players');
-			}
 			newState[property] = Utils.objClone(this[property]);
 		}
 		newState.copyDepth = this.copyDepth + 1;

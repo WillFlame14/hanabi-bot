@@ -13,6 +13,7 @@ import { logCard } from '../tools/log.js';
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Link} Link
+ * @typedef {import('../types.js').WaitingConnection} WaitingConnection
  */
 
 export class Player {
@@ -45,6 +46,9 @@ export class Player {
 		 * The orders of playable cards whose identities are not known, according to each player. Used for identifying TCCMs.
 		 */
 		this.unknown_plays = unknown_plays;
+
+		/** @type {WaitingConnection[]} */
+		this.waiting_connections = [];
 	}
 
 	clone() {
