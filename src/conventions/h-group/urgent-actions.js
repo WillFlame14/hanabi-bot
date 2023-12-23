@@ -8,7 +8,7 @@ import { find_clue_value, order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
-import { logHand } from '../../tools/log.js';
+import { logCard, logClue, logHand } from '../../tools/log.js';
 
 
 /**
@@ -74,7 +74,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 		const { playables } = clue.result;
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target).map(p => p.card);
 		const immediately_playable = target_cards.filter(card =>
-			playableAway(state, card) === 0 && card.inferred.every(c => playableAway(state, c) === 0));
+			playableAway(state, state.me.thoughts[card.order]) === 0 && card.inferred.every(c => playableAway(state, c) === 0));
 
 		// The card can be played without any additional help
 		if (immediately_playable.length > 0) {
@@ -140,6 +140,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
  * @param {Card[][]} playable_priorities
  */
 export function find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities) {
+	const { common } = state;
 	const prioritySize = Object.keys(PRIORITY).length;
 	const urgent_actions = /** @type {PerformAction[][]} */ (Array.from({ length: prioritySize * 2 + 1 }, _ => []));
 
@@ -151,7 +152,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 		let high_priority = true;
 
 		while (playerIndex !== target) {
-			if (!state.hands[playerIndex].some(c => state.common.thoughts[c.order].finessed && playableAway(state, c) === 0)) {
+			if (!state.hands[playerIndex].some(c => common.thoughts[c.order].finessed && playableAway(state, c) === 0)) {
 				high_priority = false;
 				break;
 			}
@@ -161,7 +162,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 		const nextPriority = high_priority ? 0 : prioritySize;
 
 		// They are locked, we should try to unlock
-		if (state.players[target].thinksLocked(state, target)) {
+		if (common.thinksLocked(state, target)) {
 			const unlock_action = find_unlock(state, target);
 			if (unlock_action !== undefined) {
 				urgent_actions[PRIORITY.UNLOCK + nextPriority].push(unlock_action);
@@ -192,7 +193,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 			const save = save_clues[target];
 
 			// They already have a playable or trash (i.e. early save)
-			if (state.players[target].thinksLoaded(state, target)) {
+			if (common.thinksLoaded(state, target)) {
 				urgent_actions[prioritySize * 2].push(Utils.clueToAction(save, state.tableID));
 				continue;
 			}

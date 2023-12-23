@@ -4,7 +4,7 @@ import { find_own_finesses } from './connecting-cards.js';
 import { isBasicTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logConnections } from '../../../tools/log.js';
+import { logCard, logConnections, logHand } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**
@@ -62,7 +62,7 @@ export function add_symmetric_connections(state, symmetric_connections, existing
 			continue;
 		}
 
-		state.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake });
+		state.common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake });
 	}
 }
 

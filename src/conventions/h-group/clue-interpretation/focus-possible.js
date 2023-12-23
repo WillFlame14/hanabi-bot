@@ -1,7 +1,7 @@
 import { CLUE } from '../../../constants.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_connecting } from './connecting-cards.js';
-import { isCritical, playableAway, save2 } from '../../../basics/hanabi-util.js';
+import { isCritical, playableAway, save2, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
@@ -144,7 +144,7 @@ function find_rank_focus(state, rank, action) {
 			}
 
 			// Critical save or 2 save
-			if (isCritical(state, identity) || save2(state, state.players[target], identity)) {
+			if (isCritical(state, identity) || (rank === 2 && visibleFind(state, state.players[target], identity, { ignore: [giver] }).length === 0)) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				looksSave = true;
 			}

@@ -30,23 +30,25 @@ export function take_action(state) {
 	const partner_hand = state.hands[partner];
 
 	// Look for playables, trash and important discards in own hand
-	let playable_cards = Hand.find_playables(state, state.ourPlayerIndex);
-	let trash_cards = Hand.find_known_trash(state, state.ourPlayerIndex).filter(c => c.clued);
+	let playable_cards = state.me.thinksPlayables(state, state.ourPlayerIndex);
+	let trash_cards = state.me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued);
 
 	// Add cards called to discard
-	for (const card of hand) {
-		if (!trash_cards.some(c => c.order === card.order) && card.called_to_discard && card.possible.some(p => !isCritical(state, p))) {
+	for (const { order } of hand) {
+		const card = state.me.thoughts[order];
+		if (!trash_cards.some(c => c.order === order) && card.called_to_discard && card.possible.some(p => !isCritical(state, p))) {
 			trash_cards.push(card);
 		}
 	}
 
 	// Discards must be inferred, playable, trash and duplicated in our hand
-	const discards = playable_cards.filter(card => {
+	const discards = playable_cards.filter(({ order }) => {
+		const card = state.me.thoughts[order];
 		const id = card.identity({ infer: true });
 
 		return id !== undefined &&
 			trash_cards.some(c => c.order === card.order) &&
-			playable_cards.some(c => c.matches(id, { infer: true }) && c.order !== card.order);
+			playable_cards.some(c => state.me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
 	});
 
 	// Remove trash cards from playables and discards from trash cards
@@ -71,17 +73,17 @@ export function take_action(state) {
 
 	const fix_clue = find_fix_clue(state);
 
-	const locked_discard_action = { tableID, type: ACTION.DISCARD, target: Hand.locked_discard(state, state.ourPlayerIndex).order };
+	const locked_discard_action = { tableID, type: ACTION.DISCARD, target: state.me.lockedDiscard(state, state.hands[state.ourPlayerIndex]).order };
 
 	// Stalling situation
-	if (Hand.isLocked(state, state.ourPlayerIndex)) {
+	if (state.me.thinksLocked(state, state.ourPlayerIndex)) {
 		// Forced discard
 		if (state.clue_tokens === 0) {
 			return locked_discard_action;
 		}
 
 		// Bad situation (for now, just treat as forced discard)
-		if (Hand.isLocked(state, partner)) {
+		if (state.me.thinksLocked(state, partner)) {
 			return locked_discard_action;
 		}
 

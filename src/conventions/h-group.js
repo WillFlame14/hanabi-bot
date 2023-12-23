@@ -8,6 +8,9 @@ import { update_turn } from './h-group/update-turn.js';
 import { HGroup_Player } from './h-player.js';
 import * as Utils from '../tools/util.js';
 
+/**
+ * @property {HGroup_Player[]} players
+ */
 export default class HGroup extends State {
 	interpret_clue = interpret_clue;
 	interpret_discard = interpret_discard;
@@ -16,7 +19,6 @@ export default class HGroup extends State {
 	interpret_play = interpret_play;
 
 	player_history = /** @type {HGroup_Player[]} */ ([]);
-	players = /** @type {HGroup_Player[]} */ ([]);
 
 	/**
 	 * @param {number} tableID
@@ -29,19 +31,11 @@ export default class HGroup extends State {
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress, level = 1) {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
 
-		this.players = [];
-		for (let i = 0; i < playerNames.length; i++) {
-			this.players.push(new HGroup_Player(i));
-		}
+		this.players = this.players.map(p =>
+			new HGroup_Player(p.playerIndex, p.thoughts, p.links, p.hypo_stacks, p.all_possible, p.all_inferred, p.unknown_plays));
 
-		this.common = new HGroup_Player(
-			this.common.playerIndex,
-			this.common.thoughts,
-			this.common.links,
-			this.common.hypo_stacks,
-			this.common.all_possible,
-			this.common.all_inferred,
-			this.common.unknown_plays);
+		const c = this.common;
+		this.common = new HGroup_Player(c.playerIndex, c.thoughts, c.links, c.hypo_stacks, c.all_possible, c.all_inferred, c.unknown_plays);
 
 		this.level = level;
 	}

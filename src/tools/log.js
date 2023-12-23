@@ -43,7 +43,7 @@ export function logCard(card) {
 
 /**
  * Returns a log-friendly representation of a hand.
- * @param {ActualCard[]} hand
+ * @param {{ order: number }[]} hand
  */
 export function logHand(hand) {
 	const new_hand = [];

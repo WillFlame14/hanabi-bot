@@ -1,6 +1,8 @@
 import { ActualCard, Card } from './basics/Card.js';
 import { cardCount } from './variants.js';
 import { find_possibilities } from './basics/helper.js';
+import logger from './tools/logger.js';
+import { logCard } from './tools/log.js';
 
 /**
  * @typedef {import('./basics/State.js').State} State
@@ -20,22 +22,26 @@ export function onClue(state, action) {
 	const { target, clue, list } = action;
 	const new_possible = find_possibilities(clue, state.suits);
 
-	for (const c of state.hands[target]) {
+	for (const { order } of state.hands[target]) {
+		const c = state.hands[target].findOrder(order);
+
+		if (!c.clued) {
+			c.newly_clued = true;
+			c.clued = true;
+			c.clues.push(clue);
+		}
+
 		for (const player of state.players.concat([state.common])) {
 			const card = player.thoughts[c.order];
 			const previously_unknown = card.possible.length > 1;
 
 			if (list.includes(card.order)) {
 				card.intersect('possible', new_possible);
-
-				if (!c.clued) {
-					c.newly_clued = true;
-					c.clued = true;
-				}
-				c.clues.push(clue);
+				card.intersect('inferred', new_possible);
 			}
 			else {
 				card.subtract('possible', new_possible);
+				card.subtract('inferred', new_possible);
 			}
 
 			// If card is now known to everyone and wasn't previously - eliminate
@@ -97,7 +103,7 @@ export function onDraw(state, action) {
 	for (let i = 0; i < state.numPlayers; i++) {
 		const player = state.players[i];
 
-		player.thoughts[order] = new Card({
+		player.thoughts[order] = new Card(card, {
 			suitIndex: (i !== playerIndex) ? suitIndex : -1,
 			rank: (i !== playerIndex) ? rank : -1,
 			order,
@@ -113,7 +119,7 @@ export function onDraw(state, action) {
 		}
 	}
 
-	state.common.thoughts[order] = new Card({
+	state.common.thoughts[order] = new Card(card, {
 		suitIndex: -1,
 		rank: -1,
 		order,
@@ -122,12 +128,8 @@ export function onDraw(state, action) {
 		drawn_index: state.actionList.length
 	});
 
-	console.log('drawing order', order, state.common.thoughts[order].order);
-
 	state.cardOrder = order;
 	state.cardsLeft--;
-
-	// suitIndex and rank are -1 if they're your own cards
 }
 
 /**

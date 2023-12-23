@@ -21,6 +21,7 @@ export function clue_safe(state, player, clue) {
 
 	const list = state.hands[target].clueTouched(clue, state.suits).map(c => c.order);
 	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
+	const hypo_player = hypo_state.players[player.playerIndex];
 
 	/** @param {number} startIndex */
 	const getNextUnoccupied = (startIndex) => {
@@ -44,12 +45,13 @@ export function clue_safe(state, player, clue) {
 	}
 
 	// Not dangerous, clue is fine to give
-	if (!chopUnsafe(hypo_state, player, next_unoccupied)) {
+	if (!chopUnsafe(hypo_state, hypo_player, next_unoccupied)) {
 		return true;
 	}
 
 	// Dangerous and not loaded, clue is not fine
-	if (!player.thinksLoaded(hypo_state, next_unoccupied)) {
+	if (!hypo_state.common.thinksLoaded(hypo_state, next_unoccupied)) {
+		hypo_state.hands[next_unoccupied].forEach(c => logger.info('h', logHand([state.common.thoughts[c.order]])));
 		logger.warn(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop and not loaded`);
 		return false;
 	}

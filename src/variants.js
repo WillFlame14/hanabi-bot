@@ -16,7 +16,7 @@ import { CLUE } from './constants.js';
  * @property {boolean} [specialNoClueRanks]
  */
 
-const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/data/src/json/variants.json';
+const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/variants.json';
 
 /** @type {Promise<Variant[]>} */
 const variants_promise = new Promise((resolve, reject) => {

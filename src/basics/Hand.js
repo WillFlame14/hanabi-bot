@@ -56,10 +56,9 @@ export class Hand extends Array {
 	/**
 	 * Returns an array of cards matching the provided identity.
 	 * @param {Identity} identity
-	 * @param {MatchOptions} options
 	 */
-	findCards(identity, options = {}) {
-		return Array.from(this.filter(c => c.matches(identity, options)));
+	findCards(identity) {
+		return Array.from(this.filter(c => c.matches(identity)));
 	}
 
 	/**

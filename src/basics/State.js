@@ -1,4 +1,4 @@
-import { BasicCard, Card } from './Card.js';
+import { BasicCard } from './Card.js';
 import { Hand } from './Hand.js';
 import { Player } from './Player.js';
 
@@ -6,7 +6,7 @@ import { handle_action } from '../action-handler.js';
 import { cardCount } from '../variants.js';
 import logger from '../tools/logger.js';
 import * as Utils from '../tools/util.js';
-import { logCard, logHand, logPerformAction } from '../tools/log.js';
+import { logPerformAction } from '../tools/log.js';
 
 /**
  * @typedef {import('../basics/Card.js').ActualCard} ActualCard
@@ -110,7 +110,7 @@ export class State {
 			this.players[i] = new Player(i);
 			this.players[i].all_possible = all_possible.slice();
 			this.players[i].all_inferred = all_possible.slice();
-			this.players[i].hypo_stacks = Array.from({ length: this.suits.length }, _ => 0)
+			this.players[i].hypo_stacks = Array.from({ length: this.suits.length }, _ => 0);
 		}
 
 		this.common = new Player(-1);
@@ -160,10 +160,9 @@ export class State {
 	/**
 	 * @abstract
 	 * @param {State} _state
-	 * @param {Player} _player
 	 * @param {Omit<ClueAction, "type">} _action
 	 */
-	interpret_clue(_state, _player, _action) {
+	interpret_clue(_state, _action) {
 		throw new Error('must be implemented by subclass!');
 	}
 
@@ -363,6 +362,8 @@ export class State {
 	simulate_clue(action, options = {}) {
 		const hypo_state = /** @type {this} */ (this.minimalCopy());
 
+		Utils.globalModify({ state: hypo_state });
+
 		if (options.simulatePlayerIndex !== undefined) {
 			hypo_state.ourPlayerIndex = options.simulatePlayerIndex;
 		}
@@ -370,6 +371,8 @@ export class State {
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
 			hypo_state.interpret_clue(hypo_state, action);
 		});
+
+		Utils.globalModify({ state: this });
 
 		return hypo_state;
 	}

@@ -1,5 +1,5 @@
 import { cardCount } from '../variants.js';
-import { baseCount, isSaved, unknownIdentities, visibleFind } from './hanabi-util.js';
+import { baseCount, unknownIdentities, visibleFind } from './hanabi-util.js';
 import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
@@ -129,21 +129,25 @@ export function good_touch_elim(state) {
 	const resets = /** @type {Set<number>} */ (new Set());
 
 	for (let i = 0; i < identities.length; i++) {
+		this.infer_elim(state);
 		const identity = identities[i];
 
-		const matches = state.hands.flat().filter(c => {
-			const card = this.thoughts[c.order];
-			return card.matches(identity) && card.saved;
-		});
+		const matches = state.hands.flat().filter(c => this.thoughts[c.order].matches(identity, { infer: true }));
 
 		if (matches.length === 0) {
 			continue;
 		}
 
+		const hard_matches = matches.filter(c => this.thoughts[c.order].matches(identity));
+
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];
 
-			if (!card.saved || matches.some(c => c.order === order) || card.inferred.length === 0 || !card.inferred.some(c => c.matches(identity))) {
+			if (!card.saved ||															// Unsaved cards
+				hard_matches.some(c => c.order === order) ||							// Hard matches
+				(hard_matches.length === 0 && matches.some(c => c.order === order)) ||	// Soft matches when there are no hard matches
+				card.inferred.length === 0 ||											// Cards with no inferences
+				!card.inferred.some(c => c.matches(identity))) {						// Cards that don't have this inference
 				continue;
 			}
 
@@ -191,18 +195,9 @@ export function find_links(state) {
 	for (const { order } of hand) {
 		const card = this.thoughts[order];
 
-		// Already in a link, ignore
-		if (this.links.some(({cards}) => cards.some(c => c.order === order))) {
-			continue;
-		}
-
-		// We know what this card is
-		if (card.identity() !== undefined) {
-			continue;
-		}
-
-		// Card has no inferences
-		if (card.inferred.length === 0) {
+		if (this.links.some(({cards}) => cards.some(c => c.order === order)) ||		// Already in a link
+			card.identity() !== undefined ||										// We know what this card is
+			card.inferred.length === 0) {											// Card has no inferences
 			continue;
 		}
 

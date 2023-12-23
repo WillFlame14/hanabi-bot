@@ -84,12 +84,12 @@ export function order_1s(state, player, cards) {
 		}
 
 		// c1 is fresh 1 (c2 isn't fresh, or fresh but older)
-		if (!c1_start && (c2_start || c1.order > c2.order)) {
+		if (!c1_start && (c2_start || card1.order > card2.order)) {
 			return -1;
 		}
 
 		// c1 isn't fresh (c2 also isn't fresh and newer)
-		if (c1_start && c2_start && c2.order > c1.order) {
+		if (c1_start && c2_start && card2.order > card1.order) {
 			return -1;
 		}
 
@@ -100,10 +100,9 @@ export function order_1s(state, player, cards) {
 /**
  * Returns the playable cards categorized by priority.
  * @param {State} state
- * @param {Player} player
- * @param {Card[]} playable_cards
+ * @param {ActualCard[]} playable_cards
  */
-export function determine_playable_card(state, player, playable_cards) {
+export function determine_playable_card(state, playable_cards) {
 	/** @type {Card[][]} */
 	const priorities = [[], [], [], [], [], []];
 

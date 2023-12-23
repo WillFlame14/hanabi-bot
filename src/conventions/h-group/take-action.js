@@ -60,7 +60,7 @@ export function take_action(state) {
 		logger.info('discards', logHand(discards));
 	}
 
-	const playable_priorities = determine_playable_card(state, state.me, playable_cards);
+	const playable_priorities = determine_playable_card(state, playable_cards);
 	const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
 	if (urgent_actions.some(actions => actions.length > 0)) {
@@ -208,7 +208,7 @@ export function take_action(state) {
 	// Forced discard if next player is locked
 	// TODO: Anxiety play
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-	if (state.clue_tokens === 0 && state.players[nextPlayerIndex].thinksLocked(state, nextPlayerIndex)) {
+	if (state.clue_tokens === 0 && state.common.thinksLocked(state, nextPlayerIndex)) {
 		discard_chop(state, state.ourPlayerIndex, tableID);
 	}
 

@@ -1,4 +1,3 @@
-import { Card } from '../../basics/Card.js';
 import { isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
 import * as Basics from '../../basics.js';
 
@@ -22,7 +21,7 @@ import { team_elim } from '../../basics/helper.js';
  */
 function find_sarcastic(hand, player, identity) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
-	const known_sarcastic = hand.findCards(identity, { infer: true });
+	const known_sarcastic = hand.filter(c => player.thoughts[c.order].matches(identity, { infer: true }));
 	if (known_sarcastic.length > 0) {
 		return known_sarcastic;
 	}
@@ -74,14 +73,16 @@ function apply_unknown_sarcastic(state, sarcastic, identity) {
  * @param {ActualCard} card
  */
 export function interpret_discard(state, action, card) {
+	const { common } = state;
 	const { order, playerIndex, suitIndex, rank,  failed } = action;
 	const identity = { suitIndex, rank };
+	const thoughts = common.thoughts[card.order];
 
 	Basics.onDiscard(state, action);
 
 	const to_remove = [];
-	for (let i = 0; i < state.waiting_connections.length; i++) {
-		const { connections, conn_index, inference, action_index } = state.waiting_connections[i];
+	for (let i = 0; i < common.waiting_connections.length; i++) {
+		const { connections, conn_index, inference, action_index } = common.waiting_connections[i];
 
 		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.card.order === order);
 		if (dc_conn_index !== -1) {
@@ -91,7 +92,7 @@ export function interpret_discard(state, action, card) {
 			to_remove.push(i);
 
 			// No other waiting connections exist for this
-			if (!state.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index))) {
+			if (!common.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index))) {
 				const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
 				state.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects });
 				return;
@@ -100,7 +101,7 @@ export function interpret_discard(state, action, card) {
 	}
 
 	if (to_remove.length > 0) {
-		state.waiting_connections = state.waiting_connections.filter((_, index) => !to_remove.includes(index));
+		common.waiting_connections = common.waiting_connections.filter((_, index) => !to_remove.includes(index));
 	}
 
 	// End early game?
@@ -110,11 +111,11 @@ export function interpret_discard(state, action, card) {
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!card.rewinded && (failed || (!card.matches_inferences() && !isTrash(state, state.me, card, card.order)))) {
-		logger.info('all inferences', card.inferred.map(c => logCard(c)));
+	if (!thoughts.rewinded && (failed || (!thoughts.matches_inferences() && !isTrash(state, state.me, card, card.order)))) {
+		logger.info('all inferences', thoughts.inferred.map(c => logCard(c)));
 
 		const action_index = card.drawn_index;
-		state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, card.finessed);
+		state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, thoughts.finessed);
 		return;
 	}
 

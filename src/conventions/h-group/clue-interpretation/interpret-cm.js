@@ -71,9 +71,10 @@ export function interpret_5cm(state, target) {
 		// However, this requires that there is some kind of finesse/prompt to prove it is not 5cm
 		if (card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5)) {
 			if (distance_from_chop === 1) {
-				const saved_card = state.common.thoughts[state.hands[target][chopIndex].order];
+				const { order } = state.hands[target][chopIndex];
+				const saved_card = state.common.thoughts[order];
 
-				if (saved_card.possible.every(p => isTrash(state, state.common, p, saved_card.order))) {
+				if (saved_card.possible.every(p => isTrash(state, state.common, p, order))) {
 					logger.info(`saved card ${logCard(saved_card)} has only trash possibilities, not 5cm`);
 					return false;
 				}
@@ -149,7 +150,7 @@ export function interpret_tccm(state, oldCommon, target, list, focused_card) {
 				const card = state.common.thoughts[order];
 
 				card.inferred = card.inferred.filter(inf => inf.rank === state.common.hypo_stacks[inf.suitIndex] + 1);
-				update_hypo_stacks(state);
+				update_hypo_stacks(state, state.common);
 			}
 			const slots = possibly_playable.map(c => state.hands[target].findIndex(card => card.order === c.order) + 1);
 			logger.info(`multiple tempo clue on ${slots.length > 1 ? `slots [${slots.join(',')}]` : `slot ${slots[0]}`}`);

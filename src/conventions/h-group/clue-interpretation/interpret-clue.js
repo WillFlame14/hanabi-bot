@@ -11,7 +11,7 @@ import { isBasicTrash, isTrash, playableAway, visibleFind } from '../../../basic
 
 import logger from '../../../tools/logger.js';
 import * as Basics from '../../../basics.js';
-import { logCard, logConnections, logHand } from '../../../tools/log.js';
+import { logCard, logConnection, logConnections, logHand } from '../../../tools/log.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -26,32 +26,28 @@ import { logCard, logConnections, logHand } from '../../../tools/log.js';
 /**
  * Given a clue, recursively applies good touch principle to the target's hand.
  * @param {State} state
- * @param {Player} player
  * @param {ClueAction} action
  * @returns {{fix?: boolean, layered_reveal?: boolean}} Possible results of the clue.
  */
-function apply_good_touch(state, player, action) {
+function apply_good_touch(state, action) {
+	const { common } = state;
 	const { giver, list, target } = action;
+	const { thoughts: oldThoughts } = common.clone();		// Keep track of all cards that previously had inferences (i.e. not known trash)
 
-	// Keep track of all cards that previously had inferences (i.e. not known trash)
-	const { thoughts: oldThoughts } = player.clone();
-
-	/** @type {(order: number, options?: { min: number }) => boolean} order */
+	/** @type {(order: number, options?: { min: number }) => boolean} */
 	const hadInferences = (order, { min = 1 }) => oldThoughts[order].inferred.length >= min;
 
 	Basics.onClue(state, action);
-
-	player.infer_elim(state);
-	const resets = player.good_touch_elim(state);
+	const resets = common.good_touch_elim(state);
 
 	// Check if a layered finesse was revealed on us
 	if (target === state.ourPlayerIndex) {
 		for (const { order } of state.hands[target]) {
-			const card = player.thoughts[order];
+			const card = common.thoughts[order];
 
 			if (card.finessed && hadInferences(order) && card.inferred.length === 0) {
 				// TODO: Possibly try rewinding older reasoning until rewind works?
-				const action_index = list.includes(card.order) ? card.reasoning.at(-2) : card.reasoning.pop();
+				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
 				if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue })) {
 					return { layered_reveal: true };
 				}
@@ -60,14 +56,14 @@ function apply_good_touch(state, player, action) {
 	}
 
 	// One of the clued cards lost all inferences
-	const clued_reset = list.some(order => resets.includes(order) && hadInferences(order) && !state.hands[target].findOrder(order).newly_clued);
+	const clued_reset = list.some(order => resets.includes(order) && !state.hands[target].findOrder(order).newly_clued);
 
 	const duplicate_reveal = state.hands[target].some(({ order }) => {
-		const card = player.thoughts[order];
+		const card = common.thoughts[order];
 
 		// The fix can be in anyone's hand except the giver's
 		return state.common.thoughts[order].identity() !== undefined &&
-			visibleFind(state, player, card.identity(), { ignore: [giver], infer: true }).some(c => player.thoughts[c.order].touched && c.order !== order);
+			visibleFind(state, common, card.identity(), { ignore: [giver], infer: true }).some(c => common.thoughts[c.order].touched && c.order !== order);
 	});
 
 	return { fix: clued_reset || duplicate_reveal };
@@ -84,20 +80,20 @@ function reset_superpositions(state) {
 /**
  * Interprets the given clue. First tries to look for inferred connecting cards, then attempts to find prompts/finesses.
  * @param {State} state
- * @param {Player} player
  * @param {ClueAction} action
  */
-export function interpret_clue(state, player, action) {
+export function interpret_clue(state, action) {
+	const { common } = state;
 	const prev_state = state.minimalCopy();
-	const oldPlayer = player.clone();
+	const oldCommon = common.clone();
 
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], player, list, { beforeClue: true });
+	const { focused_card, chop } = determine_focus(state.hands[target], common, list, { beforeClue: true });
 
-	const focus_thoughts = player.thoughts[focused_card.order];
+	const focus_thoughts = common.thoughts[focused_card.order];
 	focus_thoughts.focused = true;
 
-	const { fix, layered_reveal } = apply_good_touch(state, player, action);
+	const { fix, layered_reveal } = apply_good_touch(state, action);
 
 	// Rewind occurred, this action will be completed as a result of it
 	if (layered_reveal) {
@@ -110,10 +106,10 @@ export function interpret_clue(state, player, action) {
 
 	if (focus_thoughts.inferred.length === 0) {
 		focus_thoughts.inferred = focus_thoughts.possible.slice();
-		logger.warn(`focused card had no inferences after applying good touch (previously ${oldPlayer.thoughts[focused_card.order].inferred.map(c => logCard(c)).join()})`);
+		logger.warn(`focused card had no inferences after applying good touch (previously ${oldCommon.thoughts[focused_card.order].inferred.map(c => logCard(c)).join()})`);
 
 		// There is a waiting connection that depends on this card
-		if (focus_thoughts.possible.length === 1 && player.waiting_connections.some(wc =>
+		if (focus_thoughts.possible.length === 1 && common.waiting_connections.some(wc =>
 			wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === focused_card.order))
 		) {
 			const { suitIndex, rank } = focus_thoughts.possible[0];
@@ -128,18 +124,18 @@ export function interpret_clue(state, player, action) {
 		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
 		// FIX: Rewind to when the earliest card was clued so that we don't perform false eliminations
 		if (focus_thoughts.inferred.length === 1) {
-			update_hypo_stacks(state, player);
+			update_hypo_stacks(state, common);
 		}
 
 		// Focus doesn't matter for a fix clue
-		focus_thoughts.focused = oldPlayer.thoughts[focused_card.order].focused;
+		focus_thoughts.focused = oldCommon.thoughts[focused_card.order].focused;
 		return;
 	}
 
 	// Check if the giver was in a stalling situation
 	if (!ignoreStall && stalling_situation(state, action, prev_state)) {
 		logger.info('stalling situation');
-		update_hypo_stacks(state, player);
+		update_hypo_stacks(state, common);
 		return;
 	}
 
@@ -181,12 +177,13 @@ export function interpret_clue(state, player, action) {
 
 			if (!save) {
 				if ((target === state.ourPlayerIndex || focused_card.matches(inference))) {
+					logger.info('assigning connections', connections.map(c => logConnection(c)));
 					assign_connections(state, connections);
 				}
 
 				// Multiple inferences, we need to wait for connections
 				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
-					player.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1 });
+					common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1 });
 				}
 			}
 		}
@@ -304,7 +301,7 @@ export function interpret_clue(state, player, action) {
 
 				// Multiple possible sets, we need to wait for connections
 				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
-					state.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, action_index: state.actionList.length - 1 });
+					common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, action_index: state.actionList.length - 1 });
 				}
 			}
 
@@ -336,7 +333,7 @@ export function interpret_clue(state, player, action) {
 	logger.highlight('blue', 'final inference on focused card', focus_thoughts.inferred.map(c => logCard(c)).join(','));
 
 	state.common.refresh_links(state);
-	update_hypo_stacks(state);
+	update_hypo_stacks(state, common);
 
 	if (state.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2) {
 		interpret_tccm(state, oldCommon, target, list, focused_card);

@@ -5,7 +5,7 @@ import { cardValue, direct_clues, isTrash } from '../../../basics/hanabi-util.js
 import { find_clue_value } from '../action-helper.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logClue, logHand } from '../../../tools/log.js';
+import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 import { CLUE } from '../../../constants.js';
 
@@ -39,23 +39,23 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 
 	logger.highlight('green', '------- EXITING HYPO --------');
 
-	const incorrect_card = state.hands[target].find(({order}) => {
-		const card = hypo_state.common.thoughts[order];
+	const incorrect_card = state.hands[target].find(c => {
+		const card = hypo_state.common.thoughts[c.order];
 
 		// The focused card must not have been reset and must match inferences
-		if (card.order === target_card.order) {
+		if (c.order === target_card.order) {
 			return card.reset || !card.matches_inferences();
 		}
 
-		const old_card = state.common.thoughts[order];
+		const old_card = state.common.thoughts[c.order];
 
 		// For non-focused cards:
 		return !((!card.reset && card.matches_inferences()) || 											// Matches inferences
 			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||		// Didn't match inference even before clue
 			card.chop_moved ||																			// Chop moved (might have become trash)
-			(old_card.clued && isTrash(state, state.common, card)) ||		// Previously-clued duplicate or recently became basic trash
-			bad_touch_cards.some(c => c.order === order) ||										// Bad touched
-			card.possible.every(id => isTrash(hypo_state, state.common, id, order)));	// Known trash
+			(c.clued && isTrash(state, state.common, card)) ||		// Previously-clued duplicate or recently became basic trash
+			bad_touch_cards.some(c => c.order === c.order) ||										// Bad touched
+			card.possible.every(id => isTrash(hypo_state, state.common, id, c.order)));	// Known trash
 	});
 
 	// Print out logs if the result is correct
@@ -174,7 +174,7 @@ export function determine_clue(state, target, target_card, options) {
 			}),
 			remainder	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
 		};
-		logger.info('result,', JSON.stringify(result_log), find_clue_value(result));
+		logger.info('result,', JSON.stringify(result_log), find_clue_value(Object.assign(result, { remainder })));
 
 		results.push({ clue, result: { elim, new_touched, bad_touch, trash, finesses, playables, remainder } });
 	}

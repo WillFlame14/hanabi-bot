@@ -3,7 +3,7 @@ import * as Utils from '../tools/util.js';
 import * as Elim from './player-elim.js';
 
 import logger from '../tools/logger.js';
-import { logCard } from '../tools/log.js';
+import { logCard, logHand } from '../tools/log.js';
 
 /**
  * @typedef {import('./State.js').State} State
@@ -102,8 +102,12 @@ export class Player {
 		return Array.from(state.hands[playerIndex].filter(c => {
 			const card = this.thoughts[c.order];
 
-			return !linked_orders.has(card.order) &&
-				this.thoughts[card.order].possibilities.every(p => playableAway(state, p) === 0) &&
+			// logger.info(this.thoughts);
+
+			// logger.info('possibilities', card.possible.map(c => logCard(c)), card.inferred.map(c => logCard(c)));
+
+			return !linked_orders.has(c.order) &&
+				card.possibilities.every(p => playableAway(state, p) === 0) &&
 				card.matches_inferences();
 		}));
 	}

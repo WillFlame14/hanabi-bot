@@ -81,22 +81,22 @@ export function handle_action(action, catchup = false) {
 					if (card.saved || card.called_to_discard) {
 						const note = card.getNote();
 
-						if (this.notes[card.order] === undefined) {
-							this.notes[card.order] = { last: '', turn: 0, full: '' };
+						if (this.notes[order] === undefined) {
+							this.notes[order] = { last: '', turn: 0, full: '' };
 						}
 
 						// Only write a new note if it's different from the last note and is a later turn
-						if (note !== this.notes[card.order].last && this.turn_count > this.notes[card.order].turn) {
-							this.notes[card.order].last = note;
-							this.notes[card.order].turn = this.turn_count;
+						if (note !== this.notes[order].last && this.turn_count > this.notes[order].turn) {
+							this.notes[order].last = note;
+							this.notes[order].turn = this.turn_count;
 
-							if (this.notes[card.order].full !== '') {
-								this.notes[card.order].full += ' | ';
+							if (this.notes[order].full !== '') {
+								this.notes[order].full += ' | ';
 							}
-							this.notes[card.order].full += `t${this.turn_count}: ${note}`;
+							this.notes[order].full += `t${this.turn_count}: ${note}`;
 
 							if (this.in_progress) {
-								Utils.sendCmd('note', { tableID: this.tableID, order: card.order, note: this.notes[card.order].full });
+								Utils.sendCmd('note', { tableID: this.tableID, order, note: this.notes[order].full });
 							}
 						}
 					}

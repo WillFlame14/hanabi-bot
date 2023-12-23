@@ -218,7 +218,7 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 		const playable_conns = state.hands[state.ourPlayerIndex].filter(({order}) => {
 			const card = state.me.thoughts[order];
 
-			return !ignoreOrders.includes(card.order) &&
+			return !ignoreOrders.includes(order) &&
 				card.inferred.some(inf => inf.matches(identity)) &&							// At least one inference must match
 				card.matches(identity, { assume: true }) &&									// If we know the card (from a rewind), it must match
 				(card.inferred.every(c => playableAway(state, c) === 0) || card.finessed);	// Must be playable

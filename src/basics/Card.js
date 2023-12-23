@@ -43,7 +43,6 @@ export class BasicCard {
 export class ActualCard extends BasicCard {
 	clued = false;
 	newly_clued = false;
-
 	clues = /** @type {BaseClue[]} */ ([]);			// List of clues that have touched this card
 
 	/**
@@ -75,9 +74,7 @@ export class ActualCard extends BasicCard {
 /**
  * Class for a single card (i.e. a suitIndex and rank). Other attributes are optional.
  */
-export class Card extends ActualCard {
-	order = -1;			// The ordinal number of the card
-
+export class Card extends BasicCard {
 	possible = /** @type {BasicCard[]} */ ([]);						// All possibilities of the card (from positive/negative information)
 	inferred = /** @type {BasicCard[]} */ ([]);						// All inferences of the card (from conventions)
 	old_inferred = /** @type {BasicCard[] | undefined} */ (undefined);		// Only used when undoing a finesse
@@ -98,10 +95,13 @@ export class Card extends ActualCard {
 	rewinded = false;								// Whether the card has ever been rewinded
 
 	/**
+	 * @param {ActualCard} actualCard
 	 * @param {Identity & Partial<Card>} identity
 	 */
-	constructor({ suitIndex, rank , ...additions }) {
+	constructor(actualCard, { suitIndex, rank , ...additions }) {
 		super(suitIndex, rank);
+
+		this.actualCard = actualCard;
 
 		Object.assign(this, additions);
 	}
@@ -110,13 +110,25 @@ export class Card extends ActualCard {
 	 * Creates a deep copy of the card.
 	 */
 	clone() {
-		const new_card = new Card(this);
+		const new_card = new Card(this.actualCard, this);
 
 		for (const field of ['possible', 'inferred', 'clues', 'reasoning', 'reasoning_turn']) {
 			new_card[field] = this[field].slice();
 		}
 		return new_card;
 	}
+
+	get order() { return this.actualCard.order; }
+	get clued() { return this.actualCard.clued; }
+	get newly_clued() { return this.actualCard.newly_clued; }
+	get clues() { return this.actualCard.clues; }
+	get drawn_index() { return this.actualCard.drawn_index; }
+
+	set order(order) { this.actualCard.order = order; }
+	set clued(clued) { this.actualCard.clued = clued; }
+	set newly_clued(newly_clued) { this.actualCard.newly_clued = newly_clued; }
+	set clues(clues) { this.actualCard.clues = clues.slice(); }
+	set drawn_index(drawn_index) { this.actualCard.drawn_index = drawn_index; }
 
 	raw() {
 		return Object.freeze({ suitIndex: this.suitIndex, rank: this.rank });

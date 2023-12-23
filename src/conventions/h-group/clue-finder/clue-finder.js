@@ -9,7 +9,7 @@ import { cardValue, direct_clues, isBasicTrash, isCritical, isTrash, save2, visi
 import { find_clue_value } from '../action-helper.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logClue } from '../../../tools/log.js';
+import { logCard, logClue, logHand } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**
@@ -26,7 +26,7 @@ import * as Utils from '../../../tools/util.js';
  * Finds a save clue (if necessary) for the given card in the target's hand.
  * @param {State} state
  * @param {number} target
- * @param {Card} card
+ * @param {ActualCard} card
  * @returns {SaveClue | undefined} The save clue if necessary, otherwise undefined.
  */
 function find_save(state, target, card) {
@@ -70,8 +70,6 @@ function find_save(state, target, card) {
 		const safe = clue_safe(state, state.me, { type: CLUE.RANK, value: 2 , target });
 		return { type: CLUE.RANK, value: 2, target, playable: false, cm: [], safe };
 	}
-
-	return;
 }
 
 /**
@@ -203,7 +201,7 @@ export function find_clues(state, options = {}) {
 
 			const duplicated = visibleFind(state, state.me, card).some(c => card.touched && c.order !== order);
 
-			const in_finesse = state.waiting_connections.some(w_conn => {
+			const in_finesse = state.common.waiting_connections.some(w_conn => {
 				const { fake, focused_card, inference } = w_conn;
 				const matches = state.me.thoughts[focused_card.order].matches(inference, { assume: true });
 
@@ -217,7 +215,7 @@ export function find_clues(state, options = {}) {
 
 			// Save clue
 			if (cardIndex === chopIndex) {
-				saves.push(find_save(state, target, card));
+				saves.push(find_save(state, target, hand[cardIndex]));
 			}
 
 			let interpreted_5cm = false;
@@ -271,12 +269,12 @@ export function find_clues(state, options = {}) {
 			}
 
 			// Play clue
-			const clue = determine_clue(state, target, card, { excludeRank: interpreted_5cm });
+			const clue = determine_clue(state, target, hand[cardIndex], { excludeRank: interpreted_5cm });
 			if (clue !== undefined) {
 				const { playables, elim, new_touched } = clue.result;
 
 				if (playables.length > 0) {
-					const { tempo, valuable } = valuable_tempo_clue(state, state.common, clue, playables, card);
+					const { tempo, valuable } = valuable_tempo_clue(state, state.common, clue, playables, hand[cardIndex]);
 					if (tempo && !valuable) {
 						stall_clues[1].push(clue);
 					}

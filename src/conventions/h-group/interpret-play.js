@@ -21,10 +21,13 @@ function check_ocm(state, action) {
 	const card = state.common.thoughts[order];
 
 	// Played an unknown 1
-	if (card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) && (card.inferred.length > 1 || card.rewinded)) {
+	if (card.clues.length > 0 &&
+		card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) &&
+		(card.inferred.length > 1 || card.rewinded)
+	) {
 		const ordered_1s = order_1s(state, state.common, state.hands[playerIndex]);
 
-		const offset = ordered_1s.findIndex(c => c.order === card.order);
+		const offset = ordered_1s.findIndex(c => c.order === order);
 		// Didn't play the 1 in the correct order
 		if (offset !== 0) {
 			const target = (playerIndex + offset) % state.numPlayers;
@@ -86,5 +89,5 @@ export function interpret_play(state, action) {
 	}
 
 	// Update hypo stacks
-	update_hypo_stacks(this);
+	update_hypo_stacks(this, this.common);
 }
