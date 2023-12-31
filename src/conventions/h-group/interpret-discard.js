@@ -76,7 +76,7 @@ export function interpret_discard(state, action, card) {
 	const { common } = state;
 	const { order, playerIndex, suitIndex, rank,  failed } = action;
 	const identity = { suitIndex, rank };
-	const thoughts = common.thoughts[card.order];
+	const thoughts = common.thoughts[order];
 
 	Basics.onDiscard(state, action);
 

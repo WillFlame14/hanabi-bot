@@ -335,7 +335,7 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 
 		if (giver !== state.ourPlayerIndex) {
 			// Otherwise, try to find prompt in our hand
-			const prompt = state.common.find_prompt(our_hand, next_identity, hypo_state.suits, currIgnoreOrders);
+			const prompt = state.common.find_prompt(our_hand, next_identity, state.suits, currIgnoreOrders);
 			logger.debug('prompt in slot', prompt ? our_hand.findIndex(c => c.order === prompt.order) + 1 : '-1');
 			if (prompt !== undefined) {
 				if (state.level === 1 && finesses >= 1) {

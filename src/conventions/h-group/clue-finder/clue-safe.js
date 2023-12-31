@@ -51,7 +51,6 @@ export function clue_safe(state, player, clue) {
 
 	// Dangerous and not loaded, clue is not fine
 	if (!hypo_state.common.thinksLoaded(hypo_state, next_unoccupied)) {
-		hypo_state.hands[next_unoccupied].forEach(c => logger.info('h', logHand([state.common.thoughts[c.order]])));
 		logger.warn(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop and not loaded`);
 		return false;
 	}

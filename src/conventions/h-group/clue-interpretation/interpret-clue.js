@@ -340,4 +340,12 @@ export function interpret_clue(state, action) {
 	}
 
 	logger.debug('hand state after clue', logHand(state.hands[target]));
+
+	for (const player of state.players) {
+		for (const { order } of state.hands.flat()) {
+			player.thoughts[order].intersect('inferred', state.common.thoughts[order].inferred);
+		}
+
+		player.good_touch_elim(state);
+	}
 }

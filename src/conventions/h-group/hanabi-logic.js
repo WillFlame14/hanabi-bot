@@ -26,7 +26,7 @@ export function determine_focus(hand, player, list, options = {}) {
 	const chop = player.chop(hand);
 
 	// Chop card exists, check for chop focus
-	if (list.includes(chop.order)) {
+	if (chop && list.includes(chop.order)) {
 		return { focused_card: chop, chop: true };
 	}
 

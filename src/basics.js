@@ -25,17 +25,17 @@ export function onClue(state, action) {
 	for (const { order } of state.hands[target]) {
 		const c = state.hands[target].findOrder(order);
 
-		if (!c.clued) {
+		if (list.includes(order) && !c.clued) {
 			c.newly_clued = true;
 			c.clued = true;
 			c.clues.push(clue);
 		}
 
 		for (const player of state.players.concat([state.common])) {
-			const card = player.thoughts[c.order];
+			const card = player.thoughts[order];
 			const previously_unknown = card.possible.length > 1;
 
-			if (list.includes(card.order)) {
+			if (list.includes(order)) {
 				card.intersect('possible', new_possible);
 				card.intersect('inferred', new_possible);
 			}

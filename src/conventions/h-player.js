@@ -3,6 +3,8 @@ import { Player } from '../basics/Player.js';
 import { cardValue } from '../basics/hanabi-util.js';
 import { CLUE } from '../constants.js';
 
+import { logCard, logHand } from '../tools/log.js';
+
 import * as Utils from '../tools/util.js';
 
 /**

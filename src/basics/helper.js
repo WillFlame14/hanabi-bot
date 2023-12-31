@@ -82,7 +82,7 @@ export function update_hypo_stacks(state, player) {
 
 			const fake_wcs = player.waiting_connections.filter(wc => {
 				const { fake, focused_card, inference } = wc;
-				return focused_card.order === card.order && (fake || !focused_card.matches(inference));
+				return focused_card.order === order && (fake || !focused_card.matches(inference));
 			});
 
 			// Ignore all waiting connections that will be proven wrong
@@ -93,7 +93,7 @@ export function update_hypo_stacks(state, player) {
 				const id = card.identity({ infer: true });
 				if (id === undefined) {
 					// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
-					unknown_plays.push(card.order);
+					unknown_plays.push(order);
 					continue;
 				}
 

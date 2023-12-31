@@ -1,5 +1,5 @@
 import { cardCount } from '../variants.js';
-import { baseCount, unknownIdentities, visibleFind } from './hanabi-util.js';
+import { baseCount, isBasicTrash, isTrash, unknownIdentities, visibleFind } from './hanabi-util.js';
 import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
@@ -37,7 +37,7 @@ export function card_elim(state) {
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];
 
-			if (card.possible.length > 1 && !certain_cards.some(c => c.order === card.order)) {
+			if (card.possible.length > 1 && !certain_cards.some(c => c.order === order)) {
 				card.subtract('possible', [identity]);
 				card.subtract('inferred', [identity]);
 
@@ -99,7 +99,7 @@ export function infer_elim(state) {
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];
 
-			if ((card.inferred.length > 1 || focus_elim) && !inferred_cards.some(c => c.order === card.order)) {
+			if ((card.inferred.length > 1 || focus_elim) && !inferred_cards.some(c => c.order === order)) {
 				card.subtract('possible', [identity]);
 				card.subtract('inferred', [identity]);
 
@@ -131,10 +131,9 @@ export function good_touch_elim(state) {
 	for (let i = 0; i < identities.length; i++) {
 		this.infer_elim(state);
 		const identity = identities[i];
-
 		const matches = state.hands.flat().filter(c => this.thoughts[c.order].matches(identity, { infer: true }));
 
-		if (matches.length === 0) {
+		if (matches.length === 0 && !isBasicTrash(state, identity)) {
 			continue;
 		}
 
@@ -156,7 +155,7 @@ export function good_touch_elim(state) {
 
 			if (card.inferred.length === 0) {
 				card.reset = true;
-				resets.add(card.order);
+				resets.add(order);
 
 				if (card.finessed) {
 					card.finessed = false;
@@ -164,7 +163,7 @@ export function good_touch_elim(state) {
 
 					// Filter out future waiting connections involving this card
 					this.waiting_connections = this.waiting_connections.filter(wc =>
-						!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === card.order));
+						!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order));
 				}
 				else {
 					card.inferred = card.possible.slice();
