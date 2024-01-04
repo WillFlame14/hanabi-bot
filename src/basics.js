@@ -1,13 +1,9 @@
 import { ActualCard, Card } from './basics/Card.js';
 import { cardCount } from './variants.js';
 import { find_possibilities } from './basics/helper.js';
-import logger from './tools/logger.js';
-import { logCard } from './tools/log.js';
 
 /**
  * @typedef {import('./basics/State.js').State} State
- * @typedef {import('./basics/Player.js').Player} Player
- * @typedef {import('./types.js').Identity} Identity
  * @typedef {import('./types.js').ClueAction} ClueAction
  * @typedef {import('./types.js').DiscardAction} DiscardAction
  * @typedef {import('./types.js').CardAction} DrawAction
@@ -33,22 +29,19 @@ export function onClue(state, action) {
 
 		for (const player of state.players.concat([state.common])) {
 			const card = player.thoughts[order];
-			const previously_unknown = card.possible.length > 1;
+			const inferences_before = card.inferred.length;
 
-			if (list.includes(order)) {
-				card.intersect('possible', new_possible);
-				card.intersect('inferred', new_possible);
-			}
-			else {
-				card.subtract('possible', new_possible);
-				card.subtract('inferred', new_possible);
+			const operation = list.includes(order) ? 'intersect' : 'subtract';
+			card[operation]('possible', new_possible);
+			card[operation]('inferred', new_possible);
+
+			if (list.includes(order) && card.inferred.length < inferences_before) {
+				card.reasoning.push(state.actionList.length - 1);
+				card.reasoning_turn.push(state.turn_count);
 			}
 
-			// If card is now known to everyone and wasn't previously - eliminate
-			if (previously_unknown && card.possible.length === 1) {
-				player.card_elim(state);
-				player.refresh_links(state);
-			}
+			player.card_elim(state);
+			player.refresh_links(state);
 		}
 	}
 
@@ -65,24 +58,21 @@ export function onDiscard(state, action) {
 
 	state.discard_stacks[suitIndex][rank - 1]++;
 
-	// Card is now definitely known to everyone - eliminate
 	for (const player of state.players.concat([state.common])) {
 		player.card_elim(state);
 		player.refresh_links(state);
 	}
 
-	// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
-	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, { suitIndex, rank }) && state.max_ranks[suitIndex] > rank - 1) {
-		state.max_ranks[suitIndex] = rank - 1;
+	// Discarded all copies of a card - the new max rank is (discarded rank - 1) if not already lower
+	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, { suitIndex, rank })) {
+		state.max_ranks[suitIndex] = Math.min(state.max_ranks[suitIndex], rank - 1);
 	}
 
 	if (failed) {
 		state.strikes++;
 	}
-
-	// Bombs count as discards, but they don't give a clue token
-	if (!failed && state.clue_tokens < 8) {
-		state.clue_tokens++;
+	else {
+		state.clue_tokens = Math.min(state.clue_tokens + 1, 8);		// Bombs count as discards, but they don't give a clue token
 	}
 }
 
@@ -92,12 +82,8 @@ export function onDiscard(state, action) {
  */
 export function onDraw(state, action) {
 	const { order, playerIndex, suitIndex, rank } = action;
-	const card = new ActualCard(
-		suitIndex,
-		rank,
-		order,
-		state.actionList.length
-	);
+
+	const card = new ActualCard(suitIndex, rank, order, state.actionList.length);
 	state.hands[playerIndex].unshift(card);
 
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -111,13 +97,12 @@ export function onDraw(state, action) {
 			inferred: player.all_inferred.slice(),
 			drawn_index: state.actionList.length
 		});
-
-		// If we know what the card is, everyone (except player that drew) can eliminate
-		if (playerIndex !== state.ourPlayerIndex && i !== playerIndex) {
-			player.card_elim(state);
-			player.refresh_links(state);
-		}
 	}
+
+	state.players.forEach(player => {
+		player.card_elim(state);
+		player.refresh_links(state);
+	});
 
 	state.common.thoughts[order] = new Card(card, {
 		suitIndex: -1,
@@ -142,7 +127,6 @@ export function onPlay(state, action) {
 
 	state.play_stacks[suitIndex] = rank;
 
-	// Card is now definitely known to everyone - eliminate
 	for (const player of state.players.concat([state.common])) {
 		player.card_elim(state);
 		player.refresh_links(state);

@@ -98,7 +98,7 @@ export function take_action(state) {
 
 						// Simulate chop move
 						const old_chop_value = cardValue(state, state.me, old_chop);
-						state.common[old_chop.order].chop_moved = true;
+						state.common.thoughts[old_chop.order].chop_moved = true;
 
 						const new_chop = state.common.chop(state.hands[playerIndex]);
 						const new_chop_value = new_chop ? cardValue(state, state.me, new_chop) : state.me.thinksLoaded(state, playerIndex) ? 0 : 4;
@@ -111,7 +111,7 @@ export function take_action(state) {
 						}
 
 						// Undo chop move
-						state.common[old_chop.order].chop_moved = true;
+						state.common.thoughts[old_chop.order].chop_moved = false;
 					}
 				}
 

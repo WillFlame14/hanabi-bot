@@ -79,9 +79,7 @@ export function interpret_play(state, action) {
 
 	Basics.onPlay(this, action);
 
-	state.common.infer_elim(state);
 	state.common.good_touch_elim(state);
-
 	team_elim(state);
 
 	for (const player of state.players.concat([state.common])) {

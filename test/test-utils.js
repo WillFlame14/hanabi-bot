@@ -73,13 +73,9 @@ function init_state(state, options) {
 		}
 	}
 
-	state.common.infer_elim(state);
-
-	for (let i = 0; i < state.numPlayers; i++) {
-		state.players[i].refresh_links(state);
+	for (const player of state.players.concat(state.common)) {
+		player.card_elim(state);
 	}
-
-	team_elim(state);
 
 	state.currentPlayerIndex = options.starting ?? 0;
 	state.clue_tokens = options.clue_tokens ?? 8;
@@ -155,7 +151,7 @@ export function takeTurn(state, rawAction, draw = 'xx') {
 		throw new Error(`Expected ${expectedPlayer}'s turn for action (${logAction(action)}), test written incorrectly?`);
 	}
 
-	state.handle_action(action);
+	state.handle_action(action, true);
 
 	if (action.type === 'play' || action.type === 'discard') {
 		if (draw === 'xx' && state.currentPlayerIndex !== state.ourPlayerIndex) {
@@ -163,11 +159,11 @@ export function takeTurn(state, rawAction, draw = 'xx') {
 		}
 
 		const { suitIndex, rank } = expandShortCard(draw);
-		state.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank });
+		state.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank }, true);
 	}
 
 	const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.numPlayers;
-	state.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex });
+	state.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex }, true);
 }
 
 /**

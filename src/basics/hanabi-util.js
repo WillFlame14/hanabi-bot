@@ -1,5 +1,4 @@
 import { CLUE, HAND_SIZE } from '../constants.js';
-import { logCard } from '../tools/log.js';
 import { cardCount, cardTouched, isCluable } from '../variants.js';
 
 /**

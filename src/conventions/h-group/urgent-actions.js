@@ -109,7 +109,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 			}
 		}
 
-		const touches_chop = state.hands[target].clueTouched(clue, state.suits).some(c => c.order === state.common.chop(state.hands[target]).order);
+		const touches_chop = state.hands[target].clueTouched(clue, state.suits).some(c => c.order === state.common.chop(state.hands[target])?.order);
 		if (!locked && touches_chop && clue_safe(state, state.me, clue)) {
 			play_clues.push({ clue, playables: [] });
 		}

@@ -199,7 +199,7 @@ export function find_clues(state, options = {}) {
 			const { rank, order } = hand[cardIndex];
 			const card = state.me.thoughts[order];
 
-			const duplicated = visibleFind(state, state.me, card).some(c => card.touched && c.order !== order);
+			const duplicated = visibleFind(state, state.me, card).some(c => state.me.thoughts[c.order].touched && c.order !== order);
 
 			const in_finesse = state.common.waiting_connections.some(w_conn => {
 				const { fake, focused_card, inference } = w_conn;

@@ -107,7 +107,9 @@ export function determine_playable_card(state, playable_cards) {
 	const priorities = [[], [], [], [], [], []];
 
 	let min_rank = 5;
-	for (const card of playable_cards) {
+	for (const { order } of playable_cards) {
+		const card = state.me.thoughts[order];
+
 		// Part of a finesse
 		if (card.finessed) {
 			priorities[0].push(card);

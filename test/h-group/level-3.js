@@ -24,7 +24,7 @@ describe('playing 1s in the correct order', () => {
 
 		takeTurn(state, 'Bob clues 1 to Alice (slots 3,4)');
 
-		const ordered_1s = order_1s(state, state.hands[PLAYER.ALICE]).map(c => c.order);
+		const ordered_1s = order_1s(state, state.common, state.hands[PLAYER.ALICE]).map(c => c.order);
 		assert.deepEqual(Array.from(ordered_1s), [1, 2]);
 	});
 
@@ -32,17 +32,13 @@ describe('playing 1s in the correct order', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
-		], {
-			level: 3,
-			starting: PLAYER.BOB
-		});
+		], { level: 3 });
 
 		// Slot 1 is a new card
-		state.hands[PLAYER.ALICE][0].order = 10;
-
+		takeTurn(state, 'Alice bombs b5 (slot 1)');
 		takeTurn(state, 'Bob clues 1 to Alice (slots 1,4)');
 
-		const ordered_1s = order_1s(state, state.hands[PLAYER.ALICE]).map(c => c.order);
+		const ordered_1s = order_1s(state, state.common, state.hands[PLAYER.ALICE]).map(c => c.order);
 		assert.deepEqual(Array.from(ordered_1s), [10, 1]);
 	});
 
@@ -50,17 +46,13 @@ describe('playing 1s in the correct order', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
-		], {
-			level: 3,
-			starting: PLAYER.BOB
-		});
+		], { level: 3 });
 
 		// Slot 1 is a new card
-		state.hands[PLAYER.ALICE][0].order = 10;
-
+		takeTurn(state, 'Alice bombs b5 (slot 1)');
 		takeTurn(state, 'Bob clues 1 to Alice (slots 1,2,5)');
 
-		const ordered_1s = order_1s(state, state.hands[PLAYER.ALICE]).map(c => c.order);
+		const ordered_1s = order_1s(state, state.common, state.hands[PLAYER.ALICE]).map(c => c.order);
 		assert.deepEqual(Array.from(ordered_1s), [0, 10, 3]);
 	});
 
@@ -78,7 +70,7 @@ describe('playing 1s in the correct order', () => {
 		takeTurn(state, 'Cathy clues red to Bob');				// getting r2
 
 		// Alice's slot 2 should still be any 1 (not prompted to be r1).
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['r1', 'y1', 'g1', 'b1', 'p1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['r1', 'y1', 'g1', 'b1', 'p1']);
 	});
 });
 
@@ -111,7 +103,7 @@ describe('sarcastic discard', () => {
 		takeTurn(state, 'Bob discards y1', 'r1');			// sarcastic discard
 
 		// Alice's slot 4 should be y1 now.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['y1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['y1']);
 	});
 
 	it('prefers playing if that would reveal duplicate is trash in endgame', () => {
@@ -129,14 +121,16 @@ describe('sarcastic discard', () => {
 		state.cardsLeft = 18;
 
 		// Bob's y4 is clued yellow.
-		state.hands[PLAYER.BOB][3].intersect('inferred', ['y4'].map(expandShortCard));
-		state.hands[PLAYER.BOB][3].intersect('possible', ['y1', 'y2', 'y3', 'y4'].map(expandShortCard));
-		state.hands[PLAYER.BOB][3].clued = true;
+		const y4 = state.common.thoughts[state.hands[PLAYER.BOB][3].order];
+		y4.intersect('inferred', ['y4'].map(expandShortCard));
+		y4.intersect('possible', ['y1', 'y2', 'y3', 'y4'].map(expandShortCard));
+		y4.clued = true;
 
 		// Bob's y5 is known.
-		state.hands[PLAYER.BOB][2].intersect('inferred', ['y5'].map(expandShortCard));
-		state.hands[PLAYER.BOB][2].intersect('possible', ['y5'].map(expandShortCard));
-		state.hands[PLAYER.BOB][2].clued = true;
+		const y5 = state.common.thoughts[state.hands[PLAYER.BOB][2].order];
+		y5.intersect('inferred', ['y5'].map(expandShortCard));
+		y5.intersect('possible', ['y5'].map(expandShortCard));
+		y5.clued = true;
 
 		takeTurn(state, 'Cathy clues yellow to Alice (slot 5)');
 

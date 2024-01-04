@@ -18,7 +18,7 @@ import { logCard } from '../../tools/log.js';
  */
 export function find_sarcastic(hand, identity) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
-	const known_sarcastic = hand.findCards(identity, { symmetric: true, infer: true });
+	const known_sarcastic = hand.findCards(identity, { infer: true });
 	if (known_sarcastic.length > 0) {
 		return known_sarcastic;
 	}

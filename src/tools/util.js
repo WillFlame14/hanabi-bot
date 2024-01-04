@@ -1,4 +1,4 @@
-import { ActualCard } from '../basics/Card.js';
+import { BasicCard } from '../basics/Card.js';
 import { Hand } from '../basics/Hand.js';
 import { Player } from '../basics/Player.js';
 import { ACTION, CLUE } from '../constants.js';
@@ -100,7 +100,7 @@ export function objClone(obj, depth = 0) {
 		throw new Error('Maximum recursion depth reached.');
 	}
 	if (typeof obj === 'object') {
-		if (obj instanceof ActualCard || obj instanceof Hand || obj instanceof Player) {
+		if (obj instanceof BasicCard || obj instanceof Hand || obj instanceof Player) {
 			return /** @type {T} */ (obj.clone());
 		}
 		else if (Array.isArray(obj)) {

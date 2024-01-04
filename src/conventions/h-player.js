@@ -3,8 +3,6 @@ import { Player } from '../basics/Player.js';
 import { cardValue } from '../basics/hanabi-util.js';
 import { CLUE } from '../constants.js';
 
-import { logCard, logHand } from '../tools/log.js';
-
 import * as Utils from '../tools/util.js';
 
 /**
@@ -16,12 +14,13 @@ import * as Utils from '../tools/util.js';
 export class HGroup_Player extends Player {
 	clone() {
 		return new HGroup_Player(this.playerIndex,
-			this.thoughts.map(infs => infs.clone()),
-			this.links.map(link => Utils.objClone(link)),
-			this.hypo_stacks.slice(),
 			this.all_possible.slice(),
 			this.all_inferred.slice(),
-			this.unknown_plays);
+			this.hypo_stacks.slice(),
+			this.thoughts.map(infs => infs.clone()),
+			this.links.map(link => Utils.objClone(link)),
+			this.unknown_plays,
+			this.waiting_connections.slice());
 	}
 
 	/**
@@ -81,29 +80,13 @@ export class HGroup_Player extends Player {
 			const { clued, newly_clued, order, clues } = card;
 			const { inferred, possible } = this.thoughts[card.order];
 
-			// Ignore unclued, newly clued, and known cards (also intentionally ignored cards)
-			if (!clued || newly_clued || possible.length === 1 || ignoreOrders.includes(order)) {
-				return false;
-			}
-
-			// Ignore cards that don't match the inference
-			if (!possible.some(p => p.matches(identity))) {
-				return false;
-			}
-
-			// Ignore cards that don't match and have information lock
-			if (inferred.length === 1 && !(inferred[0].matches(identity))) {
-				return false;
-			}
-
-			// A clue must match the card (or rainbow/omni connect)
-			if (clues.some(clue =>
-				(clue.type === CLUE.COLOUR && (clue.value === suitIndex || ['Rainbow', 'Omni'].includes(suits[suitIndex]))) ||
-				(clue.type === CLUE.RANK && clue.value === rank))
-			) {
-				return true;
-			}
-			return false;
+			return !ignoreOrders.includes(order) &&										// not ignored
+				clued && !newly_clued && 												// previously clued
+				possible.length > 1 && possible.some(p => p.matches(identity)) &&		// not known, but could match
+				(inferred.length > 1 || !inferred[0].matches(identity)) &&				// not inferred, or at least the inference doesn't match
+				clues.some(clue =>														// at least one clue matches
+					(clue.type === CLUE.COLOUR && (clue.value === suitIndex || ['Rainbow', 'Omni'].includes(suits[suitIndex]))) ||
+					(clue.type === CLUE.RANK && clue.value === rank));
 		});
 	}
 

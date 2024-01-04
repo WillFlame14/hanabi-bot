@@ -35,8 +35,6 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 		const globally_known = state.hands[playerIndex].find(({ order }) =>
 			!ignoreOrders.includes(order) && common.thoughts[order].matches(identity, { infer: true }));
 
-		// state.me.thoughts[order].matches(identity, { assume: true })
-
 		if (globally_known) {
 			logger.info('globally known thoughts', logHand([common.thoughts[globally_known.order]]));
 			return { type: 'known', reacting: playerIndex, card: globally_known, identities: [identity] };

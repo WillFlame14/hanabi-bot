@@ -152,11 +152,6 @@ function find_rank_focus(state, rank, action) {
 	}
 	// Play clue
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-		// Critical cards on chop can never be given a play clue
-		if (chop && isCritical(state, { suitIndex, rank })) {
-			continue;
-		}
-
 		let next_rank = state.play_stacks[suitIndex] + 1;
 
 		/** @type {Connection[]} */
@@ -187,7 +182,7 @@ function find_rank_focus(state, rank, action) {
 				}
 
 				// Saving 2s or criticals will never cause a prompt or finesse.
-				if ((type === 'prompt' || type === 'finesse') && (rank === 2 || isCritical(state, { suitIndex, rank }))) {
+				if (chop && (rank === 2 || isCritical(state, { suitIndex, rank })) && (type === 'prompt' || type === 'finesse')) {
 					break;
 				}
 

@@ -23,12 +23,12 @@ describe('ambiguous finesse', () => {
 		takeTurn(state, 'Cathy clues green to Bob');
 
 		// Donald's g1 should be finessed
-		assert.deepEqual(state.hands[PLAYER.DONALD][0].finessed, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.DONALD][0].order].finessed, true);
 
 		takeTurn(state, 'Donald discards p4', 'r1');
 
 		// Alice's slot 2 should be [g1].
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][0], ['g1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][0].order], ['g1']);
 	});
 
 	it('understands an ambiguous finesse with a self component', () => {
@@ -45,7 +45,7 @@ describe('ambiguous finesse', () => {
 		takeTurn(state, 'Cathy discards p3', 'r1');
 
 		// Alice's slot 1 should be finessed.
-		assert.equal(state.hands[PLAYER.ALICE][0].finessed, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, true);
 	});
 
 	it('passes back a layered ambiguous finesse', () => {
@@ -62,8 +62,8 @@ describe('ambiguous finesse', () => {
 		takeTurn(state, 'Cathy discards p3', 'b3');
 
 		// Alice should pass back, making her slot 1 not finessed and Cathy's slot 2 (used to be slot 1) finessed.
-		assert.equal(state.hands[PLAYER.ALICE][0].finessed, false);
-		assert.equal(state.hands[PLAYER.CATHY][1].finessed, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.CATHY][1].order].finessed, true);
 	});
 
 	it('understands an ambigous finesse pass-back', () => {
@@ -83,8 +83,8 @@ describe('ambiguous finesse', () => {
 		takeTurn(state, 'Cathy clues 5 to Bob');		// 5 Save
 
 		// Alice's slot 1 has now moved to slot 2.
-		assert.equal(state.hands[PLAYER.ALICE][1].finessed, true);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['r1']);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][1].order].finessed, true);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['r1']);
 	});
 
 	it('prefers hidden prompt over ambiguous', () => {
@@ -103,6 +103,6 @@ describe('ambiguous finesse', () => {
 		takeTurn(state, 'Cathy clues 4 to Bob');	// connecting on g2 (Donald, prompt) and g3 (Bob, finesse)
 
 		// Bob's slot 1 can be either g3 or y3, since he doesn't know which 1 is connecting.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['y3', 'g3']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][0].order], ['y3', 'g3']);
 	});
 });

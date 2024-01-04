@@ -2,6 +2,7 @@ import * as Basics from './basics.js';
 import logger from './tools/logger.js';
 import { logAction, logCard, logPerformAction } from './tools/log.js';
 import * as Utils from './tools/util.js';
+import { team_elim } from './basics/helper.js';
 
 /**
  * @typedef {import('./types.js').Action} Action
@@ -51,6 +52,7 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
+			Object.assign(this.players[playerIndex].thoughts[order], {suitIndex, rank});
 
 			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
@@ -123,6 +125,7 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
+			Object.assign(this.players[playerIndex].thoughts[order], {suitIndex, rank});
 
 			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
@@ -132,19 +135,23 @@ export function handle_action(action, catchup = false) {
 		}
 		case 'identify': {
 			const { order, playerIndex, suitIndex, rank, infer = false } = action;
-
 			const card = this.common.thoughts[order];
-			if (!this.hands[playerIndex].some(c => c.order === order)) {
+
+			if (this.hands[playerIndex].findOrder(order) === undefined) {
 				throw new Error('Could not find card to rewrite!');
 			}
 			logger.info(`identifying card with order ${order} as ${logCard({ suitIndex, rank })}, infer? ${infer}`);
+
 			if (!infer) {
 				Object.assign(card, { suitIndex, rank });
+				Object.assign(this.me.thoughts[order], { suitIndex, rank });
+				Object.assign(this.hands[playerIndex].findOrder(order), { suitIndex, rank });
 			}
 			else {
 				card.intersect('inferred', [{ suitIndex, rank }]);
 			}
 			card.rewinded = true;
+			team_elim(this);
 			break;
 		}
 		case 'ignore': {

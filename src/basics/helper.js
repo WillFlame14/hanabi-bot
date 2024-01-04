@@ -48,7 +48,7 @@ export function update_hypo_stacks(state, player) {
 	const unknown_plays = [];
 
 	let found_new_playable = true;
-	const good_touch_elim = [];
+	const good_touch_elim = /** @type {Card[]}*/ ([]);
 
 	// Attempt to play all playable cards
 	while (found_new_playable) {
@@ -66,7 +66,7 @@ export function update_hypo_stacks(state, player) {
 			const delayed_playable = (poss) => {
 				let all_trash = true;
 				for (const c of poss) {
-					if (good_touch_elim.some(e => e.matches(c.suitIndex, c.rank))) {
+					if (good_touch_elim.some(e => e.matches(c))) {
 						continue;
 					}
 
@@ -125,11 +125,24 @@ export function update_hypo_stacks(state, player) {
 export function team_elim(state) {
 	for (const player of state.players) {
 		for (let i = 0; i < state.common.thoughts.length; i++) {
-			player.thoughts[i].intersect('inferred', state.common.thoughts[i].inferred);
-			player.thoughts[i].intersect('possible', state.common.thoughts[i].possible);
+			const card = player.thoughts[i];
+			const ccard = state.common.thoughts[i];
+
+			card.intersect('inferred', ccard.inferred);
+			card.intersect('possible', ccard.possible);
+
+			card.old_inferred = ccard.old_inferred?.slice();
+
+			for (const property of ['focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'hidden', 'called_to_discard', 'finesse_index', 'rewinded']) {
+				card[property] = ccard[property];
+			}
+			card.reasoning = ccard.reasoning.slice();
+			card.reasoning_turn = ccard.reasoning_turn.slice();
 		}
 
-		player.infer_elim(state);
+		player.waiting_connections = state.common.waiting_connections.slice();
 		player.good_touch_elim(state);
+		player.refresh_links(state);
+		update_hypo_stacks(state, player);
 	}
 }

@@ -26,10 +26,10 @@ describe('other cases', () => {
 		takeTurn(state, 'Cathy clues red to Bob');			// r2 finesse
 
 		// Alice's slot 4 should still be any 1.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r1', 'y1', 'g1', 'b1', 'p1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['r1', 'y1', 'g1', 'b1', 'p1']);
 
 		// Donald's r1 should be finessed.
-		assert.equal(state.hands[PLAYER.DONALD][0].finessed, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.DONALD][0].order].finessed, true);
 	});
 
 	it(`doesn't perform unknown self-prompts on target`, () => {

@@ -4,7 +4,6 @@ import { logCard } from '../tools/log.js';
  * @typedef {{infer?: boolean, assume?: boolean}} MatchOptions
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Identity} Identity
- * @typedef {import('../types.js').Clue} Clue
  */
 
 export class BasicCard {
@@ -15,6 +14,10 @@ export class BasicCard {
 	constructor(suitIndex, rank) {
 		this.suitIndex = suitIndex;
 		this.rank = rank;
+	}
+
+	clone() {
+		return new BasicCard(this.suitIndex, this.rank);
 	}
 
 	raw() {
@@ -172,7 +175,6 @@ export class Card extends BasicCard {
 		else if (options.infer && this.inferred.length === 1) {
 			return this.inferred[0];
 		}
-		return;
 	}
 
 	/**

@@ -32,10 +32,10 @@ export default class HGroup extends State {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
 
 		this.players = this.players.map(p =>
-			new HGroup_Player(p.playerIndex, p.thoughts, p.links, p.hypo_stacks, p.all_possible, p.all_inferred, p.unknown_plays));
+			new HGroup_Player(p.playerIndex, p.all_possible, p.all_inferred, p.hypo_stacks, p.thoughts, p.links, p.unknown_plays));
 
 		const c = this.common;
-		this.common = new HGroup_Player(c.playerIndex, c.thoughts, c.links, c.hypo_stacks, c.all_possible, c.all_inferred, c.unknown_plays);
+		this.common = new HGroup_Player(c.playerIndex, c.all_possible, c.all_inferred, c.hypo_stacks, c.thoughts, c.links, c.unknown_plays);
 
 		this.level = level;
 	}
@@ -64,6 +64,13 @@ export default class HGroup extends State {
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
 		}
+
+		for (const player of newState.players.concat([newState.common])) {
+			for (const c of newState.hands.flat()) {
+				player.thoughts[c.order].actualCard = c;
+			}
+		}
+
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;
 	}

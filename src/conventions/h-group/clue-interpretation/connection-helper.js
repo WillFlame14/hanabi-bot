@@ -187,7 +187,7 @@ export function assign_connections(state, connections, options = {}) {
 				if (hypo_stacks[reacting][suitIndex] + 1 !== rank) {
 					logger.warn('trying to connect', logCard(card), 'but hypo stacks at', hypo_stacks[suitIndex]);
 				}
-				hypo_stacks[reacting][suitIndex] = rank;
+				hypo_stacks[suitIndex] = rank;
 			}
 		}
 		else {

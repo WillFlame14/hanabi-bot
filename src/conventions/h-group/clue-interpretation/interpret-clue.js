@@ -34,9 +34,6 @@ function apply_good_touch(state, action) {
 	const { giver, list, target } = action;
 	const { thoughts: oldThoughts } = common.clone();		// Keep track of all cards that previously had inferences (i.e. not known trash)
 
-	/** @type {(order: number, options?: { min: number }) => boolean} */
-	const hadInferences = (order, { min = 1 }) => oldThoughts[order].inferred.length >= min;
-
 	Basics.onClue(state, action);
 	const resets = common.good_touch_elim(state);
 
@@ -45,7 +42,7 @@ function apply_good_touch(state, action) {
 		for (const { order } of state.hands[target]) {
 			const card = common.thoughts[order];
 
-			if (card.finessed && hadInferences(order) && card.inferred.length === 0) {
+			if (card.finessed && oldThoughts[order].inferred.length >= 1 && card.inferred.length === 0) {
 				// TODO: Possibly try rewinding older reasoning until rewind works?
 				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
 				if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue })) {
@@ -177,7 +174,6 @@ export function interpret_clue(state, action) {
 
 			if (!save) {
 				if ((target === state.ourPlayerIndex || focused_card.matches(inference))) {
-					logger.info('assigning connections', connections.map(c => logConnection(c)));
 					assign_connections(state, connections);
 				}
 
@@ -340,12 +336,5 @@ export function interpret_clue(state, action) {
 	}
 
 	logger.debug('hand state after clue', logHand(state.hands[target]));
-
-	for (const player of state.players) {
-		for (const { order } of state.hands.flat()) {
-			player.thoughts[order].intersect('inferred', state.common.thoughts[order].inferred);
-		}
-
-		player.good_touch_elim(state);
-	}
+	team_elim(state);
 }

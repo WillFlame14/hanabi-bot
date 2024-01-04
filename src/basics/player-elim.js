@@ -85,8 +85,8 @@ export function infer_elim(state) {
 				inferred_cards = initial_focus;
 				focus_elim = true;
 			}
-			else {
-				const new_link = { cards: inferred_cards, identities: [identity], promised: false };
+			else if (base_count + inferred_cards.length > total_count) {
+				const new_link = { cards: inferred_cards, identities: [identity.raw()], promised: false };
 
 				// Don't add duplicates of the same link
 				if (!this.links.some(link => Utils.objEquals(link, new_link))) {
@@ -125,19 +125,27 @@ export function infer_elim(state) {
  * @param {State} state
  */
 export function good_touch_elim(state) {
-	const identities = this.all_inferred.slice();
+	const identities = this.all_possible.slice();
 	const resets = /** @type {Set<number>} */ (new Set());
 
 	for (let i = 0; i < identities.length; i++) {
 		this.infer_elim(state);
 		const identity = identities[i];
-		const matches = state.hands.flat().filter(c => this.thoughts[c.order].matches(identity, { infer: true }));
+		const matches = state.hands.flat().filter(c => {
+			const card = this.thoughts[c.order];
+			return card.saved &&
+				card.matches(identity, { infer: true }) &&
+				!this.waiting_connections.some(wc => wc.connections.some(conn => conn.card.order === c.order));
+		});
 
 		if (matches.length === 0 && !isBasicTrash(state, identity)) {
 			continue;
 		}
 
-		const hard_matches = matches.filter(c => this.thoughts[c.order].matches(identity));
+		const hard_matches = matches.filter(c => {
+			const card = this.thoughts[c.order];
+			return card.matches(identity) || card.focused;
+		});
 
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];

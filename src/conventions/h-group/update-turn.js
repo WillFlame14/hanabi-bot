@@ -259,8 +259,6 @@ export function update_turn(state, action) {
 	update_hypo_stacks(state, state.common);
 
 	demonstrated.forEach(({card}) => state.common.thoughts[card.order].superposition = false);
-
-	state.common.infer_elim(state);
 	state.common.good_touch_elim(state);
 	team_elim(state);
 

@@ -26,13 +26,13 @@ export function clue_safe(state, player, clue) {
 	/** @param {number} startIndex */
 	const getNextUnoccupied = (startIndex) => {
 		let nextIndex = (startIndex + 1) % state.numPlayers;
-		let finessed_card = hypo_state.hands[nextIndex].find(c => player.thoughts[c.order].finessed && playableAway(hypo_state, c) === 0);
+		let finessed_card = hypo_state.hands[nextIndex].find(c => hypo_player.thoughts[c.order].finessed && playableAway(hypo_state, c) === 0);
 
 		// Find the next player without a playable finessed card
 		while (finessed_card && nextIndex !== state.ourPlayerIndex) {
 			nextIndex = (nextIndex + 1) % state.numPlayers;
 			hypo_state.play_stacks[finessed_card.suitIndex]++;
-			finessed_card = hypo_state.hands[nextIndex].find(c => player.thoughts[c.order].finessed && playableAway(hypo_state, c) === 0);
+			finessed_card = hypo_state.hands[nextIndex].find(c => hypo_player.thoughts[c.order].finessed && playableAway(hypo_state, c) === 0);
 		}
 		return nextIndex;
 	};

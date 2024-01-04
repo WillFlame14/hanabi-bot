@@ -3,7 +3,7 @@ import * as Utils from '../tools/util.js';
 import * as Elim from './player-elim.js';
 
 import logger from '../tools/logger.js';
-import { logCard, logHand } from '../tools/log.js';
+import { logCard } from '../tools/log.js';
 
 /**
  * @typedef {import('./State.js').State} State
@@ -11,7 +11,6 @@ import { logCard, logHand } from '../tools/log.js';
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').BasicCard} BasicCard
  * @typedef {import('../types.js').Identity} Identity
- * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Link} Link
  * @typedef {import('../types.js').WaitingConnection} WaitingConnection
  */
@@ -25,14 +24,15 @@ export class Player {
 
 	/**
 	 * @param {number} playerIndex
-	 * @param {Card[]} [thoughts]
-	 * @param {Link[]} [links]
-	 * @param {number[]} [hypo_stacks]
 	 * @param {BasicCard[]} all_possible
 	 * @param {BasicCard[]} all_inferred
+	 * @param {number[]} hypo_stacks
+	 * @param {Card[]} [thoughts]
+	 * @param {Link[]} [links]
 	 * @param {number[]} unknown_plays
+	 * @param {WaitingConnection[]} waiting_connections
 	 */
-	constructor(playerIndex, thoughts = [], links = [], hypo_stacks = [], all_possible = [], all_inferred = [], unknown_plays = []) {
+	constructor(playerIndex, all_possible, all_inferred, hypo_stacks, thoughts = [], links = [], unknown_plays = [], waiting_connections = []) {
 		this.playerIndex = playerIndex;
 
 		this.thoughts = thoughts;
@@ -47,17 +47,18 @@ export class Player {
 		 */
 		this.unknown_plays = unknown_plays;
 
-		/** @type {WaitingConnection[]} */
-		this.waiting_connections = [];
+		this.waiting_connections = waiting_connections;
 	}
 
 	clone() {
 		return new Player(this.playerIndex,
+			this.all_possible.slice(),
+			this.all_inferred.slice(),
+			this.hypo_stacks.slice(),
 			this.thoughts.map(infs => infs.clone()),
 			this.links.map(link => Utils.objClone(link)),
-			this.hypo_stacks.slice(),
-			this.all_possible.slice(),
-			this.all_inferred.slice());
+			this.unknown_plays,
+			this.waiting_connections.slice());
 	}
 
 	get hypo_score() {
@@ -101,10 +102,6 @@ export class Player {
 		// (e.g. if I later discover that I did not have a playable when I thought I did)
 		return Array.from(state.hands[playerIndex].filter(c => {
 			const card = this.thoughts[c.order];
-
-			// logger.info(this.thoughts);
-
-			// logger.info('possibilities', card.possible.map(c => logCard(c)), card.inferred.map(c => logCard(c)));
 
 			return !linked_orders.has(c.order) &&
 				card.possibilities.every(p => playableAway(state, p) === 0) &&

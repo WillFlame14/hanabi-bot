@@ -18,8 +18,6 @@ import { logPerformAction } from '../tools/log.js';
  * @typedef {import('../types.js').TurnAction} TurnAction
  * @typedef {import('../types.js').PlayAction} PlayAction
  * @typedef {import('../types.js').PerformAction} PerformAction
- * @typedef {import('../types.js').WaitingConnection} WaitingConnection
- * @typedef {import('../types.js').Link} Link
  */
 
 export class State {
@@ -86,13 +84,8 @@ export class State {
 		this.in_progress = in_progress;
 
 		/** @type {number} */
-		this.cardsLeft = this.suits.reduce((acc, _, suitIndex) => {
-			let cards = 0;
-			for (let rank = 1; rank <= 5; rank++) {
-				cards += cardCount(suits, { suitIndex, rank });
-			}
-			return acc + cards;
-		}, 0);
+		this.cardsLeft = this.suits.reduce((acc, _, suitIndex) =>
+			acc + [1, 2, 3, 4, 5].reduce((cards, rank) => cards + cardCount(suits, { suitIndex, rank }), 0), 0);
 
 		const all_possible = [];
 		for (let suitIndex = 0; suitIndex < this.suits.length; suitIndex++) {
@@ -107,16 +100,10 @@ export class State {
 
 		for (let i = 0; i < this.numPlayers; i++) {
 			this.hands.push(new Hand());
-			this.players[i] = new Player(i);
-			this.players[i].all_possible = all_possible.slice();
-			this.players[i].all_inferred = all_possible.slice();
-			this.players[i].hypo_stacks = Array.from({ length: this.suits.length }, _ => 0);
+			this.players[i] = new Player(i, all_possible.slice(), all_possible.slice(), Array.from({ length: this.suits.length }, _ => 0));
 		}
 
-		this.common = new Player(-1);
-		this.common.all_possible = all_possible.slice();
-		this.common.all_inferred = all_possible.slice();
-		this.common.hypo_stacks = Array.from({ length: this.suits.length }, _ => 0);
+		this.common = new Player(-1, all_possible.slice(), all_possible.slice(), Array.from({ length: this.suits.length }, _ => 0));
 	}
 
 	get me() {
@@ -153,6 +140,13 @@ export class State {
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
 		}
+
+		for (const player of newState.players.concat([newState.common])) {
+			for (const c of newState.hands.flat()) {
+				player.thoughts[c.order].actualCard = c;
+			}
+		}
+
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;
 	}
@@ -217,7 +211,7 @@ export class State {
 		if (this.rewindDepth > 2) {
 			throw new Error('Rewind depth went too deep!');
 		}
-		else if (action_index === undefined || (typeof action_index !== 'number') || action_index < 0 || action_index > this.actionList.length) {
+		if (action_index === undefined || (typeof action_index !== 'number') || action_index < 0 || action_index >= this.actionList.length) {
 			logger.error(`Attempted to rewind to an invalid action index (${JSON.stringify(action_index)})!`);
 			return false;
 		}

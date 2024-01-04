@@ -8,12 +8,11 @@ import HGroup from '../../../src/conventions/h-group.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
 
 import logger from '../../../src/tools/logger.js';
-import { logHand } from '../../../src/tools/log.js';
 
-// logger.setLevel(logger.LEVELS.ERROR);
+logger.setLevel(logger.LEVELS.ERROR);
 
 describe('play clue', () => {
-	/*it('can interpret a colour play clue touching one card', () => {
+	it('can interpret a colour play clue touching one card', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g4', 'r1', 'b5', 'p2', 'y1']
@@ -105,7 +104,7 @@ describe('play clue', () => {
 		// Bob's slot 1 should be inferred as r2.
 		const targetCard = state.hands[PLAYER.BOB][0];
 		ExAsserts.cardHasInferences(state.common.thoughts[targetCard.order], ['r2']);
-	});*/
+	});
 
 	it('considers ambiguous play clues to still be plays', () => {
 		const state = setup(HGroup, [
