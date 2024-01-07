@@ -3,12 +3,11 @@ import { Card } from '../basics/Card.js';
 import { shortForms } from '../variants.js';
 import { globals } from './util.js';
 
-import logger from './logger.js';
-
 /**
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../basics/Hand.js').Hand} Hand
  * @typedef {import('../basics/Card.js').ActualCard} ActualCard
+ * @typedef {import('../basics/Player.js').Player} Player
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').Identity} Identity
@@ -44,12 +43,13 @@ export function logCard(card) {
 /**
  * Returns a log-friendly representation of a hand.
  * @param {{ order: number }[]} hand
+ * @param {Player} [player]
  */
-export function logHand(hand) {
+export function logHand(hand, player = globals.state.common) {
 	const new_hand = [];
 
 	for (const { order } of hand) {
-		const card = globals.state.common.thoughts[order];
+		const card = player.thoughts[order];
 		const new_card = {};
 		new_card.visible = (card.suitIndex === -1 ? 'unknown' : logCard(card));
 		new_card.order = card.order;

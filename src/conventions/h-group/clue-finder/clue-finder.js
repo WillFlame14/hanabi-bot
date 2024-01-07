@@ -9,7 +9,7 @@ import { cardValue, direct_clues, isBasicTrash, isCritical, isTrash, save2, visi
 import { find_clue_value } from '../action-helper.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logClue, logHand } from '../../../tools/log.js';
+import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**

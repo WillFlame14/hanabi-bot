@@ -1,5 +1,5 @@
 import { cardCount } from '../variants.js';
-import { baseCount, isBasicTrash, isTrash, unknownIdentities, visibleFind } from './hanabi-util.js';
+import { baseCount, isBasicTrash, unknownIdentities, visibleFind } from './hanabi-util.js';
 import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
@@ -57,6 +57,7 @@ export function card_elim(state) {
  * @param {State} state
  */
 export function infer_elim(state) {
+	this.card_elim(state);
 	const identities = this.all_inferred.slice();
 
 	for (let i = 0; i < identities.length; i++) {
@@ -135,6 +136,7 @@ export function good_touch_elim(state) {
 			const card = this.thoughts[c.order];
 			return card.saved &&
 				card.matches(identity, { infer: true }) &&
+				(card.matches(identity) || !card.newly_clued || card.focused) &&		// Don't good touch from unknown newly clued cards off focus?
 				!this.waiting_connections.some(wc => wc.connections.some(conn => conn.card.order === c.order));
 		});
 
@@ -220,7 +222,7 @@ export function find_links(state) {
 		// We have enough inferred cards to eliminate elsewhere
 		// TODO: Sudoku elim from this
 		if (linked_cards.length > card.inferred.reduce((sum, inf) => sum += unknownIdentities(state, this, inf), 0)) {
-			logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(inf => logCard(inf)));
+			logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(inf => logCard(inf)), this.playerIndex);
 
 			this.links.push({ cards: linked_cards, identities: card.inferred.map(c => c.raw()), promised: false });
 		}

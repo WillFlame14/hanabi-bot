@@ -3,11 +3,11 @@ import { cardCount } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
 import { order_1s } from '../action-helper.js';
 import { playableAway } from '../../../basics/hanabi-util.js';
+import { find_possibilities } from '../../../basics/helper.js';
 import { cardTouched } from '../../../variants.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logHand } from '../../../tools/log.js';
-import { find_possibilities } from '../../../basics/helper.js';
+import { logCard } from '../../../tools/log.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -36,7 +36,6 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 			!ignoreOrders.includes(order) && common.thoughts[order].matches(identity, { infer: true }));
 
 		if (globally_known) {
-			logger.info('globally known thoughts', logHand([common.thoughts[globally_known.order]]));
 			return { type: 'known', reacting: playerIndex, card: globally_known, identities: [identity] };
 		}
 	}

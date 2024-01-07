@@ -2,7 +2,6 @@ import { CLUE } from '../src/constants.js';
 import { cardCount } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
 import { logAction, logClue } from '../src/tools/log.js';
-import { team_elim } from '../src/basics/helper.js';
 
 /**
  * @typedef {import ('../src/basics/State.js').State} State
@@ -128,6 +127,10 @@ export function setup(StateClass, hands, options = {}) {
 
 	init_state(state, options);
 	injectFuncs.bind(state)(options);
+
+	for (const player of state.players) {
+		player.card_elim(state);
+	}
 
 	return state;
 }

@@ -1,7 +1,7 @@
 import { CLUE } from '../../../constants.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_connecting } from './connecting-cards.js';
-import { isCritical, playableAway, save2, visibleFind } from '../../../basics/hanabi-util.js';
+import { isCritical, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';

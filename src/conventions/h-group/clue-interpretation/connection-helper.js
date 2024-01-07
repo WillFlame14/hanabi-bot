@@ -4,7 +4,7 @@ import { find_own_finesses } from './connecting-cards.js';
 import { isBasicTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logConnections, logHand } from '../../../tools/log.js';
+import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**

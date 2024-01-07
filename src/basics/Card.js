@@ -115,7 +115,7 @@ export class Card extends BasicCard {
 	 * Creates a deep copy of the card.
 	 */
 	clone() {
-		const new_card = new Card(this.actualCard, this);
+		const new_card = new Card(this.actualCard.clone(), this);
 
 		for (const field of ['possible', 'inferred', 'clues', 'reasoning', 'reasoning_turn']) {
 			new_card[field] = this[field].slice();

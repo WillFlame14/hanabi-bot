@@ -59,7 +59,7 @@ export function onDiscard(state, action) {
 	state.discard_stacks[suitIndex][rank - 1]++;
 
 	for (const player of state.players.concat([state.common])) {
-		player.card_elim(state);
+		player.infer_elim(state);
 		player.refresh_links(state);
 	}
 
@@ -128,7 +128,7 @@ export function onPlay(state, action) {
 	state.play_stacks[suitIndex] = rank;
 
 	for (const player of state.players.concat([state.common])) {
-		player.card_elim(state);
+		player.infer_elim(state);
 		player.refresh_links(state);
 	}
 

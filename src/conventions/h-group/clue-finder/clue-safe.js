@@ -1,6 +1,4 @@
 import { isCritical, playableAway, save2 } from '../../../basics/hanabi-util.js';
-import { logHand } from '../../../tools/log.js';
-
 import logger from '../../../tools/logger.js';
 
 /**
@@ -65,7 +63,7 @@ export function clue_safe(state, player, clue) {
 	logger.info(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop but loaded, next next ${state.playerNames[next_unoccupied2]} has ${chopUnsafe(hypo_state, player, next_unoccupied2) ? 'unsafe' : 'safe'} chop with ${hypo_state.clue_tokens} clues`);
 
 	// Safe chop or can be saved
-	return !chopUnsafe(hypo_state, player, next_unoccupied2) || hypo_state.clue_tokens > 0;
+	return !chopUnsafe(hypo_state, hypo_player, next_unoccupied2) || hypo_state.clue_tokens > 0;
 }
 
 /**

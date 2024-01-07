@@ -8,7 +8,7 @@ import { find_clue_value, order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
-import { logCard, logClue, logHand } from '../../tools/log.js';
+import { logHand } from '../../tools/log.js';
 
 
 /**

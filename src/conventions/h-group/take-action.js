@@ -3,8 +3,8 @@ import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
 import { select_play_clue, determine_playable_card, order_1s, find_clue_value } from './action-helper.js';
 import { find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { inEndgame, minimum_clue_value, stall_severity } from './hanabi-logic.js';
-import { cardValue, getPace, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+import { determine_focus, inEndgame, minimum_clue_value, stall_severity } from './hanabi-logic.js';
+import { cardValue, getPace, isBasicTrash, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
@@ -193,7 +193,7 @@ export function take_action(state) {
 		const duplicates = visibleFind(state, state.me, identity, { ignore: [state.ourPlayerIndex] }).filter(c => c.clued).map(c => state.me.thoughts[c.order]);
 
 		// If playing reveals duplicates are trash, playing is better for tempo in endgame
-		if (inEndgame(state) && duplicates.every(c => c.inferred.length === 0 || (c.inferred.length === 1 && c.inferred[0].matches(identity)))) {
+		if (inEndgame(state) && duplicates.every(c => c.inferred.length === 0 || (c.inferred.every(inf => inf.matches(identity) || isBasicTrash(state, inf))))) {
 			return { tableID, type: ACTION.PLAY, target: discards[0].order };
 		}
 
@@ -248,9 +248,22 @@ export function take_action(state) {
 		}
 	}
 
-	// Any play clue in 2 players
-	if (state.numPlayers === 2 && state.clue_tokens > 0 && (best_play_clue || stall_clues[1].length > 0)) {
-		return Utils.clueToAction(best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result)), tableID);
+	const play_clue_2p = best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result));
+
+	const not_selfish = (clue) => {
+		const list = state.hands[nextPlayerIndex].clueTouched(clue, state.suits).map(c => c.order);
+		const { focused_card } = determine_focus(state.hands[nextPlayerIndex], state.common, list, { beforeClue: true });
+		const { suitIndex } = focused_card;
+
+		return state.common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
+			Utils.range(state.play_stacks[suitIndex] + 1, state.common.hypo_stacks[suitIndex] + 1).every(rank =>
+				!state.hands[state.ourPlayerIndex].some(c => state.me.thoughts[c.order].matches({ suitIndex, rank })));
+	};
+
+	// Play clue in 2 players while partner is not loaded and not selfish
+	if (state.numPlayers === 2 && state.clue_tokens > 0 && play_clue_2p &&
+		!state.me.thinksLoaded(state, nextPlayerIndex) && not_selfish(play_clue_2p)) {
+		return Utils.clueToAction(play_clue_2p, tableID);
 	}
 
 	// Playable card with any priority
@@ -276,6 +289,11 @@ export function take_action(state) {
 				return urgent_actions[i][0];
 			}
 		}
+	}
+
+	// Any play clue in 2 players
+	if (state.numPlayers === 2 && state.clue_tokens > 0 && (best_play_clue || stall_clues[1].length > 0)) {
+		return Utils.clueToAction(best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result)), tableID);
 	}
 
 	// Either there are no clue tokens or the best play clue doesn't meet MCVP

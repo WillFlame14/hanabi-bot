@@ -11,7 +11,7 @@ import { isBasicTrash, isTrash, playableAway, visibleFind } from '../../../basic
 
 import logger from '../../../tools/logger.js';
 import * as Basics from '../../../basics.js';
-import { logCard, logConnection, logConnections, logHand } from '../../../tools/log.js';
+import { logCard, logConnections, logHand } from '../../../tools/log.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -52,7 +52,30 @@ function apply_good_touch(state, action) {
 		}
 	}
 
-	// One of the clued cards lost all inferences
+	// Includes resets from negative information
+	const all_resets = state.hands.flat().map(c => c.order).filter(order =>
+		oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0).concat(resets);
+
+	if (all_resets.length > 0) {
+		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
+		const infs_to_recheck = all_resets.map(order => oldThoughts[order].identity({ infer: true })).filter(id => id !== undefined);
+
+		for (const inf of infs_to_recheck) {
+			for (const { order } of state.hands.flat()) {
+				const card = common.thoughts[order];
+
+				// Add the inference back if it's still a possibility
+				if (card.possible.some(c => c.matches(inf))) {
+					card.union('inferred', [inf]);
+				}
+			}
+		}
+
+		logger.warn('adding back inferences', infs_to_recheck.map(c => logCard(c)), 'which were falsely eliminated');
+		common.all_inferred = common.all_inferred.concat(infs_to_recheck);
+	}
+
+	// Any clued cards that lost all inferences
 	const clued_reset = list.some(order => resets.includes(order) && !state.hands[target].findOrder(order).newly_clued);
 
 	const duplicate_reveal = state.hands[target].some(({ order }) => {
@@ -184,11 +207,7 @@ export function interpret_clue(state, action) {
 			}
 		}
 
-		// We can update hypo stacks
-		if (inference_known(matched_inferences)) {
-			team_elim(state);
-		}
-		else if (target !== state.ourPlayerIndex && !correct_match.save) {
+		if (target !== state.ourPlayerIndex && !correct_match.save) {
 			const selfRanks = Array.from(new Set(matched_inferences.flatMap(({ connections }) =>
 				connections.filter(conn =>
 					conn.type === 'finesse' && conn.reacting === target && conn.identities.length === 1

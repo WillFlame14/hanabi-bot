@@ -1,4 +1,4 @@
-import { BasicCard } from '../basics/Card.js';
+import { BasicCard, ActualCard } from '../basics/Card.js';
 import { Hand } from '../basics/Hand.js';
 import { Player } from '../basics/Player.js';
 import { ACTION, CLUE } from '../constants.js';
@@ -86,6 +86,15 @@ function emptyCmdQueue() {
 	logger.debug('sending cmd', cmd);
 
 	queueTimer = setTimeout(emptyCmdQueue, 500);
+}
+
+/**
+ * Creates an array of numbers from start to end, not including end.
+ * @param {number} start
+ * @param {number} end
+ */
+export function range(start, end) {
+	return [...new Array(end - start).keys()].map(num => num + start);
 }
 
 /**

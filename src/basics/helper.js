@@ -128,8 +128,10 @@ export function team_elim(state) {
 			const card = player.thoughts[i];
 			const ccard = state.common.thoughts[i];
 
-			card.intersect('inferred', ccard.inferred);
 			card.intersect('possible', ccard.possible);
+
+			card.inferred = ccard.inferred.slice();
+			card.intersect('inferred', card.possible);
 
 			card.old_inferred = ccard.old_inferred?.slice();
 
