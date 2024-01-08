@@ -306,7 +306,7 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 
 					// Assume this is actually the card
 					hypo_state.common.thoughts[card.order].intersect('inferred', [next_identity]);
-					hypo_state.common.infer_elim(hypo_state);
+					hypo_state.common.good_touch_elim(hypo_state);
 				}
 
 				if (type === 'finesse') {

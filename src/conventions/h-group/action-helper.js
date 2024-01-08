@@ -133,7 +133,7 @@ export function determine_playable_card(state, playable_cards) {
 			// Start at next player so that connecting in our hand has lowest priority
 			for (let i = 1; i < state.numPlayers + 1; i++) {
 				const target = (state.ourPlayerIndex + i) % state.numPlayers;
-				if (state.hands[target].findCards({ suitIndex, rank: rank + 1 }).length > 0) {
+				if (state.hands[target].find(c => state.me.thoughts[c.order].matches({ suitIndex, rank: rank + 1 }, { infer: true }))) {
 					connected = true;
 
 					// Connecting in own hand, demote priority to 2

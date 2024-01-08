@@ -40,6 +40,7 @@ export class State {
 	handHistory = /** @type {Hand[]} */ ([]);
 
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
+	elims = /** @type {Record<string, number[]>} */({});
 
 	rewinds = 0;
 	rewindDepth = 0;
@@ -135,7 +136,7 @@ export class State {
 		}
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'turn_count', 'clue_tokens', 'last_actions',
-			'strikes', 'early_game', 'rewindDepth', 'unknown_plays', 'next_ignore', 'next_finesse', 'cardsLeft'];
+			'strikes', 'early_game', 'rewindDepth', 'unknown_plays', 'next_ignore', 'next_finesse', 'cardsLeft', 'elims'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);

@@ -3,7 +3,7 @@ import { baseCount, isBasicTrash, unknownIdentities, visibleFind } from './hanab
 import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
-import { logCard, logLinks } from '../tools/log.js';
+import { logCard } from '../tools/log.js';
 
 /**
  * @typedef {import('./Card.js').Card} Card
@@ -33,6 +33,7 @@ export function card_elim(state) {
 
 		// Remove it from the list of future possibilities
 		this.all_possible.splice(this.all_possible.findIndex(c => c.matches(identity)), 1);
+		this.all_inferred.splice(this.all_inferred.findIndex(c => c.matches(identity)), 1);
 
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];
@@ -47,75 +48,7 @@ export function card_elim(state) {
 				}
 			}
 		}
-		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} possibilities`);
-	}
-}
-
-/**
- * Eliminates card identities using inferred and possible information.
- * @this {Player}
- * @param {State} state
- */
-export function infer_elim(state) {
-	this.card_elim(state);
-	const identities = this.all_inferred.slice();
-
-	for (let i = 0; i < identities.length; i++) {
-		const identity = identities[i];
-
-		const base_count = baseCount(state, identity);
-		let inferred_cards = visibleFind(state, this, identity, { infer: true });
-		const total_count = cardCount(state.suits, identity);
-		let focus_elim = false;
-
-		if (base_count + inferred_cards.length < total_count) {
-			continue;
-		}
-
-		// Remove it from the list of future inferences
-		this.all_inferred.splice(this.all_inferred.findIndex(c => c.matches(identity)), 1);
-
-		if (base_count + inferred_cards.length > total_count) {
-			logger.warn(`inferring ${base_count + inferred_cards.length} copies of ${logCard(identity)}`);
-
-			const initial_focus = inferred_cards.filter(c => this.thoughts[c.order].focused);
-
-			// TODO: Check if "base_count + 1 === total_count" is needed?
-			if (initial_focus.length === 1) {
-				logger.info('eliminating from focus!');
-				inferred_cards = initial_focus;
-				focus_elim = true;
-			}
-			else if (base_count + inferred_cards.length > total_count) {
-				const new_link = { cards: inferred_cards, identities: [identity.raw()], promised: false };
-
-				// Don't add duplicates of the same link
-				if (!this.links.some(link => Utils.objEquals(link, new_link))) {
-					logger.info('adding link', logLinks([new_link]));
-					this.links.push(new_link);
-				}
-			}
-		}
-
-		for (const { order } of state.hands.flat()) {
-			const card = this.thoughts[order];
-
-			if ((card.inferred.length > 1 || focus_elim) && !inferred_cards.some(c => c.order === order)) {
-				card.subtract('possible', [identity]);
-				card.subtract('inferred', [identity]);
-
-				// Card can be further eliminated
-				if (card.inferred.length === 1) {
-					if (!card.matches(identity, { assume: true })) {
-						logger.warn(`incorrectly trying to elim card ${logCard(card)} as ${logCard(identity)}!`);
-						continue;
-					}
-					identities.push(card.inferred[0]);
-					this.card_elim(state);
-				}
-			}
-		}
-		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} inferences`);
+		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(c => logCard(c))}`);
 	}
 }
 
@@ -130,7 +63,6 @@ export function good_touch_elim(state) {
 	const resets = /** @type {Set<number>} */ (new Set());
 
 	for (let i = 0; i < identities.length; i++) {
-		this.infer_elim(state);
 		const identity = identities[i];
 		const matches = state.hands.flat().filter(c => {
 			const card = this.thoughts[c.order];
@@ -162,6 +94,13 @@ export function good_touch_elim(state) {
 
 			const pre_inferences = card.inferred.length;
 			card.subtract('inferred', [identity]);
+
+			if (this.playerIndex === -1) {
+				if (state.elims[logCard(identity)] === undefined) {
+					state.elims[logCard(identity)] = [];
+				}
+				state.elims[logCard(identity)].push(order);
+			}
 
 			if (card.inferred.length === 0) {
 				card.reset = true;
@@ -252,6 +191,6 @@ export function refresh_links(state) {
 	// Clear links that we're redoing
 	this.links = this.links.filter((_, index) => !redo_elim_indices.includes(index));
 
-	this.infer_elim(state);
+	this.card_elim(state);
 	this.find_links(state);
 }

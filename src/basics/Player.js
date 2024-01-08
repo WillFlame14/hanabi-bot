@@ -17,7 +17,6 @@ import { logCard } from '../tools/log.js';
 
 export class Player {
 	card_elim = Elim.card_elim;
-	infer_elim = Elim.infer_elim;
 	refresh_links = Elim.refresh_links;
 	find_links = Elim.find_links;
 	good_touch_elim = Elim.good_touch_elim;
