@@ -115,5 +115,14 @@ export function playables_result(state, player, hypo_player, target) {
 		}
 	}
 
+	for (const order of hypo_player.unknown_plays) {
+		if (player.unknown_plays.includes(order)) {
+			continue;
+		}
+
+		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
+		playables.push({ playerIndex, card: hypo_player.thoughts[order] });
+	}
+
 	return { finesses, playables, safe_playables };
 }

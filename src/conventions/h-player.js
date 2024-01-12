@@ -20,7 +20,7 @@ export class HGroup_Player extends Player {
 			this.thoughts.map(infs => infs.clone()),
 			this.links.map(link => Utils.objClone(link)),
 			this.unknown_plays,
-			this.waiting_connections.slice());
+			Utils.objClone(this.waiting_connections));
 	}
 
 	/**
@@ -83,7 +83,7 @@ export class HGroup_Player extends Player {
 			return !ignoreOrders.includes(order) &&										// not ignored
 				clued && !newly_clued && 												// previously clued
 				possible.length > 1 && possible.some(p => p.matches(identity)) &&		// not known, but could match
-				(inferred.length > 1 || !inferred[0].matches(identity)) &&				// not inferred, or at least the inference doesn't match
+				(inferred.length > 1 || !inferred[0]?.matches(identity)) &&				// not inferred, or at least the inference doesn't match
 				clues.some(clue =>														// at least one clue matches
 					(clue.type === CLUE.COLOUR && (clue.value === suitIndex || ['Rainbow', 'Omni'].includes(suits[suitIndex]))) ||
 					(clue.type === CLUE.RANK && clue.value === rank));

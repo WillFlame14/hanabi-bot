@@ -91,8 +91,10 @@ export function interpret_discard(state, action, card) {
 
 			to_remove.push(i);
 
-			// No other waiting connections exist for this
-			if (!common.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index))) {
+			// No other waiting connections exist for this and not sarcastic
+			if (!common.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index)) &&
+				visibleFind(state, state.me, identity).length === 0
+			) {
 				const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
 				state.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects });
 				return;

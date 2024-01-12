@@ -43,7 +43,7 @@ export function card_elim(state) {
 				card.subtract('inferred', [identity]);
 
 				// Card can be further eliminated
-				if (card.possible.length === 1) {
+				if (card.possible.length === 1 && this.all_possible.some(c => c.matches(card.identity()))) {
 					identities.push(card.identity());
 				}
 			}

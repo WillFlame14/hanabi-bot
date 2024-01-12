@@ -146,12 +146,12 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 
 /**
  * A fix criterion. Considered fixed when the card matches at least one of its inferences.
- * @param {State} _state
+ * @param {State} state
  * @param {Card} card
  * @param {number} _target
  */
-function inference_corrected(_state, card, _target) {
-	return card.matches_inferences(); //card.possible.every(p => playableAway(state, p.suitIndex, p.rank) !== 0);
+function inference_corrected(state, card, _target) {
+	return card.possible.every(p => playableAway(state, p) !== 0);
 }
 
 /**
