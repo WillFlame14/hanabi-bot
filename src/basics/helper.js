@@ -91,6 +91,13 @@ export function update_hypo_stacks(state, player) {
 
 			if (diff.matches_inferences() && (delayed_playable(diff.possible) || delayed_playable(diff.inferred) || (diff.finessed && delayed_playable([card])))) {
 				const id = card.identity({ infer: true });
+				const actual_id = state.me.thoughts[order].identity();
+
+				// Do not allow false updating of hypo stacks
+				if (player.playerIndex === -1 && id && actual_id && id !== actual_id) {
+					continue;
+				}
+
 				if (id === undefined) {
 					// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
 					unknown_plays.push(order);

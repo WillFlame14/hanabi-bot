@@ -5,6 +5,7 @@ import { isTrash } from './hanabi-util.js';
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Player.js').Player} Player
  * @typedef {import('./Card.js').Card} Card
+ * @typedef {import('./Card.js').ActualCard} ActualCard
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Clue} Clue
  */
@@ -43,22 +44,20 @@ export function elim_result(player, hypo_player, hand, list) {
  * @param  {Hand} hand
  * @param  {number} focus_order
  */
-export function bad_touch_result(state, hypo_player, hand, focus_order) {
+export function bad_touch_result(state, hypo_player, hand, focus_order = -1) {
 	let bad_touch = 0, trash = 0;
 
-	for (const { order } of hand) {
-		// Focused card can't be bad touched
-		if (order === focus_order) {
+	for (const card of hand) {
+		// Ignore cards that aren't newly clued, focused card can't be bad touched
+		if (!card.newly_clued || card.order === focus_order) {
 			continue;
 		}
 
-		const hypo_card = hypo_player.thoughts[order];
-
-		if (hypo_card.possible.every(p => isTrash(state, hypo_player, p, order))) {
+		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order))) {
 			trash++;
 		}
 		// TODO: Don't double count bad touch when cluing two of the same card
-		else if (isTrash(state, hypo_player, hypo_card.raw(), order)) {
+		else if (isTrash(state, state.me, state.me.thoughts[card.order], card.order)) {
 			bad_touch++;
 		}
 	}

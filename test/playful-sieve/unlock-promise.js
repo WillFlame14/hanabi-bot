@@ -28,7 +28,7 @@ describe('giving clues while locked', () => {
 
 		takeTurn(state, 'Alice clues purple to Bob');
 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['p1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][0].order], ['p1']);
 	});
 
 	it('gives referential discards', () => {
@@ -45,7 +45,7 @@ describe('giving clues while locked', () => {
 
 		takeTurn(state, 'Alice clues 5 to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][1].called_to_discard, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][1].order].called_to_discard, true);
 	});
 
 	it('understands colour stalls', () => {
@@ -62,7 +62,7 @@ describe('giving clues while locked', () => {
 		takeTurn(state, 'Alice clues red to Bob');
 
 		// Bob should not be called to play slot 5.
-		assert.equal(state.hands[PLAYER.BOB][4].finessed, false);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][4].order].finessed, false);
 	});
 });
 
@@ -78,7 +78,7 @@ describe('unlock promise', () => {
 		takeTurn(state, 'Alice clues red to Bob');
 		takeTurn(state, 'Bob plays r1', 'p1');
 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['r2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][4].order], ['r2']);
 	});
 
 	it('unlocks from an unknown card', () => {
@@ -92,7 +92,7 @@ describe('unlock promise', () => {
 		takeTurn(state, 'Alice clues red to Bob');
 		takeTurn(state, 'Bob plays r1', 'p1');
 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['r2']);
 	});
 
 	it('unlocks from a shifted directly connecting card', () => {
@@ -112,7 +112,7 @@ describe('unlock promise', () => {
 		takeTurn(state, 'Alice clues blue to Bob');
 		takeTurn(state, 'Bob plays r1', 'p1');			// Bob plays r1 after shifting once
 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['r2']);
 	});
 
 	it('unlocks from a new directly connecting card after a shift', () => {
@@ -132,7 +132,7 @@ describe('unlock promise', () => {
 		takeTurn(state, 'Alice clues blue to Bob');
 		takeTurn(state, 'Bob plays b1', 'p1');			// Bob plays b1 (after shifting once for r1)
 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['b2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][4].order], ['b2']);
 	});
 
 	it('unlocks from a shift past all directly connecting cards', () => {
@@ -154,7 +154,7 @@ describe('unlock promise', () => {
 		takeTurn(state, 'Alice clues blue to Bob');
 		takeTurn(state, 'Bob plays r1', 'p1');			// Bob plays r1 after shifting once
 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][0], ['r2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][0].order], ['r2']);
 	});
 
 	it('prefers unlocking over discarding trash', () => {
@@ -175,6 +175,6 @@ describe('unlock promise', () => {
 
 		// Alice should play r1 instead of discarding.
 		assert.equal(action.type, ACTION.PLAY, `Actual action was (${logPerformAction(action)})`);
-		assert.ok([3,4].map(index => state.hands[PLAYER.ALICE][index].order).includes(action.target));
+		assert.ok([2,3].map(index => state.hands[PLAYER.ALICE][index].order).includes(action.target));
 	});
 });

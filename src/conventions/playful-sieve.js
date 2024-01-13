@@ -1,6 +1,4 @@
 import { State } from '../basics/State.js';
-import { Player } from '../basics/Player.js';
-
 import { interpret_clue } from './playful-sieve/interpret-clue.js';
 import { interpret_discard } from './playful-sieve/interpret-discard.js';
 import { interpret_play } from './playful-sieve/interpret-play.js';
@@ -28,10 +26,6 @@ export default class PlayfulSieve extends State {
 	 */
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress) {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
-
-		for (let i = 0; i < this.numPlayers; i++) {
-			this.players.push(new Player(i));
-		}
 	}
 
 	createBlank() {
@@ -49,12 +43,19 @@ export default class PlayfulSieve extends State {
 			throw new Error('Maximum recursive depth reached.');
 		}
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'last_actions',
-			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'cardsLeft', 'locked_shifts'];
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'last_actions',
+			'turn_count', 'clue_tokens', 'strikes', 'rewindDepth', 'cardsLeft', 'locked_shifts', 'elims'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
 		}
+
+		for (const player of newState.players.concat([newState.common])) {
+			for (const c of newState.hands.flat()) {
+				player.thoughts[c.order].actualCard = c;
+			}
+		}
+
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;
 	}
