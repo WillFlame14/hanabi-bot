@@ -20,7 +20,7 @@ import logger from '../../../tools/logger.js';
  */
 function isStall(state, action, giver, severity, prev_state) {
 	const { clue, list, target } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], list);
+	const { focused_card, chop } = determine_focus(state.hands[target], state.common, list);
 	const hand = state.hands[target];
 
 	// 5 Stall given
@@ -94,7 +94,7 @@ function isStall(state, action, giver, severity, prev_state) {
  */
 export function stalling_situation(state, action, prev_state) {
 	const { giver } = action;
-	const severity = stall_severity(prev_state, giver);
+	const severity = stall_severity(prev_state, state.common, giver);
 
 	// Not a stalling situation
 	if (severity === 0) {

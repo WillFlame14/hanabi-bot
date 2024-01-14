@@ -1,5 +1,4 @@
 import { CLUE } from '../../../constants.js';
-import { Card } from '../../../basics/Card.js';
 import { determine_focus } from '../hanabi-logic.js';
 import { find_own_finesses } from './connecting-cards.js';
 import { isBasicTrash } from '../../../basics/hanabi-util.js';
@@ -10,9 +9,10 @@ import * as Utils from '../../../tools/util.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
+ * @typedef {import('../../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
- * @typedef {import('../../../types.js').BasicCard} BasicCard
+ * @typedef {import('../../../types.js').Identity} Identity
  * @typedef {import('../../../types.js').FocusPossibility} FocusPossibility
  * @typedef {import('../../../types.js').SymFocusPossibility} SymFocusPossibility
  */
@@ -45,7 +45,7 @@ export function inference_rank(state, suitIndex, connections) {
  * @param {State} state
  * @param {SymFocusPossibility[]} symmetric_connections
  * @param {FocusPossibility[]} existing_connections
- * @param {Card} focused_card
+ * @param {ActualCard} focused_card
  * @param {number} giver
  */
 export function add_symmetric_connections(state, symmetric_connections, existing_connections, focused_card, giver) {
@@ -62,7 +62,7 @@ export function add_symmetric_connections(state, symmetric_connections, existing
 			continue;
 		}
 
-		state.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake });
+		state.common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake });
 	}
 }
 
@@ -76,37 +76,38 @@ export function add_symmetric_connections(state, symmetric_connections, existing
  */
 export function find_symmetric_connections(state, action, looksSave, selfRanks, ownBlindPlays) {
 	const { giver, list, target } = action;
-	const { focused_card } = determine_focus(state.hands[target], list, { beforeClue: true });
+	const { order } = determine_focus(state.hands[target], state.common, list, { beforeClue: true }).focused_card;
+	const focused_card = state.common.thoughts[order];
 
 	/** @type {SymFocusPossibility[]} */
 	const symmetric_connections = [];
 
-	/** @type {{ card: Card, connections: Connection[] }[]} */
+	/** @type {{ id: Identity, connections: Connection[] }[]} */
 	const self_connections = [];
 
-	/** @type {{ card: Card, connections: Connection[] }[]} */
+	/** @type {{ id: Identity, connections: Connection[] }[]} */
 	const non_self_connections = [];
 
-	for (const card of focused_card.inferred) {
-		if (isBasicTrash(state, card)) {
+	for (const id of focused_card.inferred) {
+		if (isBasicTrash(state, id)) {
 			continue;
 		}
 
-		const looksDirect = focused_card.identity({ symmetric: true }) === undefined && (		// Focus must be unknown AND
+		const looksDirect = focused_card.identity() === undefined && (		// Focus must be unknown AND
 			action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
-			state.hypo_stacks[giver].some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
+			state.common.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
 			looksSave);																		// Looks like a save
 
 		logger.collect();
-		const { feasible, connections } = find_own_finesses(state, giver, target, card, looksDirect, target, selfRanks);
+		const { feasible, connections } = find_own_finesses(state, giver, target, id, looksDirect, target, selfRanks);
 		logger.flush(false);
 
 		if (feasible) {
 			if (connections[0]?.reacting === target) {
-				self_connections.push({ card, connections });
+				self_connections.push({ id, connections });
 			}
 			else {
-				non_self_connections.push({ card, connections });
+				non_self_connections.push({ id, connections });
 			}
 		}
 	}
@@ -122,11 +123,11 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 
 	for (let i = 0; i < possible_connections.length; i++) {
 		if (blind_plays_arr[i] === min_blind_plays) {
-			const { card, connections } = possible_connections[i];
+			const { id, connections } = possible_connections[i];
 			symmetric_connections.push({
 				connections,
-				suitIndex: card.suitIndex,
-				rank: inference_rank(state, card.suitIndex, connections),
+				suitIndex: id.suitIndex,
+				rank: inference_rank(state, id.suitIndex, connections),
 				fake: blind_plays(connections, state.ourPlayerIndex) > ownBlindPlays
 			});
 		}
@@ -149,12 +150,12 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
  * @param {{symmetric?: boolean, target?: number, fake?: boolean}} [options] 	If this is a symmetric connection, this indicates the only player we should write notes on.
  */
 export function assign_connections(state, connections, options = {}) {
-	const hypo_stacks = Utils.objClone(state.hypo_stacks);
+	const hypo_stacks = Utils.objClone(state.common.hypo_stacks);
 
 	for (const connection of connections) {
 		const { type, reacting, hidden, card: conn_card, known, identities } = connection;
 		// The connections can be cloned, so need to modify the card directly
-		const card = state.hands[reacting].findOrder(conn_card.order);
+		const card = state.common.thoughts[conn_card.order];
 
 		// Do not write notes on:
 		// - fake connections (where we need to blind play more than necessary)
@@ -175,7 +176,7 @@ export function assign_connections(state, connections, options = {}) {
 		}
 
 		if (hidden) {
-			const playable_identities = hypo_stacks[reacting].map((stack_rank, index) => {
+			const playable_identities = hypo_stacks.map((stack_rank, index) => {
 				return { suitIndex: index, rank: stack_rank + 1 };
 			});
 			card.intersect('inferred', playable_identities);
@@ -186,7 +187,7 @@ export function assign_connections(state, connections, options = {}) {
 				if (hypo_stacks[reacting][suitIndex] + 1 !== rank) {
 					logger.warn('trying to connect', logCard(card), 'but hypo stacks at', hypo_stacks[suitIndex]);
 				}
-				hypo_stacks[reacting][suitIndex] = rank;
+				hypo_stacks[suitIndex] = rank;
 			}
 		}
 		else {

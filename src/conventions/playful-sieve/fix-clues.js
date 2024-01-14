@@ -1,5 +1,4 @@
 import { CLUE } from '../../constants.js';
-import { Hand } from '../../basics/Hand.js';
 import { playableAway } from '../../basics/hanabi-util.js';
 import { get_result } from './action-helper.js';
 
@@ -16,7 +15,7 @@ import { logCard, logClue } from '../../tools/log.js';
  */
 export function find_fix_clue(state) {
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
-	const fix_needed = Hand.find_playables(state, partner).filter(c => playableAway(state, c) !== 0);
+	const fix_needed = state.common.thinksPlayables(state, partner).filter(c => playableAway(state, c) !== 0);
 
 	if (fix_needed.length === 0) {
 		logger.info('no fix needed');
@@ -51,8 +50,9 @@ export function find_fix_clue(state) {
 
 		const { hypo_state, value } = get_result(state, clue);
 		const fixed = fix_needed.some(c => {
-			const card = hypo_state.hands[partner].findOrder(c.order);
-			return card.matches_inferences() || card.inferred.length === 0 || card.reset;
+			const actual = hypo_state.hands[partner].findOrder(c.order);
+			const card = hypo_state.common.thoughts[c.order];
+			return card.inferred.some(inf => inf.matches(actual)) || card.inferred.length === 0 || card.reset;
 		});
 
 		if (fixed) {

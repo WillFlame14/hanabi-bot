@@ -24,13 +24,13 @@ describe('ambiguous clues', () => {
 		takeTurn(state, 'Bob clues green to Alice (slot 2)');
 
 		// Alice's slot 2 should be [g1,g2].
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g1', 'g2']);
-		assert.equal(state.hands[PLAYER.CATHY][0].reasoning.length, 1);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['g1', 'g2']);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.CATHY][0].order].reasoning.length, 1);
 
 		takeTurn(state, 'Cathy discards p3', 'r1');
 
 		// Alice's slot 2 should just be g1 now.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['g1']);
 	});
 
 	it('understands a self-connecting play clue', () => {
@@ -48,7 +48,7 @@ describe('ambiguous clues', () => {
 		takeTurn(state, 'Alice plays g1 (slot 4)');
 
 		// Alice's slot 4 (used to be slot 3) should just be g2 now.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['g2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['g2']);
 	});
 
 	it('understands a delayed finesse', () => {
@@ -65,19 +65,19 @@ describe('ambiguous clues', () => {
 		takeTurn(state, 'Bob clues red to Alice (slot 3)');
 
 		// Alice's slot 3 should be [r3,r4].
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][2].order], ['r3', 'r4']);
 
 		takeTurn(state, 'Cathy plays r2', 'y1');
 
 		// Alice's slot 3 should still be [r3,r4] to allow for the possibility of a hidden finesse.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['r3', 'r4']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][2].order], ['r3', 'r4']);
 
 		takeTurn(state, 'Alice discards b1 (slot 5)');
 		takeTurn(state, 'Bob discards b4', 'r1');
 		takeTurn(state, 'Cathy plays r3', 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r4] now.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r4']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['r4']);
 	});
 
 	it('understands a fake delayed finesse', () => {
@@ -96,7 +96,7 @@ describe('ambiguous clues', () => {
 		takeTurn(state, 'Cathy discards p3', 'g1');
 
 		// Alice's slot 4 (used to be slot 3) should be just [r2] now.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], ['r2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['r2']);
 	});
 });
 
@@ -109,7 +109,7 @@ describe('guide principle', () => {
 		], { level: 5 });
 
 		// Giving 3 to Cathy should be unsafe since b5 will be discarded.
-		assert.equal(clue_safe(state, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);
+		assert.equal(clue_safe(state, state.me, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);
 	});
 });
 
@@ -129,12 +129,13 @@ describe('mistake recovery', () => {
 		takeTurn(state, 'Bob clues 5 to Alice (slot 5)');
 
 		// Alice should interpret g2 as an ambiguous finesse.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['g2']);
 
 		takeTurn(state, 'Cathy clues 2 to Bob');
 
 		// Alice should cancel ambiguous g2 in slot 2.
-		assert.ok(state.hands[PLAYER.ALICE][1].inferred.length > 1);
-		assert.equal(state.hands[PLAYER.ALICE][1].finessed, false);
+		// Note that this is not common since Bob is unaware of what happened.
+		assert.ok(state.players[PLAYER.ALICE].thoughts[state.hands[PLAYER.ALICE][1].order].inferred.length > 1);
+		assert.equal(state.players[PLAYER.ALICE].thoughts[state.hands[PLAYER.ALICE][1].order].finessed, false);
 	});
 });

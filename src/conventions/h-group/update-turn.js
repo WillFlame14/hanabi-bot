@@ -1,11 +1,11 @@
-import { update_hypo_stacks } from '../../basics/helper.js';
+import { team_elim, update_hypo_stacks } from '../../basics/helper.js';
 import { playableAway, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} State
- * @typedef {import('../../basics/Card.js').Card} Card
+ * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').TurnAction} TurnAction
  * @typedef {import('../../types.js').Connection} Connection
  */
@@ -17,19 +17,19 @@ import { logCard } from '../../tools/log.js';
  * @param {boolean} undo_infs
  */
 function remove_finesse(state, waiting_index, undo_infs = true) {
-	const { connections, focused_card, inference } = state.waiting_connections[waiting_index];
+	const { connections, focused_card, inference } = state.common.waiting_connections[waiting_index];
+	const focus_thoughts = state.common.thoughts[focused_card.order];
 
 	// Remove remaining finesses
 	for (const connection of connections) {
-		const { type, reacting } = connection;
-		const card = state.hands[reacting].findOrder(connection.card.order);
+		const card = state.common.thoughts[connection.card.order];
 
 		if (card === undefined) {
 			logger.warn(`card ${logCard(connection.card)} with order ${connection.card.order} no longer exists in hand to cancel connection`);
 			continue;
 		}
 
-		if (type === 'finesse') {
+		if (connection.type === 'finesse') {
 			card.finessed = false;
 		}
 
@@ -46,13 +46,13 @@ function remove_finesse(state, waiting_index, undo_infs = true) {
 	}
 
 	// Remove inference
-	focused_card.subtract('inferred', [inference]);
+	focus_thoughts.subtract('inferred', [inference]);
 
 	// Update hypo stacks if the card is now playable
-	if (focused_card.inferred.length === 1) {
-		const { suitIndex, rank } = focused_card.inferred[0];
-		if (state.hypo_stacks[state.ourPlayerIndex][suitIndex] + 1 === rank) {
-			update_hypo_stacks(state);
+	if (focus_thoughts.inferred.length === 1) {
+		const { suitIndex, rank } = focus_thoughts.inferred[0];
+		if (state.common.hypo_stacks[suitIndex] + 1 === rank) {
+			update_hypo_stacks(state, state.common);
 		}
 	}
 }
@@ -63,17 +63,18 @@ function remove_finesse(state, waiting_index, undo_infs = true) {
  * @param {TurnAction} action
  */
 export function update_turn(state, action) {
+	const { common } = state;
 	const { currentPlayerIndex } = action;
 	const lastPlayerIndex = (currentPlayerIndex + state.numPlayers - 1) % state.numPlayers;
 
 	/** @type {number[]} */
 	const to_remove = [];
 
-	/** @type {{card: Card, inferences: {suitIndex: number, rank: number}[], connections: Connection[]}[]} */
+	/** @type {{card: ActualCard, inferences: {suitIndex: number, rank: number}[], connections: Connection[]}[]} */
 	const demonstrated = [];
 
-	for (let i = 0; i < state.waiting_connections.length; i++) {
-		const { connections, conn_index, focused_card, inference, giver, action_index, fake, ambiguousPassback } = state.waiting_connections[i];
+	for (let i = 0; i < common.waiting_connections.length; i++) {
+		const { connections, conn_index, focused_card, inference, giver, action_index, fake, ambiguousPassback } = common.waiting_connections[i];
 		const { type, reacting, card: old_card, identities } = connections[conn_index];
 		logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(c => logCard(c))} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
 
@@ -94,21 +95,23 @@ export function update_turn(state, action) {
 						!ambiguousPassback;							// haven't already tried to pass back
 				};
 
+				const { card: reacting_card } = state.last_actions[reacting];
+
 				// Didn't play into finesse
 				if (type === 'finesse') {
 					if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
 						logger.info(`${state.playerNames[reacting]} didn't play into unplayable finesse`);
 					}
-					else if (state.last_actions[reacting].type === 'play' && state.last_actions[reacting].card?.finessed) {
+					else if (state.last_actions[reacting].type === 'play' && reacting_card && common.thoughts[reacting_card.order].finessed) {
 						logger.info(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
 					}
 					else if (passback()) {
 						logger.warn(`${state.playerNames[reacting]} didn't play into finesse but they need to play multiple non-hidden cards, passing back`);
-						state.waiting_connections[i].ambiguousPassback = true;
+						common.waiting_connections[i].ambiguousPassback = true;
 					}
 					else {
 						// Check if the card could be superpositioned on a finesse that is not yet playable.
-						const unplayable_connections = state.waiting_connections.filter((wc, index) =>
+						const unplayable_connections = common.waiting_connections.filter((wc, index) =>
 							index !== i && wc.connections.some((conn, index) =>
 								index >= conn_index && conn.card.order === old_card.order && conn.identities.some(i => playableAway(state, i) > 0)));
 
@@ -143,20 +146,21 @@ export function update_turn(state, action) {
 					logger.info(`waiting card ${identities.length === 1 ? logCard(identities[0]) : '(unknown)'} played`);
 
 					// Advance waiting connection to next card that still exists
-					state.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
+					common.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
 						index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
 
-					if (state.waiting_connections[i].conn_index === -1) {
+					if (common.waiting_connections[i].conn_index === -1) {
 						to_remove.push(i);
 					}
 
 					// Finesses demonstrate that a card must be playable and not save
 					if (type === 'finesse' || type === 'prompt') {
 						const connection = state.last_actions[reacting].card;
-						if (type === 'finesse' && connection.clued && connection.focused) {
+						const thoughts = common.thoughts[connection.order];
+						if (type === 'finesse' && connection.clued && thoughts.focused) {
 							logger.warn('connecting card was focused with a clue (stomped on), not confirming finesse');
 						}
-						else if (type === 'prompt' && connection.possible.length === 1) {
+						else if (type === 'prompt' && thoughts.possible.length === 1) {
 							logger.warn('connecting card was filled in completely, not confirming prompt');
 						}
 						else {
@@ -171,7 +175,7 @@ export function update_turn(state, action) {
 					}
 				}
 				// The card was discarded and its copy is not visible
-				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.ourPlayerIndex, old_card).length === 0) {
+				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.me, old_card).length === 0) {
 					logger.info(`waiting card ${logCard(old_card)} discarded?? removing finesse`);
 					remove_finesse(state, i);
 
@@ -188,31 +192,32 @@ export function update_turn(state, action) {
 			}
 
 			// The giver's card must have been known before the finesse was given
-			if (old_card.matches(last_action, { infer: true }) && card.finessed && last_action.card.reasoning[0] < action_index) {
+			if (state.me.thoughts[old_card.order].matches(last_action, { infer: true }) && state.common.thoughts[old_card.order].finessed && state.common.thoughts[last_action.card.order].reasoning[0] < action_index) {
 				logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`);
 
 				// Advance waiting connection to next card that still exists
-				state.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
+				common.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
 					index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
 
-				if (state.waiting_connections[i].conn_index === -1) {
+				if (common.waiting_connections[i].conn_index === -1) {
 					to_remove.push(i);
 				}
 
 				if (!fake) {
+					const thoughts = state.common.thoughts[card.order];
 					// Remove finesse
-					card.subtract('inferred', identities);
+					thoughts.subtract('inferred', identities);
 
-					if (card.inferred.length === 0) {
-						if (card.old_inferred !== undefined) {
+					if (thoughts.inferred.length === 0) {
+						if (thoughts.old_inferred !== undefined) {
 							// Restore old inferences
-							card.inferred = card.old_inferred;
-							card.old_inferred = undefined;
+							thoughts.inferred = thoughts.old_inferred;
+							thoughts.old_inferred = undefined;
 						}
 						else {
-							logger.error(`no old inferences on card ${logCard(card)}! current inferences ${card.inferred.map(c => logCard(c))}`);
+							logger.error(`no old inferences on card ${logCard(thoughts)}! current inferences ${thoughts.inferred.map(c => logCard(c))}`);
 						}
-						card.finessed = false;
+						thoughts.finessed = false;
 					}
 				}
 			}
@@ -221,40 +226,44 @@ export function update_turn(state, action) {
 
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
 	for (const { card, inferences, connections } of demonstrated) {
-		logger.info(`intersecting card ${logCard(card)} with inferences ${inferences.map(c => logCard(c)).join(',')}`);
+		const thoughts = state.common.thoughts[card.order];
+		logger.info(`intersecting card ${logCard(thoughts)} with inferences ${inferences.map(c => logCard(c)).join(',')}`);
 
 		for (const connection of connections) {
 			const { reacting, identities } = connection;
-			const actual_card = state.hands[reacting].findOrder(connection.card.order);
+			const connecting_card = state.common.thoughts[connection.card.order];
+			const card_exists = state.hands[reacting].some(c => c.order === connection.card.order);
 
-			if (actual_card === undefined) {
+			if (!card_exists) {
 				continue;
 			}
 
-			if (!actual_card.superposition) {
-				actual_card.intersect('inferred', identities);
-				actual_card.superposition = true;
+			if (!connecting_card.superposition) {
+				connecting_card.intersect('inferred', identities);
+				connecting_card.superposition = true;
 			}
 			else {
-				actual_card.union('inferred', identities);
+				connecting_card.union('inferred', identities);
 			}
 		}
 
-		if (!card.superposition) {
-			card.intersect('inferred', inferences);
-			card.superposition = true;
+		if (!thoughts.superposition) {
+			thoughts.intersect('inferred', inferences);
+			thoughts.superposition = true;
 		}
 		else {
-			card.union('inferred', inferences);
+			thoughts.union('inferred', inferences);
 		}
 	}
 
-	update_hypo_stacks(state);
+	update_hypo_stacks(state, state.common);
 
-	demonstrated.forEach(({card}) => card.superposition = false);
+	demonstrated.forEach(({card}) => state.common.thoughts[card.order].superposition = false);
+	state.common.good_touch_elim(state);
+	team_elim(state);
 
 	// Filter out connections that have been removed (or connections to the same card where others have been demonstrated)
-	state.waiting_connections = state.waiting_connections.filter((wc, i) =>
+	common.waiting_connections = common.waiting_connections.filter((wc, i) =>
 		!to_remove.includes(i) &&
 		!demonstrated.some(d => d.card.order === wc.focused_card.order &&
 			!d.inferences.some(inf => wc.inference.suitIndex === inf.suitIndex && wc.inference.rank === inf.rank)

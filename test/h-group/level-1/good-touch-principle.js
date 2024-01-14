@@ -4,7 +4,6 @@ import { describe, it } from 'node:test';
 import { PLAYER, expandShortCard, setup, takeTurn } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
-import { HGroup_Hand as Hand } from '../../../src/conventions/h-hand.js';
 
 import logger from '../../../src/tools/logger.js';
 
@@ -23,9 +22,9 @@ describe('good touch principle', () => {
 
 		takeTurn(state, 'Bob clues purple to Alice (slots 4,5)');
 
-		// Our slot 5 should be p5, and our slot 4 should have no inferences.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['p5']);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], []);
+		// Our slot 5 should be p5, and our slot 4 should be (global) trash.
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][4].order], ['p5']);
+		assert.ok(state.common.thinksTrash(state, PLAYER.ALICE).some(c => c.order === state.hands[PLAYER.ALICE][3].order));
 	});
 
 	it('eliminates from focus correctly (direct save)', () => {
@@ -41,10 +40,10 @@ describe('good touch principle', () => {
 
 		takeTurn(state, 'Bob clues green to Alice (slots 3,4,5)');
 
-		// Our slot 5 should be g4, and our slots 2 and 3 should have no inferences.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['g4']);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][3], []);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], []);
+		// Our slot 5 should be g4, and our slots 2 and 3 should have no inferences (to us).
+		ExAsserts.cardHasInferences(state.players[PLAYER.ALICE].thoughts[state.hands[PLAYER.ALICE][4].order], ['g4']);
+		const trash = state.players[PLAYER.ALICE].thinksTrash(state, PLAYER.ALICE);
+		assert.ok([2,3].map(i => state.hands[PLAYER.ALICE][i].order).every(order => trash.some(c => c.order === order)));
 	});
 
 	it('eliminates from focus (indirect)', () => {
@@ -62,14 +61,14 @@ describe('good touch principle', () => {
 		takeTurn(state, 'Bob clues 4 to Alice (slots 3,5)');
 
 		// The two 4's in Alice's hand should be inferred y4,b4.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], ['y4', 'b4']);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['y4', 'b4']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][2].order], ['y4', 'b4']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][4].order], ['y4', 'b4']);
 
 		takeTurn(state, 'Cathy clues 4 to Bob');		// getting b4
 
 		// Aice's slot 5 should be y4 only, and slot 3 should have no inferences.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][2], []);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['y4']);
+		assert.ok(state.common.thinksTrash(state, PLAYER.ALICE).some(c => c.order === state.hands[PLAYER.ALICE][2].order));
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][4].order], ['y4']);
 	});
 
 	it('eliminates from focus and gets known trash', () => {
@@ -84,7 +83,7 @@ describe('good touch principle', () => {
 
 		takeTurn(state, 'Bob clues red to Alice (slots 4,5)');
 
-		const trash = Hand.find_known_trash(state, PLAYER.ALICE);
+		const trash = state.common.thinksTrash(state, PLAYER.ALICE);
 		assert.ok(trash[0]?.order === 1);
 	});
 
@@ -103,9 +102,9 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p5.
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p5'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
+		assert.deepEqual(state.players[PLAYER.ALICE].links, expected_links);
 
-		const playables = Hand.find_playables(state, PLAYER.ALICE);
+		const playables = state.common.thinksPlayables(state, PLAYER.ALICE);
 		assert.deepEqual(playables.map(c => c.order), []);
 	});
 
@@ -124,14 +123,14 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p5 (see previous test).
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p5'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
+		assert.deepEqual(state.players[PLAYER.ALICE].links, expected_links);
 
 		takeTurn(state, 'Bob clues 5 to Alice (slot 3)');
 
 		// Link should be gone now
-		assert.deepEqual(state.links[PLAYER.ALICE], []);
+		assert.deepEqual(state.players[PLAYER.ALICE].links, []);
 
-		const trash = Hand.find_known_trash(state, PLAYER.ALICE);
+		const trash = state.common.thinksTrash(state, PLAYER.ALICE);
 		assert.deepEqual(trash.map(c => c.order), [2, 1]);
 	});
 
@@ -150,14 +149,14 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p5 (see previous test).
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p5'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
+		assert.deepEqual(state.players[PLAYER.ALICE].links, expected_links);
 
 		takeTurn(state, 'Bob clues 5 to Alice (slot 5)');
 
 		// Link should be gone now
-		assert.deepEqual(state.links[PLAYER.ALICE], []);
+		assert.deepEqual(state.players[PLAYER.ALICE].links, []);
 
-		const trash = Hand.find_known_trash(state, PLAYER.ALICE);
+		const trash = state.common.thinksTrash(state, PLAYER.ALICE);
 		assert.deepEqual(trash.map(c => c.order), [2]);
 	});
 
@@ -176,14 +175,14 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p5 (see previous test).
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p5'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
+		assert.deepEqual(state.players[PLAYER.ALICE].links, expected_links);
 
 		takeTurn(state, 'Bob discards y2', 'p5');
 
 		// Link should be gone now
-		assert.deepEqual(state.links[PLAYER.ALICE], []);
+		assert.deepEqual(state.players[PLAYER.ALICE].links, []);
 
-		const trash = Hand.find_known_trash(state, PLAYER.ALICE);
+		const trash = state.players[PLAYER.ALICE].thinksTrash(state, PLAYER.ALICE);
 		assert.deepEqual(trash.map(c => c.order), [2, 1]);
 	});
 
@@ -202,13 +201,13 @@ describe('good touch principle', () => {
 
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p2.
 		const expected_links = [{ cards: [3, 4].map(index => state.hands[PLAYER.ALICE][index]), identities: ['p2'].map(expandShortCard), promised: false }];
-		assert.deepEqual(state.links[PLAYER.ALICE], expected_links);
+		assert.deepEqual(state.players[PLAYER.ALICE].links, expected_links);
 
 		takeTurn(state, 'Alice bombs p1 (slot 5)');
 
 		// Link should be gone now, Alice's new slot 5 should be p2.
-		assert.deepEqual(state.links[PLAYER.ALICE], []);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['p2']);
+		assert.deepEqual(state.players[PLAYER.ALICE].links, []);
+		ExAsserts.cardHasInferences(state.players[PLAYER.ALICE].thoughts[state.hands[PLAYER.ALICE][4].order], ['p2']);
 	});
 
 	it('plays from focus (no link)', () => {
@@ -223,7 +222,7 @@ describe('good touch principle', () => {
 
 		takeTurn(state, 'Bob clues 2 to Alice (slots 1,3)');
 
-		const playables = Hand.find_playables(state, PLAYER.ALICE);
+		const playables = state.common.thinksPlayables(state, PLAYER.ALICE);
 		assert.deepEqual(playables.map(c => c.order), [4]);
 	});
 
@@ -240,7 +239,7 @@ describe('good touch principle', () => {
 
 		takeTurn(state, 'Bob clues 2 to Alice (slots 1,3)');
 
-		const playables = Hand.find_playables(state, PLAYER.ALICE);
+		const playables = state.common.thinksPlayables(state, PLAYER.ALICE);
 		assert.deepEqual(playables.map(c => c.order), [4]);
 	});
 
@@ -257,6 +256,6 @@ describe('good touch principle', () => {
 		takeTurn(state, 'Alice clues 1 to Bob');
 		takeTurn(state, 'Bob plays p1', 'p4');
 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][4], ['r1', 'y1', 'g1', 'b1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][4].order], ['r1', 'y1', 'g1', 'b1']);
 	});
 });

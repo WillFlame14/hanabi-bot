@@ -41,8 +41,8 @@ export function initConsole() {
 
 				switch(parts[0]) {
 					case 'hand': {
-						if (parts.length !== 2) {
-							logger.warn('Correct usage is "hand <playerName>"');
+						if (parts.length < 2 || parts.length > 3) {
+							logger.warn('Correct usage is "hand <playerName> [<playerIndex>]"');
 							break;
 						}
 						const playerName = parts[1];
@@ -52,7 +52,7 @@ export function initConsole() {
 							break;
 						}
 						const playerIndex = state.playerNames.indexOf(playerName);
-						console.log(logHand(state.hands[playerIndex]), logLinks(state.links[playerIndex]));
+						console.log(logHand(state.hands[playerIndex], Number(parts[2]) ? state.players[Number(parts[2])] : undefined), logLinks(state.players[playerIndex].links));
 						break;
 					}
 					case 'state':

@@ -1,5 +1,4 @@
 import { ACTION, CLUE } from '../../constants.js';
-import { Hand } from '../../basics/Hand.js';
 import { clue_value } from './action-helper.js';
 import { getPace, isCritical, isTrash, playableAway } from '../../basics/hanabi-util.js';
 import { find_sarcastic } from './interpret-discard.js';
@@ -24,29 +23,31 @@ import { find_fix_clue } from './fix-clues.js';
  * @returns {PerformAction}
  */
 export function take_action(state) {
-	const { tableID } = state;
+	const { common, tableID } = state;
 	const hand = state.hands[state.ourPlayerIndex];
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
 	const partner_hand = state.hands[partner];
 
 	// Look for playables, trash and important discards in own hand
-	let playable_cards = Hand.find_playables(state, state.ourPlayerIndex);
-	let trash_cards = Hand.find_known_trash(state, state.ourPlayerIndex).filter(c => c.clued);
+	let playable_cards = state.me.thinksPlayables(state, state.ourPlayerIndex).map(c => state.me.thoughts[c.order]);
+	let trash_cards = state.me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued);
 
 	// Add cards called to discard
-	for (const card of hand) {
-		if (!trash_cards.some(c => c.order === card.order) && card.called_to_discard && card.possible.some(p => !isCritical(state, p))) {
+	for (const { order } of hand) {
+		const card = state.me.thoughts[order];
+		if (!trash_cards.some(c => c.order === order) && card.called_to_discard && card.possible.some(p => !isCritical(state, p))) {
 			trash_cards.push(card);
 		}
 	}
 
 	// Discards must be inferred, playable, trash and duplicated in our hand
-	const discards = playable_cards.filter(card => {
+	const discards = playable_cards.filter(({ order }) => {
+		const card = state.me.thoughts[order];
 		const id = card.identity({ infer: true });
 
 		return id !== undefined &&
 			trash_cards.some(c => c.order === card.order) &&
-			playable_cards.some(c => c.matches(id, { infer: true }) && c.order !== card.order);
+			playable_cards.some(c => state.me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
 	});
 
 	// Remove trash cards from playables and discards from trash cards
@@ -71,24 +72,24 @@ export function take_action(state) {
 
 	const fix_clue = find_fix_clue(state);
 
-	const locked_discard_action = { tableID, type: ACTION.DISCARD, target: Hand.locked_discard(state, state.ourPlayerIndex).order };
+	const locked_discard_action = { tableID, type: ACTION.DISCARD, target: state.me.lockedDiscard(state, state.hands[state.ourPlayerIndex]).order };
 
 	// Stalling situation
-	if (Hand.isLocked(state, state.ourPlayerIndex)) {
+	if (state.me.thinksLocked(state, state.ourPlayerIndex)) {
 		// Forced discard
 		if (state.clue_tokens === 0) {
 			return locked_discard_action;
 		}
 
 		// Bad situation (for now, just treat as forced discard)
-		if (Hand.isLocked(state, partner)) {
+		if (state.me.thinksLocked(state, partner)) {
 			return locked_discard_action;
 		}
 
-		const chop_trash = isTrash(state, state.ourPlayerIndex, chop, chop.order);
+		const chop_trash = isTrash(state, state.me, chop, chop.order);
 
 		// Chop is delayed playable
-		if (!chop_trash && state.hypo_stacks[state.ourPlayerIndex][chop.suitIndex] + 1 === chop.rank) {
+		if (!chop_trash && state.me.hypo_stacks[chop.suitIndex] + 1 === chop.rank) {
 			const clue = { type: CLUE.COLOUR, value: chop.suitIndex, target: partner };
 			return Utils.clueToAction(clue, tableID);
 		}
@@ -143,20 +144,19 @@ export function take_action(state) {
 
 	logger.info('fix clue?', fix_clue ? logClue(fix_clue) : undefined);
 
-	if (Hand.isLoaded(state, partner) || partner_hand.some(c => c.called_to_discard) || (chop_away === 0 && this.turn_count !== 1)) {
-		if (Hand.isLoaded(state, partner)) {
-			const playables = Hand.find_playables(state, partner);
+	if (common.thinksLoaded(state, partner) || partner_hand.some(c => common.thoughts[c.order].called_to_discard) || (chop_away === 0 && this.turn_count !== 1)) {
+		if (common.thinksLoaded(state, partner)) {
+			const playables = common.thinksPlayables(state, partner);
 
 			if (playables.length > 0) {
 				logger.info('partner loaded on playables:', playables.map(c => logCard(c)));
 			}
 			else {
-				const trash = Hand.find_known_trash(state, partner);
-				logger.info('partner loaded on trash:', trash.map(c => logCard(c)));
+				logger.info('partner loaded on trash:', common.thinksTrash(state, partner).map(c => logCard(c)));
 			}
 		}
 		else {
-			logger.info('partner loaded', (partner_hand.some(c => c.called_to_discard) ? 'on ptd' : 'on playable slot 1'));
+			logger.info('partner loaded', (partner_hand.some(c => common.thoughts[c.order].called_to_discard) ? 'on ptd' : 'on playable slot 1'));
 		}
 
 		if (playable_cards.length > 0) {
@@ -183,7 +183,7 @@ export function take_action(state) {
 			}
 
 			// Bomb a possibly playable chop
-			if (hand[0].inferred.some(c => playableAway(state, c) === 0)) {
+			if (state.me.thoughts[hand[0].order].inferred.some(c => playableAway(state, c) === 0)) {
 				return { tableID, type: ACTION.PLAY, target: hand[0].order };
 			}
 
@@ -192,19 +192,19 @@ export function take_action(state) {
 	}
 
 	if (chop_away === 1) {
-		const connecting = hand.findCards({ suitIndex: chop.suitIndex, rank: chop.rank - 1 }, { infer: true });
+		const connecting = hand.filter(c => common.thoughts[c.order].matches({ suitIndex: chop.suitIndex, rank: chop.rank - 1 }, { infer: true }));
 
 		if (connecting.length > 0) {
 			return  { tableID, type: ACTION.PLAY, target: connecting[0].order };
 		}
 	}
 
-	if (Hand.isLocked(state, partner)) {
-		for (const playable of playable_cards) {
+	if (common.thinksLocked(state, partner)) {
+		for (const playable of playable_cards.concat(discards)) {
 			const identity = playable.identity({ infer: true });
 
 			if (identity !== undefined) {
-				const unlocked = unlock_promise(state, {
+				const unlocked_order = unlock_promise(state, {
 					type: 'play',
 					order: playable.order,
 					playerIndex: state.ourPlayerIndex,
@@ -212,7 +212,7 @@ export function take_action(state) {
 					rank: identity.rank
 				}, state.ourPlayerIndex, partner, state.locked_shifts[playable.order]);
 
-				if (unlocked?.matches({ suitIndex: identity.suitIndex, rank: identity.rank + 1 })) {
+				if (unlocked_order && state.me.thoughts[unlocked_order].matches({ suitIndex: identity.suitIndex, rank: identity.rank + 1 })) {
 					return { tableID, type: ACTION.PLAY, target: playable.order };
 				}
 			}
@@ -244,7 +244,7 @@ export function take_action(state) {
 		}
 	}
 
-	const playable_sarcastic = discards.find(card => playableAway(state, card) === 0 && find_sarcastic(hand, card).length === 1);
+	const playable_sarcastic = discards.find(card => playableAway(state, card) === 0 && find_sarcastic(hand, state.me, card).length === 1);
 
 	if (playable_sarcastic !== undefined && state.clue_tokens !== 8) {
 		return { tableID, type: ACTION.DISCARD, target: playable_sarcastic.order };

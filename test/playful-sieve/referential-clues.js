@@ -18,8 +18,8 @@ describe('ref play', () => {
 
 		takeTurn(state, 'Alice clues green to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][1].finessed, true);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][1], ['r1', 'y1', 'b1', 'p1']);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][1].order].finessed, true);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][1].order], ['r1', 'y1', 'b1', 'p1']);
 	});
 
 	it('understands a gapped referential play', () => {
@@ -30,8 +30,8 @@ describe('ref play', () => {
 
 		takeTurn(state, 'Alice clues purple to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][3].finessed, true);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][3], ['r1', 'y1', 'g1', 'b1']);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][3].order].finessed, true);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][3].order], ['r1', 'y1', 'g1', 'b1']);
 	});
 
 	it('understands a rightmost biased referential play', () => {
@@ -42,8 +42,8 @@ describe('ref play', () => {
 
 		takeTurn(state, 'Alice clues blue to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][4].finessed, true);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][4], ['b1']);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][4].order].finessed, true);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][4].order], ['b1']);
 	});
 
 	it('understands a loaded colour clue', () => {
@@ -56,8 +56,10 @@ describe('ref play', () => {
 		takeTurn(state, 'Bob clues 1 to Alice (slot 5)');
 		takeTurn(state, 'Alice clues red to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][4].finessed, true);
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][4], ['y1', 'b2', 'p1']);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][4].order].finessed, true);
+
+		takeTurn(state, 'Bob plays b1', 'p1');
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][4].order], ['y1', 'b2', 'p1']);
 	});
 });
 
@@ -72,7 +74,7 @@ describe('ref discard', () => {
 
 		takeTurn(state, 'Alice clues 3 to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][1].called_to_discard, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][1].order].called_to_discard, true);
 	});
 
 	it('understands a gapped referential discard', () => {
@@ -85,6 +87,6 @@ describe('ref discard', () => {
 
 		takeTurn(state, 'Alice clues 3 to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][2].called_to_discard, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][2].order].called_to_discard, true);
 	});
 });

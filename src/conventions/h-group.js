@@ -5,9 +5,12 @@ import { interpret_play } from './h-group/interpret-play.js';
 import { take_action } from './h-group/take-action.js';
 import { update_turn } from './h-group/update-turn.js';
 
-import { HGroup_Hand } from './h-hand.js';
+import { HGroup_Player } from './h-player.js';
 import * as Utils from '../tools/util.js';
 
+/**
+ * @property {HGroup_Player[]} players
+ */
 export default class HGroup extends State {
 	interpret_clue = interpret_clue;
 	interpret_discard = interpret_discard;
@@ -15,8 +18,7 @@ export default class HGroup extends State {
 	update_turn = update_turn;
 	interpret_play = interpret_play;
 
-	hand_history = /** @type {HGroup_Hand[]} */ ([]);
-	hands = /** @type {HGroup_Hand[]} */ ([]);
+	player_history = /** @type {HGroup_Player[]} */ ([]);
 
 	/**
 	 * @param {number} tableID
@@ -29,12 +31,17 @@ export default class HGroup extends State {
 	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress, level = 1) {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
 
-		this.hands = [];
-		for (let i = 0; i < playerNames.length; i++) {
-			this.hands.push(new HGroup_Hand());
-		}
+		this.players = this.players.map(p =>
+			new HGroup_Player(p.playerIndex, p.all_possible, p.all_inferred, p.hypo_stacks, p.thoughts, p.links, p.unknown_plays));
+
+		const c = this.common;
+		this.common = new HGroup_Player(c.playerIndex, c.all_possible, c.all_inferred, c.hypo_stacks, c.thoughts, c.links, c.unknown_plays);
 
 		this.level = level;
+	}
+
+	get me() {
+		return this.players[this.ourPlayerIndex];
 	}
 
 	createBlank() {
@@ -51,12 +58,19 @@ export default class HGroup extends State {
 			throw new Error('Maximum recursive depth reached.');
 		}
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'last_actions',
-			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'last_actions',
+			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft', 'elims'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
 		}
+
+		for (const player of newState.players.concat([newState.common])) {
+			for (const c of newState.hands.flat()) {
+				player.thoughts[c.order].actualCard = c;
+			}
+		}
+
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;
 	}

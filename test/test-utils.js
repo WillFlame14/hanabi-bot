@@ -1,6 +1,5 @@
 import { CLUE } from '../src/constants.js';
 import { cardCount } from '../src/variants.js';
-import * as Basics from '../src/basics.js';
 import * as Utils from '../src/tools/util.js';
 import { logAction, logClue } from '../src/tools/log.js';
 
@@ -55,8 +54,9 @@ function init_state(state, options) {
 	if (options.play_stacks) {
 		state.play_stacks = options.play_stacks;
 		for (let i = 0; i < state.numPlayers; i++) {
-			state.hypo_stacks[i] = options.play_stacks.slice();
+			state.players[i].hypo_stacks = options.play_stacks.slice();
 		}
+		state.common.hypo_stacks = options.play_stacks.slice();
 	}
 
 	// Initialize discard stacks
@@ -66,16 +66,14 @@ function init_state(state, options) {
 
 		state.discard_stacks[suitIndex][rank - 1]++;
 
-		// Card is now definitely known to everyone - eliminate
-		for (let i = 0; i < state.numPlayers; i++) {
-			Basics.card_elim(state, i, identity);
-			Basics.refresh_links(state, i);
-		}
-
 		// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
 		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, identity) && state.max_ranks[suitIndex] > rank - 1) {
 			state.max_ranks[suitIndex] = rank - 1;
 		}
+	}
+
+	for (const player of state.players.concat(state.common)) {
+		player.card_elim(state);
 	}
 
 	state.currentPlayerIndex = options.starting ?? 0;
@@ -92,8 +90,10 @@ function init_state(state, options) {
  * @param {Partial<SetupOptions>} options
  */
 function injectFuncs(options) {
+	// @ts-ignore
 	this.createBlankDefault = this.createBlank;
 	this.createBlank = function () {
+		// @ts-ignore
 		const new_state = this.createBlankDefault();
 		init_state(new_state, options);
 		injectFuncs.bind(new_state)(options);
@@ -130,6 +130,10 @@ export function setup(StateClass, hands, options = {}) {
 	init_state(state, options);
 	injectFuncs.bind(state)(options);
 
+	for (const player of state.players) {
+		player.card_elim(state);
+	}
+
 	return state;
 }
 
@@ -152,7 +156,7 @@ export function takeTurn(state, rawAction, draw = 'xx') {
 		throw new Error(`Expected ${expectedPlayer}'s turn for action (${logAction(action)}), test written incorrectly?`);
 	}
 
-	state.handle_action(action);
+	state.handle_action(action, true);
 
 	if (action.type === 'play' || action.type === 'discard') {
 		if (draw === 'xx' && state.currentPlayerIndex !== state.ourPlayerIndex) {
@@ -160,11 +164,11 @@ export function takeTurn(state, rawAction, draw = 'xx') {
 		}
 
 		const { suitIndex, rank } = expandShortCard(draw);
-		state.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank });
+		state.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank }, true);
 	}
 
 	const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.numPlayers;
-	state.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex });
+	state.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex }, true);
 }
 
 /**

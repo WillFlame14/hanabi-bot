@@ -2,6 +2,7 @@ import * as Basics from './basics.js';
 import logger from './tools/logger.js';
 import { logAction, logCard, logPerformAction } from './tools/log.js';
 import * as Utils from './tools/util.js';
+import { team_elim } from './basics/helper.js';
 
 /**
  * @typedef {import('./types.js').Action} Action
@@ -51,6 +52,7 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
+			Object.assign(this.players[playerIndex].thoughts[order], {suitIndex, rank});
 
 			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
@@ -76,26 +78,27 @@ export function handle_action(action, catchup = false) {
 
 			if (!catchup) {
 				// Update notes on cards
-				for (const card of this.hands.flat()) {
+				for (const { order } of this.hands.flat()) {
+					const card = this.common.thoughts[order];
 					if (card.saved || card.called_to_discard) {
 						const note = card.getNote();
 
-						if (this.notes[card.order] === undefined) {
-							this.notes[card.order] = { last: '', turn: 0, full: '' };
+						if (this.notes[order] === undefined) {
+							this.notes[order] = { last: '', turn: 0, full: '' };
 						}
 
 						// Only write a new note if it's different from the last note and is a later turn
-						if (note !== this.notes[card.order].last && this.turn_count > this.notes[card.order].turn) {
-							this.notes[card.order].last = note;
-							this.notes[card.order].turn = this.turn_count;
+						if (note !== this.notes[order].last && this.turn_count > this.notes[order].turn) {
+							this.notes[order].last = note;
+							this.notes[order].turn = this.turn_count;
 
-							if (this.notes[card.order].full !== '') {
-								this.notes[card.order].full += ' | ';
+							if (this.notes[order].full !== '') {
+								this.notes[order].full += ' | ';
 							}
-							this.notes[card.order].full += `t${this.turn_count}: ${note}`;
+							this.notes[order].full += `t${this.turn_count}: ${note}`;
 
 							if (this.in_progress) {
-								Utils.sendCmd('note', { tableID: this.tableID, order: card.order, note: this.notes[card.order].full });
+								Utils.sendCmd('note', { tableID: this.tableID, order, note: this.notes[order].full });
 							}
 						}
 					}
@@ -122,6 +125,7 @@ export function handle_action(action, catchup = false) {
 
 			// Assign the card's identity if it isn't already known
 			Object.assign(card, {suitIndex, rank});
+			Object.assign(this.players[playerIndex].thoughts[order], {suitIndex, rank});
 
 			logger.highlight('yellowb', `Turn ${this.turn_count}: ${logAction(action)}`);
 
@@ -131,19 +135,23 @@ export function handle_action(action, catchup = false) {
 		}
 		case 'identify': {
 			const { order, playerIndex, suitIndex, rank, infer = false } = action;
+			const card = this.common.thoughts[order];
 
-			const card = this.hands[playerIndex].findOrder(order);
-			if (card === undefined) {
+			if (this.hands[playerIndex].findOrder(order) === undefined) {
 				throw new Error('Could not find card to rewrite!');
 			}
 			logger.info(`identifying card with order ${order} as ${logCard({ suitIndex, rank })}, infer? ${infer}`);
+
 			if (!infer) {
 				Object.assign(card, { suitIndex, rank });
+				Object.assign(this.me.thoughts[order], { suitIndex, rank });
+				Object.assign(this.hands[playerIndex].findOrder(order), { suitIndex, rank });
 			}
 			else {
 				card.intersect('inferred', [{ suitIndex, rank }]);
 			}
 			card.rewinded = true;
+			team_elim(this);
 			break;
 		}
 		case 'ignore': {

@@ -25,7 +25,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(state, 'Bob plays r1', 'y5');
 		takeTurn(state, 'Cathy clues 2 to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][4].chop_moved, false);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][4].order].chop_moved, false);
 	});
 
 	it('understands a tccm', () => {
@@ -39,7 +39,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(state, 'Bob plays r1', 'y5');
 		takeTurn(state, 'Cathy clues 2 to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][4].chop_moved, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][4].order].chop_moved, true);
 	});
 
 	it('understands a tccm on self', () => {
@@ -56,7 +56,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(state, 'Alice plays r1 (slot 1)');
 		takeTurn(state, 'Bob clues 2 to Alice (slot 2)');
 
-		assert.equal(state.hands[PLAYER.ALICE][4].chop_moved, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][4].order].chop_moved, true);
 	});
 
 	it(`doesn't tccm if locked`, () => {
@@ -77,7 +77,7 @@ describe('tempo clue chop moves', () => {
 
 		// TODO: This should work even if Cathy clues green, as long as a higher priority clue is available (level 9, stalling).
 
-		assert.equal(state.hands[PLAYER.BOB][3].chop_moved, false);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][3].order].chop_moved, false);
 	});
 
 	it(`doesn't tccm if getting a chop moved card`, () => {
@@ -95,7 +95,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(state, 'Donald clues 1 to Bob');
 		takeTurn(state, 'Alice clues yellow to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][1].chop_moved, false);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][1].order].chop_moved, false);
 	});
 
 	it(`doesn't tccm if getting a playable in other hand`, () => {
@@ -117,7 +117,7 @@ describe('tempo clue chop moves', () => {
 		// Gets p2 played, which unlocks touched g3 in Cathy's hand
 		takeTurn(state, 'Alice clues 2 to Bob');
 
-		assert.equal(state.hands[PLAYER.BOB][3].chop_moved, false);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][3].order].chop_moved, false);
 	});
 
 	it(`prefers tccm to cm a useful card`, () => {
@@ -150,7 +150,7 @@ describe('multiple tempo clues', () => {
 		takeTurn(state, 'Bob plays r1', 'y5');
 		takeTurn(state, 'Cathy clues red to Bob');
 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][2], ['r3']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][2].order], ['r3']);
 	});
 
 	it('understands a triple tempo clue', () => {
@@ -164,7 +164,7 @@ describe('multiple tempo clues', () => {
 		takeTurn(state, 'Bob plays r1', 'y5');
 		takeTurn(state, 'Cathy clues red to Bob');
 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][3], ['r4']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][3].order], ['r4']);
 	});
 
 	it('gives a triple tempo clue', () => {

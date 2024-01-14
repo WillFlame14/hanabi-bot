@@ -3,7 +3,7 @@ import { CLUE } from './constants.js';
 
 /**
  * @typedef {import('./types.js').Clue} Clue
- * @typedef {import('./types.js').BasicCard} BasicCard
+ * @typedef {import('./types.js').Identity} Identity
  * 
  * @typedef Variant
  * @property {number} id
@@ -16,7 +16,7 @@ import { CLUE } from './constants.js';
  * @property {boolean} [specialNoClueRanks]
  */
 
-const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/data/src/json/variants.json';
+const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/variants.json';
 
 /** @type {Promise<Variant[]>} */
 const variants_promise = new Promise((resolve, reject) => {
@@ -74,7 +74,7 @@ export const shortForms = /** @type {const} */ ({
 
 /**
  * Returns whether the card would be touched by the clue.
- * @param {{suitIndex: number, rank: number}} card
+ * @param {Identity} card
  * @param {string[]} suits
  * @param {Omit<Clue, 'target'>} clue
  */
@@ -132,7 +132,7 @@ export function isCluable(suits, clue) {
 /**
  * Returns the total number of cards for an identity.
  * @param {string[]} suits
- * @param {BasicCard} identity
+ * @param {Identity} identity
  */
 export function cardCount(suits, { suitIndex, rank }) {
 	if (suits[suitIndex] === 'Black') {

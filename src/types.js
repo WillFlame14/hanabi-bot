@@ -1,11 +1,12 @@
 /**
  * @typedef {import('./basics/Card.js').Card} Card
+ * @typedef {import('./basics/Card.js').ActualCard} ActualCard
  * @typedef {typeof import('./constants.js').CLUE} CLUE
  * @typedef {typeof import('./constants.js').ACTION} ACTION
  */
 
 /**
- * @typedef BasicCard
+ * @typedef Identity
  * @property {number} suitIndex
  * @property {number} rank
  */
@@ -15,7 +16,7 @@
  * @property {number} value
  * 
  * @typedef {BaseClue & {target: number, result?: ClueResult}} Clue
- * @typedef {Clue & {playable: boolean, cm: Card[], safe: boolean}} SaveClue
+ * @typedef {Clue & {playable: boolean, cm: ActualCard[], safe: boolean}} SaveClue
  * @typedef {Clue & {urgent: boolean, trash: boolean}} FixClue
  */
 /**
@@ -82,8 +83,8 @@
  * @typedef Connection
  * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate'} type
  * @property {number} reacting
- * @property {Card} card
- * @property {BasicCard[]} identities
+ * @property {ActualCard} card
+ * @property {Identity[]} identities
  * @property {boolean} [self]
  * @property {boolean} [hidden]
  * @property {boolean} [known]
@@ -101,7 +102,7 @@
  * @property {Connection[]} connections
  * @property {number} giver
  * @property {number} conn_index
- * @property {Card} focused_card
+ * @property {ActualCard} focused_card
  * @property {{suitIndex: number, rank: number}} inference
  * @property {number} action_index
  * @property {boolean} [ambiguousPassback]
@@ -109,8 +110,8 @@
  */
 /**
  * @typedef Link
- * @property {Card[]} cards
- * @property {BasicCard[]} identities
+ * @property {ActualCard[]} cards
+ * @property {Identity[]} identities
  * @property {boolean} promised
  */
 

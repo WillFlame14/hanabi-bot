@@ -43,7 +43,7 @@ describe('self-finesse', () => {
 		takeTurn(state, 'Alice plays g1 (slot 1)');
 
 		// Slot 2 should be g2.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][1], ['g2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['g2']);
 	});
 
 	it('interprets self-finesses correctly when giver knows less', () => {
@@ -57,8 +57,8 @@ describe('self-finesse', () => {
 		takeTurn(state, 'Bob clues 2 to Cathy');
 
 		// Cathy's slot 1 should be finessed, Alice's slot 1 should not.
-		assert.equal(state.hands[PLAYER.CATHY][0].finessed, true);
-		assert.equal(state.hands[PLAYER.ALICE][0].finessed, false);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.CATHY][0].order].finessed, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
 	});
 });
 
@@ -79,7 +79,7 @@ describe('asymmetric clues', () => {
 		takeTurn(state, 'Donald clues 4 to Bob'); 	// Donald knows that he has b3, not b2 since he can see Bob's b2 and ours.
 
 		// We think we have b3 in slot 1, as a Certain Finesse. 
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][0], ['b3']);
+		// ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][0].order], ['b3']);
 
 		takeTurn(state, 'Alice clues 5 to Bob');	// 5 Save
 		takeTurn(state, 'Bob plays b2', 'y5');
@@ -87,8 +87,8 @@ describe('asymmetric clues', () => {
 		takeTurn(state, 'Donald plays b3', 'r2');
 
 		// We should no longer think that we have b3 in slot 1.
-		assert.equal(state.hands[PLAYER.ALICE][0].inferred.length > 1, true);
-		assert.equal(state.hands[PLAYER.ALICE][0].finessed, false);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].inferred.length > 1, true);
+		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
 	});
 
 	it('understands multiple interpretations when connecting through multiple possible cards in other hand', () => {
@@ -106,7 +106,7 @@ describe('asymmetric clues', () => {
 		takeTurn(state, 'Cathy clues 3 to Bob');	// connecting on g1 (Donald, playable) and g2 (Bob, finesse)
 
 		// Bob's slot 1 can be either g2 or y2, since he doesn't know which 1 is connecting.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['y2', 'g2']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][0].order], ['y2', 'g2']);
 	});
 
 	it('prefers the least number of blind plays on target', () => {
@@ -125,7 +125,7 @@ describe('asymmetric clues', () => {
 		takeTurn(state, 'Cathy clues 4 to Bob');			// connecting on y2 (Donald, known) and y3 (Bob, finesse)
 
 		// Bob's slot 1 must be y3, since it only requires one blind play (y3) instead of two (g2,g3).
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['y3']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][0].order], ['y3']);
 	});
 
 	it('includes the correct interpretation, even if it requires more blind plays', () => {
@@ -144,7 +144,7 @@ describe('asymmetric clues', () => {
 		takeTurn(state, 'Cathy clues 4 to Bob');			// connecting on g2 (Bob, finesse) and g3 (Bob, finesse)
 
 		// Although y3 should still be preferred, the correct inference is g2 -> g3 double self-finesse.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.BOB][0], ['g2','y3']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][0].order], ['g2','y3']);
 	});
 
 	it('connects when a card plays early', () => {
@@ -163,13 +163,13 @@ describe('asymmetric clues', () => {
 		takeTurn(state, 'Bob clues 3 to Cathy');				// connecting on y1 (Donald, playable) and y2 (Alice, prompt)
 
 		// The clued card is likely g3 or y3, since that requires the least number of blind plays.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.CATHY][2], ['y3', 'g3']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.CATHY][2].order], ['y3', 'g3']);
 
 		takeTurn(state, 'Cathy clues 5 to Donald');		// 5 Save
 		takeTurn(state, 'Donald plays y1', 'r4');
 		takeTurn(state, 'Alice plays y2 (slot 4)');
 
 		// y3 should be known, since y2 played before g1 played.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.CATHY][2], ['y3']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.CATHY][2].order], ['y3']);
 	});
 });

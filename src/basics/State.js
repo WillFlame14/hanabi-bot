@@ -1,5 +1,7 @@
-import { Card } from './Card.js';
+import { BasicCard } from './Card.js';
 import { Hand } from './Hand.js';
+import { Player } from './Player.js';
+
 import { handle_action } from '../action-handler.js';
 import { cardCount } from '../variants.js';
 import logger from '../tools/logger.js';
@@ -7,15 +9,15 @@ import * as Utils from '../tools/util.js';
 import { logPerformAction } from '../tools/log.js';
 
 /**
+ * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').BaseClue} BaseClue
+ * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').ClueAction} ClueAction
  * @typedef {import('../types.js').DiscardAction} DiscardAction
  * @typedef {import('../types.js').TurnAction} TurnAction
  * @typedef {import('../types.js').PlayAction} PlayAction
  * @typedef {import('../types.js').PerformAction} PerformAction
- * @typedef {import('../types.js').WaitingConnection} WaitingConnection
- * @typedef {import('../types.js').Link} Link
  */
 
 export class State {
@@ -25,22 +27,20 @@ export class State {
 	early_game = true;
 	in_progress = false;
 
+	players = /** @type {Player[]} */ ([]);
+	deck = /** @type {Identity[]} */ ([]);
 	hands = /** @type {Hand[]} */ ([]);
-	links = /** @type {Link[][]} */ ([]);
 
 	play_stacks = /** @type {number[]} */ ([]);
-	hypo_stacks = /** @type {number[][]} */ ([]);
 	discard_stacks = /** @type {number[][]} */ ([]);
 	max_ranks = /** @type {number[]} */ ([]);
 
-	all_possible = /** @type {Card[][]} */ ([]);
-	all_inferred = /** @type {Card[][]} */ ([]);
-
 	actionList = /** @type {Action[]} */ ([]);
-	last_actions = /** @type {(Action & {card?: Card, lock?: boolean})[]} */ ([]);
+	last_actions = /** @type {(Action & {card?: ActualCard, lock?: boolean})[]} */ ([]);
 	handHistory = /** @type {Hand[]} */ ([]);
 
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
+	elims = /** @type {Record<string, number[]>} */({});
 
 	rewinds = 0;
 	rewindDepth = 0;
@@ -48,12 +48,6 @@ export class State {
 
 	currentPlayerIndex = 0;
 	cardOrder = 0;
-
-	/**
-	 * The orders of playable cards whose identities are not known, according to each player. Used for identifying TCCMs.
-	 * @type {number[][]}
-	 */
-	unknown_plays = [];
 
 	/**
 	 * The orders of cards to ignore in the next play clue.
@@ -90,17 +84,9 @@ export class State {
 
 		this.in_progress = in_progress;
 
-		/** @type {WaitingConnection[]} */
-		this.waiting_connections = [];
-
 		/** @type {number} */
-		this.cardsLeft = this.suits.reduce((acc, _, suitIndex) => {
-			let cards = 0;
-			for (let rank = 1; rank <= 5; rank++) {
-				cards += cardCount(suits, { suitIndex, rank });
-			}
-			return acc + cards;
-		}, 0);
+		this.cardsLeft = this.suits.reduce((acc, _, suitIndex) =>
+			acc + [1, 2, 3, 4, 5].reduce((cards, rank) => cards + cardCount(suits, { suitIndex, rank }), 0), 0);
 
 		const all_possible = [];
 		for (let suitIndex = 0; suitIndex < this.suits.length; suitIndex++) {
@@ -109,18 +95,20 @@ export class State {
 			this.max_ranks.push(5);
 
 			for (let rank = 1; rank <= 5; rank++) {
-				all_possible.push(Object.freeze(new Card({ suitIndex, rank })));
+				all_possible.push(Object.freeze(new BasicCard(suitIndex, rank)));
 			}
 		}
 
 		for (let i = 0; i < this.numPlayers; i++) {
-			this.hypo_stacks.push([0, 0, 0, 0, 0]);
 			this.hands.push(new Hand());
-			this.links.push([]);
-			this.all_possible.push(all_possible.slice());
-			this.all_inferred.push(all_possible.slice());
-			this.unknown_plays.push([]);
+			this.players[i] = new Player(i, all_possible.slice(), all_possible.slice(), Array.from({ length: this.suits.length }, _ => 0));
 		}
+
+		this.common = new Player(-1, all_possible.slice(), all_possible.slice(), Array.from({ length: this.suits.length }, _ => 0));
+	}
+
+	get me() {
+		return this.players[this.ourPlayerIndex];
 	}
 
 	get score() {
@@ -147,12 +135,19 @@ export class State {
 			throw new Error('Maximum recursive depth reached.');
 		}
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'turn_count', 'clue_tokens', 'last_actions',
-			'strikes', 'early_game', 'rewindDepth', 'unknown_plays', 'next_ignore', 'next_finesse', 'cardsLeft'];
+		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'turn_count', 'clue_tokens', 'last_actions',
+			'strikes', 'early_game', 'rewindDepth', 'unknown_plays', 'next_ignore', 'next_finesse', 'cardsLeft', 'elims'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);
 		}
+
+		for (const player of newState.players.concat([newState.common])) {
+			for (const c of newState.hands.flat()) {
+				player.thoughts[c.order].actualCard = c;
+			}
+		}
+
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;
 	}
@@ -170,7 +165,7 @@ export class State {
 	 * @abstract
 	 * @param {State} _state
 	 * @param {Omit<DiscardAction, "type">} _action
-	 * @param {Card} _card
+	 * @param {ActualCard} _card
 	 */
 	interpret_discard(_state, _action, _card) {
 		throw new Error('must be implemented by subclass!');
@@ -217,7 +212,7 @@ export class State {
 		if (this.rewindDepth > 2) {
 			throw new Error('Rewind depth went too deep!');
 		}
-		else if (action_index === undefined || (typeof action_index !== 'number') || action_index < 0 || action_index > this.actionList.length) {
+		if (action_index === undefined || (typeof action_index !== 'number') || action_index < 0 || action_index >= this.actionList.length) {
 			logger.error(`Attempted to rewind to an invalid action index (${JSON.stringify(action_index)})!`);
 			return false;
 		}
@@ -247,6 +242,12 @@ export class State {
 
 			if (our_action) {
 				new_state.hands[this.ourPlayerIndex] = this.handHistory[new_state.turn_count];
+
+				for (const player of new_state.players.concat([new_state.common])) {
+					for (const card of new_state.hands.flat()) {
+						player.thoughts[card.order].actualCard = card;
+					}
+				}
 			}
 
 			new_state.handle_action(action, true);
@@ -258,6 +259,12 @@ export class State {
 
 			if (our_action) {
 				new_state.hands[this.ourPlayerIndex] = hypo_state.hands[this.ourPlayerIndex];
+
+				for (const player of new_state.players.concat([new_state.common])) {
+					for (const card of new_state.hands.flat()) {
+						player.thoughts[card.order].actualCard = card;
+					}
+				}
 			}
 		};
 
@@ -362,6 +369,8 @@ export class State {
 	simulate_clue(action, options = {}) {
 		const hypo_state = /** @type {this} */ (this.minimalCopy());
 
+		Utils.globalModify({ state: hypo_state });
+
 		if (options.simulatePlayerIndex !== undefined) {
 			hypo_state.ourPlayerIndex = options.simulatePlayerIndex;
 		}
@@ -369,6 +378,8 @@ export class State {
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
 			hypo_state.interpret_clue(hypo_state, action);
 		});
+
+		Utils.globalModify({ state: this });
 
 		return hypo_state;
 	}

@@ -3,30 +3,31 @@ import { isTrash } from './hanabi-util.js';
 
 /**
  * @typedef {import('./State.js').State} State
+ * @typedef {import('./Player.js').Player} Player
  * @typedef {import('./Card.js').Card} Card
- * @typedef {import('../types.js').BasicCard} BasicCard
+ * @typedef {import('./Card.js').ActualCard} ActualCard
+ * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Clue} Clue
  */
 
 /**
- * @param  {State} state
- * @param  {State} hypo_state
- * @param  {number} playerIndex
+ * @param  {Player} player
+ * @param  {Player} hypo_player
+ * @param  {Hand} hand
  * @param  {number[]} list
  */
-export function elim_result(state, hypo_state, playerIndex, list) {
+export function elim_result(player, hypo_player, hand, list) {
 	let new_touched = 0, fill = 0, elim = 0;
 
-	// Count the number of cards that have increased elimination (i.e. cards that were "filled in")
-	for (let i = 0; i < state.hands[playerIndex].length; i++) {
-		const old_card = state.hands[playerIndex][i];
-		const hypo_card = hypo_state.hands[playerIndex][i];
+	for (const { order } of hand) {
+		const old_card = player.thoughts[order];
+		const hypo_card = hypo_player.thoughts[order];
 
 		if (hypo_card.clued && !hypo_card.called_to_discard && hypo_card.possible.length < old_card.possible.length && hypo_card.matches_inferences()) {
 			if (hypo_card.newly_clued && !hypo_card.finessed) {
 				new_touched++;
 			}
-			else if (list.includes(hypo_card.order)) {
+			else if (list.includes(order)) {
 				fill++;
 			}
 			else {
@@ -39,27 +40,25 @@ export function elim_result(state, hypo_state, playerIndex, list) {
 
 /**
  * @param  {State} state
- * @param  {number} playerIndex
- * @param  {Card[]} bad_touch_cards
- * @param  {number[]} [ignoreOrders]
+ * @param  {Player} hypo_player
+ * @param  {Hand} hand
+ * @param  {number} focus_order
  */
-export function bad_touch_result(state, playerIndex, bad_touch_cards, ignoreOrders = []) {
+export function bad_touch_result(state, hypo_player, hand, focus_order = -1) {
 	let bad_touch = 0, trash = 0;
 
-	for (const card of state.hands[playerIndex]) {
-		if (bad_touch_cards.some(c => c.order === card.order)) {
-			// Known trash
-			if (card.possible.every(p => isTrash(state, playerIndex, p, card.order))) {
-				trash++;
-			}
-			else {
-				// Don't double count bad touch when cluing two of the same card
-				// Focused card should not be bad touched?
-				if (bad_touch_cards.some(c => c.matches(card) && c.order > card.order) || ignoreOrders.includes(card.order)) {
-					continue;
-				}
-				bad_touch++;
-			}
+	for (const card of hand) {
+		// Ignore cards that aren't newly clued, focused card can't be bad touched
+		if (!card.newly_clued || card.order === focus_order) {
+			continue;
+		}
+
+		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order))) {
+			trash++;
+		}
+		// TODO: Don't double count bad touch when cluing two of the same card
+		else if (isTrash(state, state.me, state.me.thoughts[card.order], card.order)) {
+			bad_touch++;
 		}
 	}
 
@@ -68,24 +67,25 @@ export function bad_touch_result(state, playerIndex, bad_touch_cards, ignoreOrde
 
 /**
  * @param  {State} state
- * @param  {State} hypo_state
- * @param  {number} giver
+ * @param  {Player} player
+ * @param  {Player} hypo_player
+ * @param  {number} target
  */
-export function playables_result(state, hypo_state, giver) {
+export function playables_result(state, player, hypo_player, target) {
 	let finesses = 0;
 	const playables = [], safe_playables = [];
 
 	/**
 	 * TODO: This might not find the right card if it was duplicated...
-	 * @param  {BasicCard} identity
+	 * @param  {Identity} identity
 	 */
 	function find_card(identity) {
 		for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
 			const hand = state.hands[playerIndex];
 
-			for (let j = 0; j < hand.length; j++) {
-				const old_card = hand[j];
-				const hypo_card = hypo_state.hands[playerIndex][j];
+			for (const { order } of hand) {
+				const old_card = player.thoughts[order];
+				const hypo_card = hypo_player.thoughts[order];
 
 				if (hypo_card.saved && hypo_card.matches(identity, { infer: true })) {
 					return { playerIndex, old_card, hypo_card };
@@ -96,7 +96,7 @@ export function playables_result(state, hypo_state, giver) {
 
 	// Count the number of finesses and newly known playable cards
 	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-		for (let rank = state.hypo_stacks[giver][suitIndex] + 1; rank <= hypo_state.hypo_stacks[giver][suitIndex]; rank++) {
+		for (let rank = player.hypo_stacks[suitIndex] + 1; rank <= hypo_player.hypo_stacks[suitIndex]; rank++) {
 			const { playerIndex, old_card, hypo_card } = find_card({ suitIndex, rank });
 
 			if (hypo_card.finessed && !old_card.finessed) {
@@ -104,14 +104,23 @@ export function playables_result(state, hypo_state, giver) {
 			}
 
 			// Only counts as a playable if it wasn't already playing
-			if (!state.unknown_plays[state.ourPlayerIndex].some(order => order === old_card.order)) {
-				playables.push({ playerIndex, card: old_card });
+			if (!player.unknown_plays.some(order => order === hypo_card.order)) {
+				playables.push({ playerIndex, card: hypo_card });
 
-				if (Hand.isLoaded(hypo_state, playerIndex)) {
-					safe_playables.push({ playerIndex, card: old_card });
+				if (hypo_player.thinksLoaded(state, target)) {
+					safe_playables.push({ playerIndex, card: hypo_card });
 				}
 			}
 		}
+	}
+
+	for (const order of hypo_player.unknown_plays) {
+		if (player.unknown_plays.includes(order)) {
+			continue;
+		}
+
+		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
+		playables.push({ playerIndex, card: hypo_player.thoughts[order] });
 	}
 
 	return { finesses, playables, safe_playables };

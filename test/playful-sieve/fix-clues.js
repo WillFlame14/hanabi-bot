@@ -8,7 +8,6 @@ import PlayfulSieve from '../../src/conventions/playful-sieve.js';
 
 import logger from '../../src/tools/logger.js';
 
-
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('fix clues', () => {
@@ -40,6 +39,6 @@ describe('fix clues', () => {
 		takeTurn(state, 'Bob clues 1 to Alice (slot 1)');
 
 		// Slot 1 is exactly b1.
-		ExAsserts.cardHasInferences(state.hands[PLAYER.ALICE][0], ['b1']);
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][0].order], ['b1']);
 	});
 });
