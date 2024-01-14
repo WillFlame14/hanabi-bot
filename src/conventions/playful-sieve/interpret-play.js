@@ -1,5 +1,4 @@
 import { CLUE } from '../../constants.js';
-import { Card } from '../../basics/Card.js';
 import { team_elim } from '../../basics/helper.js';
 import { playableAway } from '../../basics/hanabi-util.js';
 import * as Basics from '../../basics.js';

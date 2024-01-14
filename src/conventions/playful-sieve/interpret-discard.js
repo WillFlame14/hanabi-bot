@@ -1,4 +1,3 @@
-import { Card } from '../../basics/Card.js';
 import { Hand } from '../../basics/Hand.js';
 import { isTrash, playableAway, visibleFind } from '../../basics/hanabi-util.js';
 import * as Basics from '../../basics.js';

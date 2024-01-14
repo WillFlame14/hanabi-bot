@@ -94,7 +94,7 @@ export function update_hypo_stacks(state, player) {
 				const actual_id = state.me.thoughts[order].identity();
 
 				// Do not allow false updating of hypo stacks
-				if (player.playerIndex === -1 && id && actual_id && id !== actual_id) {
+				if (player.playerIndex === -1 && id && actual_id && !id.matches(actual_id)) {
 					continue;
 				}
 

@@ -90,8 +90,10 @@ function init_state(state, options) {
  * @param {Partial<SetupOptions>} options
  */
 function injectFuncs(options) {
+	// @ts-ignore
 	this.createBlankDefault = this.createBlank;
 	this.createBlank = function () {
+		// @ts-ignore
 		const new_state = this.createBlankDefault();
 		init_state(new_state, options);
 		injectFuncs.bind(new_state)(options);
