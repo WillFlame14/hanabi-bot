@@ -35,7 +35,6 @@ function apply_good_touch(state, action) {
 	const { thoughts: oldThoughts } = common.clone();		// Keep track of all cards that previously had inferences (i.e. not known trash)
 
 	Basics.onClue(state, action);
-	const resets = common.good_touch_elim(state);
 
 	// Check if a layered finesse was revealed on us
 	if (target === state.ourPlayerIndex) {
@@ -52,13 +51,22 @@ function apply_good_touch(state, action) {
 		}
 	}
 
-	// Includes resets from negative information
-	const all_resets = state.hands.flat().map(c => c.order).filter(order =>
-		oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0).concat(resets);
+	const clue_resets = new Set();
+	for (const { order } of state.hands[target]) {
+		if (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
+			common.reset_card(order);
+			clue_resets.add(order);
+		}
+	}
 
-	if (all_resets.length > 0) {
+	const resets = common.good_touch_elim(state);
+
+	// Includes resets from negative information
+	const all_resets = new Set([...clue_resets, ...resets]);
+
+	if (all_resets.size > 0) {
 		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
-		const infs_to_recheck = all_resets.map(order => oldThoughts[order].identity({ infer: true })).filter(id => id !== undefined);
+		const infs_to_recheck = Array.from(all_resets).map(order => oldThoughts[order].identity({ infer: true })).filter(id => id !== undefined);
 
 		for (const inf of infs_to_recheck) {
 			const elims = state.elims[logCard(inf)];
@@ -81,7 +89,7 @@ function apply_good_touch(state, action) {
 	}
 
 	// Any clued cards that lost all inferences
-	const clued_reset = list.some(order => resets.includes(order) && !state.hands[target].findOrder(order).newly_clued);
+	const clued_reset = list.some(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
 
 	const duplicate_reveal = state.hands[target].some(({ order }) => {
 		const card = common.thoughts[order];

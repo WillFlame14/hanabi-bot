@@ -66,7 +66,7 @@ export function good_touch_elim(state) {
 		const identity = identities[i];
 		const matches = state.hands.flat().filter(c => {
 			const card = this.thoughts[c.order];
-			return card.saved &&
+			return card.touched &&
 				card.matches(identity, { infer: true }) &&
 				(card.matches(identity) || !card.newly_clued || card.focused) &&		// Don't good touch from unknown newly clued cards off focus?
 				!this.waiting_connections.some(wc => wc.connections.some(conn => conn.card.order === c.order));
@@ -103,20 +103,8 @@ export function good_touch_elim(state) {
 			}
 
 			if (card.inferred.length === 0) {
-				card.reset = true;
+				this.reset_card(order);
 				resets.add(order);
-
-				if (card.finessed) {
-					card.finessed = false;
-					card.inferred = card.old_inferred;
-
-					// Filter out future waiting connections involving this card
-					this.waiting_connections = this.waiting_connections.filter(wc =>
-						!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order));
-				}
-				else {
-					card.inferred = card.possible.slice();
-				}
 			}
 			// Newly eliminated
 			else if (card.inferred.length === 1 && pre_inferences > 1) {
@@ -125,7 +113,28 @@ export function good_touch_elim(state) {
 		}
 	}
 
-	return Array.from(resets);
+	return resets;
+}
+
+/**
+ * @this {Player}
+ * @param {number} order
+ */
+export function reset_card(order) {
+	const card = this.thoughts[order];
+	card.reset = true;
+
+	if (card.finessed) {
+		card.finessed = false;
+		card.inferred = card.old_inferred;
+
+		// Filter out future waiting connections involving this card
+		this.waiting_connections = this.waiting_connections.filter(wc =>
+			!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order));
+	}
+	else {
+		card.inferred = card.possible.slice();
+	}
 }
 
 /**
@@ -145,7 +154,8 @@ export function find_links(state) {
 
 		if (this.links.some(({cards}) => cards.some(c => c.order === order)) ||		// Already in a link
 			card.identity() !== undefined ||										// We know what this card is
-			card.inferred.length === 0) {											// Card has no inferences
+			card.inferred.length === 0 ||											// // Card has no inferences
+			card.inferred.every(inf => isBasicTrash(state, inf))) {					// Card is trash
 			continue;
 		}
 
@@ -161,7 +171,7 @@ export function find_links(state) {
 		// We have enough inferred cards to eliminate elsewhere
 		// TODO: Sudoku elim from this
 		if (linked_cards.length > card.inferred.reduce((sum, inf) => sum += unknownIdentities(state, this, inf), 0)) {
-			logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(inf => logCard(inf)), this.playerIndex);
+			logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(inf => logCard(inf)), state.playerNames[this.playerIndex]);
 
 			this.links.push({ cards: linked_cards, identities: card.inferred.map(c => c.raw()), promised: false });
 		}

@@ -52,7 +52,9 @@ export function initConsole() {
 							break;
 						}
 						const playerIndex = state.playerNames.indexOf(playerName);
-						console.log(logHand(state.hands[playerIndex], Number(parts[2]) ? state.players[Number(parts[2])] : undefined), logLinks(state.players[playerIndex].links));
+						const player = !isNaN(Number(parts[2])) ? state.players[Number(parts[2])] : undefined;
+						console.log('viewing from', player === undefined ? 'common' : state.playerNames[player.playerIndex]);
+						console.log(logHand(state.hands[playerIndex], player), logLinks(state.players[playerIndex].links));
 						break;
 					}
 					case 'state':

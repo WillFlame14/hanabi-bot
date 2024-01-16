@@ -3,11 +3,13 @@ import { cardCount } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
 import { order_1s } from '../action-helper.js';
 import { playableAway } from '../../../basics/hanabi-util.js';
+import { inBetween } from '../hanabi-logic.js';
 import { find_possibilities } from '../../../basics/helper.js';
 import { cardTouched } from '../../../variants.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
+
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -33,7 +35,7 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 		const playerIndex = (giver + i) % state.numPlayers;
 
 		const globally_known = state.hands[playerIndex].find(({ order }) =>
-			!ignoreOrders.includes(order) && common.thoughts[order].matches(identity, { infer: true }));
+			!ignoreOrders.includes(order) && common.thoughts[order].matches(identity, { infer: true }) && common.thoughts[order].touched);
 
 		if (globally_known) {
 			return { type: 'known', reacting: playerIndex, card: globally_known, identities: [identity] };
@@ -92,7 +94,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, identity, ig
 	const finesse = state.common.find_finesse(hand, ignoreOrders);
 
 	// Prompt takes priority over finesse
-	if (prompt !== undefined) {
+	if (prompt !== undefined && prompt.identity() !== undefined) {
 		if (prompt.matches(identity)) {
 			return { type: 'prompt', reacting: playerIndex, card: prompt, identities: [identity] };
 		}
@@ -107,11 +109,11 @@ function find_unknown_connecting(state, giver, target, playerIndex, identity, ig
 			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true, identities: [prompt.raw()] };
 		}
 		else {
-			logger.warn(`wrong prompt on ${logCard(prompt)}`);
+			logger.warn(`wrong prompt on ${logCard(prompt)} when searching for ${logCard(identity)}, play stacks at ${state.play_stacks[prompt.suitIndex]}`);
 			return;
 		}
 	}
-	else if (finesse !== undefined) {
+	else if (finesse !== undefined && finesse.identity() !== undefined) {
 		if (finesse.matches(identity)) {
 			// At level 1, only forward finesses are allowed.
 			if (state.level === 1 && !inBetween(state.numPlayers, playerIndex, giver, target)) {
@@ -184,8 +186,6 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 		const hypo_state = state.minimalCopy();
 		const newIgnoreOrders = ignoreOrders.slice();
 
-		logger.collect();
-
 		let connecting = find_unknown_connecting(hypo_state, giver, target, playerIndex, identity, newIgnoreOrders);
 
 		// If the connection is hidden, that player must have the actual card playable in order for the layer to work.
@@ -204,10 +204,8 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 
 		// The final card must not be hidden
 		if (connections.length > 0 && !connections.at(-1).hidden) {
-			logger.flush(true);
 			return connections;
 		}
-		logger.flush(false);
 	}
 
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
@@ -218,7 +216,7 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 			return !ignoreOrders.includes(order) &&
 				card.inferred.some(inf => inf.matches(identity)) &&							// At least one inference must match
 				card.matches(identity, { assume: true }) &&									// If we know the card (from a rewind), it must match
-				(card.inferred.every(c => playableAway(state, c) === 0) || card.finessed);	// Must be playable
+				((card.inferred.every(c => playableAway(state, c) === 0) && card.clued) || card.finessed);	// Must be playable
 		});
 
 		if (playable_conns.length > 0) {
@@ -235,24 +233,6 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 		}
 	}
 	return [];
-}
-
-/**
- * Returns whether the playerIndex is "in between" the giver and target (in play order).
- * @param {number} numPlayers
- * @param {number} playerIndex
- * @param {number} giver
- * @param {number} target
- */
-function inBetween(numPlayers, playerIndex, giver, target) {
-	let i = (giver + 1) % numPlayers;
-	while(i !== target) {
-		if (i === playerIndex) {
-			return true;
-		}
-		i = (i + 1) % numPlayers;
-	}
-	return false;
 }
 
 /**

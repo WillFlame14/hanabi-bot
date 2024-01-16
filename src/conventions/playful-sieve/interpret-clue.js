@@ -34,15 +34,24 @@ export function interpret_clue(state, action) {
 	const no_info = touch.every(card => card.clues.some(c => Utils.objEquals(c, clue)));
 
 	Basics.onClue(state, action);
+
+	const clue_resets = new Set();
+	for (const { order } of state.hands[target]) {
+		if (oldCommon.thoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
+			common.reset_card(order);
+			clue_resets.add(order);
+		}
+	}
+
 	const resets = common.good_touch_elim(state);
 
 	// Includes resets from negative information
-	const all_resets = state.hands.flat().map(c => c.order).filter(order =>
-		oldCommon.thoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0).concat(resets);
+	/** @type {Set<number>} */
+	const all_resets = new Set([...clue_resets, ...resets]);
 
-	if (all_resets.length > 0) {
+	if (all_resets.size > 0) {
 		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
-		const infs_to_recheck = all_resets.map(order => oldCommon.thoughts[order].identity({ infer: true })).filter(id => id !== undefined);
+		const infs_to_recheck = Array.from(all_resets).map(order => oldCommon.thoughts[order].identity({ infer: true })).filter(id => id !== undefined);
 
 		for (const inf of infs_to_recheck) {
 			const elims = state.elims[logCard(inf)];
@@ -64,7 +73,7 @@ export function interpret_clue(state, action) {
 		}
 	}
 
-	let fix = list.some(order => resets.includes(order) && !state.hands[target].findOrder(order).newly_clued);
+	let fix = list.some(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
 
 	for (const { order } of hand) {
 		const card = common.thoughts[order];
@@ -207,8 +216,10 @@ export function interpret_clue(state, action) {
 					const unknown_playables = unknown_plays.flatMap(order =>
 						common.thoughts[order].inferred.map(inf => { return { suitIndex: inf.suitIndex, rank: inf.rank + 1 }; }));
 
-					common.thoughts[hand[target_index].order].finessed = true;
-					common.thoughts[hand[target_index].order].intersect('inferred', known_playables.concat(unknown_playables));
+					const target_card = common.thoughts[hand[target_index].order];
+					target_card.old_inferred = target_card.inferred.slice();
+					target_card.finessed = true;
+					target_card.intersect('inferred', known_playables.concat(unknown_playables));
 
 					// TODO: connect properly if there is more than 1 unknown play, starting from oldest finesse index
 					for (const unk of unknown_plays) {

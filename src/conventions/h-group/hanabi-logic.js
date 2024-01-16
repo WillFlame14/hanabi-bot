@@ -144,3 +144,21 @@ export function valuable_tempo_clue(state, player, clue, playables, focused_card
 
 	return { tempo: true, valuable };
 }
+
+/**
+ * Returns whether the playerIndex is "in between" the giver and target (in play order).
+ * @param {number} numPlayers
+ * @param {number} playerIndex
+ * @param {number} giver
+ * @param {number} target
+ */
+export function inBetween(numPlayers, playerIndex, giver, target) {
+	let i = (giver + 1) % numPlayers;
+	while(i !== target) {
+		if (i === playerIndex) {
+			return true;
+		}
+		i = (i + 1) % numPlayers;
+	}
+	return false;
+}

@@ -20,6 +20,7 @@ export class Player {
 	refresh_links = Elim.refresh_links;
 	find_links = Elim.find_links;
 	good_touch_elim = Elim.good_touch_elim;
+	reset_card = Elim.reset_card;
 
 	/**
 	 * @param {number} playerIndex

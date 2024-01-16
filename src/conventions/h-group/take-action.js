@@ -272,7 +272,7 @@ export function take_action(state) {
 	}
 
 	if (state.clue_tokens > 0) {
-		for (let i = 5; i < 9; i++) {
+		for (let i = actionPrioritySize + 1; i <= actionPrioritySize * 2; i++) {
 			// Give play clue (at correct priority level)
 			if (i === (state.clue_tokens > 1 ? actionPrioritySize + 1 : actionPrioritySize * 2) && best_play_clue !== undefined) {
 				if (clue_value >= minimum_clue_value(state)) {

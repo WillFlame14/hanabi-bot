@@ -126,8 +126,10 @@ export function interpret_play(state, action) {
 			playable_possibilities[suitIndex] = { suitIndex, rank: rank + 1 };
 		}
 
-		common.thoughts[other_hand[0].order].finessed = true;
-		common.thoughts[other_hand[0].order].intersect('inferred', playable_possibilities);
+		const chop = common.thoughts[other_hand[0].order];
+		chop.old_inferred = chop.inferred.slice();
+		chop.finessed = true;
+		chop.intersect('inferred', playable_possibilities);
 	}
 
 	if (common.thinksLocked(state, other)) {

@@ -82,7 +82,7 @@ export function update_hypo_stacks(state, player) {
 
 			const fake_wcs = player.waiting_connections.filter(wc => {
 				const { fake, focused_card, inference } = wc;
-				return focused_card.order === order && (fake || !focused_card.matches(inference));
+				return focused_card.order === order && (fake || !state.me.thoughts[focused_card.order].matches(inference, { assume: true }));
 			});
 
 			// Ignore all waiting connections that will be proven wrong
