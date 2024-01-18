@@ -22,7 +22,7 @@ export function find_fix_clue(state) {
 		return;
 	}
 
-	logger.info(`fix needed on [${fix_needed.map(c => logCard(c))}]`);
+	logger.info(`fix needed on [${fix_needed.map(logCard)}]`);
 
 	const clues = [];
 

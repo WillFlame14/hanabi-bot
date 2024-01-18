@@ -139,7 +139,7 @@ export function interpret_clue(state, action) {
 
 	if (focus_thoughts.inferred.length === 0) {
 		focus_thoughts.inferred = focus_thoughts.possible.slice();
-		logger.warn(`focused card had no inferences after applying good touch (previously ${oldCommon.thoughts[focused_card.order].inferred.map(c => logCard(c)).join()})`);
+		logger.warn(`focus had no inferences after applying good touch (previously ${oldCommon.thoughts[focused_card.order].inferred.map(logCard).join()})`);
 
 		// There is a waiting connection that depends on this card
 		if (focus_thoughts.possible.length === 1 && common.waiting_connections.some(wc =>
@@ -151,7 +151,7 @@ export function interpret_clue(state, action) {
 		}
 	}
 
-	logger.debug('pre-inferences', focus_thoughts.inferred.map(c => logCard(c)).join());
+	logger.debug('pre-inferences', focus_thoughts.inferred.map(logCard).join());
 
 	if ((state.level >= LEVEL.FIX && fix) || mistake) {
 		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
@@ -239,7 +239,7 @@ export function interpret_clue(state, action) {
 	}
 	// Card doesn't match any inferences
 	else {
-		logger.info(`card ${logCard(focused_card)} order ${focused_card.order} doesn't match any inferences! currently ${focus_thoughts.inferred.map(c => logCard(c)).join(',')}`);
+		logger.info(`card ${logCard(focused_card)} order ${focused_card.order} doesn't match any inferences! currently ${focus_thoughts.inferred.map(logCard).join(',')}`);
 
 		/** @type {FocusPossibility[]} */
 		const all_connections = [];
@@ -302,7 +302,7 @@ export function interpret_clue(state, action) {
 			focus_thoughts.reset = true;
 			// If it's in our hand, we have no way of knowing what the card is - default to good touch principle
 			if (target === state.ourPlayerIndex) {
-				logger.info('no inference on card (self), defaulting to gtp - ', focus_thoughts.inferred.map(c => logCard(c)));
+				logger.info('no inference on card (self), defaulting to gtp - ', focus_thoughts.inferred.map(logCard));
 			}
 			// If it's not in our hand, we should adjust our interpretation to their interpretation (to know if we need to fix)
 			// We must force a finesse?
@@ -313,7 +313,7 @@ export function interpret_clue(state, action) {
 				if (focus_thoughts.inferred.length === 0) {
 					focus_thoughts.inferred = saved_inferences;
 				}
-				logger.info('no inference on card (other), looks like', focus_thoughts.inferred.map(c => logCard(c)).join(','));
+				logger.info('no inference on card (other), looks like', focus_thoughts.inferred.map(logCard).join(','));
 			}
 		}
 		else {
@@ -358,7 +358,7 @@ export function interpret_clue(state, action) {
 			reset_superpositions(state);
 		}
 	}
-	logger.highlight('blue', 'final inference on focused card', focus_thoughts.inferred.map(c => logCard(c)).join(','));
+	logger.highlight('blue', 'final inference on focused card', focus_thoughts.inferred.map(logCard).join(','));
 
 	state.common.refresh_links(state);
 	update_hypo_stacks(state, common);

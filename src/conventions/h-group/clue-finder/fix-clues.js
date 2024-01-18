@@ -74,7 +74,7 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 				let fix_criteria;
 				if (wrong_inference) {
 					fix_criteria = inference_corrected;
-					logger.info(`card ${logCard(card)} needs fix, wrong inferences ${card.inferred.map(c => logCard(c))}`);
+					logger.info(`card ${logCard(card)} needs fix, wrong inferences ${card.inferred.map(logCard)}`);
 				}
 				// We only want to give a fix clue to the player whose turn comes sooner
 				else if (unknown_duplicated && !duplicated_cards.some(c => c.matches(card))) {
@@ -117,7 +117,7 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 
 						if (fixed) {
 							// TODO: Find the highest value play clue
-							// logger.info(`found fix ${logClue(clue)} for card ${logCard(card)} to inferences [${card_after_cluing.inferred.map(c => logCard(c)).join(',')}]`);
+							// logger.info(`found fix ${logClue(clue)} for card ${logCard(card)} to inferences [${card_after_cluing.inferred.map(logCard).join(',')}]`);
 							fix_clues[target].push(Object.assign({}, clue, { trash, urgent: seems_playable }));
 							found_clue = true;
 							break;

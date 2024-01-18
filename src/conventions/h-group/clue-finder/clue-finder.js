@@ -82,7 +82,7 @@ function find_save(state, target, card) {
  * @returns {SaveClue | undefined} The TCM if valid, otherwise undefined.
  */
 function find_tcm(state, target, saved_cards, trash_card, play_clues) {
-	logger.info(`attempting tcm with trash card ${logCard(trash_card)}, saved cards ${saved_cards.map(c => logCard(c)).join(',')}`);
+	logger.info(`attempting tcm with trash card ${logCard(trash_card)}, saved cards ${saved_cards.map(logCard).join(',')}`);
 	const chop = saved_cards.at(-1);
 
 	// Critical cards and unique 2s can be saved directly if touching all cards
@@ -105,7 +105,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 	const saved_trash = saved_cards.filter(card =>
 		isTrash(state, state.me, card, card.order) ||						// Saving a trash card
 		saved_cards.some(c => card.matches(c) && card.order > c.order)		// Saving 2 of the same card
-	).map(c => logCard(c));
+	).map(logCard);
 
 	logger.info(`would save ${saved_trash.length === 0 ? 'no' : saved_trash.join()} trash`);
 

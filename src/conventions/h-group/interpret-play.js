@@ -82,7 +82,7 @@ export function interpret_play(state, action) {
 	state.common.good_touch_elim(state);
 	team_elim(state);
 
-	for (const player of state.players.concat([state.common])) {
+	for (const player of state.allPlayers) {
 		player.refresh_links(state);
 	}
 

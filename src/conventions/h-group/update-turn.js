@@ -40,7 +40,7 @@ function remove_finesse(state, waiting_index, undo_infs = true) {
 				card.old_inferred = undefined;
 			}
 			else {
-				logger.error(`no old inferences on card ${logCard(card)}! current inferences ${card.inferred.map(c => logCard(c))}`);
+				logger.error(`no old inferences on card ${logCard(card)}! current inferences ${card.inferred.map(logCard)}`);
 			}
 		}
 	}
@@ -76,7 +76,7 @@ export function update_turn(state, action) {
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const { connections, conn_index, focused_card, inference, giver, action_index, fake, ambiguousPassback } = common.waiting_connections[i];
 		const { type, reacting, card: old_card, identities } = connections[conn_index];
-		logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(c => logCard(c))} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
+		logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
 
 		// Card may have been updated, so need to find it again
 		const card = state.hands[reacting].findOrder(old_card.order);
@@ -215,7 +215,7 @@ export function update_turn(state, action) {
 							thoughts.old_inferred = undefined;
 						}
 						else {
-							logger.error(`no old inferences on card ${logCard(thoughts)}! current inferences ${thoughts.inferred.map(c => logCard(c))}`);
+							logger.error(`no old inferences on card ${logCard(thoughts)}! current inferences ${thoughts.inferred.map(logCard)}`);
 						}
 						thoughts.finessed = false;
 					}
@@ -227,7 +227,7 @@ export function update_turn(state, action) {
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
 	for (const { card, inferences, connections } of demonstrated) {
 		const thoughts = state.common.thoughts[card.order];
-		logger.info(`intersecting card ${logCard(thoughts)} with inferences ${inferences.map(c => logCard(c)).join(',')}`);
+		logger.info(`intersecting card ${logCard(thoughts)} with inferences ${inferences.map(logCard).join(',')}`);
 
 		for (const connection of connections) {
 			const { reacting, identities } = connection;

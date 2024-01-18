@@ -72,7 +72,7 @@ function init_state(state, options) {
 		}
 	}
 
-	for (const player of state.players.concat(state.common)) {
+	for (const player of state.allPlayers) {
 		player.card_elim(state);
 	}
 
@@ -186,7 +186,7 @@ function parseSlots(state, parts, partsIndex, expectOne, insufficientMsg = '') {
 		throw new Error(`Not enough arguments provided ${insufficientMsg}, needs '(slot x)'.`);
 	}
 
-	const slots = parts[partsIndex].slice(0, parts[partsIndex].length - 1).split(',').map(s => Number(s));
+	const slots = parts[partsIndex].slice(0, parts[partsIndex].length - 1).split(',').map(Number);
 	if (slots.length === 0 || slots.some(slot => isNaN(slot) || slot < 1 && slot > state.hands[state.ourPlayerIndex].length)) {
 		throw new Error(`Failed to parse ${original}.`);
 	}

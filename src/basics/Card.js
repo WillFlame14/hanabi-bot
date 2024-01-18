@@ -260,7 +260,7 @@ export class Card extends BasicCard {
 			note = '??';
 		}
 		else if (this.inferred.length <= 3) {
-			note = this.inferred.map(c => logCard(c)).join(',');
+			note = this.inferred.map(logCard).join(',');
 		}
 		else {
 			note = '...';

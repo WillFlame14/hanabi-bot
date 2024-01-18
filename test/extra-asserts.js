@@ -13,7 +13,7 @@ import { logCard } from '../src/tools/log.js';
  * @param  {string[]} inferences 	The set of inferences to compare to.
  */
 export function cardHasInferences(card, inferences) {
-	const message = `Differing inferences. Expected ${inferences}, got ${card.inferred.map(c => logCard(c))}`;
+	const message = `Differing inferences. Expected ${inferences}, got ${card.inferred.map(logCard)}`;
 
 	assert.ok(card.inferred.length === inferences.length && inferences.every(inf => card.inferred.some(c => c.matches(expandShortCard(inf)))), message);
 }

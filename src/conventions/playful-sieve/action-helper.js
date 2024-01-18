@@ -31,7 +31,9 @@ export function get_result(state, clue) {
 	const revealed_trash = hypo_state.common.thinksTrash(hypo_state, partner);
 	const { safe_playables: playables } = playables_result(hypo_state, state.common, hypo_state.common, clue.target);
 
-	const good_touch = new_touched - (bad_touch - trash);
+	const good_touch = new_touched - (bad_touch + trash);
+
+	logger.info('new touched', new_touched);
 
 	const value = 0.25*good_touch +
 		playables.length +

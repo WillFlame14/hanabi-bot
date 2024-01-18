@@ -69,7 +69,7 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 			reason = `card ${logCard(card)} lost all inferences and was reset`;
 		}
 		else if (!card.matches_inferences()) {
-			reason = `card ${logCard(card)} has inferences [${card.inferred.map(c => logCard(c)).join(',')}], doesn't match`;
+			reason = `card ${logCard(card)} has inferences [${card.inferred.map(logCard).join(',')}], doesn't match`;
 		}
 		else {
 			const not_trash_possibility = card.possible.find(c => !isTrash(hypo_state, state.common, c, card.order));
@@ -165,7 +165,7 @@ export function determine_clue(state, target, target_card, options) {
 			clue: logClue(clue),
 			bad_touch,
 			trash,
-			interpret: interpret?.map(c => logCard(c)),
+			interpret: interpret?.map(logCard),
 			elim,
 			new_touched,
 			finesses,

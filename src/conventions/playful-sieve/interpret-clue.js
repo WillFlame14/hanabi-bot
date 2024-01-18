@@ -89,7 +89,7 @@ export function interpret_clue(state, action) {
 		if (card.finessed && card.newly_clued && last_action.type === 'play') {
 			const identity = state.last_actions[giver].card;
 
-			logger.warn('revoking finesse?', card.possible.map(p => logCard(p)), logCard(identity));
+			logger.warn('revoking finesse?', card.possible.map(logCard), logCard(identity));
 
 			if (card.possible.some(c => c.matches(identity))) {
 				card.assign('inferred', [identity]);
@@ -159,7 +159,7 @@ export function interpret_clue(state, action) {
 			else {
 				// Colour fill-in/trash reveal, no additional meaning
 				if (known_trash.length + hand.filter(c => common.thoughts[c.order].called_to_discard).length > 0) {
-					logger.info('colour fill in while loaded on', (known_trash.length > 0 ? `kt ${known_trash.map(c => logCard(c))}` : `ptd on slot ${hand.findIndex(card => common.thoughts[card.order].called_to_discard) + 1}`));
+					logger.info('colour fill in while loaded on', (known_trash.length > 0 ? `kt ${known_trash.map(logCard)}` : `ptd on slot ${hand.findIndex(card => common.thoughts[card.order].called_to_discard) + 1}`));
 					return;
 				}
 

@@ -149,10 +149,10 @@ export function take_action(state) {
 			const playables = common.thinksPlayables(state, partner);
 
 			if (playables.length > 0) {
-				logger.info('partner loaded on playables:', playables.map(c => logCard(c)));
+				logger.info('partner loaded on playables:', playables.map(logCard));
 			}
 			else {
-				logger.info('partner loaded on trash:', common.thinksTrash(state, partner).map(c => logCard(c)));
+				logger.info('partner loaded on trash:', common.thinksTrash(state, partner).map(logCard));
 			}
 		}
 		else {

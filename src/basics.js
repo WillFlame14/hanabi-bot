@@ -27,7 +27,7 @@ export function onClue(state, action) {
 			c.clues.push(clue);
 		}
 
-		for (const player of state.players.concat([state.common])) {
+		for (const player of state.allPlayers) {
 			const card = player.thoughts[order];
 			const inferences_before = card.inferred.length;
 
@@ -58,7 +58,7 @@ export function onDiscard(state, action) {
 
 	state.discard_stacks[suitIndex][rank - 1]++;
 
-	for (const player of state.players.concat([state.common])) {
+	for (const player of state.allPlayers) {
 		player.card_elim(state);
 		player.refresh_links(state);
 	}
@@ -127,7 +127,7 @@ export function onPlay(state, action) {
 
 	state.play_stacks[suitIndex] = rank;
 
-	for (const player of state.players.concat([state.common])) {
+	for (const player of state.allPlayers) {
 		player.card_elim(state);
 		player.refresh_links(state);
 	}

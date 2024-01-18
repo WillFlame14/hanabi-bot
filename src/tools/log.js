@@ -62,8 +62,8 @@ export function logHand(hand, player = globals.state.common) {
 			}
 		}
 
-		new_card.possible = card.possible.map(c => logCard(c));
-		new_card.inferred = card.inferred.map(c => logCard(c));
+		new_card.possible = card.possible.map(logCard);
+		new_card.inferred = card.inferred.map(logCard);
 		new_card.reasoning = card.reasoning_turn;
 		new_hand.push(new_card);
 	}
@@ -102,13 +102,13 @@ export function logPerformAction(action) {
 			const slot = hand.findIndex(card => card.order === target) + 1;
 			const card = globals.state.common.thoughts[hand[slot - 1].order];
 
-			return `Play slot ${slot}, inferences [${card.inferred.map(c => logCard(c))}]`;
+			return `Play slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}
 		case ACTION.DISCARD: {
 			const slot = hand.findIndex(card => card.order === target) + 1;
 			const card = globals.state.common.thoughts[hand[slot - 1].order];
 
-			return `Discard slot ${slot}, inferences [${card.inferred.map(c => logCard(c))}]`;
+			return `Discard slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}
 		case ACTION.COLOUR:
 		case ACTION.RANK:
@@ -193,7 +193,7 @@ export function logAction(action) {
  */
 export function logConnection(connection) {
 	const { type, reacting, identities, card } = connection;
-	const identity = identities.length === 1 ? logCard(identities[0]) : `[${identities.map(i => logCard(i))}]`;
+	const identity = identities.length === 1 ? logCard(identities[0]) : `[${identities.map(logCard)}]`;
 
 	return `${card.order} ${identity} ${type} (${globals.state.playerNames[reacting]})`;
 }
@@ -218,7 +218,7 @@ export function logLinks(links) {
 
 		return {
 			cards: cards.map(c => c.order),
-			identities: identities.map(i => logCard(i)),
+			identities: identities.map(logCard),
 			promised
 		};
 	});

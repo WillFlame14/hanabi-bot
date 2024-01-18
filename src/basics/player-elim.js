@@ -48,7 +48,7 @@ export function card_elim(state) {
 				}
 			}
 		}
-		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(c => logCard(c))}`);
+		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
 	}
 }
 

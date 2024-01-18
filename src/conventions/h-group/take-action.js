@@ -152,7 +152,7 @@ export function take_action(state) {
 		}
 
 		if (priority !== -1) {
-			logger.info(`best playable card is order ${best_playable_card.order}, inferences ${state.me.thoughts[best_playable_card.order].inferred.map(c => logCard(c))}`);
+			logger.info(`best playable card is order ${best_playable_card.order}, inferences ${state.me.thoughts[best_playable_card.order].inferred.map(logCard)}`);
 		}
 	}
 

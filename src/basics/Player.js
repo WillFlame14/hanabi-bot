@@ -133,7 +133,7 @@ export class Player {
 			const trash = poss.every(p => isBasicTrash(state, p) || visible_elsewhere(p, c.order));
 
 			if (trash) {
-				logger.debug(`order ${c.order} is trash, poss ${poss.map(c => logCard(c)).join()}, ${poss.map(p => isBasicTrash(state, p) + '|' + visible_elsewhere(p, c.order)).join()}`);
+				logger.debug(`order ${c.order} is trash, poss ${poss.map(logCard).join()}, ${poss.map(p => isBasicTrash(state, p) + '|' + visible_elsewhere(p, c.order)).join()}`);
 			}
 
 			return trash;

@@ -26,7 +26,7 @@ export function update_turn(state, action) {
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const { connections, conn_index, focused_card, inference } = common.waiting_connections[i];
 		const { reacting, card: old_card, identities } = connections[conn_index];
-		logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(c => logCard(c))} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
+		logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
 
 		// After the turn we were waiting for, the card was played and matches expectation
 		if (reacting === otherPlayerIndex &&
@@ -34,7 +34,7 @@ export function update_turn(state, action) {
 			state.last_actions[reacting].type === 'play'
 		) {
 			if (!identities.some(identity => state.last_actions[reacting].card.matches(identity))) {
-				logger.info('card revealed to not be', identities.map(i => logCard(i)).join(), 'removing connection as', logCard(inference));
+				logger.info('card revealed to not be', identities.map(logCard).join(), 'removing connection as', logCard(inference));
 
 				common.thoughts[focused_card.order].subtract('inferred', [inference]);
 				to_remove.push(i);

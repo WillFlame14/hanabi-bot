@@ -115,6 +115,10 @@ export class State {
 		return this.play_stacks.reduce((sum, stack) => sum + stack);
 	}
 
+	get allPlayers() {
+		return this.players.concat(this.common);
+	}
+
 	/**
 	 * Returns a blank copy of the state, as if the game had restarted.
 	 */
@@ -243,7 +247,7 @@ export class State {
 			if (our_action) {
 				new_state.hands[this.ourPlayerIndex] = this.handHistory[new_state.turn_count];
 
-				for (const player of new_state.players.concat([new_state.common])) {
+				for (const player of new_state.allPlayers) {
 					for (const card of new_state.hands.flat()) {
 						player.thoughts[card.order].actualCard = card;
 					}
@@ -260,7 +264,7 @@ export class State {
 			if (our_action) {
 				new_state.hands[this.ourPlayerIndex] = hypo_state.hands[this.ourPlayerIndex];
 
-				for (const player of new_state.players.concat([new_state.common])) {
+				for (const player of new_state.allPlayers) {
 					for (const card of new_state.hands.flat()) {
 						player.thoughts[card.order].actualCard = card;
 					}
