@@ -69,22 +69,7 @@ function apply_good_touch(state, action) {
 		const infs_to_recheck = Array.from(all_resets).map(order => oldThoughts[order].identity({ infer: true })).filter(id => id !== undefined);
 
 		for (const inf of infs_to_recheck) {
-			const elims = state.elims[logCard(inf)];
-
-			if (elims) {
-				logger.warn('adding back inference', logCard(inf), 'which was falsely eliminated from', elims);
-
-				for (const order of elims) {
-					const card = common.thoughts[order];
-
-					// Add the inference back if it's still a possibility
-					if (card.possible.some(c => c.matches(inf))) {
-						card.union('inferred', [inf]);
-					}
-				}
-				common.all_inferred.push(inf);
-				state.elims[logCard(inf)] = undefined;
-			}
+			common.restore_elim(inf);
 		}
 	}
 

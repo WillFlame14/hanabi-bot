@@ -21,9 +21,11 @@ export function onClue(state, action) {
 	for (const { order } of state.hands[target]) {
 		const c = state.hands[target].findOrder(order);
 
-		if (list.includes(order) && !c.clued) {
-			c.newly_clued = true;
-			c.clued = true;
+		if (list.includes(order)) {
+			if (!c.clued) {
+				c.newly_clued = true;
+				c.clued = true;
+			}
 			c.clues.push(clue);
 		}
 

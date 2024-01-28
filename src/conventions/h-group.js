@@ -12,6 +12,7 @@ import * as Utils from '../tools/util.js';
  * @property {HGroup_Player[]} players
  */
 export default class HGroup extends State {
+	convention_name = 'HGroup';
 	interpret_clue = interpret_clue;
 	interpret_discard = interpret_discard;
 	take_action = take_action;
@@ -32,10 +33,10 @@ export default class HGroup extends State {
 		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
 
 		this.players = this.players.map(p =>
-			new HGroup_Player(p.playerIndex, p.all_possible, p.all_inferred, p.hypo_stacks, p.thoughts, p.links, p.unknown_plays));
+			new HGroup_Player(p.playerIndex, p.all_possible, p.all_inferred, p.hypo_stacks, p.thoughts, p.links, p.unknown_plays, p.waiting_connections, p.elims));
 
 		const c = this.common;
-		this.common = new HGroup_Player(c.playerIndex, c.all_possible, c.all_inferred, c.hypo_stacks, c.thoughts, c.links, c.unknown_plays);
+		this.common = new HGroup_Player(c.playerIndex, c.all_possible, c.all_inferred, c.hypo_stacks, c.thoughts, c.links, c.unknown_plays, c.waiting_connections, c.elims);
 
 		this.level = level;
 	}
@@ -59,7 +60,7 @@ export default class HGroup extends State {
 		}
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'last_actions',
-			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft', 'elims'];
+			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);

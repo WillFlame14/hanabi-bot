@@ -3,8 +3,8 @@ import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
 import { select_play_clue, determine_playable_card, order_1s, find_clue_value } from './action-helper.js';
 import { find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { determine_focus, inEndgame, minimum_clue_value, stall_severity } from './hanabi-logic.js';
-import { cardValue, getPace, isBasicTrash, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+import { determine_focus, minimum_clue_value, stall_severity } from './hanabi-logic.js';
+import { cardValue, getPace, inEndgame, isBasicTrash, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';

@@ -2,6 +2,7 @@ import { cardTouched } from '../variants.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
+import { unknownIdentities } from './hanabi-util.js';
 
 /**
  * @typedef {import('./State.js').State} State
@@ -50,6 +51,15 @@ export function update_hypo_stacks(state, player) {
 	let found_new_playable = true;
 	const good_touch_elim = /** @type {Card[]}*/ ([]);
 
+	const linked_orders = new Set();
+
+	for (const { cards, identities } of player.links) {
+		// We aren't sure about the identities of these cards - at least one is bad touched
+		if (cards.length > identities.reduce((sum, identity) => sum += unknownIdentities(state, player, identity), 0)) {
+			cards.forEach(c => linked_orders.add(c.order));
+		}
+	}
+
 	// Attempt to play all playable cards
 	while (found_new_playable) {
 		found_new_playable = false;
@@ -57,7 +67,7 @@ export function update_hypo_stacks(state, player) {
 		for (const { order } of state.hands.flat()) {
 			const card = player.thoughts[order];
 
-			if (!card.saved || good_touch_elim.some(e => e.matches(card))) {
+			if (!card.saved || good_touch_elim.some(e => e.matches(card)) || linked_orders.has(order)) {
 				continue;
 			}
 
@@ -150,7 +160,7 @@ export function team_elim(state) {
 		}
 
 		player.waiting_connections = state.common.waiting_connections.slice();
-		player.good_touch_elim(state);
+		player.good_touch_elim(state, state.numPlayers === 2);
 		player.refresh_links(state);
 		update_hypo_stacks(state, player);
 	}

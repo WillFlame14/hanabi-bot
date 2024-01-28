@@ -21,6 +21,7 @@ export class Player {
 	find_links = Elim.find_links;
 	good_touch_elim = Elim.good_touch_elim;
 	reset_card = Elim.reset_card;
+	restore_elim = Elim.restore_elim;
 
 	/**
 	 * @param {number} playerIndex
@@ -31,8 +32,9 @@ export class Player {
 	 * @param {Link[]} [links]
 	 * @param {number[]} unknown_plays
 	 * @param {WaitingConnection[]} waiting_connections
+	 * @param {Record<string, number[]>} elims
 	 */
-	constructor(playerIndex, all_possible, all_inferred, hypo_stacks, thoughts = [], links = [], unknown_plays = [], waiting_connections = []) {
+	constructor(playerIndex, all_possible, all_inferred, hypo_stacks, thoughts = [], links = [], unknown_plays = [], waiting_connections = [], elims = {}) {
 		this.playerIndex = playerIndex;
 
 		this.thoughts = thoughts;
@@ -48,6 +50,7 @@ export class Player {
 		this.unknown_plays = unknown_plays;
 
 		this.waiting_connections = waiting_connections;
+		this.elims = elims;
 	}
 
 	clone() {
@@ -58,7 +61,8 @@ export class Player {
 			this.thoughts.map(infs => infs.clone()),
 			this.links.map(link => Utils.objClone(link)),
 			this.unknown_plays,
-			this.waiting_connections.slice());
+			Utils.objClone(this.waiting_connections),
+			Utils.objClone(this.elims));
 	}
 
 	get hypo_score() {
@@ -91,7 +95,7 @@ export class Player {
 	thinksPlayables(state, playerIndex) {
 		const linked_orders = new Set();
 
-		for (const { cards, identities } of state.players[playerIndex].links) {
+		for (const { cards, identities } of this.links) {
 			// We aren't sure about the identities of these cards - at least one is bad touched
 			if (cards.length > identities.reduce((sum, identity) => sum += unknownIdentities(state, this, identity), 0)) {
 				cards.forEach(c => linked_orders.add(c.order));
@@ -102,7 +106,6 @@ export class Player {
 		// (e.g. if I later discover that I did not have a playable when I thought I did)
 		return Array.from(state.hands[playerIndex].filter(c => {
 			const card = this.thoughts[c.order];
-
 			return !linked_orders.has(c.order) &&
 				card.possibilities.every(p => playableAway(state, p) === 0) &&
 				card.matches_inferences();

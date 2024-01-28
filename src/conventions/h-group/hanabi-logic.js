@@ -1,6 +1,6 @@
 import { cardCount } from '../../variants.js';
 import { Hand } from '../../basics/Hand.js';
-import { baseCount, getPace, visibleFind } from '../../basics/hanabi-util.js';
+import { baseCount, inEndgame, visibleFind } from '../../basics/hanabi-util.js';
 
 import { logHand } from '../../tools/log.js';
 
@@ -75,14 +75,6 @@ export function stall_severity(state, player, giver) {
 		return 1;
 	}
 	return 0;
-}
-
-/**
- * Returns whether the state is in the endgame.
- * @param {State} state
- */
-export function inEndgame(state) {
-	return getPace(state) < state.numPlayers;
 }
 
 /**

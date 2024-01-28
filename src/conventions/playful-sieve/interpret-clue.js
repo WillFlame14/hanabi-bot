@@ -54,22 +54,7 @@ export function interpret_clue(state, action) {
 		const infs_to_recheck = Array.from(all_resets).map(order => oldCommon.thoughts[order].identity({ infer: true })).filter(id => id !== undefined);
 
 		for (const inf of infs_to_recheck) {
-			const elims = state.elims[logCard(inf)];
-
-			if (elims) {
-				logger.warn('adding back inference', logCard(inf), 'which was falsely eliminated from', elims);
-
-				for (const order of elims) {
-					const card = common.thoughts[order];
-
-					// Add the inference back if it's still a possibility
-					if (card.possible.some(c => c.matches(inf))) {
-						card.union('inferred', [inf]);
-					}
-				}
-				common.all_inferred.push(inf);
-				state.elims[logCard(inf)] = undefined;
-			}
+			common.restore_elim(inf);
 		}
 	}
 
@@ -97,9 +82,9 @@ export function interpret_clue(state, action) {
 				fix = true;
 
 				// Do not allow this card to regain inferences from false elimination
-				for (const [id, orders] of Object.entries(state.elims)) {
+				for (const [id, orders] of Object.entries(common.elims)) {
 					if (orders.includes(order)) {
-						state.elims[id].splice(orders.indexOf(order), 1);
+						common.elims[id].splice(orders.indexOf(order), 1);
 					}
 				}
 			}

@@ -21,6 +21,7 @@ import { logPerformAction } from '../tools/log.js';
  */
 
 export class State {
+	convention_name = '';
 	turn_count = 1;
 	clue_tokens = 8;
 	strikes = 0;
@@ -40,7 +41,6 @@ export class State {
 	handHistory = /** @type {Hand[]} */ ([]);
 
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
-	elims = /** @type {Record<string, number[]>} */({});
 
 	rewinds = 0;
 	rewindDepth = 0;

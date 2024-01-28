@@ -6,6 +6,7 @@ import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
 
 /**
+ * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').ActualCard} ActualCard
  * @typedef {import('./Card.js').BasicCard} BasicCard
@@ -27,8 +28,14 @@ export function card_elim(state) {
 		const identity = identities[i];
 		const certain_cards = visibleFind(state, this, identity);
 
-		if (baseCount(state, identity) + certain_cards.length !== cardCount(state.suits, identity)) {
+		if (!this.all_possible.some(c => c.matches(identity)) ||
+			baseCount(state, identity) + certain_cards.length !== cardCount(state.suits, identity)
+		) {
 			continue;
+		}
+
+		if (!this.all_possible.some(c => c.matches(identity)) || !this.all_inferred.some(c => c.matches(identity))) {
+			throw new Error(`Failing to eliminate identity ${logCard(identity)} from ${this.all_possible.some(c => c.matches(identity)) ? 'possible' : 'inferred'}`);
 		}
 
 		// Remove it from the list of future possibilities
@@ -43,7 +50,7 @@ export function card_elim(state) {
 				card.subtract('inferred', [identity]);
 
 				// Card can be further eliminated
-				if (card.possible.length === 1 && this.all_possible.some(c => c.matches(card.identity()))) {
+				if (card.possible.length === 1) {
 					identities.push(card.identity());
 				}
 			}
@@ -58,13 +65,13 @@ export function card_elim(state) {
  * @this {Player}
  * @param {State} state
  */
-export function good_touch_elim(state) {
+export function good_touch_elim(state, only_self = false) {
 	const identities = this.all_possible.slice();
 	const resets = /** @type {Set<number>} */ (new Set());
 
 	for (let i = 0; i < identities.length; i++) {
 		const identity = identities[i];
-		const matches = state.hands.flat().filter(c => {
+		const matches = state.hands.filter((_, index) => !only_self || index === this.playerIndex).flat().filter(c => {
 			const card = this.thoughts[c.order];
 			return card.touched &&
 				card.matches(identity, { infer: true }) &&
@@ -81,14 +88,15 @@ export function good_touch_elim(state) {
 			return card.matches(identity) || card.focused;
 		});
 
-		for (const { order } of state.hands.flat()) {
+		for (const { order } of state.hands.filter((_, index) => !only_self || index === this.playerIndex).flat()) {
 			const card = this.thoughts[order];
 
 			if (!card.saved ||															// Unsaved cards
 				hard_matches.some(c => c.order === order) ||							// Hard matches
 				(hard_matches.length === 0 && matches.some(c => c.order === order)) ||	// Soft matches when there are no hard matches
 				card.inferred.length === 0 ||											// Cards with no inferences
-				!card.inferred.some(c => c.matches(identity))) {						// Cards that don't have this inference
+				!card.inferred.some(c => c.matches(identity)) ||						// Cards that don't have this inference
+				card.inferred.every(inf => isBasicTrash(state, inf))) {					// Clued trash
 				continue;
 			}
 
@@ -96,18 +104,16 @@ export function good_touch_elim(state) {
 			card.subtract('inferred', [identity]);
 
 			if (this.playerIndex === -1) {
-				if (state.elims[logCard(identity)] === undefined) {
-					state.elims[logCard(identity)] = [];
-				}
-				state.elims[logCard(identity)].push(order);
+				this.elims[logCard(identity)] ??= [];
+				this.elims[logCard(identity)].push(order);
 			}
 
-			if (card.inferred.length === 0) {
+			if (card.inferred.length === 0 && !card.reset) {
 				this.reset_card(order);
 				resets.add(order);
 			}
 			// Newly eliminated
-			else if (card.inferred.length === 1 && pre_inferences > 1) {
+			else if (card.inferred.length === 1 && pre_inferences > 1 && !isBasicTrash(state, card.inferred[0])) {
 				identities.push(card.inferred[0]);
 			}
 		}
@@ -127,6 +133,7 @@ export function reset_card(order) {
 	if (card.finessed) {
 		card.finessed = false;
 		card.inferred = card.old_inferred;
+		card.intersect('inferred', card.possible);
 
 		// Filter out future waiting connections involving this card
 		this.waiting_connections = this.waiting_connections.filter(wc =>
@@ -141,13 +148,15 @@ export function reset_card(order) {
  * Finds good touch (non-promised) links in the hand.
  * @this {Player}
  * @param {State} state
+ * @param {Hand} [hand]
  */
-export function find_links(state) {
-	if (this.playerIndex === -1) {
+export function find_links(state, hand = state.hands[this.playerIndex]) {
+	if (this.playerIndex === -1 && hand === undefined) {
+		for (const hand of state.hands) {
+			this.find_links(state, hand);
+		}
 		return;
 	}
-
-	const hand = state.hands[this.playerIndex];
 
 	for (const { order } of hand) {
 		const card = this.thoughts[order];
@@ -184,10 +193,6 @@ export function find_links(state) {
  * @param {State} state
  */
 export function refresh_links(state) {
-	if (this.playerIndex === -1) {
-		return;
-	}
-
 	// Get the link indices that we need to redo (after learning new things about them)
 	const redo_elim_indices = Utils.findIndices(this.links, ({cards, identities}) =>
 		cards.some(c => {
@@ -203,4 +208,30 @@ export function refresh_links(state) {
 
 	this.card_elim(state);
 	this.find_links(state);
+}
+
+/**
+ * @this {Player}
+ * @param {BasicCard} identity
+ */
+export function restore_elim(identity) {
+	const id = logCard(identity);
+	const elims = this.elims[id];
+
+	if (elims) {
+		logger.warn('adding back inference', id, 'which was falsely eliminated from', elims);
+
+		for (const order of elims) {
+			const card = this.thoughts[order];
+
+			// Add the inference back if it's still a possibility
+			if (card.possible.some(c => c.matches(identity))) {
+				card.union('inferred', [identity]);
+			}
+		}
+		if (!this.all_inferred.some(i => i.matches(identity))) {
+			this.all_inferred.push(identity);
+		}
+		this.elims[id] = undefined;
+	}
 }

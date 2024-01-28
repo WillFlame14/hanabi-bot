@@ -115,6 +115,14 @@ export function getPace(state) {
 }
 
 /**
+ * Returns whether the state is in the endgame.
+ * @param {State} state
+ */
+export function inEndgame(state) {
+	return getPace(state) < state.numPlayers;
+}
+
+/**
  * @param {State} state
  * @param {ActualCard} card
  */
