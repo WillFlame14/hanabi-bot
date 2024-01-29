@@ -53,10 +53,10 @@ export function update_turn(state, action) {
 		}
 	}
 
+	// Filter out connections that have been removed (or connections to the same card where others have been demonstrated)
+	common.waiting_connections = common.waiting_connections.filter((wc, i) => !to_remove.includes(i));
+
 	update_hypo_stacks(state, state.common);
 	state.common.good_touch_elim(state);
 	team_elim(state);
-
-	// Filter out connections that have been removed (or connections to the same card where others have been demonstrated)
-	common.waiting_connections = common.waiting_connections.filter((wc, i) => !to_remove.includes(i));
 }

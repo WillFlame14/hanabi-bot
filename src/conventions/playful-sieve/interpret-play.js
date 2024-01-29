@@ -131,8 +131,7 @@ export function interpret_play(state, action) {
 		chop.finessed = true;
 		chop.intersect('inferred', playable_possibilities);
 	}
-
-	if (common.thinksLocked(state, other)) {
+	else if (common.thinksLocked(state, other)) {
 		const unlocked_order = unlock_promise(state, action, playerIndex, other, locked_shifts);
 
 		if (unlocked_order !== undefined) {

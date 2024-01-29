@@ -1,14 +1,13 @@
 import { ACTION, CLUE } from '../../constants.js';
 import { clue_value } from './action-helper.js';
-import { getPace, isCritical, isTrash, playableAway } from '../../basics/hanabi-util.js';
+import { inEndgame, isCritical, isTrash, playableAway } from '../../basics/hanabi-util.js';
 import { find_sarcastic } from './interpret-discard.js';
 import { unlock_promise } from './interpret-play.js';
+import { find_fix_clue } from './fix-clues.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
-import { find_fix_clue } from './fix-clues.js';
-
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
@@ -40,19 +39,24 @@ export function take_action(state) {
 		}
 	}
 
-	// Discards must be inferred, playable, trash and duplicated in our hand
-	const discards = playable_cards.filter(({ order }) => {
-		const card = state.me.thoughts[order];
+	// Discards must be inferred, playable, trash and not duplicated in our hand
+	const discards = playable_cards.filter(card => {
 		const id = card.identity({ infer: true });
 
 		return id !== undefined &&
 			trash_cards.some(c => c.order === card.order) &&
-			playable_cards.some(c => state.me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
+			!playable_cards.some(c => state.me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
 	});
 
-	// Remove trash cards from playables and discards from trash cards
-	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order));
-	trash_cards = trash_cards.filter(tc => !discards.some(dc => dc.order === tc.order));
+	// Pick the leftmost of all playable trash cards
+	const playable_trash = playable_cards.filter(card => {
+		const id = card.identity({ infer: true });
+		return id !== undefined && playable_cards.some(c => c.matches(id, { infer: true }) && c.order < card.order);
+	});
+
+	// Remove trash from playables (but not playable trash) and discards and playable trash from trash cards
+	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order) || playable_trash.some(pt => pt.order === pc.order));
+	trash_cards = trash_cards.filter(tc => !discards.some(dc => dc.order === tc.order) && !playable_trash.some(pt => pt.order === tc.order));
 
 	if (playable_cards.length > 0) {
 		logger.info('playable cards', logHand(playable_cards));
@@ -144,7 +148,9 @@ export function take_action(state) {
 
 	logger.info('fix clue?', fix_clue ? logClue(fix_clue) : undefined);
 
-	if (common.thinksLoaded(state, partner) || partner_hand.some(c => common.thoughts[c.order].called_to_discard) || (chop_away === 0 && this.turn_count !== 1)) {
+	const sarcastic_chop = playable_cards.find(c => c.identity({ infer: true })?.matches(chop));
+
+	if (common.thinksLoaded(state, partner) || partner_hand.some(c => common.thoughts[c.order].called_to_discard) || (chop_away === 0 && this.turn_count !== 1 && !sarcastic_chop)) {
 		if (common.thinksLoaded(state, partner)) {
 			const playables = common.thinksPlayables(state, partner);
 
@@ -159,16 +165,12 @@ export function take_action(state) {
 			logger.info('partner loaded', (partner_hand.some(c => common.thoughts[c.order].called_to_discard) ? 'on ptd' : 'on playable slot 1'));
 		}
 
+		// TODO: If in endgame, check if a clue needs to be given before playing.
 		if (playable_cards.length > 0) {
-			const sarcastic_chop = playable_cards.find(c => c.identity({ infer: true })?.matches(chop));
-
-			if (sarcastic_chop) {
-				return { tableID, type: ACTION.DISCARD, target: sarcastic_chop.order };
-			}
 			return { tableID, type: ACTION.PLAY, target: playable_priorities[priority][0].order };
 		}
 
-		if (state.clue_tokens !== 8 && getPace(state) !== 0) {
+		if (state.clue_tokens !== 8 && !inEndgame(state)) {
 			if (discards.length > 0) {
 				return { tableID, type: ACTION.DISCARD, target: discards[0].order };
 			}
@@ -188,14 +190,6 @@ export function take_action(state) {
 			}
 
 			// Otherwise, try to give some clue?
-		}
-	}
-
-	if (chop_away === 1) {
-		const connecting = hand.filter(c => common.thoughts[c.order].matches({ suitIndex: chop.suitIndex, rank: chop.rank - 1 }, { infer: true }));
-
-		if (connecting.length > 0) {
-			return  { tableID, type: ACTION.PLAY, target: connecting[0].order };
 		}
 	}
 
@@ -236,12 +230,15 @@ export function take_action(state) {
 	// Partner isn't loaded/locked and their chop isn't playable
 
 	if (chop_away === 1) {
-		const connecting_playable = playable_cards.find(card =>
-			card.suitIndex === chop.suitIndex && card.rank === state.play_stacks[chop.suitIndex] + 1);
+		const connecting_playable = playable_cards.find(card => card.suitIndex === chop.suitIndex);
 
 		if (connecting_playable !== undefined) {
 			return { tableID, type: ACTION.PLAY, target: connecting_playable.order };
 		}
+	}
+
+	if (sarcastic_chop) {
+		return { tableID, type: ACTION.DISCARD, target: sarcastic_chop.order };
 	}
 
 	const playable_sarcastic = discards.find(card => playableAway(state, card) === 0 && find_sarcastic(hand, state.me, card).length === 1);
@@ -256,7 +253,7 @@ export function take_action(state) {
 
 	/** @type {Clue} */
 	let best_clue;
-	let best_clue_value = 0;
+	let best_clue_value = -10;
 
 	/** @type {Clue} */
 	let lock_clue;
@@ -320,8 +317,6 @@ function determine_playable_card(state, playable_cards) {
 
 	let min_rank = 5;
 	for (const card of playable_cards) {
-		const possibilities = card.inferred.length > 0 ? card.inferred : card.possible;
-
 		// Part of a finesse
 		if (card.finessed) {
 			priorities[5].push(card);
@@ -329,7 +324,7 @@ function determine_playable_card(state, playable_cards) {
 		}
 
 		let priority = 0;
-		for (const inference of possibilities) {
+		for (const inference of card.possibilities) {
 			const { suitIndex, rank } = inference;
 
 			let connected = false;
@@ -360,7 +355,7 @@ function determine_playable_card(state, playable_cards) {
 		}
 
 		// Find the lowest possible rank for the card
-		const rank = possibilities.reduce((lowest_rank, card) => card.rank < lowest_rank ? card.rank : lowest_rank, 5);
+		const rank = card.possibilities.reduce((lowest_rank, card) => card.rank < lowest_rank ? card.rank : lowest_rank, 5);
 
 		// Playing a 5
 		if (rank === 5) {
@@ -369,7 +364,7 @@ function determine_playable_card(state, playable_cards) {
 		}
 
 		// Unknown card
-		if (possibilities.length > 1) {
+		if (card.possibilities.length > 1) {
 			priorities[3].push(card);
 			continue;
 		}

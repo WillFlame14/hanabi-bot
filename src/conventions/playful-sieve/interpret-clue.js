@@ -1,5 +1,5 @@
 import { CLUE } from '../../constants.js';
-import { isTrash, refer_right } from '../../basics/hanabi-util.js';
+import { isTrash, playableAway, refer_right } from '../../basics/hanabi-util.js';
 import { team_elim, update_hypo_stacks } from '../../basics/helper.js';
 import * as Basics from '../../basics.js';
 import * as Utils from '../../tools/util.js';
@@ -10,6 +10,7 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../../basics/State.js').State} State
+ * @typedef {import('../../basics/Card.js').BasicCard} BasicCard
  * @typedef {import('../../types.js').ClueAction} ClueAction
  * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').Identity} Identity
@@ -26,12 +27,13 @@ export function interpret_clue(state, action) {
 	const { clue, giver, list, target } = action;
 	const hand = state.hands[target];
 	const touch = Array.from(hand.filter(c => list.includes(c.order)));
+	const slot1 = common.thoughts[hand[0].order];
 
 	const oldCommon = state.common.clone();
 	const old_playables = oldCommon.thinksPlayables(state, target).map(c => c.order);
 	const old_trash = oldCommon.thinksTrash(state, target).map(c => c.order);
 
-	const no_info = touch.every(card => card.clues.some(c => Utils.objEquals(c, clue)));
+	const no_info = touch.every(card => card.clues.some(c => Utils.objEquals(c, Utils.objPick(clue, ['type', 'value']))));
 
 	Basics.onClue(state, action);
 
@@ -44,6 +46,7 @@ export function interpret_clue(state, action) {
 	}
 
 	const resets = common.good_touch_elim(state);
+	common.refresh_links(state);
 
 	// Includes resets from negative information
 	/** @type {Set<number>} */
@@ -79,6 +82,7 @@ export function interpret_clue(state, action) {
 			if (card.possible.some(c => c.matches(identity))) {
 				card.assign('inferred', [identity]);
 				card.finessed = false;
+				card.reset = true;
 				fix = true;
 
 				// Do not allow this card to regain inferences from false elimination
@@ -91,11 +95,9 @@ export function interpret_clue(state, action) {
 		}
 	}
 
-	update_hypo_stacks(state, common);
-
 	const newly_touched = Utils.findIndices(hand, (card) => card.newly_clued);
-	const trash_push = !fix && touch.every(card => (card.newly_clued &&
-		common.thoughts[card.order].inferred.every(inf => isTrash(state, common, inf, card.order))));
+	const trash_push = !fix && touch.every(card => !card.newly_clued ||
+		common.thoughts[card.order].inferred.every(inf => isTrash(state, common, inf, card.order))) && touch.some(card => card.newly_clued);
 
 	if (trash_push) {
 		logger.highlight('cyan', 'trash push!');
@@ -122,9 +124,12 @@ export function interpret_clue(state, action) {
 				}
 			}
 			else {
-				// Fill-in (locked hand ptd on slot 1)
-				logger.info('rank fill in while unloaded, giving locked hand ptd on slot 1', logCard(hand[0]));
-				common.thoughts[hand[0].order].called_to_discard = true;
+				// Fill-in (possibly locked hand ptd)
+				const playable_slot1 = slot1.finessed && slot1.inferred.every(inf => playableAway(state, inf) === 0);
+				if (!playable_slot1) {
+					slot1.called_to_discard = true;
+				}
+				logger.info('rank fill in', playable_slot1 ? '' : 'while unloaded, giving locked hand ptd on slot 1');
 			}
 		}
 		// Colour clue
@@ -132,8 +137,8 @@ export function interpret_clue(state, action) {
 			const suitIndex = clue.value;
 
 			// Slot 1 is playable
-			if (hand[0].newly_clued) {
-				common.thoughts[hand[0].order].intersect('inferred', [{ suitIndex, rank: common.hypo_stacks[suitIndex] + 1 }]);
+			if (slot1.newly_clued) {
+				slot1.intersect('inferred', [{ suitIndex, rank: common.hypo_stacks[suitIndex] + 1 }]);
 				const locked_hand_ptd = hand.find(c => !c.clued);
 
 				if (locked_hand_ptd) {
@@ -148,16 +153,23 @@ export function interpret_clue(state, action) {
 					return;
 				}
 
-				// Fill-in (locked hand ptd on slot 1)
-				logger.info('colour fill in while unloaded, giving locked hand ptd on slot 1', logCard(hand[0]));
-				common.thoughts[hand[0].order].called_to_discard = true;
+				// Fill-in (possibly locked hand ptd)
+				const playable_slot1 = slot1.finessed && slot1.inferred.every(inf => playableAway(state, inf) === 0);
+				if (!playable_slot1) {
+					slot1.called_to_discard = true;
+				}
+				logger.info('colour fill in', playable_slot1 ? '' : 'while unloaded, giving locked hand ptd on slot 1');
 			}
 		}
 		return;
 	}
 
-	if (!trash_push && (common.thinksPlayables(state, target).length > old_playables.length || common.thinksTrash(state, target).length > old_trash.length)) {
-		logger.info('new safe action provided, not continuing');
+	const new_playable = common.thinksPlayables(state, target).some(c => !old_playables.some(o => o === c.order));
+	const new_trash = !trash_push && common.thinksTrash(state, target).some(c => c.clued && !old_trash.some(o => o === c.order));
+
+	// Revealing a playable never is additionally referential, except colour clues where only new cards are touched
+	if (!(clue.type === CLUE.COLOUR && touch.every(c => c.newly_clued)) && (new_playable || new_trash)) {
+		logger.info('new safe action', (new_playable ? 'playable' : ''), (new_trash ? 'trash' : '') ,'provided, not continuing', );
 	}
 	else if (fix) {
 		logger.info('fix clue, not continuing');
@@ -204,6 +216,7 @@ export function interpret_clue(state, action) {
 					const target_card = common.thoughts[hand[target_index].order];
 					target_card.old_inferred = target_card.inferred.slice();
 					target_card.finessed = true;
+					target_card.focused = true;
 					target_card.intersect('inferred', known_playables.concat(unknown_playables));
 
 					// TODO: connect properly if there is more than 1 unknown play, starting from oldest finesse index
@@ -233,27 +246,34 @@ export function interpret_clue(state, action) {
 		// Referential discard (right)
 		else {
 			if (newly_touched.length > 0) {
-				const referred = newly_touched.map(index => Math.max(0, Utils.nextIndex(hand, (card) => !card.clued, index)));
-				const target_index = referred.reduce((min, curr) => Math.min(min, curr));
-
-				if (hand[target_index].newly_clued) {
-					logger.highlight('yellow', 'lock!');
-					action.lock = true;
+				// Directly playable rank, eliminate from focus if a link was formed
+				if (common.thoughts[hand[newly_touched[0]].order].inferred.every(inf => playableAway(state, inf) === 0)) {
+					common.thoughts[hand[newly_touched[0]].order].focused = true;
 				}
 				else {
-					common.thoughts[hand[target_index].order].called_to_discard = true;
-					logger.info(`ref discard on ${state.playerNames[target]}'s slot ${target_index + 1}`);
+					const referred = newly_touched.map(index => Math.max(0, Utils.nextIndex(hand, (card) => !card.clued, index)));
+					const target_index = referred.reduce((min, curr) => Math.min(min, curr));
+
+					if (hand[target_index].newly_clued) {
+						logger.highlight('yellow', 'lock!');
+						action.lock = true;
+					}
+					else {
+						common.thoughts[hand[target_index].order].called_to_discard = true;
+						logger.info(`ref discard on ${state.playerNames[target]}'s slot ${target_index + 1}`);
+					}
 				}
 			}
 			else {
 				// Fill-in (anti-finesse)
 				logger.info('rank fill in, anti-finesse on slot 1', logCard(hand[0]));
 				common.thoughts[hand[0].order].called_to_discard = true;
-				return;
 			}
 		}
 	}
 
+	common.good_touch_elim(state);
 	common.refresh_links(state);
+	update_hypo_stacks(state, common);
 	team_elim(state);
 }

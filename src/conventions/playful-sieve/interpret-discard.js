@@ -91,12 +91,13 @@ function apply_locked_discard(state, playerIndex) {
  * @param {ActualCard} card
  */
 export function interpret_discard(state, action, card) {
+	const { common } = state;
 	const { order, playerIndex, suitIndex, rank, failed } = action;
 	const identity = { suitIndex, rank };
-	const thoughts = state.common.thoughts[order];
+	const thoughts = common.thoughts[order];
 	const other = (playerIndex + 1) % state.numPlayers;
 
-	const locked_discard = state.common.thinksLocked(state, playerIndex) && !state.last_actions[other].lock;
+	const locked_discard = common.thinksLocked(state, playerIndex) && !state.last_actions[other].lock;
 
 	Basics.onDiscard(this, action);
 
@@ -115,6 +116,7 @@ export function interpret_discard(state, action, card) {
 	if (card.clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
 		logger.warn('discarded useful card!');
 		const duplicates = visibleFind(state, state.me, identity);
+		common.restore_elim(card);
 
 		// Card was bombed
 		if (failed) {
@@ -126,7 +128,8 @@ export function interpret_discard(state, action, card) {
 				const sarcastic = find_sarcastic(state.hands[state.ourPlayerIndex], state.me, identity);
 
 				if (sarcastic.length === 1) {
-					state.common.thoughts[sarcastic[0].order].intersect('inferred', [identity]);
+					logger.info('writing sarcastic on slot', state.hands[state.ourPlayerIndex].findIndex(c => c.order === sarcastic[0].order) + 1);
+					common.thoughts[sarcastic[0].order].intersect('inferred', [identity]);
 				}
 				else {
 					apply_unknown_sarcastic(state, sarcastic, identity);
@@ -144,7 +147,7 @@ export function interpret_discard(state, action, card) {
 					if (sarcastic.some(c => state.me.thoughts[c.order].matches(identity, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
 						// The matching card must be the only possible option in the hand to be known sarcastic
 						if (sarcastic.length === 1) {
-							state.common.thoughts[sarcastic[0].order].assign('inferred', [identity]);
+							common.thoughts[sarcastic[0].order].assign('inferred', [identity]);
 							logger.info(`writing ${logCard(identity)} from sarcastic discard`);
 						}
 						else {
@@ -162,11 +165,27 @@ export function interpret_discard(state, action, card) {
 	}
 
 	// Discarding while partner is locked and having a playable card
-	if (state.common.thinksLocked(state, other)) {
-		const playables = state.common.thinksPlayables(state, playerIndex);
+	if (common.thinksLocked(state, other)) {
+		const playables = common.thinksPlayables(state, playerIndex);
 
 		for (const card of playables) {
 			state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
 		}
+	}
+
+	// No safe action, chop is playable
+	if (!common.thinksLocked(state, other) && !common.thinksLoaded(state, other) && !state.hands[other].some(c => common.thoughts[c.order].called_to_discard)) {
+		const playable_possibilities = state.play_stacks.map((rank, suitIndex) => {
+			return { suitIndex, rank: rank + 1 };
+		});
+
+		if (common.thoughts[card.order].inferred.length === 1) {
+			playable_possibilities[suitIndex] = { suitIndex, rank: rank + 1 };
+		}
+
+		const chop = common.thoughts[state.hands[other][0].order];
+		chop.old_inferred = chop.inferred.slice();
+		chop.finessed = true;
+		chop.intersect('inferred', playable_possibilities);
 	}
 }
