@@ -69,11 +69,10 @@ export function bad_touch_result(state, hypo_player, hand, focus_order = -1) {
  * @param  {State} state
  * @param  {Player} player
  * @param  {Player} hypo_player
- * @param  {number} target
  */
-export function playables_result(state, player, hypo_player, target) {
+export function playables_result(state, player, hypo_player) {
 	let finesses = 0;
-	const playables = [], safe_playables = [];
+	const playables = [];
 
 	/**
 	 * TODO: This might not find the right card if it was duplicated...
@@ -106,10 +105,6 @@ export function playables_result(state, player, hypo_player, target) {
 			// Only counts as a playable if it wasn't already playing
 			if (!player.unknown_plays.some(order => order === hypo_card.order)) {
 				playables.push({ playerIndex, card: hypo_card });
-
-				if (hypo_player.thinksLoaded(state, target)) {
-					safe_playables.push({ playerIndex, card: hypo_card });
-				}
 			}
 		}
 	}
@@ -123,5 +118,5 @@ export function playables_result(state, player, hypo_player, target) {
 		playables.push({ playerIndex, card: hypo_player.thoughts[order] });
 	}
 
-	return { finesses, playables, safe_playables };
+	return { finesses, playables };
 }

@@ -169,7 +169,7 @@ export function interpret_clue(state, action) {
 
 	// Revealing a playable never is additionally referential, except colour clues where only new cards are touched
 	if (!(clue.type === CLUE.COLOUR && touch.every(c => c.newly_clued)) && (new_playable || new_trash)) {
-		logger.info('new safe action', (new_playable ? 'playable' : ''), (new_trash ? 'trash' : '') ,'provided, not continuing', );
+		logger.info('new safe action', (new_playable ? 'playable' : (new_trash ? 'trash' : '')) ,'provided, not continuing', );
 	}
 	else if (fix) {
 		logger.info('fix clue, not continuing');
