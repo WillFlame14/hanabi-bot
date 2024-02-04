@@ -213,7 +213,7 @@ export function refresh_links(state) {
 
 /**
  * @this {Player}
- * @param {BasicCard} identity 
+ * @param {BasicCard} identity
  */
 export function restore_elim(identity) {
 	const id = logCard(identity);

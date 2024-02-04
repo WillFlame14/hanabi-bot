@@ -1,8 +1,9 @@
+import { CLUE } from '../constants.js';
+import { unknownIdentities } from './hanabi-util.js';
 import { cardTouched } from '../variants.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
-import { unknownIdentities } from './hanabi-util.js';
 
 /**
  * @typedef {import('./State.js').State} State
@@ -36,6 +37,24 @@ export function all_identities(suits) {
 export function find_possibilities(clue, suits) {
 	return all_identities(suits).filter(id => cardTouched(id, suits, clue));
 }
+
+/**
+ * @param {State} state
+ * @param {number} target
+ */
+export function all_valid_clues(state, target) {
+	const hand = state.hands[target];
+	const clues = /** @type {Clue[]} */ ([]);
+
+	for (let rank = 1; rank <= 5; rank++)
+		clues.push({ type: CLUE.RANK, value: rank, target });
+
+	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++)
+		clues.push({ type: CLUE.COLOUR, value: suitIndex, target });
+
+	return clues.filter(clue => hand.clueTouched(clue, state.suits).length > 0);
+}
+
 
 /**
  * @param {State} state

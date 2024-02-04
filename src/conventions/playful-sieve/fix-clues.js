@@ -4,6 +4,7 @@ import { get_result } from './action-helper.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue } from '../../tools/log.js';
+import { all_valid_clues } from '../../basics/helper.js';
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
@@ -24,30 +25,11 @@ export function find_fix_clue(state) {
 
 	logger.info(`fix needed on [${fix_needed.map(logCard)}]`);
 
-	const clues = [];
-
 	/** @type {Clue} */
 	let best_clue;
 	let best_clue_value = -10;
 
-	for (let rank = 1; rank <= 5; rank++) {
-		const clue = { type: CLUE.RANK, value: rank, target: partner };
-		clues.push(clue);
-	}
-
-	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
-		const clue = { type: CLUE.COLOUR, value: suitIndex, target: partner };
-		clues.push(clue);
-	}
-
-	for (const clue of clues) {
-		const touch = state.hands[partner].clueTouched(clue, state.suits);
-
-		// Can't give empty clues
-		if (touch.length === 0) {
-			continue;
-		}
-
+	for (const clue of all_valid_clues(state, partner)) {
 		const { hypo_state, value } = get_result(state, clue);
 		const fixed = fix_needed.some(c => {
 			const actual = hypo_state.hands[partner].findOrder(c.order);

@@ -149,15 +149,16 @@ export function objPick(obj, attributes, options = {}) {
  * @template T
  * @param  {T[]} arr 						The array of objects.
  * @param  {(obj: T) => number} valueFunc	A function that takes in an object and returns its value.
+ * @param  {number} minValue 				The minimum value that the maximum object must satisfy.
  */
-export function maxOn(arr, valueFunc) {
+export function maxOn(arr, valueFunc, minValue = -Infinity) {
 	if (arr.length === 0) {
 		return undefined;
 	}
 
-	let max_value = valueFunc(arr[0]), max = arr[0];
+	let max_value = minValue, max;
 
-	for (let i = 1; i < arr.length; i++) {
+	for (let i = 0; i < arr.length; i++) {
 		const curr = valueFunc(arr[i]);
 
 		if (curr > max_value) {
