@@ -64,6 +64,7 @@ export function card_elim(state) {
  * Returns the orders of the cards that lost all inferences (were reset).
  * @this {Player}
  * @param {State} state
+ * @param {boolean} only_self 	Whether to only use cards in own hand for elim (e.g. in 2-player games, where GTP is less strong.)
  */
 export function good_touch_elim(state, only_self = false) {
 	const identities = this.all_possible.slice();

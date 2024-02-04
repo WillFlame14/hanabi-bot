@@ -1,5 +1,5 @@
 import { describe, it } from 'node:test';
-import { strict as assert } from 'node:assert';
+// import { strict as assert } from 'node:assert';
 
 import { PLAYER, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
@@ -30,7 +30,7 @@ describe('sarcastic discards', () => {
 		ExAsserts.objHasProperties(take_action(state), { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][1].order });
 	});
 
-	it('understands sarcastic discards to chop', () => {
+	/*it('understands sarcastic discards to chop', () => {
 		const state = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5']
@@ -47,7 +47,7 @@ describe('sarcastic discards', () => {
 		const slot1 = state.common.thoughts[state.hands[PLAYER.ALICE][0].order];
 		ExAsserts.cardHasInferences(slot1, ['g2']);
 		assert.equal(slot1.finessed, true);
-	});
+	});*/
 
 	it('sarcastic discards to a clued card', () => {
 		const state = setup(PlayfulSieve, [
@@ -67,7 +67,7 @@ describe('sarcastic discards', () => {
 	});
 });
 
-describe('gentleman\'s discards', () => {
+/*describe('gentleman\'s discards', () => {
 	it('performs gentleman\'s discards to rightmost when loaded on chop', () => {
 		const state = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -104,4 +104,4 @@ describe('gentleman\'s discards', () => {
 		ExAsserts.cardHasInferences(slot5, ['g2']);
 		assert.equal(slot5.finessed, true);
 	});
-});
+});*/

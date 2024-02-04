@@ -1,10 +1,8 @@
-import { CLUE } from '../../constants.js';
 import { bad_touch_result, elim_result, playables_result } from '../../basics/clue-result.js';
-import { cardValue, isTrash, playableAway, refer_right } from '../../basics/hanabi-util.js';
+import { cardValue } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue } from '../../tools/log.js';
-import * as Utils from '../../tools/util.js';
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
