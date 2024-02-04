@@ -8,6 +8,7 @@ import { update_turn } from './playful-sieve/update-turn.js';
 import * as Utils from '../tools/util.js';
 
 export default class PlayfulSieve extends State {
+	convention_name = 'PlayfulSieve';
 	interpret_clue = interpret_clue;
 	interpret_discard = interpret_discard;
 	take_action = take_action;
@@ -44,7 +45,7 @@ export default class PlayfulSieve extends State {
 		}
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'last_actions',
-			'turn_count', 'clue_tokens', 'strikes', 'rewindDepth', 'cardsLeft', 'locked_shifts', 'elims'];
+			'turn_count', 'clue_tokens', 'strikes', 'rewindDepth', 'cardsLeft', 'locked_shifts'];
 
 		for (const property of minimalProps) {
 			newState[property] = Utils.objClone(this[property]);

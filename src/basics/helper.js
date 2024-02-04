@@ -104,7 +104,10 @@ export function update_hypo_stacks(state, player) {
 				const actual_id = state.me.thoughts[order].identity();
 
 				// Do not allow false updating of hypo stacks
-				if (player.playerIndex === -1 && id && actual_id && !id.matches(actual_id)) {
+				if (player.playerIndex === -1 && (
+					(id && actual_id && !id.matches(actual_id)) ||		// Identity doesn't match
+					(actual_id && unknown_plays.some(o => state.hands.flat().find(c => c.order === o).matches(actual_id)))		// Duping playable
+				)) {
 					continue;
 				}
 

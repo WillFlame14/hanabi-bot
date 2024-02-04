@@ -53,7 +53,6 @@ describe('giving clues while locked', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p3', 'b4', 'y1', 'r3', 'g4']
 		], {
-			play_stacks: [0, 0, 0, 0, 5],
 			discarded: ['r3']
 		});
 
@@ -63,6 +62,23 @@ describe('giving clues while locked', () => {
 
 		// Bob should not be called to play slot 5.
 		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][4].order].finessed, false);
+
+		// Slot 1 should have permission to discard.
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][0].order].called_to_discard, true);
+	});
+
+	it('doesn\'t take locked hand ptd on a known playable', () => {
+		const state = setup(PlayfulSieve, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p1', 'b4', 'b2', 'b3', 'b5']
+		]);
+
+		takeTurn(state, 'Alice plays r1 (slot 1)');
+		takeTurn(state, 'Bob clues red to Alice (slot 5)');
+		takeTurn(state, 'Alice clues blue to Bob');
+
+		// Bob's slot 1 should not have permission to discard.
+		assert.equal(state.common.thoughts[state.hands[PLAYER.BOB][0].order].called_to_discard, false);
 	});
 });
 
