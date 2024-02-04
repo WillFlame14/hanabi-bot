@@ -32,8 +32,8 @@ export function get_result(state, clue) {
 		c1.clued && !state.common.thinksTrash(state, partner).some(c2 => c1.order !== c2.order));
 	const { playables } = playables_result(hypo_state, state.common, hypo_state.common);
 
-	const bad_playable = hypo_state.common.thinksPlayables(state, partner).find(c =>
-		hypo_state.common.thoughts[c.order].inferred.every(inf => !state.me.thoughts[c.order].matches(inf)));
+	const { card: bad_playable } = playables.find(({card}) =>
+		hypo_state.common.thoughts[card.order].inferred.every(inf => !state.me.thoughts[card.order].matches(inf))) ?? {};
 
 	if (bad_playable) {
 		logger.info(logClue(clue), 'results in', logCard(state.me.thoughts[bad_playable.order]), 'looking playable when it isn\'t');
@@ -77,7 +77,7 @@ export function clue_value(state, clue) {
 	const touch = state.hands[partner].clueTouched(clue, state.suits);
 
 	if (touch.length === 0)
-		return -1;
+		return -9999;
 
 	return get_result(state, clue).value;
 }

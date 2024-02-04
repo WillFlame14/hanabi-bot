@@ -87,7 +87,7 @@ export function interpret_clue(state, action) {
 
 				// Do not allow this card to regain inferences from false elimination
 				for (const [id, orders] of Object.entries(common.elims)) {
-					if (orders.includes(order)) {
+					if (orders?.includes(order)) {
 						common.elims[id].splice(orders.indexOf(order), 1);
 					}
 				}

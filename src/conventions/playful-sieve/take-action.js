@@ -184,11 +184,6 @@ export function take_action(state) {
 				return locked_discard_action;
 			}
 
-			// Bomb a possibly playable chop
-			if (state.me.thoughts[hand[0].order].inferred.some(c => playableAway(state, c) === 0)) {
-				return { tableID, type: ACTION.PLAY, target: hand[0].order };
-			}
-
 			// Otherwise, try to give some clue?
 		}
 	}
@@ -253,7 +248,7 @@ export function take_action(state) {
 
 	/** @type {Clue} */
 	let best_clue;
-	let best_clue_value = -10;
+	let best_clue_value = -9999;
 
 	/** @type {Clue} */
 	let lock_clue;
