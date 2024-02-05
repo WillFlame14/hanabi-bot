@@ -66,16 +66,13 @@ export function onDiscard(state, action) {
 	}
 
 	// Discarded all copies of a card - the new max rank is (discarded rank - 1) if not already lower
-	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, { suitIndex, rank })) {
+	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, { suitIndex, rank }))
 		state.max_ranks[suitIndex] = Math.min(state.max_ranks[suitIndex], rank - 1);
-	}
 
-	if (failed) {
+	if (failed)
 		state.strikes++;
-	}
-	else {
+	else
 		state.clue_tokens = Math.min(state.clue_tokens + 1, 8);		// Bombs count as discards, but they don't give a clue token
-	}
 }
 
 /**
@@ -135,7 +132,6 @@ export function onPlay(state, action) {
 	}
 
 	// Get a clue token back for playing a 5
-	if (rank === 5 && state.clue_tokens < 8) {
+	if (rank === 5 && state.clue_tokens < 8)
 		state.clue_tokens++;
-	}
 }

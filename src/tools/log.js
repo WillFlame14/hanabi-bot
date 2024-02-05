@@ -54,13 +54,7 @@ export function logHand(hand, player = globals.state.common) {
 		new_card.visible = (card.suitIndex === -1 ? 'unknown' : logCard(card));
 		new_card.order = card.order;
 
-		/** @type {string[]} */
-		new_card.flags = [];
-		for (const flag of ['clued', 'newly_clued', 'prompted', 'finessed', 'chop_moved', 'rewinded', 'hidden', 'called_to_discard']) {
-			if (card[flag]) {
-				new_card.flags.push(flag);
-			}
-		}
+		new_card.flags = ['clued', 'newly_clued', 'prompted', 'finessed', 'chop_moved', 'rewinded', 'hidden', 'called_to_discard'].filter(flag => card[flag]);
 
 		new_card.possible = card.possible.map(logCard);
 		new_card.inferred = card.inferred.map(logCard);
@@ -75,9 +69,9 @@ export function logHand(hand, player = globals.state.common) {
  * @param {Clue | PerformAction} clue
  */
 export function logClue(clue) {
-	if (clue === undefined) {
+	if (clue === undefined)
 		return;
-	}
+
 	const value = (clue.type === CLUE.COLOUR || clue.type === ACTION.COLOUR) ? globals.state.suits[clue.value].toLowerCase() : clue.value;
 
 	return `(${value} to ${globals.state.playerNames[clue.target]})`;
@@ -88,9 +82,8 @@ export function logClue(clue) {
  * @param  {PerformAction} action
  */
 export function logPerformAction(action) {
-	if (action === undefined) {
+	if (action === undefined)
 		return;
-	}
 
 	const { type, target } = action;
 
@@ -128,9 +121,8 @@ export function logAction(action) {
 	/** @type {State} */
 	const state = globals.state;
 
-	if (action === undefined) {
+	if (action === undefined)
 		return;
-	}
 
 	switch(action.type) {
 		case 'clue': {
@@ -138,12 +130,11 @@ export function logAction(action) {
 			const [playerName, targetName] = [giver, target].map(index => state.playerNames[index]);
 			let clue_value;
 
-			if (clue.type === CLUE.COLOUR) {
+			if (clue.type === CLUE.COLOUR)
 				clue_value = state.suits[clue.value].toLowerCase();
-			}
-			else {
+			else
 				clue_value = clue.value;
-			}
+
 			return `${playerName} clues ${clue_value} to ${targetName}`;
 		}
 		case 'discard': {

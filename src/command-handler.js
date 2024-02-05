@@ -44,19 +44,18 @@ export const handle = {
 		const within_room = data.recipient === '' && data.room.startsWith('table');
 
 		if (within_room) {
-			if (data.msg.startsWith('/setall')) {
+			if (data.msg.startsWith('/setall'))
 				assignSettings(data, false);
-			}
-			else if (data.msg.startsWith('/leaveall')) {
+			else if (data.msg.startsWith('/leaveall'))
 				leaveRoom();
-			}
+
 			return;
 		}
 
 		// We only care about private messages to us
-		if (data.recipient !== self.username) {
+		if (data.recipient !== self.username)
 			return;
-		}
+
 
 		last_sender = data.who;
 
@@ -83,7 +82,6 @@ export const handle = {
 				Utils.sendCmd('tableJoin', { tableID: table.id, password });
 				return;
 			}
-
 			Utils.sendCmd('tableJoin', { tableID: table.id });
 			return;
 		}
@@ -167,21 +165,20 @@ export const handle = {
 	 * Received at the beginning of the game, as a list of all actions that have happened so far.
 	 */
 	gameActionList: (data) => {
-		for (let i = 0; i < data.list.length - 10; i++) {
+		for (let i = 0; i < data.list.length - 10; i++)
 			handle.gameAction({ action: data.list[i], tableID: data.tableID }, true);
-		}
-		for (let i = data.list.length - 10; i < data.list.length - 1; i++) {
+
+		for (let i = data.list.length - 10; i < data.list.length - 1; i++)
 			handle.gameAction({ action: data.list[i], tableID: data.tableID });
-		}
+
 		handle.gameAction({ action: data.list.at(-1), tableID: data.tableID });
 
 		// Send "loaded" to let server know that we have "finished loading the UI"
 		Utils.sendCmd('loaded', { tableID: data.tableID });
 
 		// If we are going first, we need to take an action now
-		if (state.ourPlayerIndex === 0 && state.turn_count === 1) {
+		if (state.ourPlayerIndex === 0 && state.turn_count === 1)
 			setTimeout(() => Utils.sendCmd('action', state.take_action(state)), 3000);
-		}
 	},
 	/**
 	 * @param {{tableID: number }} data
@@ -226,9 +223,8 @@ export const handle = {
 		tables[data.id] = data;
 
 		// Only bots left in the replay
-		if (data.id === state.tableID && data.sharedReplay && data.spectators.every(({name}) => name.startsWith('will-bot'))) {
+		if (data.id === state.tableID && data.sharedReplay && data.spectators.every(({name}) => name.startsWith('will-bot')))
 			leaveRoom();
-		}
 	},
 	/**
 	 * @param {Table} data
@@ -244,9 +240,8 @@ export const handle = {
 	 * Received once, with a list of the current tables and their information.
 	 */
 	tableList: (data) => {
-		for (const table of data) {
+		for (const table of data)
 			tables[table.id] = table;
-		}
 	},
 	/**
 	 * @param {{tableID: number, replay: boolean}} data

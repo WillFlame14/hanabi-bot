@@ -10,7 +10,6 @@ import * as Utils from '../../tools/util.js';
 import logger from '../../tools/logger.js';
 import { logHand } from '../../tools/log.js';
 
-
 /**
  * @typedef {import('../h-group.js').default} State
  * @typedef {import('../../basics/Card.js').Card} Card
@@ -30,21 +29,18 @@ function find_unlock(state, target) {
 	for (const card of state.hands[target]) {
 		const { suitIndex, rank } = card;
 
-		if (playableAway(state, card) !== 1) {
+		if (playableAway(state, card) !== 1)
 			continue;
-		}
 
 		// See if we have the connecting card (should be certain)
 		const our_connecting = state.hands[state.ourPlayerIndex].find(c => state.me.thoughts[c.order].matches({ suitIndex, rank: rank - 1 }, { infer: true }));
-		if (our_connecting === undefined) {
+		if (our_connecting === undefined)
 			continue;
-		}
 
 		// The card must become playable
 		const known = state.players[target].thoughts[card.order].inferred.every(c => playableAway(state, c) === 0 || c.matches(card));
-		if (known) {
+		if (known)
 			return { tableID: state.tableID, type: ACTION.PLAY, target: our_connecting.order };
-		}
 	}
 	return;
 }
@@ -103,21 +99,18 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 				}
 
 				// We've reached the target's turn and weren't able to find a playable
-				if (nextPlayer === target) {
+				if (nextPlayer === target)
 					break;
-				}
 			}
 		}
 
 		const touches_chop = state.hands[target].clueTouched(clue, state.suits).some(c => c.order === state.common.chop(state.hands[target])?.order);
-		if (!locked && touches_chop && clue_safe(state, state.me, clue)) {
+		if (!locked && touches_chop && clue_safe(state, state.me, clue))
 			play_clues.push({ clue, playables: [] });
-		}
 	}
 
-	if (play_clues.length === 0) {
+	if (play_clues.length === 0)
 		return;
-	}
 
 	// If there are clues that make the save target playable, we should prioritize those
 	// TODO: Consider adding this back?
@@ -258,9 +251,8 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 					}
 				}
 
-				if (tccm) {
+				if (tccm)
 					continue;
-				}
 			}
 
 			const hand_after_save = hypo_state.hands[target];
@@ -270,9 +262,9 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 				const all_play_clues = play_clues.flat();
 
 				// Save clue reveals a play
-				if (hypo_state.common.thinksPlayables(hypo_state, target).length > 0) {
+				if (hypo_state.common.thinksPlayables(hypo_state, target).length > 0)
 					all_play_clues.push(Object.assign({}, save, { result: get_result(state, hypo_state, save, state.ourPlayerIndex )}));
-				}
+
 
 				logger.debug('hand after save', logHand(hand_after_save));
 
@@ -289,14 +281,12 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 				state.me.chopValue(state, target) < hypo_state.me.chopValue(hypo_state, target);
 
 			// Do not save at 1 clue if new chop or sacrifice discard are better than old chop
-			if (state.clue_tokens === 1 && save.cm.length === 0 && bad_save) {
+			if (state.clue_tokens === 1 && save.cm.length === 0 && bad_save)
 				continue;
-			}
 
 			// Do not save if unsafe
-			if (!save.safe) {
+			if (!save.safe)
 				continue;
-			}
 
 			// No alternative, have to give save
 			urgent_actions[PRIORITY.ONLY_SAVE + nextPriority].push(Utils.clueToAction(save_clues[target], state.tableID));

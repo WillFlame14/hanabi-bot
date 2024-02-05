@@ -67,24 +67,21 @@ export function interpret_play(state, action) {
 		const card = state.common.thoughts[order];
 		if ((card.inferred.length !== 1 || !card.inferred[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
-			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
+			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
 				return;
-			}
 		}
 	}
 
-	if (state.level >= LEVEL.BASIC_CM && rank === 1) {
+	if (state.level >= LEVEL.BASIC_CM && rank === 1)
 		check_ocm(state, action);
-	}
 
 	Basics.onPlay(this, action);
 
 	state.common.good_touch_elim(state);
 	team_elim(state);
 
-	for (const player of state.allPlayers) {
+	for (const player of state.allPlayers)
 		player.refresh_links(state);
-	}
 
 	// Update hypo stacks
 	update_hypo_stacks(this, this.common);

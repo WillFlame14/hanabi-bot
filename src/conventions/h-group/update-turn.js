@@ -29,9 +29,8 @@ function remove_finesse(state, waiting_index, undo_infs = true) {
 			continue;
 		}
 
-		if (connection.type === 'finesse') {
+		if (connection.type === 'finesse')
 			card.finessed = false;
-		}
 
 		if (undo_infs) {
 			if (card.old_inferred !== undefined) {
@@ -51,9 +50,8 @@ function remove_finesse(state, waiting_index, undo_infs = true) {
 	// Update hypo stacks if the card is now playable
 	if (focus_thoughts.inferred.length === 1) {
 		const { suitIndex, rank } = focus_thoughts.inferred[0];
-		if (state.common.hypo_stacks[suitIndex] + 1 === rank) {
+		if (state.common.hypo_stacks[suitIndex] + 1 === rank)
 			update_hypo_stacks(state, state.common);
-		}
 	}
 }
 
@@ -149,9 +147,8 @@ export function update_turn(state, action) {
 					common.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
 						index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
 
-					if (common.waiting_connections[i].conn_index === -1) {
+					if (common.waiting_connections[i].conn_index === -1)
 						to_remove.push(i);
-					}
 
 					// Finesses demonstrate that a card must be playable and not save
 					if (type === 'finesse' || type === 'prompt') {
@@ -165,12 +162,10 @@ export function update_turn(state, action) {
 						}
 						else {
 							const prev_card = demonstrated.find(({ card }) => card.order === focused_card.order);
-							if (prev_card === undefined) {
+							if (prev_card === undefined)
 								demonstrated.push({ card: focused_card, inferences: [inference], connections: connections.slice(conn_index + 1) });
-							}
-							else {
+							else
 								prev_card.inferences.push(inference);
-							}
 						}
 					}
 				}
@@ -187,9 +182,8 @@ export function update_turn(state, action) {
 		// Check if giver played card that matches next connection
 		else if (lastPlayerIndex === giver) {
 			const last_action = state.last_actions[giver];
-			if (last_action.type !== 'play') {
+			if (last_action.type !== 'play')
 				continue;
-			}
 
 			// The giver's card must have been known before the finesse was given
 			if (state.me.thoughts[old_card.order].matches(last_action, { infer: true }) && state.common.thoughts[old_card.order].finessed && state.common.thoughts[last_action.card.order].reasoning[0] < action_index) {
@@ -199,9 +193,8 @@ export function update_turn(state, action) {
 				common.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
 					index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
 
-				if (common.waiting_connections[i].conn_index === -1) {
+				if (common.waiting_connections[i].conn_index === -1)
 					to_remove.push(i);
-				}
 
 				if (!fake) {
 					const thoughts = state.common.thoughts[card.order];
@@ -234,9 +227,8 @@ export function update_turn(state, action) {
 			const connecting_card = state.common.thoughts[connection.card.order];
 			const card_exists = state.hands[reacting].some(c => c.order === connection.card.order);
 
-			if (!card_exists) {
+			if (!card_exists)
 				continue;
-			}
 
 			if (!connecting_card.superposition) {
 				connecting_card.intersect('inferred', identities);

@@ -1,4 +1,3 @@
-import { CLUE } from '../../constants.js';
 import { playableAway } from '../../basics/hanabi-util.js';
 import { get_result } from './action-helper.js';
 
@@ -37,9 +36,8 @@ export function find_fix_clue(state) {
 			return card.inferred.some(inf => inf.matches(actual)) || card.inferred.length === 0 || card.reset;
 		});
 
-		if (fixed) {
+		if (fixed)
 			logger.info('clue', logClue(clue), 'fixes with value', value);
-		}
 
 		if (fixed && value > best_clue_value) {
 			best_clue = clue;
@@ -47,8 +45,8 @@ export function find_fix_clue(state) {
 		}
 	}
 
-	if (best_clue === undefined) {
+	if (best_clue === undefined)
 		logger.warn('Unable to find fix clue!');
-	}
+
 	return best_clue;
 }

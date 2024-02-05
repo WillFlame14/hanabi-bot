@@ -62,9 +62,8 @@ export function interpret_5cm(state, target) {
 		const card = hand[i];
 
 		// Skip previously clued cards
-		if (card.clued && !card.newly_clued) {
+		if (card.clued && !card.newly_clued)
 			continue;
-		}
 
 		// Check the next card that meets the requirements (must be 5 and newly clued to be 5cm)
 		// TODO: Asymmetric 5cm - If we aren't the target, we can see the card being chop moved

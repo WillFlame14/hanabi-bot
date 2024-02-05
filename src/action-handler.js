@@ -21,9 +21,8 @@ import { team_elim } from './basics/helper.js';
 export function handle_action(action, catchup = false) {
 	this.actionList.push(action);
 
-	if (['clue', 'discard', 'play'].includes(action.type)) {
+	if (['clue', 'discard', 'play'].includes(action.type))
 		this.handHistory[this.turn_count] = Utils.objClone(this.hands[this.ourPlayerIndex]);
-	}
 
 	switch(action.type) {
 		case 'clue': {
@@ -83,23 +82,21 @@ export function handle_action(action, catchup = false) {
 					if (card.saved || card.called_to_discard) {
 						const note = card.getNote();
 
-						if (this.notes[order] === undefined) {
+						if (this.notes[order] === undefined)
 							this.notes[order] = { last: '', turn: 0, full: '' };
-						}
 
 						// Only write a new note if it's different from the last note and is a later turn
 						if (note !== this.notes[order].last && this.turn_count > this.notes[order].turn) {
 							this.notes[order].last = note;
 							this.notes[order].turn = this.turn_count;
 
-							if (this.notes[order].full !== '') {
+							if (this.notes[order].full !== '')
 								this.notes[order].full += ' | ';
-							}
+
 							this.notes[order].full += `t${this.turn_count}: ${note}`;
 
-							if (this.in_progress) {
+							if (this.in_progress)
 								Utils.sendCmd('note', { tableID: this.tableID, order, note: this.notes[order].full });
-							}
 						}
 					}
 				}
@@ -137,9 +134,9 @@ export function handle_action(action, catchup = false) {
 			const { order, playerIndex, suitIndex, rank, infer = false } = action;
 			const card = this.common.thoughts[order];
 
-			if (this.hands[playerIndex].findOrder(order) === undefined) {
+			if (this.hands[playerIndex].findOrder(order) === undefined)
 				throw new Error('Could not find card to rewrite!');
-			}
+
 			logger.info(`identifying card with order ${order} as ${logCard({ suitIndex, rank })}, infer? ${infer}`);
 
 			if (!infer) {
@@ -157,13 +154,11 @@ export function handle_action(action, catchup = false) {
 		case 'ignore': {
 			const { playerIndex, conn_index } = action;
 
-			if (this.next_ignore[conn_index] === undefined) {
-				this.next_ignore[conn_index] = [];
-			}
+			this.next_ignore[conn_index] ??= [];
 
-			for (const card of this.hands[playerIndex]) {
+			for (const card of this.hands[playerIndex])
 				this.next_ignore[conn_index].push(card.order);
-			}
+
 			break;
 		}
 		case 'finesse':  {

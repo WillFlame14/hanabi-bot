@@ -30,13 +30,11 @@ export function card_elim(state) {
 
 		if (!this.all_possible.some(c => c.matches(identity)) ||
 			baseCount(state, identity) + certain_cards.length !== cardCount(state.suits, identity)
-		) {
+		)
 			continue;
-		}
 
-		if (!this.all_possible.some(c => c.matches(identity)) || !this.all_inferred.some(c => c.matches(identity))) {
+		if (!this.all_possible.some(c => c.matches(identity)) || !this.all_inferred.some(c => c.matches(identity)))
 			throw new Error(`Failing to eliminate identity ${logCard(identity)} from ${this.all_possible.some(c => c.matches(identity)) ? 'possible' : 'inferred'}`);
-		}
 
 		// Remove it from the list of future possibilities
 		this.all_possible.splice(this.all_possible.findIndex(c => c.matches(identity)), 1);
@@ -50,9 +48,8 @@ export function card_elim(state) {
 				card.subtract('inferred', [identity]);
 
 				// Card can be further eliminated
-				if (card.possible.length === 1) {
+				if (card.possible.length === 1)
 					identities.push(card.identity());
-				}
 			}
 		}
 		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
@@ -80,9 +77,8 @@ export function good_touch_elim(state, only_self = false) {
 				!this.waiting_connections.some(wc => wc.connections.some(conn => conn.card.order === c.order));
 		});
 
-		if (matches.length === 0 && !isBasicTrash(state, identity)) {
+		if (matches.length === 0 && !isBasicTrash(state, identity))
 			continue;
-		}
 
 		const hard_matches = matches.filter(c => {
 			const card = this.thoughts[c.order];
@@ -153,9 +149,9 @@ export function reset_card(order) {
  */
 export function find_links(state, hand = state.hands[this.playerIndex]) {
 	if (this.playerIndex === -1 && hand === undefined) {
-		for (const hand of state.hands) {
+		for (const hand of state.hands)
 			this.find_links(state, hand);
-		}
+
 		return;
 	}
 
@@ -226,13 +222,13 @@ export function restore_elim(identity) {
 			const card = this.thoughts[order];
 
 			// Add the inference back if it's still a possibility
-			if (card.possible.some(c => c.matches(identity))) {
+			if (card.possible.some(c => c.matches(identity)))
 				card.union('inferred', [identity]);
-			}
 		}
-		if (!this.all_inferred.some(i => i.matches(identity))) {
+
+		if (!this.all_inferred.some(i => i.matches(identity)))
 			this.all_inferred.push(identity);
-		}
+
 		this.elims[id] = undefined;
 	}
 }

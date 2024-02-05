@@ -8,20 +8,17 @@ import * as Utils from './util.js';
  */
 export function initConsole() {
 	readline.emitKeypressEvents(process.stdin);
-	if (process.stdin.isTTY) {
+	if (process.stdin.isTTY)
 		process.stdin.setRawMode(true);
-	}
 
 	let command = [];
 
 	process.stdin.on('keypress', (_, key) => {
-		if (key.ctrl && key.name === 'c') {
+		if (key.ctrl && key.name === 'c')
 			process.exit();
-		}
 
-		if (key.sequence === '\x7F') {
+		if (key.sequence === '\x7F')
 			key.sequence = '\b';
-		}
 
 		process.stdout.write(key.sequence);
 		switch(key.sequence) {
@@ -99,9 +96,8 @@ export function initConsole() {
 							break;
 						}
 
-						if (parts.length === 3 && isNaN(Number(parts[2]))) {
+						if (parts.length === 3 && isNaN(Number(parts[2])))
 							logger.warn('Please provide a valid shadowing player index.');
-						}
 
 						Utils.sendCmd('tableSpectate', { tableID: Number(parts[1]), shadowingPlayerIndex: Number(parts[2] ?? -1) });
 						break;

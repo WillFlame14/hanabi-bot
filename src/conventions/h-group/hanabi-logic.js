@@ -1,6 +1,7 @@
 import { cardCount } from '../../variants.js';
 import { Hand } from '../../basics/Hand.js';
 import { baseCount, inEndgame, visibleFind } from '../../basics/hanabi-util.js';
+import * as Utils from '../../tools/util.js';
 
 import { logHand } from '../../tools/log.js';
 
@@ -26,33 +27,22 @@ export function determine_focus(hand, player, list, options = {}) {
 	const chop = player.chop(hand);
 
 	// Chop card exists, check for chop focus
-	if (chop && list.includes(chop.order)) {
+	if (chop && list.includes(chop.order))
 		return { focused_card: chop, chop: true };
+
+	const touch = hand.filter(c => list.includes(c.order));
+
+	const focused_card =
+		touch.find(c => (options.beforeClue ? !c.clued : c.newly_clued)) ??		// leftmost newly clued
+		touch.find(c => player.thoughts[c.order].chop_moved) ??					// leftmost chop moved
+		touch[0];																// leftmost reclued
+
+	if (focused_card === undefined) {
+		console.log('list', list, 'hand', logHand(hand));
+		throw new Error('No focus found!');
 	}
 
-	// Check for leftmost newly clued
-	for (const card of hand) {
-		if ((options.beforeClue ? !card.clued : card.newly_clued) && list.includes(card.order)) {
-			return { focused_card: card, chop: false };
-		}
-	}
-
-	// Check for leftmost chop moved
-	for (const card of hand) {
-		if (player.thoughts[card.order].chop_moved && list.includes(card.order)) {
-			return { focused_card: card, chop: false };
-		}
-	}
-
-	// Check for leftmost re-clued
-	for (const card of hand) {
-		if (list.includes(card.order)) {
-			return { focused_card: card, chop: false };
-		}
-	}
-
-	console.log('list', list, 'hand', logHand(hand));
-	throw new Error('No focus found!');
+	return { focused_card, chop: false };
 }
 
 /**
@@ -62,18 +52,18 @@ export function determine_focus(hand, player, list, options = {}) {
  * @param {number} giver
  */
 export function stall_severity(state, player, giver) {
-	if (state.clue_tokens === 8 && state.turn_count !== 1) {
+	if (state.clue_tokens === 8 && state.turn_count !== 1)
 		return 4;
-	}
-	if (player.thinksLocked(state, giver)) {
+
+	if (player.thinksLocked(state, giver))
 		return 3;
-	}
-	if (inEndgame(state)) {
+
+	if (inEndgame(state))
 		return 1.5;
-	}
-	if (state.early_game) {
+
+	if (state.early_game)
 		return 1;
-	}
+
 	return 0;
 }
 
@@ -119,16 +109,14 @@ export function valuable_tempo_clue(state, player, clue, playables, focused_card
 	const { target } = clue;
 	const touch = state.hands[target].clueTouched(clue, state.suits);
 
-	if (touch.some(card => !card.clued)) {
+	if (touch.some(card => !card.clued))
 		return { tempo: false, valuable: false };
-	}
 
 	const prompt = player.find_prompt(state.hands[target], focused_card, state.suits);
 
 	// No prompt exists for this card (i.e. it is a hard burn)
-	if (prompt === undefined) {
+	if (prompt === undefined)
 		return { tempo: false, valuable: false };
-	}
 
 	const valuable = playables.length > 1 ||
 		prompt.order !== focused_card.order ||
@@ -145,12 +133,7 @@ export function valuable_tempo_clue(state, player, clue, playables, focused_card
  * @param {number} target
  */
 export function inBetween(numPlayers, playerIndex, giver, target) {
-	let i = (giver + 1) % numPlayers;
-	while(i !== target) {
-		if (i === playerIndex) {
-			return true;
-		}
-		i = (i + 1) % numPlayers;
-	}
-	return false;
+	const gap = (target - giver + numPlayers) % numPlayers;
+
+	return Utils.range(1, gap).some(inc => ((giver + inc) % numPlayers) === playerIndex);
 }

@@ -43,9 +43,8 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 		const card = hypo_state.common.thoughts[c.order];
 
 		// The focused card must not have been reset and must match inferences
-		if (c.order === target_card.order) {
+		if (c.order === target_card.order)
 			return card.reset || !card.matches_inferences();
-		}
 
 		const old_card = state.common.thoughts[c.order];
 
@@ -73,9 +72,8 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 		}
 		else {
 			const not_trash_possibility = card.possible.find(c => !isTrash(hypo_state, state.common, c, card.order));
-			if (not_trash_possibility !== undefined) {
+			if (not_trash_possibility !== undefined)
 				reason = `card ${logCard(card)} has ${not_trash_possibility} possibility not trash`;
-			}
 		}
 		logger.info(`${logClue(clue)} has incorrect interpretation, (${reason})`);
 		return undefined;
@@ -140,9 +138,8 @@ export function determine_clue(state, target, target_card, options) {
 		}
 
 		// All play clues should be safe, but save clues may not be (e.g. crit 4, 5 of different colour needs to identify that 5 is a valid clue)
-		if (!options.save && !clue_safe(state, state.me, clue)) {
+		if (!options.save && !clue_safe(state, state.me, clue))
 			continue;
-		}
 
 		const bad_touch_cards = touch.filter(c => !c.clued && isTrash(state, state.me, state.me.thoughts[c.order].identity({ infer: true }), c.order));		// Ignore cards that were already clued
 
@@ -151,9 +148,8 @@ export function determine_clue(state, target, target_card, options) {
 		const hypo_state = evaluate_clue(state, action, clue, target, target_card, bad_touch_cards);
 
 		// Clue had incorrect interpretation
-		if (hypo_state === undefined) {
+		if (hypo_state === undefined)
 			continue;
-		}
 
 		const interpret = hypo_state.common.thoughts[target_card.order].inferred;
 		const result = get_result(state, hypo_state, clue, state.ourPlayerIndex);
@@ -179,16 +175,11 @@ export function determine_clue(state, target, target_card, options) {
 		results.push({ clue, result: { elim, new_touched, bad_touch, trash, finesses, playables, remainder } });
 	}
 
-	if (results.length === 0) {
+	if (results.length === 0)
 		return;
-	}
 
 	const { clue, result: best_result } = Utils.maxOn(results, ({ result }) => find_clue_value(result));
 	logger.info('preferring', logClue(clue));
-
-	// if (logCard(target_card) === 'y1' && target === 2) {
-	// 	process.exit(0);
-	// }
 
 	// Change type from CLUE to ACTION
 	return { type: clue.type, value: clue.value, target: clue.target, result: best_result };

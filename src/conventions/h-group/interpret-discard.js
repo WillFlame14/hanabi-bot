@@ -22,9 +22,9 @@ import { team_elim } from '../../basics/helper.js';
 function find_sarcastic(hand, player, identity) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
 	const known_sarcastic = hand.filter(c => player.thoughts[c.order].matches(identity, { infer: true }));
-	if (known_sarcastic.length > 0) {
+	if (known_sarcastic.length > 0)
 		return known_sarcastic;
-	}
+
 	// Otherwise, find all cards that could match that identity
 	return Array.from(hand.filter(c => {
 		const card = player.thoughts[c.order];
@@ -42,9 +42,8 @@ function find_sarcastic(hand, player, identity) {
 function undo_hypo_stacks(state, { suitIndex, rank }) {
 	logger.info(`discarded useful card ${logCard({suitIndex, rank})}, setting hypo stack to ${rank - 1}`);
 	for (const hypo_stacks of state.common.hypo_stacks) {
-		if (hypo_stacks[suitIndex] >= rank) {
+		if (hypo_stacks[suitIndex] >= rank)
 			hypo_stacks[suitIndex] = rank - 1;
-		}
 	}
 }
 
@@ -56,14 +55,13 @@ function undo_hypo_stacks(state, { suitIndex, rank }) {
  */
 function apply_unknown_sarcastic(state, sarcastic, identity) {
 	// Need to add the inference back if it was previously eliminated due to good touch
-	for (const { order } of sarcastic) {
+	for (const { order } of sarcastic)
 		state.common.thoughts[order].union('inferred', [identity]);
-	}
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
-	if (sarcastic.length === 0 || sarcastic.some(({ order }) => state.common.thoughts[order].inferred.some(c => playableAway(state, c) > 0))) {
+	if (sarcastic.length === 0 || sarcastic.some(({ order }) => state.common.thoughts[order].inferred.some(c => playableAway(state, c) > 0)))
 		undo_hypo_stacks(state, identity);
-	}
+
 }
 
 /**
@@ -102,9 +100,8 @@ export function interpret_discard(state, action, card) {
 		}
 	}
 
-	if (to_remove.length > 0) {
+	if (to_remove.length > 0)
 		common.waiting_connections = common.waiting_connections.filter((_, index) => !to_remove.includes(index));
-	}
 
 	// End early game?
 	if (state.early_game && !action.failed && !card.clued) {
@@ -139,12 +136,10 @@ export function interpret_discard(state, action, card) {
 
 				if (sarcastic.length === 1) {
 					const action_index = sarcastic[0].drawn_index;
-					if (!state.common.thoughts[sarcastic[0].order].rewinded && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank, infer: true })) {
+					if (!state.common.thoughts[sarcastic[0].order].rewinded && state.rewind(action_index, { type: 'identify', order: sarcastic[0].order, playerIndex: state.ourPlayerIndex, suitIndex, rank, infer: true }))
 						return;
-					}
-					else {
+					else
 						logger.warn('rewind failed, not writing any inferences from discard');
-					}
 				}
 				else {
 					apply_unknown_sarcastic(state, sarcastic, identity);
@@ -173,6 +168,5 @@ export function interpret_discard(state, action, card) {
 			}
 		}
 	}
-
 	team_elim(state);
 }

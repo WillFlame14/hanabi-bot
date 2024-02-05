@@ -37,9 +37,8 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 		const globally_known = state.hands[playerIndex].find(({ order }) =>
 			!ignoreOrders.includes(order) && common.thoughts[order].matches(identity, { infer: true }) && common.thoughts[order].touched);
 
-		if (globally_known) {
+		if (globally_known)
 			return { type: 'known', reacting: playerIndex, card: globally_known, identities: [identity] };
-		}
 	}
 
 	// Visible and already going to be played (excluding giver)
@@ -70,9 +69,9 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 		}
 
 		if (match !== undefined) {
-			if (common.thoughts[match.order].hidden) {
+			if (common.thoughts[match.order].hidden)
 				logger.warn(`hidden connecting card ${logCard(identity)} in ${state.playerNames[playerIndex]}'s hand, might be confusing`);
-			}
+
 			return { type: 'playable', reacting: playerIndex, card: match, known: playables.length === 1, identities: [identity] };
 		}
 	}
@@ -95,9 +94,8 @@ function find_unknown_connecting(state, giver, target, playerIndex, identity, ig
 
 	// Prompt takes priority over finesse
 	if (prompt !== undefined && prompt.identity() !== undefined) {
-		if (prompt.matches(identity)) {
+		if (prompt.matches(identity))
 			return { type: 'prompt', reacting: playerIndex, card: prompt, identities: [identity] };
-		}
 
 		// Prompted card is delayed playable
 		if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank) {
@@ -155,9 +153,9 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 
 	const connecting = find_known_connecting(state, giver, identity, ignoreOrders);
 	if (connecting) {
-		if (connecting.type === 'terminate') {
+		if (connecting.type === 'terminate')
 			return [];
-		}
+
 		return [connecting];
 	}
 
@@ -168,10 +166,8 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 		return c.matches(identity) && ((c.clued && !c.newly_clued) || finessed) && !ignoreOrders.includes(c.order);
 	});
 
-	if (target_copy !== undefined) {
+	if (target_copy !== undefined)
 		logger.warn(`connecting ${logCard(identity)} gotten in target's hand, might look confusing`);
-		// return [{ type: 'terminate', reacting: null, card: null }];
-	}
 
 	// Only consider prompts/finesses if no connecting cards found
 	for (let i = 1; i < state.numPlayers; i++) {
@@ -198,14 +194,12 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 			connecting = find_unknown_connecting(hypo_state, giver, target, playerIndex, identity, newIgnoreOrders);
 		}
 
-		if (connecting) {
+		if (connecting)
 			connections.push(connecting);
-		}
 
 		// The final card must not be hidden
-		if (connections.length > 0 && !connections.at(-1).hidden) {
+		if (connections.length > 0 && !connections.at(-1).hidden)
 			return connections;
-		}
 	}
 
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
@@ -248,9 +242,8 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
  */
 export function find_own_finesses(state, giver, target, { suitIndex, rank }, looksDirect, ignorePlayer = -1, selfRanks = []) {
 	// We cannot finesse ourselves
-	if (giver === state.ourPlayerIndex && ignorePlayer === -1) {
+	if (giver === state.ourPlayerIndex && ignorePlayer === -1)
 		return { feasible: false, connections: [] };
-	}
 
 	// Create hypothetical state where we have the missing cards (and others can elim from them)
 	const hypo_state = state.minimalCopy();
@@ -289,15 +282,14 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 					hypo_state.common.good_touch_elim(hypo_state);
 				}
 
-				if (type === 'finesse') {
+				if (type === 'finesse')
 					finesses++;
-				}
+
 				ignoreOrders.push(card.order);
 			}
 
-			if (allHidden) {
+			if (allHidden)
 				next_rank--;
-			}
 		};
 
 		// First, see if someone else has the connecting card
@@ -356,9 +348,8 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 			const prompt = state.common.find_prompt(their_hand, next_identity, state.suits, currIgnoreOrders);
 
 			if (prompt !== undefined) {
-				if (state.level === 1 && finesses >= 1) {
+				if (state.level === 1 && finesses >= 1)
 					return { feasible: false, connections: [] };
-				}
 
 				if (state.common.thoughts[prompt.order].matches(next_identity, { assume: true })) {
 					addConnections([{ type: 'prompt', reacting: target, card: prompt, self: true, identities: [next_identity] }]);
@@ -372,9 +363,9 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 					const card = state.common.thoughts[finesse.order];
 
 					if (card.inferred.some(p => p.matches(next_identity)) && card.matches(next_identity, { assume: true })) {
-						if (state.level === 1 && ignoreOrders.length >= 1) {
+						if (state.level === 1 && ignoreOrders.length >= 1)
 							return { feasible: false, connections: [] };
-						}
+
 						addConnections([{ type: 'finesse', reacting: target, card: finesse, self: true, identities: [next_identity] }]);
 						continue;
 					}
@@ -384,18 +375,14 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 			// Try finesse in our hand again (if we skipped it earlier to prefer ignoring player)
 			if (giver !== state.ourPlayerIndex && selfRanks.includes(next_rank)) {
 				const { feasible, connections: new_conns } = find_self_finesse(hypo_state, next_identity, currIgnoreOrders.slice(), finesses);
-				if (feasible) {
-					if (new_conns.length !== 0) {
-						addConnections(new_conns);
-						continue;
-					}
-				}
-				else {
+
+				if (!feasible)
 					return { feasible: false, connections: [] };
-				}
+
+				if (new_conns.length !== 0)
+					addConnections(new_conns);
 			}
 		}
-
 		return { feasible: false, connections: [] };
 	}
 	return { feasible: true, connections };
@@ -418,9 +405,8 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 	let finesse = state.common.find_finesse(our_hand, ignoreOrders);
 	logger.debug('finesse in slot', finesse ? our_hand.findIndex(c => c.order === finesse.order) + 1 : '-1');
 
-	if (finesse === undefined) {
+	if (finesse === undefined)
 		return { feasible: false, connections: [] };
-	}
 
 	const card = state.me.thoughts[finesse.order];
 
@@ -465,9 +451,9 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 
 					ignoreOrders.push(our_hand[index].order);
 					index++;
-					if (index === our_hand.length) {
+					if (index === our_hand.length)
 						return { feasible: false, connections: [] };
-					}
+
 					touched = list.includes(our_hand[index].order);
 				}
 			}

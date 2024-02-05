@@ -21,9 +21,9 @@ import { logCard } from '../../tools/log.js';
 export function find_sarcastic(hand, player, identity) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
 	const known_sarcastic = hand.filter(c => player.thoughts[c.order].matches(identity, { infer: true }));
-	if (known_sarcastic.length > 0) {
+	if (known_sarcastic.length > 0)
 		return known_sarcastic;
-	}
+
 	// Otherwise, find all cards that could match that identity
 	return Array.from(hand.filter(c => {
 		const card = player.thoughts[c.order];
@@ -40,12 +40,7 @@ export function find_sarcastic(hand, player, identity) {
  */
 function undo_hypo_stacks(state, { suitIndex, rank }) {
 	logger.info(`discarded useful card ${logCard({suitIndex, rank})}, setting hypo stack to ${rank - 1}`);
-	for (const hypo_stacks of state.common.hypo_stacks) {
-		if (hypo_stacks[suitIndex] >= rank) {
-			hypo_stacks[suitIndex] = rank - 1;
-		}
-	}
-}
+	state.common.hypo_stacks[suitIndex] = Math.min(state.common.hypo_stacks[suitIndex], rank - 1);}
 
 /**
  * Adds the sarcastic discard inference to the given set of sarcastic cards.
@@ -55,14 +50,12 @@ function undo_hypo_stacks(state, { suitIndex, rank }) {
  */
 function apply_unknown_sarcastic(state, sarcastic, identity) {
 	// Need to add the inference back if it was previously eliminated due to good touch
-	for (const { order } of sarcastic) {
+	for (const { order } of sarcastic)
 		state.common.thoughts[order].union('inferred', [identity]);
-	}
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
-	if (sarcastic.length === 0 || sarcastic.some(({ order }) => state.common.thoughts[order].inferred.some(c => playableAway(state, c) > 0))) {
+	if (sarcastic.length === 0 || sarcastic.some(({ order }) => state.common.thoughts[order].inferred.some(c => playableAway(state, c) > 0)))
 		undo_hypo_stacks(state, identity);
-	}
 }
 
 /**
@@ -78,9 +71,8 @@ function apply_locked_discard(state, playerIndex) {
 	// Chop move all cards
 	for (const { order } of state.hands[other]) {
 		const card = state.common.thoughts[order];
-		if (!card.clued && !card.finessed && !card.chop_moved) {
+		if (!card.clued && !card.finessed && !card.chop_moved)
 			card.chop_moved = true;
-		}
 	}
 }
 
@@ -133,9 +125,8 @@ export function interpret_discard(state, action, card) {
 				}
 				else {
 					apply_unknown_sarcastic(state, sarcastic, identity);
-					if (locked_discard) {
+					if (locked_discard)
 						apply_locked_discard(state, playerIndex);
-					}
 				}
 			}
 			// Sarcastic discard to other (or known sarcastic discard to us)
@@ -152,9 +143,8 @@ export function interpret_discard(state, action, card) {
 						}
 						else {
 							apply_unknown_sarcastic(state, sarcastic, identity);
-							if (locked_discard) {
+							if (locked_discard)
 								apply_locked_discard(state, playerIndex);
-							}
 						}
 						return;
 					}
@@ -168,9 +158,8 @@ export function interpret_discard(state, action, card) {
 	if (common.thinksLocked(state, other)) {
 		const playables = common.thinksPlayables(state, playerIndex);
 
-		for (const card of playables) {
+		for (const card of playables)
 			state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
-		}
 	}
 
 	// No safe action, chop is playable
@@ -179,9 +168,8 @@ export function interpret_discard(state, action, card) {
 			return { suitIndex, rank: rank + 1 };
 		});
 
-		if (common.thoughts[card.order].inferred.length === 1) {
+		if (common.thoughts[card.order].inferred.length === 1)
 			playable_possibilities[suitIndex] = { suitIndex, rank: rank + 1 };
-		}
 
 		const chop = common.thoughts[state.hands[other][0].order];
 		chop.old_inferred = chop.inferred.slice();

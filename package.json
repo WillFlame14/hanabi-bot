@@ -8,7 +8,7 @@
     "@types/node": "^20.4.3",
     "eslint": "^8.20.0",
     "eslint-plugin-jsdoc": "^46.4.4",
-    "typescript": "^5.1.6"
+    "typescript": "^5.3.3"
   },
   "scripts": {
     "start": "node src/hanabi-bot.js",
