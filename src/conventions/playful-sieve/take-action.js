@@ -2,9 +2,9 @@ import { ACTION, CLUE } from '../../constants.js';
 import { clue_value } from './action-helper.js';
 import { inEndgame, isCritical, isTrash, playableAway } from '../../basics/hanabi-util.js';
 import { all_valid_clues } from '../../basics/helper.js';
-import { find_sarcastic } from './interpret-discard.js';
 import { unlock_promise } from './interpret-play.js';
 import { find_fix_clue } from './fix-clues.js';
+import { find_sarcastic } from '../shared/sarcastic.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand } from '../../tools/log.js';

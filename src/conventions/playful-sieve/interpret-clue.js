@@ -1,6 +1,6 @@
 import { CLUE } from '../../constants.js';
 import { isTrash, playableAway, refer_right } from '../../basics/hanabi-util.js';
-import { team_elim, update_hypo_stacks } from '../../basics/helper.js';
+import { checkFix, team_elim, update_hypo_stacks } from '../../basics/helper.js';
 import * as Basics from '../../basics.js';
 import * as Utils from '../../tools/util.js';
 
@@ -37,30 +37,7 @@ export function interpret_clue(state, action) {
 
 	Basics.onClue(state, action);
 
-	const clue_resets = new Set();
-	for (const { order } of state.hands[target]) {
-		if (oldCommon.thoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
-			common.reset_card(order);
-			clue_resets.add(order);
-		}
-	}
-
-	const resets = common.good_touch_elim(state);
-	common.refresh_links(state);
-
-	// Includes resets from negative information
-	/** @type {Set<number>} */
-	const all_resets = new Set([...clue_resets, ...resets]);
-
-	if (all_resets.size > 0) {
-		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
-		const infs_to_recheck = Array.from(all_resets).map(order => oldCommon.thoughts[order].identity({ infer: true })).filter(id => id !== undefined);
-
-		for (const inf of infs_to_recheck)
-			common.restore_elim(inf);
-	}
-
-	let fix = list.some(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
+	let fix = checkFix(state, oldCommon.thoughts, action);
 
 	for (const { order } of hand) {
 		const card = common.thoughts[order];

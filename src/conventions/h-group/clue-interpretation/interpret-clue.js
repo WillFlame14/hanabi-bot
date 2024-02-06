@@ -6,8 +6,8 @@ import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { find_own_finesses } from './connecting-cards.js';
 import { assign_connections, inference_known, inference_rank, find_symmetric_connections, add_symmetric_connections } from './connection-helper.js';
-import { update_hypo_stacks, team_elim } from '../../../basics/helper.js';
-import { isBasicTrash, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
+import { update_hypo_stacks, team_elim, checkFix } from '../../../basics/helper.js';
+import { isBasicTrash, isTrash, playableAway } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
 import * as Basics from '../../../basics.js';
@@ -31,7 +31,7 @@ import { logCard, logConnections, logHand } from '../../../tools/log.js';
  */
 function apply_good_touch(state, action) {
 	const { common } = state;
-	const { giver, list, target } = action;
+	const { list, target } = action;
 	const { thoughts: oldThoughts } = common.clone();		// Keep track of all cards that previously had inferences (i.e. not known trash)
 
 	Basics.onClue(state, action);
@@ -50,39 +50,7 @@ function apply_good_touch(state, action) {
 		}
 	}
 
-	const clue_resets = new Set();
-	for (const { order } of state.hands[target]) {
-		if (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
-			common.reset_card(order);
-			clue_resets.add(order);
-		}
-	}
-
-	const resets = common.good_touch_elim(state);
-
-	// Includes resets from negative information
-	const all_resets = new Set([...clue_resets, ...resets]);
-
-	if (all_resets.size > 0) {
-		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
-		const infs_to_recheck = Array.from(all_resets).map(order => oldThoughts[order].identity({ infer: true })).filter(id => id !== undefined);
-
-		for (const inf of infs_to_recheck)
-			common.restore_elim(inf);
-	}
-
-	// Any clued cards that lost all inferences
-	const clued_reset = list.some(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
-
-	const duplicate_reveal = state.hands[target].some(({ order }) => {
-		const card = common.thoughts[order];
-
-		// The fix can be in anyone's hand except the giver's
-		return state.common.thoughts[order].identity() !== undefined &&
-			visibleFind(state, common, card.identity(), { ignore: [giver], infer: true }).some(c => common.thoughts[c.order].touched && c.order !== order);
-	});
-
-	return { fix: clued_reset || duplicate_reveal };
+	return { fix: checkFix(state, oldThoughts, action) };
 }
 
 /**

@@ -26,7 +26,7 @@ export function find_fix_clue(state) {
 
 	/** @type {Clue} */
 	let best_clue;
-	let best_clue_value = -10;
+	let best_clue_value = -9999;
 
 	for (const clue of all_valid_clues(state, partner)) {
 		const { hypo_state, value } = get_result(state, clue);
@@ -36,12 +36,13 @@ export function find_fix_clue(state) {
 			return card.inferred.some(inf => inf.matches(actual)) || card.inferred.length === 0 || card.reset;
 		});
 
-		if (fixed)
+		if (fixed) {
 			logger.info('clue', logClue(clue), 'fixes with value', value);
 
-		if (fixed && value > best_clue_value) {
-			best_clue = clue;
-			best_clue_value = value;
+			if (value > best_clue_value) {
+				best_clue = clue;
+				best_clue_value = value;
+			}
 		}
 	}
 

@@ -1,5 +1,6 @@
 import { CLUE } from '../constants.js';
 import { cardTouched } from '../variants.js';
+import { visibleFind } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
@@ -7,12 +8,12 @@ import { logCard } from '../tools/log.js';
 /**
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Player.js').Player} Player
- * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').BasicCard} BasicCard
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Identity} Identity
+ * @typedef {import('../types.js').ClueAction} ClueAction
  */
 
 /**
@@ -164,4 +165,59 @@ export function team_elim(state) {
 		player.refresh_links(state);
 		update_hypo_stacks(state, player);
 	}
+}
+
+/**
+ * @param {State} state
+ * @param {Card[]} oldThoughts
+ * @param {ClueAction} clueAction
+ */
+export function checkFix(state, oldThoughts, clueAction) {
+	const { giver, list, target } = clueAction;
+	const { common } = state;
+
+	const clue_resets = new Set();
+	for (const { order } of state.hands[target]) {
+		if (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
+			common.reset_card(order);
+			clue_resets.add(order);
+		}
+	}
+
+	const resets = common.good_touch_elim(state);
+	common.refresh_links(state);
+
+	// Includes resets from negative information
+	const all_resets = new Set([...clue_resets, ...resets]);
+
+	if (all_resets.size > 0) {
+		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
+		const infs_to_recheck = Array.from(all_resets).map(order => oldThoughts[order].identity({ infer: true })).filter(id => id !== undefined);
+
+		for (const inf of infs_to_recheck)
+			common.restore_elim(inf);
+	}
+
+	// Any clued cards that lost all inferences
+	const clued_reset = list.some(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
+
+	const duplicate_reveal = state.hands[target].some(({ order }) => {
+		const card = common.thoughts[order];
+
+		// The fix can be in anyone's hand except the giver's
+		return state.common.thoughts[order].identity() !== undefined &&
+			visibleFind(state, common, card.identity(), { ignore: [giver], infer: true }).some(c => common.thoughts[c.order].touched && c.order !== order);
+	});
+
+	return clued_reset || duplicate_reveal;
+}
+
+/**
+ * Reverts the hypo stacks of the given suitIndex to the given rank - 1, if it was originally above that.
+ * @param {State} state
+ * @param {Identity} identity
+ */
+export function undo_hypo_stacks(state, { suitIndex, rank }) {
+	logger.info(`discarded useful card ${logCard({suitIndex, rank})}, setting hypo stack to ${rank - 1}`);
+	state.common.hypo_stacks[suitIndex] = Math.min(state.common.hypo_stacks[suitIndex], rank - 1);
 }
