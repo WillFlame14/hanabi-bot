@@ -102,7 +102,7 @@ export function rankLooksPlayable(state, rank, order) {
 			visibleFind(state, state.common, identity).filter(c => c.order !== order).length;
 		const matching_inference = state.common.thoughts[order].inferred.some(inf => inf.matches(identity));
 
-		return playable_identity && other_visibles < cardCount(state.suits, identity) && matching_inference;
+		return playable_identity && other_visibles < cardCount(state.suits, state.variant, identity) && matching_inference;
 	});
 }
 

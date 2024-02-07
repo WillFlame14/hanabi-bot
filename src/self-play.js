@@ -49,7 +49,7 @@ async function main() {
 		for (let rank = 1; rank <= 5; rank++) {
 			const identity = Object.freeze({ suitIndex, rank });
 
-			for (let i = 0; i < cardCount(variant.suits, identity); i++) {
+			for (let i = 0; i < cardCount(variant.suits, variant.newID, identity); i++) {
 				deck.push(identity);
 			}
 		}
@@ -96,7 +96,7 @@ async function main() {
 function simulate_game(playerNames, deck, suits, convention, level) {
 	/** @type {{ state: State, order: number }[]} */
 	const states = playerNames.map((_, index) => {
-		return { state: new conventions[convention](-1, playerNames, index, suits, false, level), order: 0 };
+		return { state: new conventions[convention](-1, playerNames, index, suits, 'R+Y+G+B+P', false, level), order: 0 };
 	});
 	Utils.globalModify({ state: states[0].state });
 

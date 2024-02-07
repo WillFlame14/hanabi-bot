@@ -45,7 +45,7 @@ export function baseCount(state, { suitIndex, rank }) {
  */
 export function unknownIdentities(state, player, identity) {
 	const visibleCount = state.hands.flat().filter(c => player.thoughts[c.order].matches(identity)).length;
-	return cardCount(state.suits, identity) - baseCount(state, identity) - visibleCount;
+	return cardCount(state.suits, state.variant, identity) - baseCount(state, identity) - visibleCount;
 }
 
 /**
@@ -54,7 +54,7 @@ export function unknownIdentities(state, player, identity) {
  * @param {Identity} identity
  */
 export function isCritical(state, { suitIndex, rank }) {
-	return state.discard_stacks[suitIndex][rank - 1] === (cardCount(state.suits, { suitIndex, rank }) - 1);
+	return state.discard_stacks[suitIndex][rank - 1] === (cardCount(state.suits, state.variant, { suitIndex, rank }) - 1);
 }
 
 /**

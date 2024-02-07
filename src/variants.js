@@ -9,11 +9,13 @@ import { CLUE } from './constants.js';
  * @property {number} id
  * @property {string} name
  * @property {string[]} suits
+ * @property {string} newID
  * @property {number} [specialRank]
  * @property {boolean} [specialAllClueColours]
  * @property {boolean} [specialAllClueRanks]
  * @property {boolean} [specialNoClueColours]
  * @property {boolean} [specialNoClueRanks]
+ * @property {number} criticalRank
  */
 
 const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/variants.json';
@@ -83,31 +85,32 @@ export function cardTouched(card, suits, clue) {
 	const { suitIndex, rank } = card;
 	const suit = suits[suitIndex];
 
-	if (suit === 'Null') {
+	if (suit === 'Null' || suit === 'Dark Null') {
 		return false;
 	}
-	else if (suit === 'Omni') {
+	else if (suit === 'Omni' || suit === 'Dark Omni') {
 		return true;
 	}
 
 	if (type === CLUE.COLOUR) {
-		if (suit === 'White') {
+		if (suit === 'White' || suit === 'Gray' || suit === 'Light Pink' || suit === 'Gray Pink') {
 			return false;
 		}
-		else if (suit === 'Rainbow') {
+		else if (suit === 'Rainbow' || suit === 'Dark Rainbow' || suit === 'Muddy Rainbow' || suit === 'Cocoa Rainbow') {
 			return true;
 		}
-		else if (suit === 'Prism') {
+		else if (suit === 'Prism' || suit === 'Dark Prism') {
+			// Something about this implementation does not seem right.
 			return (rank % suits.length - 1) === (value + 1);
 		}
 
 		return suitIndex === value;
 	}
 	else if (type === CLUE.RANK) {
-		if (suit === 'Brown') {
+		if (suit === 'Brown' || suit === 'Dark Brown' || suit === 'Muddy Rainbow' || suit === 'Cocoa Rainbow') {
 			return false;
 		}
-		else if (suit === 'Pink') {
+		else if (suit === 'Pink' || suit === 'Dark Pink' || suit === 'Light Pink' || suit === 'Gray Pink') {
 			return true;
 		}
 
@@ -123,7 +126,10 @@ export function cardTouched(card, suits, clue) {
 export function isCluable(suits, clue) {
 	const { type, value } = clue;
 
-	if (type === CLUE.COLOUR && ['Null', 'Omni', 'White', 'Rainbow', 'Prism'].includes(suits[value])) {
+	if (type === CLUE.COLOUR && [
+		'Null', 'Omni', 'White', 'Rainbow', 'Light Pink', 'Muddy Rainbow', 'Prism',
+		'Dark Null', 'Dark Omni', 'Gray', 'Dark Rainbow', 'Gray Pink', 'Cocoa Rainbow', 'Dark Prism'
+	].includes(suits[value])) {
 		return false;
 	}
 	return true;
@@ -132,11 +138,21 @@ export function isCluable(suits, clue) {
 /**
  * Returns the total number of cards for an identity.
  * @param {string[]} suits
+ * @param {Variant} variant
  * @param {Identity} identity
  */
-export function cardCount(suits, { suitIndex, rank }) {
-	if (suits[suitIndex] === 'Black') {
+export function cardCount(suits, variant, { suitIndex, rank }) {
+	if ([
+		'Dark Null', 'Dark Brown', 'Cocoa Rainbow',
+		'Gray', 'Black', 'Dark Rainbow',
+		'Gray Pink', 'Dark Pink', 'Dark Omni',
+		'Dark Prism'
+	].includes(suits[suitIndex])) {
 		return 1;
+	}
+
+	if (variant.criticalRank === rank) {
+		return [3, 2, 2, 1, 1][rank - 1];
 	}
 
 	return [3, 2, 2, 2, 1][rank - 1];

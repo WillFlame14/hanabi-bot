@@ -7,6 +7,10 @@ import { update_turn } from './playful-sieve/update-turn.js';
 
 import * as Utils from '../tools/util.js';
 
+/**
+ * @typedef {import('../variants.js').Variant} Variant
+ */
+
 export default class PlayfulSieve extends State {
 	convention_name = 'PlayfulSieve';
 	interpret_clue = interpret_clue;
@@ -23,14 +27,15 @@ export default class PlayfulSieve extends State {
 	 * @param {string[]} playerNames
 	 * @param {number} ourPlayerIndex
 	 * @param {string[]} suits
+	 * @param {Variant} variant
 	 * @param {boolean} in_progress
 	 */
-	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress) {
-		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
+	constructor(tableID, playerNames, ourPlayerIndex, suits, variant, in_progress) {
+		super(tableID, playerNames, ourPlayerIndex, suits, variant, in_progress);
 	}
 
 	createBlank() {
-		const blank = new PlayfulSieve(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress);
+		const blank = new PlayfulSieve(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.in_progress);
 		blank.notes = this.notes;
 		blank.rewinds = this.rewinds;
 		blank.locked_shifts = this.locked_shifts;
@@ -38,7 +43,7 @@ export default class PlayfulSieve extends State {
 	}
 
 	minimalCopy() {
-		const newState = new PlayfulSieve(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress);
+		const newState = new PlayfulSieve(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.in_progress);
 
 		if (this.copyDepth > 3) {
 			throw new Error('Maximum recursive depth reached.');

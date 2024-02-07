@@ -34,6 +34,12 @@ export const PLAYER = /** @type {const} */ ({
 
 const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
 const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
+const noVar = {
+	"id": 0,
+	"newID": "R+Y+G+B+P",
+	"name": "No Variant",
+	"suits": ["Red", "Yellow", "Green", "Blue", "Purple"]
+};
 
 /**
  * @param {string} short
@@ -67,7 +73,7 @@ function init_state(state, options) {
 		state.discard_stacks[suitIndex][rank - 1]++;
 
 		// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
-		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, identity) && state.max_ranks[suitIndex] > rank - 1) {
+		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, state.variant, identity) && state.max_ranks[suitIndex] > rank - 1) {
 			state.max_ranks[suitIndex] = rank - 1;
 		}
 	}
@@ -111,7 +117,7 @@ function injectFuncs(options) {
 export function setup(StateClass, hands, options = {}) {
 	const playerNames = names.slice(0, hands.length);
 
-	const state = new StateClass(-1, playerNames, 0, suits, false, options.level ?? 1);
+	const state = new StateClass(-1, playerNames, 0, suits, noVar, false, options.level ?? 1);
 	Utils.globalModify({state});
 
 	let orderCounter = 0;

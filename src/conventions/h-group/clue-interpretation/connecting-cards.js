@@ -148,7 +148,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, identity, ig
 export function find_connecting(state, giver, target, identity, looksDirect, ignoreOrders = [], options = {}) {
 	const { suitIndex, rank } = identity;
 
-	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, identity)) {
+	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, state.variant, identity)) {
 		logger.info(`all ${logCard(identity)} in trash`);
 		return [];
 	}

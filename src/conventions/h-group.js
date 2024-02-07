@@ -9,6 +9,10 @@ import { HGroup_Player } from './h-player.js';
 import * as Utils from '../tools/util.js';
 
 /**
+ * @typedef {import('../variants.js').Variant} Variant
+ */
+
+/**
  * @property {HGroup_Player[]} players
  */
 export default class HGroup extends State {
@@ -26,11 +30,12 @@ export default class HGroup extends State {
 	 * @param {string[]} playerNames
 	 * @param {number} ourPlayerIndex
 	 * @param {string[]} suits
+	 * @param {Variant} variant
 	 * @param {boolean} in_progress
 	 * @param {number} [level] 	The convention level (defaults to 1).
 	 */
-	constructor(tableID, playerNames, ourPlayerIndex, suits, in_progress, level = 1) {
-		super(tableID, playerNames, ourPlayerIndex, suits, in_progress);
+	constructor(tableID, playerNames, ourPlayerIndex, suits, variant, in_progress, level = 1) {
+		super(tableID, playerNames, ourPlayerIndex, suits, variant, in_progress);
 
 		this.players = this.players.map(p =>
 			new HGroup_Player(p.playerIndex, p.all_possible, p.all_inferred, p.hypo_stacks, p.thoughts, p.links, p.unknown_plays, p.waiting_connections, p.elims));
@@ -46,14 +51,14 @@ export default class HGroup extends State {
 	}
 
 	createBlank() {
-		const blank = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress, this.level);
+		const blank = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.in_progress, this.level);
 		blank.notes = this.notes;
 		blank.rewinds = this.rewinds;
 		return blank;
 	}
 
 	minimalCopy() {
-		const newState = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.in_progress, this.level);
+		const newState = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.in_progress, this.level);
 
 		if (this.copyDepth > 3) {
 			throw new Error('Maximum recursive depth reached.');
