@@ -110,6 +110,7 @@ export class State {
 		}
 
 		this.common = new Player(-1, all_possible.slice(), all_possible.slice(), Array.from({ length: this.suits.length }, _ => 0));
+
 	}
 
 	get me() {

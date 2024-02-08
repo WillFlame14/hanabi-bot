@@ -19,6 +19,7 @@ import { CLUE } from './constants.js';
  */
 
 const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/variants.json';
+const colorsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/suits.json';
 
 /** @type {Promise<Variant[]>} */
 const variants_promise = new Promise((resolve, reject) => {
@@ -48,6 +49,34 @@ const variants_promise = new Promise((resolve, reject) => {
 	});
 });
 
+/** @type {Promise<Array>} */
+const colors_promise = new Promise((resolve, reject) => {
+	https.get(colorsURL, (res) => {
+		const { statusCode } = res;
+
+		if (statusCode !== 200) {
+			// Consume response data to free up memory
+			res.resume();
+			reject(`Failed to retrieve colors. Status Code: ${statusCode}`);
+		}
+
+		res.setEncoding('utf8');
+
+		let rawData = '';
+		res.on('data', (chunk) => { rawData += chunk; });
+		res.on('end', () => {
+			try {
+				const parsedData = JSON.parse(rawData);
+				resolve(parsedData);
+			} catch (e) {
+				reject(e.message);
+			}
+		});
+	}).on('error', (e) => {
+		console.error(`Error when retrieving colors: ${e.message}`);
+	});
+});
+
 /**
  * Returns a variant's properties, given its name.
  * @param {string} name
@@ -57,7 +86,8 @@ export async function getVariant(name) {
 	return variants.find(variant => variant.name === name);
 }
 
-export const shortForms = /** @type {const} */ ({
+/*
+export const shortForms = /** @type {const}  ({
 	'Red': 'r',
 	'Yellow': 'y',
 	'Green': 'g',
@@ -71,8 +101,48 @@ export const shortForms = /** @type {const} */ ({
 	'Brown': 'n',
 	'Omni': 'o',
 	'Null': 'u',
-	'Prism': 'i'
+	// TODO: Custom names, please fix implementation later
+	'Prism': 's',
+	'Light Pink': 'l',
+	'Dark Rainbow': 'dm',
+	'Gray': 'dw',
+	'Dark Pink': 'di',
+	'Gray Pink': 'dl',
+	'Dark Brown': 'dn',
+	'Dark Omni': 'do',
+	'Dark Null': 'du',
+	'Dark Prism': 'ds',
 });
+*/
+
+export let shortForms = /** @type {string[]} */ ([]);
+
+/**
+ * Edits shortForms to have the correct acryonyms.
+ * @param {string[]} suits
+ */
+export async function getShortForms(suits) {
+	const colors = await colors_promise;
+	const abbreviations = [];
+	for (const suitName of suits) {
+		if (['Black', 'Pink', 'Brown'].includes(suitName)) {
+			abbreviations.push(['k', 'i', 'n'][['Black', 'Pink', 'Brown'].indexOf(suitName)]);
+		} else {
+			const abbreviation = colors.find(color => color.name === suitName)?.abbreviation ?? suitName.charAt(0);
+			if (abbreviations.includes(abbreviation.toLowerCase())) {
+				for (const char of suitName) {
+					if (!abbreviations.includes(char)) {
+						abbreviations.push(char.toLowerCase());
+						break;
+					}
+				}
+			} else {
+				abbreviations.push(abbreviation.toLowerCase());
+			}
+		}
+	}
+	shortForms = abbreviations;
+}
 
 /**
  * Returns whether the card would be touched by the clue.
@@ -152,7 +222,7 @@ export function cardCount(suits, variant, { suitIndex, rank }) {
 	}
 
 	if (variant.criticalRank === rank) {
-		return [3, 2, 2, 1, 1][rank - 1];
+		return 1;
 	}
 
 	return [3, 2, 2, 2, 1][rank - 1];

@@ -1,5 +1,5 @@
 import { CLUE } from '../src/constants.js';
-import { cardCount } from '../src/variants.js';
+import { getShortForms, cardCount } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
 import { logAction, logClue } from '../src/tools/log.js';
 
@@ -116,6 +116,8 @@ function injectFuncs(options) {
  */
 export function setup(StateClass, hands, options = {}) {
 	const playerNames = names.slice(0, hands.length);
+
+	getShortForms(noVar.suits);
 
 	const state = new StateClass(-1, playerNames, 0, suits, noVar, false, options.level ?? 1);
 	Utils.globalModify({state});

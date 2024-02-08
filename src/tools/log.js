@@ -37,7 +37,7 @@ export function logCard(card) {
 	else {
 		return '(unknown)';
 	}
-	return shortForms[globals.state.suits[suitIndex]] + rank + (append !== undefined ? ' ' + append : '');
+	return shortForms[suitIndex] + rank + (append !== undefined ? ' ' + append : '');
 }
 
 /**

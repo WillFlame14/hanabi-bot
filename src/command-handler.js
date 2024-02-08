@@ -1,4 +1,4 @@
-import { getVariant } from './variants.js';
+import { getShortForms, getVariant } from './variants.js';
 import logger from './tools/logger.js';
 import * as Utils from './tools/util.js';
 
@@ -202,8 +202,10 @@ export const handle = {
 		const { tableID, playerNames, ourPlayerIndex, options } = data;
 		const variant = await getVariant(options.variantName);
 
+		await getShortForms(variant.suits);
+
 		// Initialize game state using convention set
-		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, variant.newID, true, settings.level);
+		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, variant, true, settings.level);
 
 		Utils.globalModify({state});
 

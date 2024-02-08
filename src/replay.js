@@ -5,7 +5,7 @@ import { ACTION, END_CONDITION, HAND_SIZE } from './constants.js';
 
 import HGroup from './conventions/h-group.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
-import { getVariant } from './variants.js';
+import { getShortForms, getVariant } from './variants.js';
 import { initConsole } from './tools/console.js';
 import * as Utils from './tools/util.js';
 
@@ -81,7 +81,9 @@ async function main() {
 		throw new Error(`Convention ${convention} is not supported.`);
 	}
 
-	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant.suits, false, Number(level ?? 1));
+	await getShortForms(variant.suits);
+
+	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant.suits, variant, false, Number(level ?? 1));
 
 	Utils.globalModify({state});
 
