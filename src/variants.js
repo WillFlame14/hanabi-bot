@@ -141,8 +141,12 @@ export function cardTouched(card, variant, clue) {
 			return true;
 		}
 		else if (suit === 'Prism' || suit === 'Dark Prism') {
-			// TODO: Fix implementation of prism touch for complex variants (ex. Prism & Dark Prism)
-			return (rank % variant.suits.length - 1) === (value + 1);
+			const colourlessCount = variant.suits.filter(s => [
+				'White', 'Gray', 'Light Pink', 'Gray Pink',
+				'Rainbow', 'Dark Rainbow', 'Muddy Rainbow', 'Cocoa Rainbow',
+				'Prism', 'Dark Prism'
+			].includes(s)).length;
+			return (rank % (variant.suits.length - colourlessCount)) === (value - 1);
 		}
 
 		if (rank === variant.specialRank) {
