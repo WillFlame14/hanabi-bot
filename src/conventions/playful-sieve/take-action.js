@@ -119,7 +119,7 @@ export function take_action(state) {
 		}
 
 		for (const clue of clues) {
-			const touch = partner_hand.clueTouched(clue, state.suits);
+			const touch = partner_hand.clueTouched(clue, state.variant);
 
 			// Can't give empty clues or colour clues touching chop
 			if (touch.length === 0 || (clue.type === CLUE.COLOUR && touch.some(card => card.order === chop.order))) {

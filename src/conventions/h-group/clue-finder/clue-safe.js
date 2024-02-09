@@ -17,7 +17,7 @@ import logger from '../../../tools/logger.js';
 export function clue_safe(state, player, clue) {
 	const { target } = clue;
 
-	const list = state.hands[target].clueTouched(clue, state.suits).map(c => c.order);
+	const list = state.hands[target].clueTouched(clue, state.variant).map(c => c.order);
 	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
 	const hypo_player = hypo_state.players[player.playerIndex];
 

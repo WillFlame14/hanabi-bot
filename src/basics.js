@@ -16,7 +16,7 @@ import { find_possibilities } from './basics/helper.js';
  */
 export function onClue(state, action) {
 	const { target, clue, list } = action;
-	const new_possible = find_possibilities(clue, state.suits);
+	const new_possible = find_possibilities(clue, state.variant);
 
 	for (const { order } of state.hands[target]) {
 		const c = state.hands[target].findOrder(order);

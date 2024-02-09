@@ -109,7 +109,7 @@ function find_play_over_save(state, target, all_play_clues, locked, remainder_bo
 			}
 		}
 
-		const touches_chop = state.hands[target].clueTouched(clue, state.suits).some(c => c.order === state.common.chop(state.hands[target])?.order);
+		const touches_chop = state.hands[target].clueTouched(clue, state.variant).some(c => c.order === state.common.chop(state.hands[target])?.order);
 		if (!locked && touches_chop && clue_safe(state, state.me, clue)) {
 			play_clues.push({ clue, playables: [] });
 		}
@@ -206,7 +206,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 				continue;
 			}
 
-			const list = state.hands[target].clueTouched(save, state.suits).map(c => c.order);
+			const list = state.hands[target].clueTouched(save, state.variant).map(c => c.order);
 			const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, list, clue: save, target });
 
 			// Give them a fix clue with known trash if possible (TODO: Re-examine if this should only be urgent fixes)
@@ -248,7 +248,7 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 				let tccm = false;
 				for (const clue of stall_clues[1].filter(clue => clue.target === target)) {
 					const { playables } = clue.result;
-					const { focused_card } = determine_focus(hand, state.common, hand.clueTouched(clue, state.suits).map(c => c.order), { beforeClue: true });
+					const { focused_card } = determine_focus(hand, state.common, hand.clueTouched(clue, state.variant).map(c => c.order), { beforeClue: true });
 					const { tempo, valuable } = valuable_tempo_clue(state, state.common, clue, playables, focused_card);
 
 					if (tempo && !valuable && clue_safe(state, state.me, clue)) {

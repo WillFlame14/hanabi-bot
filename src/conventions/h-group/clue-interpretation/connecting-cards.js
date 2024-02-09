@@ -446,7 +446,7 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 
 				// Touching a matching card to the finesse - all untouched cards are layered
 				// Touching a non-matching card - all touched cards are layered
-				const matching = cardTouched(identity, state.suits, clue);
+				const matching = cardTouched(identity, state.variant, clue);
 				let touched = list.includes(our_hand[index].order);
 
 				while ((matching ? !touched : touched)) {
@@ -456,7 +456,7 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 
 					// Touching a non-matching card - we know exactly what playbable identities it should be
 					if (!matching) {
-						const possibilities = find_possibilities(clue, state.suits);
+						const possibilities = find_possibilities(clue, state.variant);
 						identities = identities.filter(card => possibilities.some(p => p.suitIndex === card.suitIndex && p.rank === rank));
 					}
 

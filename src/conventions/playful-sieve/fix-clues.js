@@ -41,7 +41,7 @@ export function find_fix_clue(state) {
 	}
 
 	for (const clue of clues) {
-		const touch = state.hands[partner].clueTouched(clue, state.suits);
+		const touch = state.hands[partner].clueTouched(clue, state.variant);
 
 		// Can't give empty clues
 		if (touch.length === 0) {

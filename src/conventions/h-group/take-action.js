@@ -188,7 +188,7 @@ export function take_action(state) {
 	}
 
 	// Sarcastic discard to someone else
-	if (state.level >= LEVEL.SARCASTIC && discards.length > 0) {
+	if (state.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {
 		const identity = discards[0].identity({ infer: true });
 		const duplicates = visibleFind(state, state.me, identity, { ignore: [state.ourPlayerIndex] }).filter(c => c.clued).map(c => state.me.thoughts[c.order]);
 
@@ -196,7 +196,6 @@ export function take_action(state) {
 		if (inEndgame(state) && duplicates.every(c => c.inferred.length === 0 || (c.inferred.every(inf => inf.matches(identity) || isBasicTrash(state, inf))))) {
 			return { tableID, type: ACTION.PLAY, target: discards[0].order };
 		}
-
 		return { tableID, type: ACTION.DISCARD, target: discards[0].order };
 	}
 
@@ -251,7 +250,7 @@ export function take_action(state) {
 	const play_clue_2p = best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result));
 
 	const not_selfish = (clue) => {
-		const list = state.hands[nextPlayerIndex].clueTouched(clue, state.suits).map(c => c.order);
+		const list = state.hands[nextPlayerIndex].clueTouched(clue, state.variant).map(c => c.order);
 		const { focused_card } = determine_focus(state.hands[nextPlayerIndex], state.common, list, { beforeClue: true });
 		const { suitIndex } = focused_card;
 

@@ -17,7 +17,7 @@ import { logCard, logClue } from '../../tools/log.js';
  */
 export function get_result(state, clue) {
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
-	const touch = state.hands[partner].clueTouched(clue, state.suits);
+	const touch = state.hands[partner].clueTouched(clue, state.variant);
 
 	if (touch.length === 0) {
 		throw new Error(`Tried to get a result with a clue ${logClue(clue)} that touches no cards!`);
@@ -72,7 +72,7 @@ export function get_result(state, clue) {
  */
 export function clue_value(state, clue) {
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
-	const touch = state.hands[partner].clueTouched(clue, state.suits);
+	const touch = state.hands[partner].clueTouched(clue, state.variant);
 
 	if (touch.length === 0)
 		return -9999;

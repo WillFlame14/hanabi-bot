@@ -239,7 +239,7 @@ export function parseAction(state, rawAction) {
 			}
 
 			if (target !== state.ourPlayerIndex) {
-				const list = state.hands[target].clueTouched(clue, state.suits).map(c => c.order);
+				const list = state.hands[target].clueTouched(clue, state.variant).map(c => c.order);
 				if (list.length === 0) {
 					throw new Error(`Clue ${logClue(Object.assign({}, clue, { target }))} touches no cards.`);
 				}

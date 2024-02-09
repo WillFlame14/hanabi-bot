@@ -13,6 +13,7 @@ import { unknownIdentities } from './hanabi-util.js';
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Identity} Identity
+ * @typedef {import('../variants.js').Variant} Variant
  */
 
 /**
@@ -31,10 +32,10 @@ export function all_identities(suits) {
 
 /**
  * @param {BaseClue} clue
- * @param {string[]} suits
+ * @param {Variant} variant
  */
-export function find_possibilities(clue, suits) {
-	return all_identities(suits).filter(id => cardTouched(id, suits, clue));
+export function find_possibilities(clue, variant) {
+	return all_identities(variant.suits).filter(id => cardTouched(id, variant, clue));
 }
 
 /**

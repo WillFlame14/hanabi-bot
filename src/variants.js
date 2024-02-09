@@ -11,10 +11,10 @@ import { CLUE } from './constants.js';
  * @property {string[]} suits
  * @property {string} newID
  * @property {number} [specialRank]
- * @property {boolean} [specialAllClueColours]
- * @property {boolean} [specialAllClueRanks]
- * @property {boolean} [specialNoClueColours]
- * @property {boolean} [specialNoClueRanks]
+ * @property {boolean} [specialRankAllClueColors]
+ * @property {boolean} [specialRankAllClueRanks]
+ * @property {boolean} [specialRankNoClueColors]
+ * @property {boolean} [specialRankNoClueRanks]
  * @property {number} criticalRank
  */
 
@@ -86,35 +86,6 @@ export async function getVariant(name) {
 	return variants.find(variant => variant.name === name);
 }
 
-/*
-export const shortForms = /** @type {const}  ({
-	'Red': 'r',
-	'Yellow': 'y',
-	'Green': 'g',
-	'Blue': 'b',
-	'Purple': 'p',
-	'Teal': 't',
-	'Black': 'k',
-	'Rainbow': 'm',
-	'White': 'w',
-	'Pink': 'i',
-	'Brown': 'n',
-	'Omni': 'o',
-	'Null': 'u',
-	// TODO: Custom names, please fix implementation later
-	'Prism': 's',
-	'Light Pink': 'l',
-	'Dark Rainbow': 'dm',
-	'Gray': 'dw',
-	'Dark Pink': 'di',
-	'Gray Pink': 'dl',
-	'Dark Brown': 'dn',
-	'Dark Omni': 'do',
-	'Dark Null': 'du',
-	'Dark Prism': 'ds',
-});
-*/
-
 export let shortForms = /** @type {string[]} */ ([]);
 
 /**
@@ -147,13 +118,13 @@ export async function getShortForms(suits) {
 /**
  * Returns whether the card would be touched by the clue.
  * @param {Identity} card
- * @param {string[]} suits
+ * @param {Variant} variant
  * @param {Omit<Clue, 'target'>} clue
  */
-export function cardTouched(card, suits, clue) {
+export function cardTouched(card, variant, clue) {
 	const { type, value } = clue;
 	const { suitIndex, rank } = card;
-	const suit = suits[suitIndex];
+	const suit = variant.suits[suitIndex];
 
 	if (suit === 'Null' || suit === 'Dark Null') {
 		return false;
@@ -163,25 +134,43 @@ export function cardTouched(card, suits, clue) {
 	}
 
 	if (type === CLUE.COLOUR) {
-		if (suit === 'White' || suit === 'Gray' || suit === 'Light Pink' || suit === 'Gray Pink') {
+		if (['White', 'Gray', 'Light Pink', 'Gray Pink'].includes(suit)) {
 			return false;
 		}
-		else if (suit === 'Rainbow' || suit === 'Dark Rainbow' || suit === 'Muddy Rainbow' || suit === 'Cocoa Rainbow') {
+		else if (['Rainbow', 'Dark Rainbow', 'Muddy Rainbow', 'Cocoa Rainbow'].includes(suit)) {
 			return true;
 		}
 		else if (suit === 'Prism' || suit === 'Dark Prism') {
-			// Something about this implementation does not seem right.
-			return (rank % suits.length - 1) === (value + 1);
+			// TODO: Fix implementation of prism touch for complex variants (ex. Prism & Dark Prism)
+			return (rank % variant.suits.length - 1) === (value + 1);
+		}
+
+		if (rank === variant.specialRank) {
+			if (variant.specialRankAllClueColors) {
+				return true;
+			}
+			else if (variant.specialRankNoClueColors) {
+				return false;
+			}
 		}
 
 		return suitIndex === value;
 	}
 	else if (type === CLUE.RANK) {
-		if (suit === 'Brown' || suit === 'Dark Brown' || suit === 'Muddy Rainbow' || suit === 'Cocoa Rainbow') {
+		if (['Brown', 'Dark Brown', 'Muddy Rainbow', 'Cocoa Rainbow'].includes(suit)) {
 			return false;
 		}
-		else if (suit === 'Pink' || suit === 'Dark Pink' || suit === 'Light Pink' || suit === 'Gray Pink') {
+		else if (['Pink', 'Dark Pink', 'Light Pink', 'Gray Pink'].includes(suit)) {
 			return true;
+		}
+
+		if (rank === variant.specialRank) {
+			if (variant.specialRankAllClueRanks) {
+				return true;
+			}
+			else if (variant.specialRankNoClueRanks) {
+				return false;
+			}
 		}
 
 		return rank === value;
@@ -190,16 +179,19 @@ export function cardTouched(card, suits, clue) {
 
 /**
  * Returns whether the clue is possible to give. For example, white cannot be clued.
- * @param {string[]} suits
+ * @param {Variant} variant
  * @param {Omit<Clue, 'target'>} clue
  */
-export function isCluable(suits, clue) {
+export function isCluable(variant, clue) {
 	const { type, value } = clue;
 
 	if (type === CLUE.COLOUR && [
 		'Null', 'Omni', 'White', 'Rainbow', 'Light Pink', 'Muddy Rainbow', 'Prism',
 		'Dark Null', 'Dark Omni', 'Gray', 'Dark Rainbow', 'Gray Pink', 'Cocoa Rainbow', 'Dark Prism'
-	].includes(suits[value])) {
+	].includes(variant.suits[value])) {
+		return false;
+	}
+	if (type === CLUE.RANK && value === variant.specialRank && (variant.specialRankAllClueRanks || variant.specialRankNoClueRanks)) {
 		return false;
 	}
 	return true;

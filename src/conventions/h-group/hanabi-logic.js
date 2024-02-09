@@ -117,7 +117,7 @@ export function rankLooksPlayable(state, rank, order) {
  */
 export function valuable_tempo_clue(state, player, clue, playables, focused_card) {
 	const { target } = clue;
-	const touch = state.hands[target].clueTouched(clue, state.suits);
+	const touch = state.hands[target].clueTouched(clue, state.variant);
 
 	if (touch.some(card => !card.clued)) {
 		return { tempo: false, valuable: false };

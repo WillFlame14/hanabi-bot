@@ -193,7 +193,7 @@ export function direct_clues(state, target, card, options) {
 		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 			const clue = { type: CLUE.COLOUR, value: suitIndex, target };
 
-			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
+			if (isCluable(state.variant, clue) && cardTouched(card, state.variant, clue)) {
 				direct_clues.push(clue);
 			}
 		}
@@ -203,7 +203,7 @@ export function direct_clues(state, target, card, options) {
 		for (let rank = 1; rank <= 5; rank++) {
 			const clue = { type: CLUE.RANK, value: rank, target };
 
-			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
+			if (isCluable(state.variant, clue) && cardTouched(card, state.variant, clue)) {
 				direct_clues.push(clue);
 			}
 		}
