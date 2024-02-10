@@ -107,31 +107,13 @@ export function interpret_tccm(state, oldCommon, target, list, focused_card) {
 	}
 
 	const chop = state.common.chop(state.hands[target], { afterClue: true });
-
-	// Target was locked
-	if (chop === undefined) {
-		// logger.info('target locked, not tccm');
-		return false;
-	}
-
 	const touched_cards = state.hands[target].filter(card => list.includes(card.order));
-
-	// At least one card touched was newly clued
-	if (touched_cards.some(card => card.newly_clued)) {
-		// logger.info('at least one newly touched, not tccm');
-		return false;
-	}
-
-	// The new state does not have exactly 1 extra play
-	if (state.common.hypo_score !== oldCommon.hypo_score + 1) {
-		// logger.info(`sum_plays was ${sum_plays(state)} whereas old_plays was ${sum_plays(old_state) + 1}, not tccm`);
-		return false;
-	}
-
-	// The card was not a 5 and not promptable (valuable)
 	const prompt = oldCommon.find_prompt(state.hands[target], focused_card, state.suits);
-	if (prompt && prompt.rank !== 5 && prompt.order !== focused_card.order) {
-		// logger.info('targeted a out-of-order card not a 5, not tccm');
+
+	if (chop === undefined ||											// Target was locked
+		touched_cards.some(card => card.newly_clued) ||					// At least one card touched was newly clued
+		state.common.hypo_score !== oldCommon.hypo_score + 1 ||			// The new state does not have exactly 1 extra play
+		(prompt && prompt.rank !== 5 && prompt.order !== focused_card.order)) {		// The card was not a 5 and not promptable
 		return false;
 	}
 

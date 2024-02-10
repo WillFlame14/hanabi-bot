@@ -76,40 +76,32 @@ export function take_action(state) {
 		// Best playable card is an unknown 1, so we should order correctly
 		if (best_playable_card.clues.length > 0 && best_playable_card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
 			const ordered_1s = order_1s(state, state.common, playable_cards);
-			if (ordered_1s.length > 0) {
-				let best_ocm_index = 0, best_ocm_value = -0.1;
 
-				if (state.level >= LEVEL.BASIC_CM) {
-					// Try to find a non-negative value OCM
-					for (let i = 1; i < ordered_1s.length; i++) {
-						const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
+			if (ordered_1s.length > 0 && state.level >= LEVEL.BASIC_CM) {
+				// Try to find a non-negative value OCM (TODO: Fix double OCMs)
+				const best_ocm_index = Utils.maxOn(Utils.range(1, ordered_1s.length), i => {
+					const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
 
-						if (playerIndex === state.ourPlayerIndex)
-							break;
+					if (playerIndex === state.ourPlayerIndex)
+						return -0.1;
 
-						const old_chop = state.common.chop(state.hands[playerIndex]);
-						// Player is locked, OCM is meaningless
-						if (old_chop === undefined)
-							continue;
+					const old_chop = state.common.chop(state.hands[playerIndex]);
+					// Player is locked or has trash chop, don't OCM
+					if (old_chop === undefined || isTrash(state, state.me, old_chop, old_chop.order))
+						return -0.1;
 
-						// Simulate chop move
-						const old_chop_value = cardValue(state, state.me, old_chop);
-						state.common.thoughts[old_chop.order].chop_moved = true;
+					// Simulate chop move
+					const old_chop_value = cardValue(state, state.me, old_chop);
+					state.common.thoughts[old_chop.order].chop_moved = true;
 
-						const new_chop = state.common.chop(state.hands[playerIndex]);
-						const new_chop_value = new_chop ? cardValue(state, state.me, new_chop) : state.me.thinksLoaded(state, playerIndex) ? 0 : 4;
+					const new_chop = state.common.chop(state.hands[playerIndex]);
+					const new_chop_value = new_chop ? cardValue(state, state.me, new_chop) : state.me.thinksLoaded(state, playerIndex) ? 0 : 4;
 
-						const ocm_value = old_chop_value - new_chop_value;
+					// Undo chop move
+					state.common.thoughts[old_chop.order].chop_moved = false;
 
-						if (!isTrash(state, state.me, old_chop, old_chop.order) && ocm_value > best_ocm_value) {
-							best_ocm_index = i;
-							best_ocm_value = ocm_value;
-						}
-
-						// Undo chop move
-						state.common.thoughts[old_chop.order].chop_moved = false;
-					}
-				}
+					return old_chop_value - new_chop_value;
+				}, -0.1) ?? 0;
 
 				if (best_ocm_index !== 0)
 					logger.highlight('yellow', `performing ocm by playing ${best_ocm_index + 1}'th 1`);
@@ -136,10 +128,7 @@ export function take_action(state) {
 
 				// Find new best playable card
 				priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
-				if (priority !== -1)
-					best_playable_card = playable_priorities[priority][0];
-				else
-					best_playable_card = undefined;
+				best_playable_card = playable_priorities[priority]?.[0];
 			}
 		}
 

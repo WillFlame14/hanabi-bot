@@ -145,16 +145,12 @@ export class Card extends BasicCard {
 		return this.inferred.length === 0 ? this.possible : this.inferred;
 	}
 
-	/**
-	 * Returns whether the card has been "touched" (i.e. clued or finessed).
-	 */
+	/** Returns whether the card has been "touched" (i.e. clued or finessed). */
 	get touched() {
 		return this.clued || this.finessed;
 	}
 
-	/**
-	 * Returns whether the card has been "saved" (i.e. clued, finessed or chop moved).
-	 */
+	/** Returns whether the card has been "saved" (i.e. clued, finessed or chop moved). */
 	get saved() {
 		return this.clued || this.finessed || this.chop_moved;
 	}

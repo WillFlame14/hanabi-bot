@@ -6,8 +6,6 @@ import * as Basics from '../../basics.js';
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 
-
-
 /**
  * @typedef {import('../h-group.js').default} State
  * @typedef {import('../h-player.js').HGroup_Player} Player

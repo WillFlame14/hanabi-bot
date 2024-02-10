@@ -10,7 +10,6 @@ import { cardTouched } from '../../../variants.js';
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
 
-
 /**
  * @typedef {import('../../h-group.js').default} State
  * @typedef {import('../../../basics/Card.js').Card} Card
@@ -330,14 +329,13 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 			else if (!selfRanks.includes(next_rank)) {
 				// Otherwise, try to find finesse in our hand
 				const { feasible, connections: new_conns } = find_self_finesse(hypo_state, next_identity, currIgnoreOrders.slice(), finesses);
-				if (feasible) {
-					if (new_conns.length > 0) {
-						addConnections(new_conns);
-						continue;
-					}
-				}
-				else {
+
+				if (!feasible)
 					return { feasible: false, connections: [] };
+
+				if (new_conns.length > 0) {
+					addConnections(new_conns);
+					continue;
 				}
 			}
 		}

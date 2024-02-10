@@ -1,9 +1,10 @@
 import { playableAway } from '../../basics/hanabi-util.js';
+import { all_valid_clues } from '../../basics/helper.js';
 import { get_result } from './action-helper.js';
+import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue } from '../../tools/log.js';
-import { all_valid_clues } from '../../basics/helper.js';
 
 /**
  * @typedef {import('../playful-sieve.js').default} State
@@ -24,11 +25,7 @@ export function find_fix_clue(state) {
 
 	logger.info(`fix needed on [${fix_needed.map(logCard)}]`);
 
-	/** @type {Clue} */
-	let best_clue;
-	let best_clue_value = -9999;
-
-	for (const clue of all_valid_clues(state, partner)) {
+	const best_clue = Utils.maxOn(all_valid_clues(state, partner), clue => {
 		const { hypo_state, value } = get_result(state, clue);
 		const fixed = fix_needed.some(c => {
 			const actual = hypo_state.hands[partner].findOrder(c.order);
@@ -36,15 +33,11 @@ export function find_fix_clue(state) {
 			return card.inferred.some(inf => inf.matches(actual)) || card.inferred.length === 0 || card.reset;
 		});
 
-		if (fixed) {
+		if (fixed)
 			logger.info('clue', logClue(clue), 'fixes with value', value);
 
-			if (value > best_clue_value) {
-				best_clue = clue;
-				best_clue_value = value;
-			}
-		}
-	}
+		return fixed ? value : -9999;
+	}, -9999);
 
 	if (best_clue === undefined)
 		logger.warn('Unable to find fix clue!');
