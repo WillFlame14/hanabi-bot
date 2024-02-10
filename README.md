@@ -10,14 +10,14 @@ https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-
 A game played at H-Group level 5 can be seen [here](https://github.com/WillFlame14/hanabi-bot/assets/25177576/1aa4f67e-aa66-4704-ba75-fe6edf403bfa).
 
 ## Bot features
-- Can play with different conventions! Currently, Playful Sieve and HGroup levels 1 through 6 are supported.
+- Can play with different conventions! Currently, Playful Sieve (2p only) and HGroup levels 1 through 6 are supported.
 - Takes notes during the game on what it thinks each player knows about their own hand.
 - Internally rewinds to relevant turns to understand mistakes.
 - Can create and start games on its own (i.e. for playing bot-only games).
 - Can replay completed games on hanab.live and offer suggested actions.
 
 ## Running locally
-- You'll need to have NodeJS v16 or above. You can download it [here](https://nodejs.org/en/download/).
+- You'll need to have NodeJS v20 or above. You can download it [here](https://nodejs.org/en/download/).
 - Clone the repository to your own computer. There are lots of tutorials online on using Git if you don't know how that works.
 - Navigate to the cloned repository in a terminal and run `npm install` to install required dependencies.
 - Export the environment variables `HANABI_USERNAME` and `HANABI_PASSWORD` for the bot to log in.
