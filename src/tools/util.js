@@ -31,12 +31,11 @@ export function parse_args() {
 
 	for (const arg_line of arg_lines) {
 		const parts = arg_line.split('=');
-		if (parts.length === 2 && arg_line.length >= 3) {
+
+		if (parts.length === 2 && arg_line.length >= 3)
 			args[parts[0]] = parts[1];
-		}
-		else {
+		else
 			args[parts[0]] = 'true';
-		}
 	}
 	return args;
 }
@@ -70,9 +69,8 @@ let queueTimer;
 export function sendCmd(command, arg) {
 	cmdQueue.push(command + ' ' + JSON.stringify(arg));
 
-	if (queueTimer === undefined) {
+	if (queueTimer === undefined)
 		emptyCmdQueue();
-	}
 }
 
 function emptyCmdQueue() {
@@ -105,9 +103,9 @@ export function range(start, end) {
  * @returns {T}
  */
 export function objClone(obj, depth = 0) {
-	if (depth > 15) {
+	if (depth > 15)
 		throw new Error('Maximum recursion depth reached.');
-	}
+
 	if (typeof obj === 'object') {
 		if (obj instanceof BasicCard || obj instanceof Hand || obj instanceof Player) {
 			return /** @type {T} */ (obj.clone());
@@ -117,9 +115,9 @@ export function objClone(obj, depth = 0) {
 		}
 		else {
 			const new_obj = {};
-			for (const [name, value] of Object.entries(obj)) {
+			for (const [name, value] of Object.entries(obj))
 				new_obj[name] = objClone(value, depth + 1);
-			}
+
 			return /** @type {T} */ (new_obj);
 		}
 	}
@@ -138,9 +136,10 @@ export function objClone(obj, depth = 0) {
  */
 export function objPick(obj, attributes, options = {}) {
 	const new_obj = /** @type {Pick<T, K>} */ ({});
-	for (const attr of attributes) {
+
+	for (const attr of attributes)
 		new_obj[attr] = obj[attr] ?? options.default;
-	}
+
 	return new_obj;
 }
 
@@ -149,15 +148,15 @@ export function objPick(obj, attributes, options = {}) {
  * @template T
  * @param  {T[]} arr 						The array of objects.
  * @param  {(obj: T) => number} valueFunc	A function that takes in an object and returns its value.
+ * @param  {number} minValue 				The minimum value that the maximum object must satisfy.
  */
-export function maxOn(arr, valueFunc) {
-	if (arr.length === 0) {
+export function maxOn(arr, valueFunc, minValue = -Infinity) {
+	if (arr.length === 0)
 		return undefined;
-	}
 
-	let max_value = valueFunc(arr[0]), max = arr[0];
+	let max_value = minValue, max;
 
-	for (let i = 1; i < arr.length; i++) {
+	for (let i = 0; i < arr.length; i++) {
 		const curr = valueFunc(arr[i]);
 
 		if (curr > max_value) {
@@ -175,40 +174,35 @@ export function maxOn(arr, valueFunc) {
  * @param {unknown} obj2
  */
 export function objEquals(obj1, obj2) {
-	if (typeof obj1 !== typeof obj2) {
+	if (typeof obj1 !== typeof obj2)
 		return false;
-	}
 
-	if (typeof obj1 !== 'object') {
+	if (typeof obj1 !== 'object')
 		return false;
-	}
 
 	const keys1 = Object.keys(obj1);
 
 	// Different number of keys
-	if (keys1.length !== Object.keys(obj2).length) {
+	if (keys1.length !== Object.keys(obj2).length)
 		return false;
-	}
 
 	// Two literals
-	if (keys1.length === 0) {
+	if (keys1.length === 0)
 		return obj1 === obj2;
-	}
 
 	for (const key of keys1) {
 		const val1 = obj1[key];
 		const val2 = obj2[key];
 
 		// Values have different types
-		if (typeof val1 !== typeof obj2[key]) {
+		if (typeof val1 !== typeof obj2[key])
 			return false;
-		}
+
 
 		if (typeof val1 === 'object') {
 			// Nested objects aren't the same
-			if (!objEquals(val1, val2)) {
+			if (!objEquals(val1, val2))
 				return false;
-			}
 		}
 		else if (val1 !== val2) {
 			return false;
@@ -253,12 +247,10 @@ export function performToAction(state, action, playerIndex, deck) {
 		case ACTION.PLAY: {
 			const { suitIndex, rank } = deck[target];
 
-			if (state.play_stacks[suitIndex] + 1 === rank) {
+			if (state.play_stacks[suitIndex] + 1 === rank)
 				return { type: 'play', playerIndex, order: target, suitIndex, rank };
-			}
-			else {
+			else
 				return { type: 'discard', playerIndex, order: target, suitIndex, rank, failed: true };
-			}
 		}
 		case ACTION.DISCARD: {
 			const { suitIndex, rank } = deck[target];
@@ -294,9 +286,8 @@ export function findIndices(arr, testFunc) {
 	const indices = [];
 
 	for (let i = 0; i < arr.length; i++) {
-		if (testFunc(arr[i])) {
+		if (testFunc(arr[i]))
 			indices.push(i);
-		}
 	}
 	return indices;
 }
@@ -315,9 +306,8 @@ export function nextIndex(arr, testFunc, startIndex) {
 	for (let offset = 1; offset <= arr.length; offset++) {
 		const index = (startIndex + offset) % arr.length;
 
-		if (testFunc(arr[index])) {
+		if (testFunc(arr[index]))
 			return index;
-		}
 	}
 	return -1;
 }

@@ -83,33 +83,33 @@ export function cardTouched(card, suits, clue) {
 	const { suitIndex, rank } = card;
 	const suit = suits[suitIndex];
 
-	if (suit === 'Null') {
+	if (suit === 'Null')
 		return false;
-	}
-	else if (suit === 'Omni') {
+
+	else if (suit === 'Omni')
 		return true;
-	}
+
 
 	if (type === CLUE.COLOUR) {
-		if (suit === 'White') {
+		if (suit === 'White')
 			return false;
-		}
-		else if (suit === 'Rainbow') {
+
+		else if (suit === 'Rainbow')
 			return true;
-		}
-		else if (suit === 'Prism') {
+
+		else if (suit === 'Prism')
 			return (rank % suits.length - 1) === (value + 1);
-		}
+
 
 		return suitIndex === value;
 	}
 	else if (type === CLUE.RANK) {
-		if (suit === 'Brown') {
+		if (suit === 'Brown')
 			return false;
-		}
-		else if (suit === 'Pink') {
+
+		else if (suit === 'Pink')
 			return true;
-		}
+
 
 		return rank === value;
 	}
@@ -123,9 +123,9 @@ export function cardTouched(card, suits, clue) {
 export function isCluable(suits, clue) {
 	const { type, value } = clue;
 
-	if (type === CLUE.COLOUR && ['Null', 'Omni', 'White', 'Rainbow', 'Prism'].includes(suits[value])) {
+	if (type === CLUE.COLOUR && ['Null', 'Omni', 'White', 'Rainbow', 'Prism'].includes(suits[value]))
 		return false;
-	}
+
 	return true;
 }
 
@@ -135,9 +135,9 @@ export function isCluable(suits, clue) {
  * @param {Identity} identity
  */
 export function cardCount(suits, { suitIndex, rank }) {
-	if (suits[suitIndex] === 'Black') {
+	if (suits[suitIndex] === 'Black')
 		return 1;
-	}
+
 
 	return [3, 2, 2, 2, 1][rank - 1];
 }

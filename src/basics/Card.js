@@ -25,9 +25,9 @@ export class BasicCard {
 	}
 
 	identity() {
-		if (this.suitIndex !== -1 && this.rank !== -1) {
+		if (this.suitIndex !== -1 && this.rank !== -1)
 			return { suitIndex: this.suitIndex, rank: this.rank };
-		}
+
 	}
 
 	matches({suitIndex, rank}) {
@@ -119,9 +119,9 @@ export class Card extends BasicCard {
 	clone() {
 		const new_card = new Card(this.actualCard.clone(), this);
 
-		for (const field of ['possible', 'inferred', 'clues', 'reasoning', 'reasoning_turn']) {
+		for (const field of ['possible', 'inferred', 'clues', 'reasoning', 'reasoning_turn'])
 			new_card[field] = this[field].slice();
-		}
+
 		return new_card;
 	}
 
@@ -145,16 +145,12 @@ export class Card extends BasicCard {
 		return this.inferred.length === 0 ? this.possible : this.inferred;
 	}
 
-	/**
-	 * Returns whether the card has been "touched" (i.e. clued or finessed).
-	 */
+	/** Returns whether the card has been "touched" (i.e. clued or finessed). */
 	get touched() {
 		return this.clued || this.finessed;
 	}
 
-	/**
-	 * Returns whether the card has been "saved" (i.e. clued, finessed or chop moved).
-	 */
+	/** Returns whether the card has been "saved" (i.e. clued, finessed or chop moved). */
 	get saved() {
 		return this.clued || this.finessed || this.chop_moved;
 	}
@@ -168,15 +164,14 @@ export class Card extends BasicCard {
 	 * @param {MatchOptions} options
 	 */
 	identity(options = {}) {
-		if (this.possible.length === 1) {
+		if (this.possible.length === 1)
 			return this.possible[0];
-		}
-		else if (this.suitIndex !== -1 && this.rank !== -1) {
+
+		else if (this.suitIndex !== -1 && this.rank !== -1)
 			return new BasicCard(this.suitIndex, this.rank);
-		}
-		else if (options.infer && this.inferred.length === 1) {
+
+		else if (options.infer && this.inferred.length === 1)
 			return this.inferred[0];
-		}
 	}
 
 	/**
@@ -187,9 +182,8 @@ export class Card extends BasicCard {
 	matches({ suitIndex, rank }, options = {}) {
 		const id = this.identity(options);
 
-		if (id === undefined) {
+		if (id === undefined)
 			return options.assume ?? false;
-		}
 
 		return id.suitIndex === suitIndex && id.rank === rank;
 	}
@@ -236,9 +230,8 @@ export class Card extends BasicCard {
 	 */
 	union(type, identities) {
 		for (const card of identities) {
-			if (!this[type].some(c => c.matches(card))) {
+			if (!this[type].some(c => c.matches(card)))
 				this[type].push(Object.freeze(new BasicCard(card.suitIndex, card.rank)));
-			}
 		}
 	}
 
@@ -256,27 +249,21 @@ export class Card extends BasicCard {
 	 */
 	getNote() {
 		let note;
-		if (this.inferred.length === 0) {
+		if (this.inferred.length === 0)
 			note = '??';
-		}
-		else if (this.inferred.length <= 3) {
+		else if (this.inferred.length <= 3)
 			note = this.inferred.map(logCard).join(',');
-		}
-		else {
+		else
 			note = '...';
-		}
 
-		if (this.finessed) {
+		if (this.finessed)
 			note = `[f] [${note}]`;
-		}
 
-		if (this.chop_moved) {
+		if (this.chop_moved)
 			note = `[cm] [${note}]`;
-		}
 
-		if (this.called_to_discard) {
+		if (this.called_to_discard)
 			note = 'dc';
-		}
 
 		return note;
 	}

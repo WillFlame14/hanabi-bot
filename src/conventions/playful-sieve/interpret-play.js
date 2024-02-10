@@ -43,9 +43,9 @@ export function unlock_promise(state, action, unlocked_player, locked_player, lo
 		logger.highlight('cyan', 'playing oldest/only safe playable, not unlocking');
 
 		// All other known playables get shifted
-		for (const card of playables_sorted.slice(1).filter(card => common.thoughts[card.order].identity({ infer: true }) !== undefined)) {
+		for (const card of playables_sorted.slice(1).filter(card => common.thoughts[card.order].identity({ infer: true }) !== undefined))
 			state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
-		}
+
 		return;
 	}
 
@@ -53,9 +53,8 @@ export function unlock_promise(state, action, unlocked_player, locked_player, lo
 
 	// Known connecting card
 	const match = locked_hand.find(card => common.thoughts[card.order].matches({ suitIndex, rank: rank + 1 }, { infer: true }));
-	if (match) {
+	if (match)
 		return match.order;
-	}
 
 	const possible_matches = locked_hand.filter(card => card.clued && card.clues.some(clue =>
 		(clue.type === CLUE.RANK && clue.value === rank + 1) ||
@@ -102,16 +101,14 @@ export function interpret_play(state, action) {
 	if (playerIndex === state.ourPlayerIndex) {
 		if ((card.inferred.length !== 1 || !card.inferred[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
-			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
+			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
 				return;
-			}
 		}
 	}
 
 	const locked_shifts = state.locked_shifts[card.order];
-	if (locked_shifts !== undefined) {
+	if (locked_shifts !== undefined)
 		delete state.locked_shifts[card.order];
-	}
 
 	const known_connecting = card.inferred.every(inf => other_hand.some(c =>
 		common.thoughts[c.order].inferred.every(i => playableAway(state, i) === 0 || (i.suitIndex === inf.suitIndex && playableAway(state, i) === 1))));
@@ -122,9 +119,8 @@ export function interpret_play(state, action) {
 			return { suitIndex, rank: rank + 1 };
 		});
 
-		if (common.thoughts[card.order].inferred.length === 1) {
+		if (common.thoughts[card.order].inferred.length === 1)
 			playable_possibilities[suitIndex] = { suitIndex, rank: rank + 1 };
-		}
 
 		const chop = common.thoughts[other_hand[0].order];
 		chop.old_inferred = chop.inferred.slice();
@@ -168,9 +164,9 @@ export function interpret_play(state, action) {
 
 			// Shift all other playable cards
 			for (const card of common.thinksPlayables(state, playerIndex)) {
-				if (card.order === order) {
+				if (card.order === order)
 					continue;
-				}
+
 				state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
 			}
 		}

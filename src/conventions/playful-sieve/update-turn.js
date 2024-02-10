@@ -46,9 +46,8 @@ export function update_turn(state, action) {
 				common.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
 					index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
 
-				if (common.waiting_connections[i].conn_index === -1) {
+				if (common.waiting_connections[i].conn_index === -1)
 					to_remove.push(i);
-				}
 			}
 		}
 	}

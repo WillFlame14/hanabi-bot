@@ -163,17 +163,14 @@ export function cardValue(state, player, identity, order = -1) {
 	}
 
 	// Basic trash, saved already, duplicate visible
-	if (isTrash(state, player, identity, order) || visibleFind(state, player, identity).length > 1) {
+	if (isTrash(state, player, identity, order) || visibleFind(state, player, identity).length > 1)
 		return 0;
-	}
 
-	if (isCritical(state, identity)) {
+	if (isCritical(state, identity))
 		return 5;
-	}
 
-	if (save2(state, player, identity)) {
+	if (save2(state, player, identity))
 		return 4;
-	}
 
 	// Next playable rank is value 4, rank 4 with nothing on the stack is value 1
 	return 5 - (rank - player.hypo_stacks[suitIndex]);
@@ -193,9 +190,8 @@ export function direct_clues(state, target, card, options) {
 		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
 			const clue = { type: CLUE.COLOUR, value: suitIndex, target };
 
-			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
+			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue))
 				direct_clues.push(clue);
-			}
 		}
 	}
 
@@ -203,9 +199,8 @@ export function direct_clues(state, target, card, options) {
 		for (let rank = 1; rank <= 5; rank++) {
 			const clue = { type: CLUE.RANK, value: rank, target };
 
-			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue)) {
+			if (isCluable(state.suits, clue) && cardTouched(card, state.suits, clue))
 				direct_clues.push(clue);
-			}
 		}
 	}
 
@@ -220,9 +215,8 @@ export function direct_clues(state, target, card, options) {
 export function refer_right(hand, index) {
 	let target_index = (index + 1) % hand.length;
 
-	while(hand[target_index].clued && !hand[target_index].newly_clued) {
+	while (hand[target_index].clued && !hand[target_index].newly_clued)
 		target_index = (target_index + 1) % hand.length;
-	}
 
 	return target_index;
 }

@@ -61,37 +61,30 @@ export function order_1s(state, player, cards) {
 		const [c1_start, c2_start] = [card1, card2].map(c => inStartingHand(state, c));
 		const [c1, c2] = [card1, card2].map(c => player.thoughts[c.order]);
 
-		if (c1.finessed && c2.finessed) {
+		if (c1.finessed && c2.finessed)
 			return c1.finesse_index - c2.finesse_index;
-		}
 
-		if (c1.finessed) {
+		if (c1.finessed)
 			return -1;
-		}
 
-		if (c2.finessed) {
+		if (c2.finessed)
 			return 1;
-		}
 
 		// c1 is chop focus
-		if (c1.chop_when_first_clued) {
+		if (c1.chop_when_first_clued)
 			return -1;
-		}
 
 		// c2 is chop focus
-		if (c2.chop_when_first_clued) {
+		if (c2.chop_when_first_clued)
 			return 1;
-		}
 
 		// c1 is fresh 1 (c2 isn't fresh, or fresh but older)
-		if (!c1_start && (c2_start || card1.order > card2.order)) {
+		if (!c1_start && (c2_start || card1.order > card2.order))
 			return -1;
-		}
 
 		// c1 isn't fresh (c2 also isn't fresh and newer)
-		if (c1_start && c2_start && card2.order > card1.order) {
+		if (c1_start && c2_start && card2.order > card1.order)
 			return -1;
-		}
 
 		return 1;
 	});
@@ -118,9 +111,9 @@ export function determine_playable_card(state, playable_cards) {
 
 		// Blind playing unknown chop moved cards should be a last resort with < 2 strikes
 		if (card.chop_moved && !card.clued && card.possible.some(p => playableAway(state, p) !== 0)) {
-			if (state.strikes !== 2) {
+			if (state.strikes !== 2)
 				priorities[5].push(card);
-			}
+
 			continue;
 		}
 
@@ -137,9 +130,9 @@ export function determine_playable_card(state, playable_cards) {
 					connected = true;
 
 					// Connecting in own hand, demote priority to 2
-					if (target === state.ourPlayerIndex) {
+					if (target === state.ourPlayerIndex)
 						priority = 2;
-					}
+
 					break;
 				}
 			}
@@ -179,12 +172,12 @@ export function determine_playable_card(state, playable_cards) {
 
 	// Speed-up clues first, then oldest finesse to newest
 	priorities[0].sort((c1, c2) => {
-		if (c1.hidden && !c2.hidden) {
+		if (c1.hidden && !c2.hidden)
 			return 1;
-		}
-		else if (!c1.hidden && c2.hidden) {
+
+		if (!c1.hidden && c2.hidden)
 			return -1;
-		}
+
 		return c1.finesse_index - c2.finesse_index;
 	});
 

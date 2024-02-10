@@ -26,21 +26,18 @@ async function main() {
 	const { convention = 'HGroup', level: lStr = '1', games = '10', players: pStr = '2', seed, variant: vStr = 'No Variant' } = Utils.parse_args();
 	const variant = await getVariant(vStr);
 
-	if (conventions[convention] === undefined) {
+	if (conventions[convention] === undefined)
 		throw new Error(`Convention ${convention} is not supported.`);
-	}
 
 	const numPlayers = Number(pStr);
 
-	if (!Number.isInteger(numPlayers) || numPlayers < 2 || numPlayers > 6) {
+	if (!Number.isInteger(numPlayers) || numPlayers < 2 || numPlayers > 6)
 		throw new Error(`Invalid number of players (${pStr}). Please enter a number from 2-6.`);
-	}
 
 	const level = Number(lStr);
 
-	if (convention === 'HGroup' && (!Number.isInteger(level) || level < 1 || level > MAX_H_LEVEL)) {
+	if (convention === 'HGroup' && (!Number.isInteger(level) || level < 1 || level > MAX_H_LEVEL))
 		throw new Error(`Invalid level provided (${lStr}). Please enter a number from 1-${MAX_H_LEVEL}.`);
-	}
 
 	/** @type {Identity[]} */
 	const deck = [];
@@ -49,9 +46,8 @@ async function main() {
 		for (let rank = 1; rank <= 5; rank++) {
 			const identity = Object.freeze({ suitIndex, rank });
 
-			for (let i = 0; i < cardCount(variant.suits, identity); i++) {
+			for (let i = 0; i < cardCount(variant.suits, identity); i++)
 				deck.push(identity);
-			}
 		}
 	}
 
@@ -76,9 +72,9 @@ async function main() {
 			const { score, strikeout, actions } =
 				simulate_game(players, shuffled, variant.suits, /** @type {keyof typeof conventions} */ (convention), level);
 
-			if (score !== 25) {
+			if (score !== 25)
 				fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions }));
-			}
+
 			console.log(score, strikeout);
 		}
 	}
@@ -153,12 +149,10 @@ function simulate_game(playerNames, deck, suits, convention, level) {
 			}
 		}
 
-		if (states[currentPlayerIndex].order === deck.length && endgameTurns === -1) {
+		if (states[currentPlayerIndex].order === deck.length && endgameTurns === -1)
 			endgameTurns = playerNames.length;
-		}
-		else if (endgameTurns > 0) {
+		else if (endgameTurns > 0)
 			endgameTurns--;
-		}
 
 		currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.length;
 		// logger.setLevel(currentPlayerIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);

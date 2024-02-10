@@ -24,15 +24,12 @@ export function elim_result(player, hypo_player, hand, list) {
 		const hypo_card = hypo_player.thoughts[order];
 
 		if (hypo_card.clued && !hypo_card.called_to_discard && hypo_card.possible.length < old_card.possible.length && hypo_card.matches_inferences()) {
-			if (hypo_card.newly_clued && !hypo_card.finessed) {
+			if (hypo_card.newly_clued && !hypo_card.finessed)
 				new_touched++;
-			}
-			else if (list.includes(order)) {
+			else if (list.includes(order))
 				fill++;
-			}
-			else {
+			else
 				elim++;
-			}
 		}
 	}
 	return { new_touched, fill, elim };
@@ -49,17 +46,15 @@ export function bad_touch_result(state, hypo_player, hand, focus_order = -1) {
 
 	for (const card of hand) {
 		// Ignore cards that aren't newly clued, focused card can't be bad touched
-		if (!card.newly_clued || card.order === focus_order) {
+		if (!card.newly_clued || card.order === focus_order)
 			continue;
-		}
 
-		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order))) {
+		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order)))
 			trash++;
-		}
+
 		// TODO: Don't double count bad touch when cluing two of the same card
-		else if (isTrash(state, state.me, state.me.thoughts[card.order], card.order)) {
+		else if (isTrash(state, state.me, state.me.thoughts[card.order], card.order))
 			bad_touch++;
-		}
 	}
 
 	return { bad_touch, trash };
@@ -86,9 +81,8 @@ export function playables_result(state, player, hypo_player) {
 				const old_card = player.thoughts[order];
 				const hypo_card = hypo_player.thoughts[order];
 
-				if (hypo_card.saved && hypo_card.matches(identity, { infer: true })) {
+				if (hypo_card.saved && hypo_card.matches(identity, { infer: true }))
 					return { playerIndex, old_card, hypo_card };
-				}
 			}
 		}
 	}
@@ -98,21 +92,18 @@ export function playables_result(state, player, hypo_player) {
 		for (let rank = player.hypo_stacks[suitIndex] + 1; rank <= hypo_player.hypo_stacks[suitIndex]; rank++) {
 			const { playerIndex, old_card, hypo_card } = find_card({ suitIndex, rank });
 
-			if (hypo_card.finessed && !old_card.finessed) {
+			if (hypo_card.finessed && !old_card.finessed)
 				finesses++;
-			}
 
 			// Only counts as a playable if it wasn't already playing
-			if (!player.unknown_plays.some(order => order === hypo_card.order)) {
+			if (!player.unknown_plays.some(order => order === hypo_card.order))
 				playables.push({ playerIndex, card: hypo_card });
-			}
 		}
 	}
 
 	for (const order of hypo_player.unknown_plays) {
-		if (player.unknown_plays.includes(order)) {
+		if (player.unknown_plays.includes(order))
 			continue;
-		}
 
 		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
 		playables.push({ playerIndex, card: hypo_player.thoughts[order] });

@@ -1,6 +1,6 @@
 import { CLUE } from '../../constants.js';
 import { isTrash, playableAway, refer_right } from '../../basics/hanabi-util.js';
-import { team_elim, update_hypo_stacks } from '../../basics/helper.js';
+import { checkFix, team_elim, update_hypo_stacks } from '../../basics/helper.js';
 import * as Basics from '../../basics.js';
 import * as Utils from '../../tools/util.js';
 
@@ -37,39 +37,14 @@ export function interpret_clue(state, action) {
 
 	Basics.onClue(state, action);
 
-	const clue_resets = new Set();
-	for (const { order } of state.hands[target]) {
-		if (oldCommon.thoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
-			common.reset_card(order);
-			clue_resets.add(order);
-		}
-	}
-
-	const resets = common.good_touch_elim(state);
-	common.refresh_links(state);
-
-	// Includes resets from negative information
-	/** @type {Set<number>} */
-	const all_resets = new Set([...clue_resets, ...resets]);
-
-	if (all_resets.size > 0) {
-		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
-		const infs_to_recheck = Array.from(all_resets).map(order => oldCommon.thoughts[order].identity({ infer: true })).filter(id => id !== undefined);
-
-		for (const inf of infs_to_recheck) {
-			common.restore_elim(inf);
-		}
-	}
-
-	let fix = list.some(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
+	let fix = checkFix(state, oldCommon.thoughts, action);
 
 	for (const { order } of hand) {
 		const card = common.thoughts[order];
 
 		// Revoke ctd if clued
-		if (card.called_to_discard && card.clued) {
+		if (card.called_to_discard && card.clued)
 			card.called_to_discard = false;
-		}
 
 		const last_action = state.last_actions[giver];
 
@@ -87,9 +62,8 @@ export function interpret_clue(state, action) {
 
 				// Do not allow this card to regain inferences from false elimination
 				for (const [id, orders] of Object.entries(common.elims)) {
-					if (orders?.includes(order)) {
+					if (orders?.includes(order))
 						common.elims[id].splice(orders.indexOf(order), 1);
-					}
 				}
 			}
 		}
@@ -99,18 +73,16 @@ export function interpret_clue(state, action) {
 	const trash_push = !fix && touch.every(card => !card.newly_clued ||
 		common.thoughts[card.order].inferred.every(inf => isTrash(state, common, inf, card.order))) && touch.some(card => card.newly_clued);
 
-	if (trash_push) {
+	if (trash_push)
 		logger.highlight('cyan', 'trash push!');
-	}
 
 	const known_trash = common.thinksTrash(state, target);
 
 	if (state.common.thinksLocked(state, giver)) {
 		if (clue.type === CLUE.RANK) {
 			// Rank fill-in/trash reveal, no additional meaning
-			if (known_trash.length + hand.filter(c => common.thoughts[c.order].called_to_discard).length > 0) {
+			if (known_trash.length + hand.filter(c => common.thoughts[c.order].called_to_discard).length > 0)
 				return;
-			}
 
 			// Referential discard
 			if (newly_touched.length > 0 && !trash_push) {
@@ -126,9 +98,9 @@ export function interpret_clue(state, action) {
 			else {
 				// Fill-in (possibly locked hand ptd)
 				const playable_slot1 = slot1.finessed && slot1.inferred.every(inf => playableAway(state, inf) === 0);
-				if (!playable_slot1) {
+				if (!playable_slot1)
 					slot1.called_to_discard = true;
-				}
+
 				logger.info('rank fill in', playable_slot1 ? '' : 'while unloaded, giving locked hand ptd on slot 1');
 			}
 		}
@@ -155,9 +127,9 @@ export function interpret_clue(state, action) {
 
 				// Fill-in (possibly locked hand ptd)
 				const playable_slot1 = slot1.finessed && slot1.inferred.every(inf => playableAway(state, inf) === 0);
-				if (!playable_slot1) {
+				if (!playable_slot1)
 					slot1.called_to_discard = true;
-				}
+
 				logger.info('colour fill in', playable_slot1 ? '' : 'while unloaded, giving locked hand ptd on slot 1');
 			}
 		}
@@ -180,9 +152,8 @@ export function interpret_clue(state, action) {
 		for (const { order } of hand) {
 			const card = common.thoughts[order];
 
-			if (!card.clued && !card.finessed && !card.chop_moved) {
+			if (!card.clued && !card.finessed && !card.chop_moved)
 				card.called_to_discard = true;
-			}
 		}
 	}
 	else {
@@ -195,9 +166,8 @@ export function interpret_clue(state, action) {
 				// Telling chop to play while not loaded, lock
 				if (target_index === 0 && !common.thinksLoaded(state, target)) {
 					for (const card of hand) {
-						if (!card.clued) {
+						if (!card.clued)
 							common.thoughts[card.order].chop_moved = true;
-						}
 					}
 					logger.highlight('yellow', 'lock!');
 					action.lock = true;

@@ -22,9 +22,8 @@ import * as Utils from '../../../tools/util.js';
  * @param {{ connections: Connection[]}[]} all_connections
  */
 export function inference_known(all_connections) {
-	if (all_connections.length > 1) {
+	if (all_connections.length > 1)
 		return false;
-	}
 
 	const { connections } = all_connections[0];
 	return connections.length === 0 || connections.every(conn => conn.type === 'known' || (conn.type === 'playable' && conn.known));
@@ -53,14 +52,12 @@ export function add_symmetric_connections(state, symmetric_connections, existing
 		const { connections, suitIndex, rank, fake } = sym;
 
 		// No connections required
-		if (connections.length === 0) {
+		if (connections.length === 0)
 			continue;
-		}
 
 		// Matches an inference we have
-		if (existing_connections.some((conn) => conn.suitIndex === suitIndex && conn.rank === rank)) {
+		if (existing_connections.some((conn) => conn.suitIndex === suitIndex && conn.rank === rank))
 			continue;
-		}
 
 		state.common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake });
 	}
@@ -89,9 +86,8 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 	const non_self_connections = [];
 
 	for (const id of focused_card.inferred) {
-		if (isBasicTrash(state, id)) {
+		if (isBasicTrash(state, id))
 			continue;
-		}
 
 		const looksDirect = focused_card.identity() === undefined && (		// Focus must be unknown AND
 			action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
@@ -103,12 +99,10 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 		logger.flush(false);
 
 		if (feasible) {
-			if (connections[0]?.reacting === target) {
+			if (connections[0]?.reacting === target)
 				self_connections.push({ id, connections });
-			}
-			else {
+			else
 				non_self_connections.push({ id, connections });
-			}
 		}
 	}
 
@@ -160,14 +154,12 @@ export function assign_connections(state, connections, options = {}) {
 		// Do not write notes on:
 		// - fake connections (where we need to blind play more than necessary)
 		// - symmetric connections on anyone not the target, since they actually know their card
-		if (options?.fake || (options?.symmetric && reacting !== options.target)) {
+		if (options?.fake || (options?.symmetric && reacting !== options.target))
 			continue;
-		}
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
-		if (!card.superposition) {
+		if (!card.superposition)
 			card.old_inferred = card.inferred.slice();
-		}
 
 		if (type === 'finesse') {
 			card.finessed = true;
@@ -184,9 +176,9 @@ export function assign_connections(state, connections, options = {}) {
 			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
 			if (card.identity() !== undefined) {
 				const { suitIndex, rank } = card.identity();
-				if (hypo_stacks[reacting][suitIndex] + 1 !== rank) {
+				if (hypo_stacks[reacting][suitIndex] + 1 !== rank)
 					logger.warn('trying to connect', logCard(card), 'but hypo stacks at', hypo_stacks[suitIndex]);
-				}
+
 				hypo_stacks[suitIndex] = rank;
 			}
 		}
@@ -196,9 +188,9 @@ export function assign_connections(state, connections, options = {}) {
 				card.union('inferred', identities);
 			}
 			else {
-				if (!(type === 'playable' && !known)) {
+				if (!(type === 'playable' && !known))
 					card.assign('inferred', identities);
-				}
+
 				card.superposition = true;
 			}
 		}

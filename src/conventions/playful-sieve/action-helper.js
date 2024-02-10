@@ -19,9 +19,9 @@ export function get_result(state, clue) {
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
 	const touch = state.hands[partner].clueTouched(clue, state.suits);
 
-	if (touch.length === 0) {
+	if (touch.length === 0)
 		throw new Error(`Tried to get a result with a clue ${logClue(clue)} that touches no cards!`);
-	}
+
 	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target: partner, list: touch.map(c => c.order), clue });
 	const { bad_touch, trash } = bad_touch_result(hypo_state, hypo_state.common, hypo_state.hands[partner]);
 
