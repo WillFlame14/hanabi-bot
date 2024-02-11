@@ -143,7 +143,7 @@ export function cardTouched(card, variant, clue) {
 				'Rainbow', 'Dark Rainbow', 'Muddy Rainbow', 'Cocoa Rainbow',
 				'Prism', 'Dark Prism'
 			].includes(s)).length;
-			return (rank % (variant.suits.length - colourlessCount)) === (value - 1);
+			return ((rank - 1) % (variant.suits.length - colourlessCount)) === value;
 		}
 
 		if (rank === variant.specialRank) {
