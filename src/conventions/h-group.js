@@ -60,21 +60,18 @@ export default class HGroup extends State {
 	minimalCopy() {
 		const newState = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.in_progress, this.level);
 
-		if (this.copyDepth > 3) {
+		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');
-		}
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'last_actions',
 			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
 
-		for (const property of minimalProps) {
+		for (const property of minimalProps)
 			newState[property] = Utils.objClone(this[property]);
-		}
 
 		for (const player of newState.players.concat([newState.common])) {
-			for (const c of newState.hands.flat()) {
+			for (const c of newState.hands.flat())
 				player.thoughts[c.order].actualCard = c;
-			}
 		}
 
 		newState.copyDepth = this.copyDepth + 1;

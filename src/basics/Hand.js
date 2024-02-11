@@ -23,9 +23,9 @@ export class Hand extends Array {
 
 	clone() {
 		const newHand = new Hand();
-		for (const card of this) {
+		for (const card of this)
 			newHand.push(card.clone());
-		}
+
 		return newHand;
 	}
 

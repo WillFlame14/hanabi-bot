@@ -38,14 +38,12 @@ export function clue_safe(state, player, clue) {
 	const next_unoccupied = getNextUnoccupied(state.ourPlayerIndex);
 
 	// If everyone has a finessed card and it loops back to us, we assume we are fine. (TODO: Possibly allow someone to scream?)
-	if (next_unoccupied === state.ourPlayerIndex) {
+	if (next_unoccupied === state.ourPlayerIndex)
 		return true;
-	}
 
 	// Not dangerous, clue is fine to give
-	if (!chopUnsafe(hypo_state, hypo_player, next_unoccupied)) {
+	if (!chopUnsafe(hypo_state, hypo_player, next_unoccupied))
 		return true;
-	}
 
 	// Dangerous and not loaded, clue is not fine
 	if (!hypo_state.common.thinksLoaded(hypo_state, next_unoccupied)) {
@@ -56,9 +54,8 @@ export function clue_safe(state, player, clue) {
 	// Dangerous and loaded
 	const next_unoccupied2 = getNextUnoccupied(next_unoccupied);
 
-	if (next_unoccupied2 === state.ourPlayerIndex) {
+	if (next_unoccupied2 === state.ourPlayerIndex)
 		return true;
-	}
 
 	logger.info(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop but loaded, next next ${state.playerNames[next_unoccupied2]} has ${chopUnsafe(hypo_state, player, next_unoccupied2) ? 'unsafe' : 'safe'} chop with ${hypo_state.clue_tokens} clues`);
 

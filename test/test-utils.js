@@ -36,7 +36,6 @@ const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
 const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
 const noVar = {
 	"id": 0,
-	"newID": "R+Y+G+B+P",
 	"name": "No Variant",
 	"suits": ["Red", "Yellow", "Green", "Blue", "Purple"]
 };
@@ -59,9 +58,9 @@ export function expandShortCard(short) {
 function init_state(state, options) {
 	if (options.play_stacks) {
 		state.play_stacks = options.play_stacks;
-		for (let i = 0; i < state.numPlayers; i++) {
+		for (let i = 0; i < state.numPlayers; i++)
 			state.players[i].hypo_stacks = options.play_stacks.slice();
-		}
+
 		state.common.hypo_stacks = options.play_stacks.slice();
 	}
 
@@ -73,21 +72,18 @@ function init_state(state, options) {
 		state.discard_stacks[suitIndex][rank - 1]++;
 
 		// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
-		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, state.variant, identity) && state.max_ranks[suitIndex] > rank - 1) {
+		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, state.variant, identity) && state.max_ranks[suitIndex] > rank - 1)
 			state.max_ranks[suitIndex] = rank - 1;
-		}
 	}
 
-	for (const player of state.allPlayers) {
+	for (const player of state.allPlayers)
 		player.card_elim(state);
-	}
 
 	state.currentPlayerIndex = options.starting ?? 0;
 	state.clue_tokens = options.clue_tokens ?? 8;
 
-	if (options.init) {
+	if (options.init)
 		options.init(state);
-	}
 }
 
 /**
@@ -138,9 +134,8 @@ export function setup(StateClass, hands, options = {}) {
 	init_state(state, options);
 	injectFuncs.bind(state)(options);
 
-	for (const player of state.players) {
+	for (const player of state.players)
 		player.card_elim(state);
-	}
 
 	return state;
 }
@@ -167,9 +162,8 @@ export function takeTurn(state, rawAction, draw = 'xx') {
 	state.handle_action(action, true);
 
 	if (action.type === 'play' || action.type === 'discard') {
-		if (draw === 'xx' && state.currentPlayerIndex !== state.ourPlayerIndex) {
+		if (draw === 'xx' && state.currentPlayerIndex !== state.ourPlayerIndex)
 			throw new Error(`Missing draw for ${state.playerNames[state.currentPlayerIndex]}'s action (${logAction(action)}).`);
-		}
 
 		const { suitIndex, rank } = expandShortCard(draw);
 		state.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank }, true);
@@ -190,18 +184,16 @@ export function takeTurn(state, rawAction, draw = 'xx') {
 function parseSlots(state, parts, partsIndex, expectOne, insufficientMsg = '') {
 	const original = parts[partsIndex - 1] + ' ' + parts[partsIndex];
 
-	if (parts.length < partsIndex + 1) {
+	if (parts.length < partsIndex + 1)
 		throw new Error(`Not enough arguments provided ${insufficientMsg}, needs '(slot x)'.`);
-	}
 
 	const slots = parts[partsIndex].slice(0, parts[partsIndex].length - 1).split(',').map(Number);
-	if (slots.length === 0 || slots.some(slot => isNaN(slot) || slot < 1 && slot > state.hands[state.ourPlayerIndex].length)) {
-		throw new Error(`Failed to parse ${original}.`);
-	}
 
-	if (expectOne && slots.length > 1) {
+	if (slots.length === 0 || slots.some(slot => isNaN(slot) || slot < 1 && slot > state.hands[state.ourPlayerIndex].length))
+		throw new Error(`Failed to parse ${original}.`);
+
+	if (expectOne && slots.length > 1)
 		throw new Error(`Expected only 1 slot, parsed ${slots.length} in string ${original}.`);
-	}
 
 	return slots;
 }
@@ -218,9 +210,8 @@ export function parseAction(state, rawAction) {
 	const playerName = parts[0];
 	const playerIndex = state.playerNames.findIndex(name => name === playerName);
 
-	if (playerIndex === -1) {
+	if (playerIndex === -1)
 		throw new Error(`Couldn't parse giver ${playerName}, not in list of players ${state.playerNames}`);
-	}
 
 	switch(parts[1]) {
 		case 'clues': {
@@ -228,21 +219,21 @@ export function parseAction(state, rawAction) {
 				{ type: CLUE.RANK, value: Number(parts[2]) } :
 				{ type: CLUE.COLOUR, value: state.suits.findIndex(suit => suit.toLowerCase() === parts[2].toLowerCase()) };
 
-			if (clue.type === CLUE.COLOUR && clue.value === -1) {
+			if (clue.type === CLUE.COLOUR && clue.value === -1)
 				throw new Error(`Unable to parse clue ${parts[2]}`);
-			}
+
 
 			const targetName = parts[4];
 			const target = state.playerNames.findIndex(name => name === targetName);
-			if (target === -1) {
+			if (target === -1)
 				throw new Error(`Couldn't parse target ${playerName}, not in list of players ${state.playerNames}.`);
-			}
 
 			if (target !== state.ourPlayerIndex) {
 				const list = state.hands[target].clueTouched(clue, state.variant).map(c => c.order);
-				if (list.length === 0) {
+
+				if (list.length === 0)
 					throw new Error(`Clue ${logClue(Object.assign({}, clue, { target }))} touches no cards.`);
-				}
+
 				return { type: 'clue', clue, giver: playerIndex, target, list };
 			}
 			else {
@@ -266,9 +257,9 @@ export function parseAction(state, rawAction) {
 					// Brief check to make sure that if slot provided, it is correct
 					if (parts.length >= 4) {
 						const slot = parseSlots(state, parts, 4, true)[0];
-						if (state.hands[playerIndex][slot - 1].order !== matching[0].order) {
+						if (state.hands[playerIndex][slot - 1].order !== matching[0].order)
 							throw new Error(`Identity ${parts[2]} is not in slot ${slot}, test written incorrectly?`);
-						}
+
 					}
 					return { type: 'play', playerIndex, suitIndex, rank, order: matching[0].order };
 				}
@@ -277,9 +268,9 @@ export function parseAction(state, rawAction) {
 					const slot = parseSlots(state, parts, 4, true, '(ambiguous identity)')[0];
 					const card = state.hands[playerIndex][slot - 1];
 
-					if (!card.matches({ suitIndex, rank })) {
+					if (!card.matches({ suitIndex, rank }))
 						throw new Error(`Identity ${parts[2]} is not in slot ${slot}, test written incorrectly?`);
-					}
+
 					return { type: 'play', playerIndex, suitIndex, rank, order: card.order };
 				}
 			}
@@ -297,17 +288,15 @@ export function parseAction(state, rawAction) {
 			if (playerIndex !== state.ourPlayerIndex) {
 				const order = state.hands[playerIndex].find(c => c.matches({ suitIndex, rank }))?.order;
 
-				if (order === undefined) {
+				if (order === undefined)
 					throw new Error(`Unable to find card ${parts[2]} to play in ${playerName}'s hand.`);
-				}
 
 				return { type: 'discard', playerIndex, suitIndex, rank, order, failed: parts[1] === 'bombs' };
 			}
 			else {
 				// e.g. "Alice discards y5 (slot 1)"
-				if (parts.length < 5) {
+				if (parts.length < 5)
 					throw new Error(`Not enough arguments provided for a discard action from us, needs '(slot x)' at the end.`);
-				}
 
 				const slot = parseSlots(state, parts, 4, true, '(discard from us)')[0];
 				const { order } = state.hands[state.ourPlayerIndex][slot - 1];

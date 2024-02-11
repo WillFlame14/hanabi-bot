@@ -93,14 +93,7 @@ export class Player {
 	 * @param {number} playerIndex
 	 */
 	thinksPlayables(state, playerIndex) {
-		const linked_orders = new Set();
-
-		for (const { cards, identities } of this.links) {
-			// We aren't sure about the identities of these cards - at least one is bad touched
-			if (cards.length > identities.reduce((sum, identity) => sum += unknownIdentities(state, this, identity), 0)) {
-				cards.forEach(c => linked_orders.add(c.order));
-			}
-		}
+		const linked_orders = this.linkedOrders(state);
 
 		// TODO: Revisit if the card identity being known is relevant?
 		// (e.g. if I later discover that I did not have a playable when I thought I did)
@@ -135,9 +128,8 @@ export class Player {
 			// Every possibility is trash or duplicated somewhere
 			const trash = poss.every(p => isBasicTrash(state, p) || visible_elsewhere(p, c.order));
 
-			if (trash) {
+			if (trash)
 				logger.debug(`order ${c.order} is trash, poss ${poss.map(logCard).join()}, ${poss.map(p => isBasicTrash(state, p) + '|' + visible_elsewhere(p, c.order)).join()}`);
-			}
 
 			return trash;
 		}));
@@ -173,5 +165,16 @@ export class Player {
 			this.thoughts[card.order].possibilities.reduce((sum, p) => sum += distance(p, crit_percents[0].percent === 1), 0));
 
 		return furthest_card;
+	}
+
+	/**
+	 * Returns the orders of cards of which this player is unsure about their identities (i.e. at least one is bad touched).
+	 * @param {State} state
+	 */
+	linkedOrders(state) {
+		const unknownLinks = this.links.filter(({ cards, identities }) =>
+			cards.length > identities.reduce((sum, identity) => sum += unknownIdentities(state, this, identity), 0));
+
+		return new Set(unknownLinks.flatMap(link => link.cards.map(c => c.order)));
 	}
 }

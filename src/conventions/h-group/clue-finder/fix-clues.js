@@ -31,9 +31,8 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 		fix_clues[target] = [];
 
-		if (state.level < LEVEL.FIX || target === options.ignorePlayerIndex) {
+		if (state.level < LEVEL.FIX || target === options.ignorePlayerIndex)
 			continue;
-		}
 
 		const hand = state.hands[target];
 
@@ -41,14 +40,12 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 			const card = state.me.thoughts[order];
 
 			// Card known (or known trash), doesn't need fix
-			if (card.possible.length === 1 || card.possible.every(c => isBasicTrash(state, c))) {
+			if (card.possible.length === 1 || card.possible.every(c => isBasicTrash(state, c)))
 				continue;
-			}
 
 			// Card chop moved but not clued, don't fix
-			if (card.chop_moved && !clued) {
+			if (card.chop_moved && !clued)
 				continue;
-			}
 
 			if (card.inferred.length === 0) {
 				// TODO
@@ -109,9 +106,8 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 					// Go through all other clues to see if one fixes
 					for (const clue of other_clues) {
 						// The clue cannot touch the fixed card or it will look like just a fix
-						if (cardTouched(card, state.variant, clue)) {
+						if (cardTouched(card, state.variant, clue))
 							continue;
-						}
 
 						const { fixed, trash } = check_fixed(state, target, order, clue, fix_criteria);
 
@@ -124,9 +120,8 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 						}
 					}
 
-					if (found_clue) {
+					if (found_clue)
 						continue;
-					}
 
 					const possible_clues = direct_clues(state, target, card);
 					for (const clue of possible_clues) {

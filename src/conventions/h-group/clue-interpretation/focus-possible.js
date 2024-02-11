@@ -44,9 +44,8 @@ function find_colour_focus(state, suitIndex, action) {
 		const ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
 		const looksDirect = state.common.thoughts[focused_card.order].identity() === undefined;
 		const connecting = find_connecting(hypo_state, giver, target, identity, looksDirect, ignoreOrders);
-		if (connecting.length === 0) {
+		if (connecting.length === 0)
 			break;
-		}
 
 		const { type, card } = connecting.at(-1);
 
@@ -87,27 +86,23 @@ function find_colour_focus(state, suitIndex, action) {
 				let fill_ins = 0;
 
 				for (const card of state.hands[target]) {
-					if (!list.includes(card.order)) {
+					if (!list.includes(card.order))
 						continue;
-					}
 
 					if (card.newly_clued ||
 						card.clues.some((clue, index) => index !== card.clues.length - 1 && Utils.objEquals(clue, card.clues.at(-1)))
-					) {
+					)
 						fill_ins++;
-					}
 				}
 
 				// Only touched/filled in 1 new card
-				if (fill_ins < 2) {
+				if (fill_ins < 2)
 					continue;
-				}
 			}
 
 			// Check if card is critical
-			if (isCritical(state, { suitIndex, rank })) {
+			if (isCritical(state, { suitIndex, rank }))
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
-			}
 		}
 	}
 	return focus_possible;
@@ -134,14 +129,12 @@ function find_rank_focus(state, rank, action) {
 			const identity = { suitIndex, rank };
 
 			// Don't need to consider save on playable cards
-			if (playableAway(state, identity) === 0) {
+			if (playableAway(state, identity) === 0)
 				continue;
-			}
 
 			// Don't consider save on k3, k4 with rank
-			if (state.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4)) {
+			if (state.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
 				continue;
-			}
 
 			// Critical save or 2 save
 			if (isCritical(state, identity) || (rank === 2 && visibleFind(state, state.players[target], identity, { ignore: [giver] }).length === 0)) {
@@ -182,9 +175,8 @@ function find_rank_focus(state, rank, action) {
 				}
 
 				// Saving 2s or criticals will never cause a prompt or finesse.
-				if (chop && (rank === 2 || isCritical(state, { suitIndex, rank })) && (type === 'prompt' || type === 'finesse')) {
+				if (chop && (rank === 2 || isCritical(state, { suitIndex, rank })) && (type === 'prompt' || type === 'finesse'))
 					break;
-				}
 
 				finesses += connecting.filter(conn => conn.type === 'finesse').length;
 				if (state.level === 1 && finesses === 2) {
@@ -217,14 +209,12 @@ function find_rank_focus(state, rank, action) {
 				connecting = find_connecting(hypo_state, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
 			}
 
-			if (next_rank <= rank) {
+			if (next_rank <= rank)
 				logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
-			}
 
 			// Connected cards can stack up to this rank
-			if (rank === next_rank) {
+			if (rank === next_rank)
 				focus_possible.push({ suitIndex, rank, save: false, connections });
-			}
 		}
 	}
 	return focus_possible;
@@ -251,9 +241,8 @@ export function find_focus_possible(state, action) {
 		focus_possible = focus_possible.concat(find_rank_focus(state, clue.value, action));
 	}
 
-	if (state.suits.includes('Omni')) {
+	if (state.suits.includes('Omni'))
 		focus_possible = focus_possible.concat(find_colour_focus(state, state.suits.indexOf('Omni'), action));
-	}
 
 	// Remove earlier duplicates (since save overrides play)
 	return focus_possible.filter((p1, index1) => {

@@ -6,8 +6,8 @@ import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { find_own_finesses } from './connecting-cards.js';
 import { assign_connections, inference_known, inference_rank, find_symmetric_connections, add_symmetric_connections } from './connection-helper.js';
-import { update_hypo_stacks, team_elim } from '../../../basics/helper.js';
-import { isBasicTrash, isTrash, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
+import { update_hypo_stacks, team_elim, checkFix } from '../../../basics/helper.js';
+import { isBasicTrash, isTrash, playableAway } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
 import * as Basics from '../../../basics.js';
@@ -31,7 +31,7 @@ import { logCard, logConnections, logHand } from '../../../tools/log.js';
  */
 function apply_good_touch(state, action) {
 	const { common } = state;
-	const { giver, list, target } = action;
+	const { list, target } = action;
 	const { thoughts: oldThoughts } = common.clone();		// Keep track of all cards that previously had inferences (i.e. not known trash)
 
 	Basics.onClue(state, action);
@@ -44,47 +44,13 @@ function apply_good_touch(state, action) {
 			if (card.finessed && oldThoughts[order].inferred.length >= 1 && card.inferred.length === 0) {
 				// TODO: Possibly try rewinding older reasoning until rewind works?
 				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
-				if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue })) {
+				if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue }))
 					return { layered_reveal: true };
-				}
 			}
 		}
 	}
 
-	const clue_resets = new Set();
-	for (const { order } of state.hands[target]) {
-		if (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
-			common.reset_card(order);
-			clue_resets.add(order);
-		}
-	}
-
-	const resets = common.good_touch_elim(state);
-
-	// Includes resets from negative information
-	const all_resets = new Set([...clue_resets, ...resets]);
-
-	if (all_resets.size > 0) {
-		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
-		const infs_to_recheck = Array.from(all_resets).map(order => oldThoughts[order].identity({ infer: true })).filter(id => id !== undefined);
-
-		for (const inf of infs_to_recheck) {
-			common.restore_elim(inf);
-		}
-	}
-
-	// Any clued cards that lost all inferences
-	const clued_reset = list.some(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
-
-	const duplicate_reveal = state.hands[target].some(({ order }) => {
-		const card = common.thoughts[order];
-
-		// The fix can be in anyone's hand except the giver's
-		return state.common.thoughts[order].identity() !== undefined &&
-			visibleFind(state, common, card.identity(), { ignore: [giver], infer: true }).some(c => common.thoughts[c.order].touched && c.order !== order);
-	});
-
-	return { fix: clued_reset || duplicate_reveal };
+	return { fix: checkFix(state, oldThoughts, action) };
 }
 
 /**
@@ -114,13 +80,11 @@ export function interpret_clue(state, action) {
 	const { fix, layered_reveal } = apply_good_touch(state, action);
 
 	// Rewind occurred, this action will be completed as a result of it
-	if (layered_reveal) {
+	if (layered_reveal)
 		return;
-	}
 
-	if (chop) {
+	if (chop)
 		focus_thoughts.chop_when_first_clued = true;
-	}
 
 	if (focus_thoughts.inferred.length === 0) {
 		focus_thoughts.inferred = focus_thoughts.possible.slice();
@@ -141,9 +105,8 @@ export function interpret_clue(state, action) {
 	if ((state.level >= LEVEL.FIX && fix) || mistake) {
 		logger.info(`${fix ? 'fix clue' : 'mistake'}! not inferring anything else`);
 		// FIX: Rewind to when the earliest card was clued so that we don't perform false eliminations
-		if (focus_thoughts.inferred.length === 1) {
+		if (focus_thoughts.inferred.length === 1)
 			update_hypo_stacks(state, common);
-		}
 
 		// Focus doesn't matter for a fix clue
 		focus_thoughts.focused = oldCommon.thoughts[focused_card.order].focused;
@@ -169,9 +132,8 @@ export function interpret_clue(state, action) {
 		}
 		// 5's chop move - for now, 5cm cannot be done in early game.
 		else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued && !state.early_game) {
-			if (interpret_5cm(state, target)) {
+			if (interpret_5cm(state, target))
 				return;
-			}
 		}
 	}
 
@@ -194,14 +156,12 @@ export function interpret_clue(state, action) {
 			const { suitIndex, rank, connections, save = false } = inference;
 
 			if (!save) {
-				if ((target === state.ourPlayerIndex || focused_card.matches(inference))) {
+				if ((target === state.ourPlayerIndex || focused_card.matches(inference)))
 					assign_connections(state, connections);
-				}
 
 				// Multiple inferences, we need to wait for connections
-				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
+				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
 					common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1 });
-				}
 			}
 		}
 
@@ -215,9 +175,9 @@ export function interpret_clue(state, action) {
 			const symmetric_connections = find_symmetric_connections(old_state, action, focus_possible.some(fp => fp.save), selfRanks, ownBlindPlays);
 
 			add_symmetric_connections(state, symmetric_connections, matched_inferences, focused_card, giver);
-			for (const { fake, connections } of symmetric_connections) {
+			for (const { fake, connections } of symmetric_connections)
 				assign_connections(state, connections, { symmetric: true, target, fake });
-			}
+
 			focus_thoughts.union('inferred', old_inferred.filter(inf => symmetric_connections.some(c => !c.fake && c.suitIndex === inf.suitIndex && c.rank === inf.rank)));
 		}
 		reset_superpositions(state);
@@ -240,9 +200,8 @@ export function interpret_clue(state, action) {
 			let self = true;
 
 			for (const id of focus_thoughts.inferred) {
-				if (isBasicTrash(state, id)) {
+				if (isBasicTrash(state, id))
 					continue;
-				}
 
 				const { feasible, connections } = find_own_finesses(state, giver, target, id, looksDirect);
 				const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
@@ -266,9 +225,9 @@ export function interpret_clue(state, action) {
 				}
 			}
 
-			if (self && conn_save !== undefined) {
+			if (self && conn_save !== undefined)
 				all_connections.push(conn_save);
-			}
+
 		}
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!isBasicTrash(state, focused_card)) {
@@ -277,9 +236,8 @@ export function interpret_clue(state, action) {
 
 			logger.info('found connections:', logConnections(connections, focused_card));
 
-			if (feasible) {
+			if (feasible)
 				all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections) });
-			}
 		}
 
 		// No inference, but a finesse isn't possible
@@ -295,9 +253,9 @@ export function interpret_clue(state, action) {
 				const saved_inferences = focus_thoughts.inferred;
 				focus_thoughts.intersect('inferred', focus_possible);
 
-				if (focus_thoughts.inferred.length === 0) {
+				if (focus_thoughts.inferred.length === 0)
 					focus_thoughts.inferred = saved_inferences;
-				}
+
 				logger.info('no inference on card (other), looks like', focus_thoughts.inferred.map(logCard).join(','));
 			}
 		}
@@ -313,9 +271,8 @@ export function interpret_clue(state, action) {
 				focus_thoughts.union('inferred', [inference]);
 
 				// Multiple possible sets, we need to wait for connections
-				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
+				if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
 					common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, action_index: state.actionList.length - 1 });
-				}
 			}
 
 			const correct_match2 = all_connections.find(p => focused_card.matches(p));
@@ -334,9 +291,9 @@ export function interpret_clue(state, action) {
 				const symmetric_connections = find_symmetric_connections(old_state, action, focus_possible.some(fp => fp.save), selfRanks, ownBlindPlays);
 
 				add_symmetric_connections(state, symmetric_connections, all_connections, focused_card, giver);
-				for (const { fake, connections } of symmetric_connections) {
+				for (const { fake, connections } of symmetric_connections)
 					assign_connections(state, connections, { symmetric: true, target, fake });
-				}
+
 				focus_thoughts.union('inferred', old_inferred.filter(inf => symmetric_connections.some(c => !c.fake && c.suitIndex === inf.suitIndex && c.rank === inf.rank)));
 			}
 
@@ -348,9 +305,8 @@ export function interpret_clue(state, action) {
 	state.common.refresh_links(state);
 	update_hypo_stacks(state, common);
 
-	if (state.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2) {
+	if (state.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2)
 		interpret_tccm(state, oldCommon, target, list, focused_card);
-	}
 
 	logger.debug('hand state after clue', logHand(state.hands[target]));
 	team_elim(state);

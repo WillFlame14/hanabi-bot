@@ -97,9 +97,8 @@ export function stalling_situation(state, action, prev_state) {
 	const severity = stall_severity(prev_state, state.common, giver);
 
 	// Not a stalling situation
-	if (severity === 0) {
+	if (severity === 0)
 		return false;
-	}
 
 	logger.info('severity', severity);
 
@@ -120,9 +119,8 @@ export function stalling_situation(state, action, prev_state) {
 		}*/
 
 		// Only early game 5 stall exists before level 9
-		if (state.level < LEVEL.STALLING && severity !== 1) {
+		if (state.level < LEVEL.STALLING && severity !== 1)
 			logger.warn('stall found before level 9');
-		}
 
 		return true;
 	}

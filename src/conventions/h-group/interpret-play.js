@@ -26,31 +26,28 @@ function check_ocm(state, action) {
 		(card.inferred.length > 1 || card.rewinded)
 	) {
 		const ordered_1s = order_1s(state, state.common, state.hands[playerIndex]);
-
 		const offset = ordered_1s.findIndex(c => c.order === order);
-		// Didn't play the 1 in the correct order
-		if (offset !== 0) {
-			const target = (playerIndex + offset) % state.numPlayers;
 
-			// Just going to assume no double order chop moves in 3p
-			if (target !== playerIndex) {
-				const chop = state.common.chop(state.hands[target]);
-
-				if (chop === undefined) {
-					logger.warn(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
-				}
-				else {
-					state.common.thoughts[chop.order].chop_moved = true;
-					logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
-				}
-			}
-			else {
-				logger.error('double order chop move???');
-			}
-		}
-		else {
+		if (offset === 0) {
 			logger.info('played unknown 1 in correct order, no ocm');
+			return;
 		}
+
+		const target = (playerIndex + offset) % state.numPlayers;
+		if (target === playerIndex) {
+			// Just going to assume no double order chop moves in 3p
+			logger.error('double order chop move???');
+			return;
+		}
+
+		const chop = state.common.chop(state.hands[target]);
+		if (chop === undefined) {
+			logger.warn(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
+			return;
+		}
+
+		state.common.thoughts[chop.order].chop_moved = true;
+		logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
 	}
 }
 
@@ -67,24 +64,21 @@ export function interpret_play(state, action) {
 		const card = state.common.thoughts[order];
 		if ((card.inferred.length !== 1 || !card.inferred[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
-			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank })) {
+			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
 				return;
-			}
 		}
 	}
 
-	if (state.level >= LEVEL.BASIC_CM && rank === 1) {
+	if (state.level >= LEVEL.BASIC_CM && rank === 1)
 		check_ocm(state, action);
-	}
 
 	Basics.onPlay(this, action);
 
 	state.common.good_touch_elim(state);
 	team_elim(state);
 
-	for (const player of state.allPlayers) {
+	for (const player of state.allPlayers)
 		player.refresh_links(state);
-	}
 
 	// Update hypo stacks
 	update_hypo_stacks(this, this.common);

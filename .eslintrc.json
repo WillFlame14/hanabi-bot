@@ -23,6 +23,7 @@
 		"eol-last": "warn",
 		"no-trailing-spaces": ["warn", { "ignoreComments": true }],
 		"prefer-const": "warn",
+		"curly": ["warn", "multi-or-nest", "consistent"],
 		// JSDoc rules are conservative, to avoid false positives
 		"jsdoc/require-jsdoc": "off",
 		"jsdoc/require-property-description": "off",

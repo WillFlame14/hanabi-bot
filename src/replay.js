@@ -51,17 +51,17 @@ async function main() {
 
 	let game_data;
 
-	if (id !== undefined && file !== undefined) {
+	if (id !== undefined && file !== undefined)
 		throw new Error('Both id and file provided, only provide one.');
-	}
+
 
 	try {
-		if (id !== undefined) {
+		if (id !== undefined)
 			game_data = await fetchReplay(id);
-		}
-		else {
+
+		else
 			game_data = JSON.parse(fs.readFileSync(file, 'utf8'));
-		}
+
 	}
 	catch (err) {
 		throw new Error(err);
@@ -73,13 +73,13 @@ async function main() {
 	const variant = await getVariant(options?.variant ?? 'No Variant');
 	const ourPlayerIndex = Number(index ?? 0);
 
-	if (ourPlayerIndex < 0 || ourPlayerIndex >= players.length) {
+	if (ourPlayerIndex < 0 || ourPlayerIndex >= players.length)
 		throw new Error(`Replay only has ${players.length} players!`);
-	}
 
-	if (conventions[convention] === undefined) {
+
+	if (conventions[convention] === undefined)
 		throw new Error(`Convention ${convention} is not supported.`);
-	}
+
 
 	await getShortForms(variant.suits);
 
@@ -102,9 +102,9 @@ async function main() {
 
 	// Take actions
 	for (const action of actions) {
-		if (turn !== 0) {
+		if (turn !== 0)
 			state.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
-		}
+
 		state.handle_action(Utils.performToAction(state, action, currentPlayerIndex, deck), true);
 
 		if ((action.type === ACTION.PLAY || action.type === ACTION.DISCARD) && order < deck.length) {
@@ -113,16 +113,16 @@ async function main() {
 			order++;
 		}
 
-		if (action.type === ACTION.PLAY && state.strikes === 3) {
+		if (action.type === ACTION.PLAY && state.strikes === 3)
 			state.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.STRIKEOUT, votes: -1 });
-		}
+
 		currentPlayerIndex = (currentPlayerIndex + 1) % state.numPlayers;
 		turn++;
 	}
 
-	if (actions.at(-1).type !== 'gameOver') {
+	if (actions.at(-1).type !== 'gameOver')
 		state.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.NORMAL, votes: -1 });
-	}
+
 }
 
 main();

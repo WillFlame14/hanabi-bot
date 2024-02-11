@@ -99,9 +99,8 @@ export class State {
 			this.discard_stacks.push([0, 0, 0, 0, 0]);
 			this.max_ranks.push(5);
 
-			for (let rank = 1; rank <= 5; rank++) {
+			for (let rank = 1; rank <= 5; rank++)
 				all_possible.push(Object.freeze(new BasicCard(suitIndex, rank)));
-			}
 		}
 
 		for (let i = 0; i < this.numPlayers; i++) {
@@ -141,25 +140,26 @@ export class State {
 	minimalCopy() {
 		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.in_progress);
 
-		if (this.copyDepth > 3) {
+		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');
-		}
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'turn_count', 'clue_tokens', 'last_actions',
 			'strikes', 'early_game', 'rewindDepth', 'unknown_plays', 'next_ignore', 'next_finesse', 'cardsLeft', 'elims'];
 
-		for (const property of minimalProps) {
+		for (const property of minimalProps)
 			newState[property] = Utils.objClone(this[property]);
-		}
 
-		for (const player of newState.players.concat([newState.common])) {
-			for (const c of newState.hands.flat()) {
-				player.thoughts[c.order].actualCard = c;
-			}
-		}
+		newState.restoreCardBindings();
 
 		newState.copyDepth = this.copyDepth + 1;
 		return newState;
+	}
+
+	restoreCardBindings() {
+		for (const player of this.allPlayers) {
+			for (const card of this.hands.flat())
+				player.thoughts[card.order].actualCard = card;
+		}
 	}
 
 	/**
@@ -216,12 +216,12 @@ export class State {
 	 */
 	rewind(action_index, rewind_action, mistake = false) {
 		this.rewinds++;
-		if (this.rewinds > 50) {
+		if (this.rewinds > 50)
 			throw new Error('Attempted to rewind too many times!');
-		}
-		if (this.rewindDepth > 2) {
+
+		if (this.rewindDepth > 2)
 			throw new Error('Rewind depth went too deep!');
-		}
+
 		if (action_index === undefined || (typeof action_index !== 'number') || action_index < 0 || action_index >= this.actionList.length) {
 			logger.error(`Attempted to rewind to an invalid action index (${JSON.stringify(action_index)})!`);
 			return false;
@@ -231,13 +231,11 @@ export class State {
 		const pivotal_action = /** @type {ClueAction} */ (this.actionList[action_index]);
 
 		logger.highlight('cyan', `Rewinding to insert ${JSON.stringify(rewind_action)}`);
-		if ([-1, 0].some(offset => Utils.objEquals(this.actionList[action_index + offset], rewind_action))) {
+		if ([-1, 0].some(offset => Utils.objEquals(this.actionList[action_index + offset], rewind_action)))
 			throw new Error(`Attempted to rewind ${JSON.stringify(rewind_action)} that was already rewinded!`);
-		}
 
-		if (pivotal_action.type === 'clue') {
+		if (pivotal_action.type === 'clue')
 			pivotal_action.mistake = mistake || this.rewindDepth > 1;
-		}
 
 		logger.highlight('green', '------- STARTING REWIND -------');
 
@@ -252,12 +250,7 @@ export class State {
 
 			if (our_action) {
 				new_state.hands[this.ourPlayerIndex] = this.handHistory[new_state.turn_count];
-
-				for (const player of new_state.allPlayers) {
-					for (const card of new_state.hands.flat()) {
-						player.thoughts[card.order].actualCard = card;
-					}
-				}
+				new_state.restoreCardBindings();
 			}
 
 			new_state.handle_action(action, true);
@@ -269,20 +262,14 @@ export class State {
 
 			if (our_action) {
 				new_state.hands[this.ourPlayerIndex] = hypo_state.hands[this.ourPlayerIndex];
-
-				for (const player of new_state.allPlayers) {
-					for (const card of new_state.hands.flat()) {
-						player.thoughts[card.order].actualCard = card;
-					}
-				}
+				new_state.restoreCardBindings();
 			}
 		};
 
 		logger.wrapLevel(logger.LEVELS.ERROR, () => {
 			// Get up to speed
-			for (const action of history) {
+			for (const action of history)
 				catchup_action(action);
-			}
 		});
 
 		// Rewrite and save as a rewind action
@@ -291,9 +278,8 @@ export class State {
 
 		// Redo all the following actions
 		const future = this.actionList.slice(action_index + 1, -1);
-		for (const action of future) {
+		for (const action of future)
 			catchup_action(action);
-		}
 
 		logger.highlight('green', '------- REWIND COMPLETE -------');
 
@@ -340,9 +326,10 @@ export class State {
 			logger.wrapLevel(logger.LEVELS.ERROR, () => {
 				while (new_state.turn_count < turn - 1) {
 					const action = actionList[action_index];
-					if (action.type === 'clue' && action.mistake) {
+
+					if (action.type === 'clue' && action.mistake)
 						action.mistake = false;
-					}
+
 					new_state.handle_action(action, true);
 					action_index++;
 				}
@@ -351,9 +338,10 @@ export class State {
 			// Log the previous turn and the 'turn' action leading to the desired turn
 			while (new_state.turn_count < turn && actionList[action_index] !== undefined) {
 				const action = actionList[action_index];
-				if (action.type === 'clue' && action.mistake) {
+
+				if (action.type === 'clue' && action.mistake)
 					action.mistake = false;
-				}
+
 				new_state.handle_action(action);
 				action_index++;
 			}
@@ -381,9 +369,8 @@ export class State {
 
 		Utils.globalModify({ state: hypo_state });
 
-		if (options.simulatePlayerIndex !== undefined) {
+		if (options.simulatePlayerIndex !== undefined)
 			hypo_state.ourPlayerIndex = options.simulatePlayerIndex;
-		}
 
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
 			hypo_state.interpret_clue(hypo_state, action);

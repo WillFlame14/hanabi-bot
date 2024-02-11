@@ -35,9 +35,9 @@ export class HGroup_Player extends Player {
 		for (let i = hand.length - 1; i >= 0; i--) {
 			const { clued, newly_clued, chop_moved, finessed } = this.thoughts[hand[i].order];
 
-			if (chop_moved || (clued && (options.afterClue ? true : !newly_clued)) || finessed) {
+			if (chop_moved || (clued && (options.afterClue ? true : !newly_clued)) || finessed)
 				continue;
-			}
+
 			return i;
 		}
 		return -1;

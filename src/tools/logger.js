@@ -31,56 +31,46 @@ class Logger {
 	log(colour, ...args) {
 		if (this.accumulateDepth > 0) {
 			// Failsafe
-			if (this.buffer[this.accumulateDepth].length > 2000) {
+			if (this.buffer[this.accumulateDepth].length > 2000)
 				throw new Error('stop. buffer too large');
-			}
 
-			if (this.accumulateDepth > 10) {
+			if (this.accumulateDepth > 10)
 				throw new Error('stop. recursion too deep');
-			}
 
 			this.buffer[this.accumulateDepth].push({ colour, args });
 		}
 		else {
-			let colour_code = '';
-			if (colour.endsWith('b')) {
-				colour_code = `1;${COLOURS[colour.slice(0, colour.length - 1)]}`;
-			}
-			else {
-				colour_code = COLOURS[colour];
-			}
+			const colour_code = colour.endsWith('b') ?
+				`1;${COLOURS[colour.slice(0, colour.length - 1)]}` :
+				COLOURS[colour];
+
 			console.log(`\x1b[${colour_code}m%s`, ...args, '\x1b[0m');
 		}
 	}
 
 	debug(...args) {
-		if (this.level <= this.LEVELS.DEBUG) {
+		if (this.level <= this.LEVELS.DEBUG)
 			this.log('purple', ...args);
-		}
 	}
 
 	info(...args) {
-		if (this.level <= this.LEVELS.INFO) {
+		if (this.level <= this.LEVELS.INFO)
 			this.log('white', ...args);
-		}
 	}
 
 	highlight(colour, ...args) {
-		if (this.level <= this.LEVELS.INFO && (COLOURS[colour] || (colour.endsWith('b') && COLOURS[colour.slice(0, colour.length - 1)]))) {
+		if (this.level <= this.LEVELS.INFO && (COLOURS[colour] || (colour.endsWith('b') && COLOURS[colour.slice(0, colour.length - 1)])))
 			this.log(colour, ...args);
-		}
 	}
 
 	warn(...args) {
-		if (this.level <= this.LEVELS.WARN) {
+		if (this.level <= this.LEVELS.WARN)
 			this.log('cyan', ...args);
-		}
 	}
 
 	error(...args) {
-		if (this.level <= this.LEVELS.ERROR) {
+		if (this.level <= this.LEVELS.ERROR)
 			this.log('red', ...args);
-		}
 	}
 
 	/**
@@ -89,9 +79,8 @@ class Logger {
 	 */
 	collect() {
 		this.accumulateDepth++;
-		if (this.buffer[this.accumulateDepth] === undefined) {
+		if (this.buffer[this.accumulateDepth] === undefined)
 			this.buffer[this.accumulateDepth] = [];
-		}
 	}
 
 	/**

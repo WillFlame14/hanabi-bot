@@ -32,9 +32,8 @@ import * as Utils from '../../../tools/util.js';
 function find_save(state, target, card) {
 	const { suitIndex, rank } = card;
 
-	if (isBasicTrash(state, card)) {
+	if (isBasicTrash(state, card))
 		return;
-	}
 
 	if (isCritical(state, card)) {
 		logger.highlight('yellow', 'saving critical card', logCard(card));
@@ -118,9 +117,8 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 			(clue.type === CLUE.COLOUR && state.play_stacks[clue.value] === state.max_ranks[clue.value]) ||
 			(clue.type === CLUE.RANK   && state.suits.every((_, i) => (state.play_stacks[i] >= clue.value) || (state.max_ranks[i] < clue.value))));
 
-		if (tcm !== undefined) {
+		if (tcm !== undefined)
 			return Object.assign(tcm, { playable: false, cm: saved_cards, safe: true });
-		}
 	}
 }
 
@@ -139,26 +137,14 @@ function find_5cm(state, target, chop, cardIndex) {
 	}
 
 	// Card to be chop moved is basic trash or already saved
-	if (isTrash(state, state.me, chop, chop.order)) {
+	if (isTrash(state, state.me, chop, chop.order))
 		return;
-	}
 
-	let new_chop;
-	for (let i = cardIndex - 1; i >= 0; i--) {
-		const card = state.hands[target][i];
-		if (card.clued) {
-			continue;
-		}
-		new_chop = card;
-		break;
-	}
+	const new_chop = state.hands[target].slice(0, cardIndex).toReversed().find(c => !c.clued);
 
 	// 5cm if new chop is less valuable than old chop (or lock for unique 2/critical)
-	if (cardValue(state, state.me, chop) >= (new_chop ? cardValue(state, state.me, new_chop) : 4)) {
+	if (cardValue(state, state.me, chop) >= (new_chop ? cardValue(state, state.me, new_chop) : 4))
 		return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop], safe: true };
-	}
-
-	return;
 }
 
 /**
@@ -185,9 +171,8 @@ export function find_clues(state, options = {}) {
 		const saves = [];
 
 		// Ignore our own hand
-		if (target === state.ourPlayerIndex || target === options.ignorePlayerIndex) {
+		if (target === state.ourPlayerIndex || target === options.ignorePlayerIndex)
 			continue;
-		}
 
 		const hand = state.hands[target];
 		const chopIndex = state.me.chopIndex(hand);
@@ -209,14 +194,12 @@ export function find_clues(state, options = {}) {
 			});
 
 			// Ignore finessed cards (do not ignore cm'd cards), cards visible elsewhere, or cards possibly part of a finesse (that we either know for certain or in our hand)
-			if (card.finessed || duplicated || in_finesse) {
+			if (card.finessed || duplicated || in_finesse)
 				continue;
-			}
 
 			// Save clue
-			if (cardIndex === chopIndex) {
+			if (cardIndex === chopIndex)
 				saves.push(find_save(state, target, hand[cardIndex]));
-			}
 
 			let interpreted_5cm = false;
 
@@ -245,9 +228,9 @@ export function find_clues(state, options = {}) {
 					let distance_from_chop = 0;
 					for (let j = cardIndex; j < chopIndex; j++) {
 						// Skip clued cards
-						if (hand[j].clued) {
+						if (hand[j].clued)
 							continue;
-						}
+
 						distance_from_chop++;
 					}
 
@@ -264,9 +247,8 @@ export function find_clues(state, options = {}) {
 			}
 
 			// Ignore trash cards
-			if (isTrash(state, state.me, card, order)) {
+			if (isTrash(state, state.me, card, order))
 				continue;
-			}
 
 			// Play clue
 			const clue = determine_clue(state, target, hand[cardIndex], { excludeRank: interpreted_5cm });
@@ -275,12 +257,10 @@ export function find_clues(state, options = {}) {
 
 				if (playables.length > 0) {
 					const { tempo, valuable } = valuable_tempo_clue(state, state.common, clue, playables, hand[cardIndex]);
-					if (tempo && !valuable) {
+					if (tempo && !valuable)
 						stall_clues[1].push(clue);
-					}
-					else {
+					else
 						play_clues[target].push(clue);
-					}
 				}
 				// Stall clues
 				else if (severity > 0) {
@@ -322,18 +302,17 @@ export function find_clues(state, options = {}) {
 
 	const fix_clues = find_fix_clues(state, play_clues, save_clues, options);
 
-	if (play_clues.some(clues => clues.length > 0)) {
+	if (play_clues.some(clues => clues.length > 0))
 		logger.info('found play clues', play_clues.flatMap(clues => clues.map(clue => logClue(clue))));
-	}
-	if (save_clues.some(clue => clue !== undefined)) {
+
+	if (save_clues.some(clue => clue !== undefined))
 		logger.info('found save clues', save_clues.filter(clue => clue !== undefined).map(clue => logClue(clue)));
-	}
-	if (fix_clues.some(clues => clues.length > 0)) {
+
+	if (fix_clues.some(clues => clues.length > 0))
 		logger.info('found fix clues', fix_clues.flatMap(clues => clues.map(clue => logClue(clue) + (clue.trash ? ' (trash)' : ''))));
-	}
-	if (stall_clues.some(clues => clues.length > 0)) {
+
+	if (stall_clues.some(clues => clues.length > 0))
 		logger.info('found stall clues', stall_clues.flatMap(clues => clues.map(clue => logClue(clue))));
-	}
 
 	return { play_clues, save_clues, fix_clues, stall_clues };
 }

@@ -9,13 +9,12 @@ import { CLUE } from './constants.js';
  * @property {number} id
  * @property {string} name
  * @property {string[]} suits
- * @property {string} newID
  * @property {number} [specialRank]
  * @property {boolean} [specialRankAllClueColors]
  * @property {boolean} [specialRankAllClueRanks]
  * @property {boolean} [specialRankNoClueColors]
  * @property {boolean} [specialRankNoClueRanks]
- * @property {number} criticalRank
+ * @property {number} [criticalRank]
  */
 
 const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/variants.json';
@@ -86,7 +85,7 @@ export async function getVariant(name) {
 	return variants.find(variant => variant.name === name);
 }
 
-export let shortForms = /** @type {string[]} */ ([]);
+export let shortForms = /** @type {string[]} */ (['r', 'y', 'g', 'b', 'p']);
 
 /**
  * Edits shortForms to have the correct acryonyms.
@@ -126,12 +125,10 @@ export function cardTouched(card, variant, clue) {
 	const { suitIndex, rank } = card;
 	const suit = variant.suits[suitIndex];
 
-	if (suit === 'Null' || suit === 'Dark Null') {
+	if (suit === 'Null' || suit === 'Dark Null')
 		return false;
-	}
-	else if (suit === 'Omni' || suit === 'Dark Omni') {
+	else if (suit === 'Omni' || suit === 'Dark Omni')
 		return true;
-	}
 
 	if (type === CLUE.COLOUR) {
 		if (['White', 'Gray', 'Light Pink', 'Gray Pink'].includes(suit)) {
@@ -150,31 +147,25 @@ export function cardTouched(card, variant, clue) {
 		}
 
 		if (rank === variant.specialRank) {
-			if (variant.specialRankAllClueColors) {
+			if (variant.specialRankAllClueColors)
 				return true;
-			}
-			else if (variant.specialRankNoClueColors) {
+			else if (variant.specialRankNoClueColors)
 				return false;
-			}
 		}
 
 		return suitIndex === value;
 	}
 	else if (type === CLUE.RANK) {
-		if (['Brown', 'Dark Brown', 'Muddy Rainbow', 'Cocoa Rainbow'].includes(suit)) {
+		if (['Brown', 'Dark Brown', 'Muddy Rainbow', 'Cocoa Rainbow'].includes(suit))
 			return false;
-		}
-		else if (['Pink', 'Dark Pink', 'Light Pink', 'Gray Pink'].includes(suit)) {
+		else if (['Pink', 'Dark Pink', 'Light Pink', 'Gray Pink'].includes(suit))
 			return true;
-		}
 
 		if (rank === variant.specialRank) {
-			if (variant.specialRankAllClueRanks) {
+			if (variant.specialRankAllClueRanks)
 				return true;
-			}
-			else if (variant.specialRankNoClueRanks) {
+			else if (variant.specialRankNoClueRanks)
 				return false;
-			}
 		}
 
 		return rank === value;
@@ -192,12 +183,10 @@ export function isCluable(variant, clue) {
 	if (type === CLUE.COLOUR && [
 		'Null', 'Omni', 'White', 'Rainbow', 'Light Pink', 'Muddy Rainbow', 'Prism',
 		'Dark Null', 'Dark Omni', 'Gray', 'Dark Rainbow', 'Gray Pink', 'Cocoa Rainbow', 'Dark Prism'
-	].includes(variant.suits[value])) {
+	].includes(variant.suits[value]))
 		return false;
-	}
-	if (type === CLUE.RANK && value === variant.specialRank && (variant.specialRankAllClueRanks || variant.specialRankNoClueRanks)) {
+	if (type === CLUE.RANK && value === variant.specialRank && (variant.specialRankAllClueRanks || variant.specialRankNoClueRanks))
 		return false;
-	}
 	return true;
 }
 
@@ -213,13 +202,11 @@ export function cardCount(suits, variant, { suitIndex, rank }) {
 		'Gray', 'Black', 'Dark Rainbow',
 		'Gray Pink', 'Dark Pink', 'Dark Omni',
 		'Dark Prism'
-	].includes(suits[suitIndex])) {
+	].includes(suits[suitIndex]))
 		return 1;
-	}
 
-	if (variant.criticalRank === rank) {
+	if (variant.criticalRank === rank)
 		return 1;
-	}
 
 	return [3, 2, 2, 2, 1][rank - 1];
 }
