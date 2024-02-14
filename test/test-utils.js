@@ -1,11 +1,12 @@
 import { CLUE } from '../src/constants.js';
-import { getShortForms, cardCount } from '../src/variants.js';
+import { cardCount } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
 import { logAction, logClue } from '../src/tools/log.js';
 
 /**
  * @typedef {import ('../src/basics/State.js').State} State
  * @typedef {import('../src/types.js').Action} Action
+ * @typedef {import('../src/variants.js').Variant} Variant
  * 
  * @typedef SetupOptions
  * @property {number} level
@@ -13,6 +14,7 @@ import { logAction, logClue } from '../src/tools/log.js';
  * @property {string[]} discarded
  * @property {number} clue_tokens
  * @property {number} starting
+ * @property {Variant} variant
  * @property {(state: State) => void} init
  */
 
@@ -33,8 +35,7 @@ export const PLAYER = /** @type {const} */ ({
 });
 
 const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
-const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
-const noVar = {
+const noVar = /** @type {Variant} */ {
 	"id": 0,
 	"name": "No Variant",
 	"suits": ["Red", "Yellow", "Green", "Blue", "Purple"]
@@ -112,10 +113,9 @@ function injectFuncs(options) {
  */
 export function setup(StateClass, hands, options = {}) {
 	const playerNames = names.slice(0, hands.length);
+	const variant = options.variant ?? noVar;
 
-	getShortForms(noVar.suits);
-
-	const state = new StateClass(-1, playerNames, 0, suits, noVar, false, options.level ?? 1);
+	const state = new StateClass(-1, playerNames, 0, variant.suits, variant, false, options.level ?? 1);
 	Utils.globalModify({state});
 
 	let orderCounter = 0;
