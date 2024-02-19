@@ -148,7 +148,7 @@ function resolve_card_played(state, waiting_connection) {
 		}
 	}
 
-	return { to_remove: waiting_connection.conn_index === -1 };
+	return { remove: waiting_connection.conn_index === -1 };
 }
 
 /**

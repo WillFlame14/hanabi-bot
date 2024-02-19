@@ -8,6 +8,7 @@ import { ACTION } from '../../src/constants.js';
 import { take_action } from '../../src/conventions/playful-sieve/take-action.js';
 
 import logger from '../../src/tools/logger.js';
+import { logPerformAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -75,7 +76,7 @@ describe('direct rank playables', () => {
 	});
 });
 
-/*describe('connecting cards', () => {
+describe('connecting cards', () => {
 	it('plays connections to cm cards', () => {
 		const state = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -100,6 +101,6 @@ describe('direct rank playables', () => {
 
 		// Alice should play g2 to automatically cm r5.
 		const action = take_action(state);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, value: state.hands[PLAYER.ALICE][1].order }, logPerformAction(action));
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: state.hands[PLAYER.ALICE][1].order }, logPerformAction(action));
 	});
-});*/
+});

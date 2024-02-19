@@ -97,11 +97,10 @@ export function interpret_clue(state, action) {
 			}
 			else {
 				// Fill-in (possibly locked hand ptd)
-				const playable_slot1 = slot1.finessed && slot1.inferred.every(inf => playableAway(state, inf) === 0);
-				if (!playable_slot1)
+				if (!slot1.saved)
 					slot1.called_to_discard = true;
 
-				logger.info('rank fill in', playable_slot1 ? '' : 'while unloaded, giving locked hand ptd on slot 1');
+				logger.info('rank fill in', slot1.saved ? '' : 'while unloaded, giving locked hand ptd on slot 1');
 			}
 		}
 		// Colour clue
@@ -126,13 +125,16 @@ export function interpret_clue(state, action) {
 				}
 
 				// Fill-in (possibly locked hand ptd)
-				const playable_slot1 = slot1.finessed && slot1.inferred.every(inf => playableAway(state, inf) === 0);
-				if (!playable_slot1)
+				if (!slot1.saved)
 					slot1.called_to_discard = true;
 
-				logger.info('colour fill in', playable_slot1 ? '' : 'while unloaded, giving locked hand ptd on slot 1');
+				logger.info('colour fill in', slot1.saved ? '' : 'while unloaded, giving locked hand ptd on slot 1');
 			}
 		}
+		common.good_touch_elim(state);
+		common.refresh_links(state);
+		update_hypo_stacks(state, common);
+		team_elim(state);
 		return;
 	}
 

@@ -114,7 +114,11 @@ export function interpret_play(state, action) {
 		common.thoughts[c.order].inferred.every(i => playableAway(state, i) === 0 || (i.suitIndex === inf.suitIndex && playableAway(state, i) === 1))));
 
 	// No safe action, chop is playable
-	if (!common.thinksLocked(state, other) && !common.thinksLoaded(state, other) && !other_hand.some(c => common.thoughts[c.order].called_to_discard) && !known_connecting && state.clue_tokens > 0) {
+	if (!common.thinksLocked(state, other) &&
+		!common.thinksLoaded(state, other) &&
+		!other_hand.some(c => common.thoughts[c.order].called_to_discard) &&
+		!known_connecting && state.clue_tokens > 0
+	) {
 		const playable_possibilities = state.play_stacks.map((rank, suitIndex) => {
 			return { suitIndex, rank: rank + 1 };
 		});
