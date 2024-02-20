@@ -110,11 +110,8 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 
 						const { fixed, trash, result } = check_fixed(state, target, order, clue, fix_criteria);
 
-						if (fixed) {
-							// TODO: Find the highest value play clue
-							// logger.info(`found fix ${logClue(clue)} for card ${logCard(card)} to inferences [${card_after_cluing.inferred.map(logCard).join(',')}]`);
+						if (fixed)
 							fix_clues[target].push(Object.assign({}, clue, { trash, result, urgent: seems_playable }));
-						}
 					}
 
 					const possible_clues = direct_clues(state, target, card);

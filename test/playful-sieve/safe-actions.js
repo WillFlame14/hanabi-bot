@@ -2,11 +2,11 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import * as ExAsserts from '../extra-asserts.js';
 
-import { PLAYER, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
 import PlayfulSieve from '../../src/conventions/playful-sieve.js';
 import { ACTION } from '../../src/constants.js';
 import { take_action } from '../../src/conventions/playful-sieve/take-action.js';
-import { team_elim } from '../../src/basics/helper.js';
+import { team_elim, update_hypo_stacks } from '../../src/basics/helper.js';
 
 import logger from '../../src/tools/logger.js';
 import { logPerformAction } from '../../src/tools/log.js';
@@ -118,9 +118,32 @@ describe('connecting cards', () => {
 			card.intersect(poss, [{ suitIndex: 2, rank: 1 }]);
 
 		team_elim(state);
+		update_hypo_stacks(state, state.common);
 
 		// Alice should play g1 to make g2 playable.
 		const action = take_action(state);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: state.hands[PLAYER.ALICE][1].order }, logPerformAction(action));
+	});
+});
+
+describe('urgency principle', () => {
+	it('doesn\'t give unloaded clues that connect through own hand', () => {
+		const state = setup(PlayfulSieve, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g2', 'y5', 'g5', 'p3', 'r2']
+		]);
+
+		// Alice has a fully known r1 in slot 2
+		const card = state.common.thoughts[state.hands[PLAYER.ALICE][1].order];
+		card.clued = true;
+		for (const poss of /** @type {const} */ (['possible', 'inferred']))
+			card.intersect(poss, [{ suitIndex: 0, rank: 1 }]);
+
+		team_elim(state);
+		update_hypo_stacks(state, state.common);
+
+		// Alice should not give purple.
+		const action = take_action(state);
+		assert.ok(!(action.type === ACTION.COLOUR && action.value === COLOUR.PURPLE));
 	});
 });

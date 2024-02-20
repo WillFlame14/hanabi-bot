@@ -63,7 +63,7 @@ export function take_action(state) {
 	const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
 	if (urgent_actions.some(actions => actions.length > 0))
-		logger.info('all urgent actions', urgent_actions.map((actions, index) => actions.map(action => { return { [index]: logPerformAction(action) }; })).flat());
+		logger.info('all urgent actions', urgent_actions.map((actions, index) => actions.map(action => ({ [index]: logPerformAction(action) }))).flat());
 
 	let priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 	const actionPrioritySize = Object.keys(ACTION_PRIORITY).length;

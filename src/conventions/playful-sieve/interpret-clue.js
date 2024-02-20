@@ -192,37 +192,50 @@ export function interpret_clue(state, action) {
 					action.lock = true;
 				}
 				else {
-					const unknown_plays = common.unknown_plays.filter(order => state.hands[target].findOrder(order));
+					/** @type {Identity[]} */
+					let playable_possibilities;
 
-					// The playable card could connect to any unknown plays
-					const known_playables = common.hypo_stacks.map((rank, suitIndex) => {
-						return { suitIndex, rank: rank + 1 };
-					});
+					if (common.thinksLoaded(state, target)) {
+						const unknown_plays = common.unknown_plays.filter(order => state.hands[target].findOrder(order));
 
-					const unknown_playables = unknown_plays.flatMap(order =>
-						common.thoughts[order].inferred.map(inf => { return { suitIndex: inf.suitIndex, rank: inf.rank + 1 }; }));
+						// The playable card could connect to any unknown plays
+						const unknown_playables = unknown_plays.flatMap(order =>
+							common.thoughts[order].inferred.map(inf => ({ suitIndex: inf.suitIndex, rank: inf.rank + 1 })));
+
+						const hypo_playables = common.hypo_stacks.map((rank, suitIndex) => ({ suitIndex, rank: rank + 1 }));
+
+						playable_possibilities = hypo_playables.concat(unknown_playables);
+
+						// TODO: connect properly if there is more than 1 unknown play, starting from oldest finesse index
+						for (const unk of unknown_plays) {
+							for (const inf of common.thoughts[unk].inferred) {
+								const connections = [{
+									type: /** @type {const} */ ('finesse'),
+									reacting: target,
+									card: state.hands[target].findOrder(unk),
+									identities: [inf]
+								}];
+
+								common.waiting_connections.push({
+									connections,
+									giver,
+									conn_index: 0,
+									focused_card: state.hands[target][target_index],
+									inference: { suitIndex: inf.suitIndex, rank: inf.rank + 1 },
+									action_index: state.actionList.length
+								});
+							}
+						}
+					}
+					else {
+						playable_possibilities = state.play_stacks.map((rank, suitIndex) => ({ suitIndex, rank: rank + 1}));
+					}
 
 					const target_card = common.thoughts[hand[target_index].order];
 					target_card.old_inferred = target_card.inferred.slice();
 					target_card.finessed = true;
 					target_card.focused = true;
-					target_card.intersect('inferred', known_playables.concat(unknown_playables));
-
-					// TODO: connect properly if there is more than 1 unknown play, starting from oldest finesse index
-					for (const unk of unknown_plays) {
-						for (const inf of common.thoughts[unk].inferred) {
-							const connections = [{ type: /** @type {const} */ ('finesse'), reacting: target, card: state.hands[target].findOrder(unk), identities: [inf] }];
-
-							common.waiting_connections.push({
-								connections,
-								giver,
-								conn_index: 0,
-								focused_card: state.hands[target][target_index],
-								inference: { suitIndex: inf.suitIndex, rank: inf.rank + 1 },
-								action_index: state.actionList.length
-							});
-						}
-					}
+					target_card.intersect('inferred', playable_possibilities);
 
 					logger.info(`ref play on ${state.playerNames[target]}'s slot ${target_index + 1}`);
 				}
