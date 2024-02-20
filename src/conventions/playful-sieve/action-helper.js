@@ -23,7 +23,7 @@ export function get_result(state, clue) {
 		throw new Error(`Tried to get a result with a clue ${logClue(clue)} that touches no cards!`);
 
 	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target: partner, list: touch.map(c => c.order), clue });
-	const { bad_touch, trash } = bad_touch_result(hypo_state, hypo_state.common, hypo_state.hands[partner]);
+	const { bad_touch, trash } = bad_touch_result(hypo_state, hypo_state.common, partner);
 
 	const { new_touched, fill, elim } = elim_result(state.common, hypo_state.common, hypo_state.hands[partner], touch.map(c => c.order));
 	const revealed_trash = hypo_state.common.thinksTrash(hypo_state, partner).filter(c1 =>

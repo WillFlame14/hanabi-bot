@@ -4,6 +4,7 @@ import { direct_clues, isBasicTrash, isSaved, isTrash, playableAway, visibleFind
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
+import { get_result } from './determine-clue.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -98,8 +99,6 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 
 				// Card doesn't match any inferences and seems playable but isn't (need to fix)
 				if (fix_criteria !== undefined) {
-					let found_clue = false;
-
 					// Try all play clues and save clue if it exists
 					const other_clues = play_clues[target].concat(save_clues[target] !== undefined ? [save_clues[target]] : []);
 
@@ -109,28 +108,21 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 						if (cardTouched(card, state.suits, clue))
 							continue;
 
-						const { fixed, trash } = check_fixed(state, target, order, clue, fix_criteria);
+						const { fixed, trash, result } = check_fixed(state, target, order, clue, fix_criteria);
 
 						if (fixed) {
 							// TODO: Find the highest value play clue
 							// logger.info(`found fix ${logClue(clue)} for card ${logCard(card)} to inferences [${card_after_cluing.inferred.map(logCard).join(',')}]`);
-							fix_clues[target].push(Object.assign({}, clue, { trash, urgent: seems_playable }));
-							found_clue = true;
-							break;
+							fix_clues[target].push(Object.assign({}, clue, { trash, result, urgent: seems_playable }));
 						}
 					}
 
-					if (found_clue)
-						continue;
-
 					const possible_clues = direct_clues(state, target, card);
 					for (const clue of possible_clues) {
-						const { fixed, trash } = check_fixed(state, target, order, clue, fix_criteria);
+						const { fixed, trash, result } = check_fixed(state, target, order, clue, fix_criteria);
 
-						if (fixed) {
-							fix_clues[target].push(Object.assign(clue, { trash, urgent: seems_playable }));
-							break;
-						}
+						if (fixed)
+							fix_clues[target].push(Object.assign(clue, { trash, result, urgent: seems_playable }));
 					}
 				}
 			}
@@ -180,7 +172,8 @@ function check_fixed(state, target, order, clue, fix_criteria) {
 
 	const result = {
 		fixed: fix_criteria(hypo_state, card_after_cluing, target),
-		trash: card_after_cluing.possible.every(p => isTrash(hypo_state, state.common, p, order))
+		trash: card_after_cluing.possible.every(p => isTrash(hypo_state, state.common, p, order)),
+		result: get_result(state, hypo_state, clue, state.ourPlayerIndex)
 	};
 
 	logger.flush(result.fixed);

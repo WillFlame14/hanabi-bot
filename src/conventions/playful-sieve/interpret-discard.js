@@ -24,7 +24,9 @@ export function interpret_discard(state, action, card) {
 	const { order, playerIndex, suitIndex, rank, failed } = action;
 	const identity = { suitIndex, rank };
 	const thoughts = common.thoughts[order];
+
 	const other = (playerIndex + 1) % state.numPlayers;
+	const other_had_trash = common.thinksTrash(state, other).length > 0;
 
 	Basics.onDiscard(this, action);
 
@@ -60,7 +62,11 @@ export function interpret_discard(state, action, card) {
 	}
 
 	// No safe action, chop is playable
-	if (!common.thinksLocked(state, other) && !common.thinksLoaded(state, other) && !state.hands[other].some(c => common.thoughts[c.order].called_to_discard)) {
+	if (!common.thinksLocked(state, other) &&
+		common.thinksPlayables(state, other).length == 0 &&
+		!other_had_trash &&
+		!state.hands[other].some(c => common.thoughts[c.order].called_to_discard)
+	) {
 		const playable_possibilities = state.play_stacks.map((rank, suitIndex) => {
 			return { suitIndex, rank: rank + 1 };
 		});

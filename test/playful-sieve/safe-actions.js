@@ -1,11 +1,12 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
+import * as ExAsserts from '../extra-asserts.js';
 
 import { PLAYER, setup, takeTurn } from '../test-utils.js';
-import * as ExAsserts from '../extra-asserts.js';
 import PlayfulSieve from '../../src/conventions/playful-sieve.js';
 import { ACTION } from '../../src/constants.js';
 import { take_action } from '../../src/conventions/playful-sieve/take-action.js';
+import { team_elim } from '../../src/basics/helper.js';
 
 import logger from '../../src/tools/logger.js';
 import { logPerformAction } from '../../src/tools/log.js';
@@ -100,6 +101,25 @@ describe('connecting cards', () => {
 		// Bob now has known g3.
 
 		// Alice should play g2 to automatically cm r5.
+		const action = take_action(state);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: state.hands[PLAYER.ALICE][1].order }, logPerformAction(action));
+	});
+
+	it('plays connections to a 1-away chop', () => {
+		const state = setup(PlayfulSieve, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g2', 'y4', 'g3', 'r4', 'r4']
+		]);
+
+		// Alice has a fully known g1 in slot 2
+		const card = state.common.thoughts[state.hands[PLAYER.ALICE][1].order];
+		card.clued = true;
+		for (const poss of /** @type {const} */ (['possible', 'inferred']))
+			card.intersect(poss, [{ suitIndex: 2, rank: 1 }]);
+
+		team_elim(state);
+
+		// Alice should play g1 to make g2 playable.
 		const action = take_action(state);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: state.hands[PLAYER.ALICE][1].order }, logPerformAction(action));
 	});

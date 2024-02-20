@@ -38,13 +38,13 @@ export function elim_result(player, hypo_player, hand, list) {
 /**
  * @param  {State} state
  * @param  {Player} hypo_player
- * @param  {Hand} hand
+ * @param  {number} target
  * @param  {number} focus_order
  */
-export function bad_touch_result(state, hypo_player, hand, focus_order = -1) {
+export function bad_touch_result(state, hypo_player, target, focus_order = -1) {
 	let bad_touch = 0, trash = 0;
 
-	for (const card of hand) {
+	for (const card of state.hands[target]) {
 		// Ignore cards that aren't newly clued, focused card can't be bad touched
 		if (!card.newly_clued || card.order === focus_order)
 			continue;

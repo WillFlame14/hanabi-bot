@@ -100,7 +100,7 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 	const { focused_card } = determine_focus(hand, state.common, list, { beforeClue: true });
 
 	const { new_touched, fill } = elim_result(state.common, hypo_state.common, hand, list);
-	const { bad_touch, trash } = bad_touch_result(hypo_state, hypo_state.common, hand, focused_card.order);
+	const { bad_touch, trash } = bad_touch_result(hypo_state, hypo_state.common, target, focused_card.order);
 	const { finesses, playables } = playables_result(hypo_state, state.common, hypo_state.common);
 
 	const new_chop = hypo_state.common.chop(hand, { afterClue: true });

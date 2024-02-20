@@ -168,8 +168,9 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 				continue;
 			}
 
-			const trash_fix = fix_clues[target].find(clue => clue.trash);
-			if (trash_fix !== undefined) {
+			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
+			if (trash_fixes.length > 0) {
+				const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
 				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, state.tableID));
 				continue;
 			}
@@ -203,8 +204,9 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 			const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, list, clue: save, target });
 
 			// Give them a fix clue with known trash if possible (TODO: Re-examine if this should only be urgent fixes)
-			const trash_fix = fix_clues[target].find(clue => clue.trash);
-			if (trash_fix !== undefined) {
+			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
+			if (trash_fixes.length > 0) {
+				const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
 				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, state.tableID));
 				continue;
 			}
@@ -294,16 +296,19 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 
 		// They require a fix clue
 		if (fix_clues[target].length > 0) {
-			const urgent_fix = fix_clues[target].find(clue => clue.urgent);
+			const urgent_fixes = fix_clues[target].filter(clue => clue.urgent);
 
 			// Urgent fix on the next player is particularly urgent, but we should prioritize urgent fixes for others too
-			if (urgent_fix !== undefined) {
+			if (urgent_fixes.length > 0) {
+				const urgent_fix = Utils.maxOn(urgent_fixes, ({ result }) => find_clue_value(result));
 				urgent_actions[PRIORITY.URGENT_FIX + nextPriority].push(Utils.clueToAction(urgent_fix, state.tableID));
 				continue;
 			}
 
+			const best_fix = Utils.maxOn(fix_clues[target], ({ result }) => find_clue_value(result));
+
 			// No urgent fixes required
-			urgent_actions[PRIORITY.URGENT_FIX + prioritySize].push(Utils.clueToAction(fix_clues[target][0], state.tableID));
+			urgent_actions[PRIORITY.URGENT_FIX + prioritySize].push(Utils.clueToAction(best_fix, state.tableID));
 		}
 	}
 	return urgent_actions;
