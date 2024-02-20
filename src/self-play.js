@@ -90,10 +90,7 @@ async function main() {
  * @param {number} level
  */
 function simulate_game(playerNames, deck, suits, convention, level) {
-	/** @type {{ state: State, order: number }[]} */
-	const states = playerNames.map((_, index) => {
-		return { state: new conventions[convention](-1, playerNames, index, suits, false, level), order: 0 };
-	});
+	const states = playerNames.map((_, index) => ({ state: new conventions[convention](-1, playerNames, index, suits, {}, false, level), order: 0 }));
 	Utils.globalModify({ state: states[0].state });
 
 	const handSize = HAND_SIZE[playerNames.length];
@@ -130,6 +127,7 @@ function simulate_game(playerNames, deck, suits, convention, level) {
 		const { state: currentPlayerState } = states[currentPlayerIndex];
 		Utils.globalModify({ state: currentPlayerState });
 
+		// @ts-ignore (one day static analysis will get better)
 		const performAction = currentPlayerState.take_action(currentPlayerState);
 		actions.push(Utils.objPick(performAction, ['type', 'target', 'value'], { default: 0 }));
 

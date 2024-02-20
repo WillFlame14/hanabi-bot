@@ -75,7 +75,7 @@ export function handle_action(action, catchup = false) {
 			this.currentPlayerIndex = currentPlayerIndex;
 			this.turn_count = num + 1;
 
-			if (!catchup) {
+			if (!catchup && !this.options.speedrun) {
 				// Update notes on cards
 				for (const { order } of this.hands.flat()) {
 					const card = this.common.thoughts[order];
@@ -106,7 +106,7 @@ export function handle_action(action, catchup = false) {
 
 			if (currentPlayerIndex === this.ourPlayerIndex && !catchup) {
 				if (this.in_progress) {
-					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), 2000);
+					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), this.options.speedrun ? 0 : 2000);
 				}
 				// Replaying a turn
 				else {

@@ -105,7 +105,7 @@ export function determine_playable_card(state, playable_cards) {
 
 		// Part of a finesse
 		if (card.finessed) {
-			priorities[0].push(card);
+			priorities[state.numPlayers > 2 ? 0 : 1].push(card);
 			continue;
 		}
 

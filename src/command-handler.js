@@ -200,7 +200,7 @@ export const handle = {
 		const variant = await getVariant(options.variantName);
 
 		// Initialize game state using convention set
-		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, true, settings.level);
+		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, options, true, settings.level);
 
 		Utils.globalModify({state});
 
