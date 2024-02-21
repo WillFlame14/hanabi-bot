@@ -108,14 +108,14 @@ function injectFuncs(options) {
  * @template {State} A
  * @param {{new(...args: any[]): A}} StateClass
  * @param {string[][]} hands
- * @param {Partial<SetupOptions>} options
+ * @param {Partial<SetupOptions>} test_options
  * @returns {A}
  */
-export function setup(StateClass, hands, options = {}) {
+export function setup(StateClass, hands, test_options = {}) {
 	const playerNames = names.slice(0, hands.length);
-	const variant = options.variant ?? noVar;
+	const variant = test_options.variant ?? noVar;
 
-	const state = new StateClass(-1, playerNames, 0, variant.suits, variant, false, options.level ?? 1);
+	const state = new StateClass(-1, playerNames, 0, variant.suits, variant, test_options, false, test_options.level ?? 1);
 	Utils.globalModify({state});
 
 	let orderCounter = 0;
@@ -131,8 +131,8 @@ export function setup(StateClass, hands, options = {}) {
 		}
 	}
 
-	init_state(state, options);
-	injectFuncs.bind(state)(options);
+	init_state(state, test_options);
+	injectFuncs.bind(state)(test_options);
 
 	for (const player of state.players)
 		player.card_elim(state);

@@ -149,6 +149,9 @@ export function take_action(state) {
 	}
 
 	if (common.thinksLocked(state, partner)) {
+		// Playables that don't trigger an incorrect unlock promise
+		const safe_playables = [];
+
 		for (const playable of playable_cards.concat(discards)) {
 			const identity = playable.identity({ infer: true });
 
@@ -161,8 +164,13 @@ export function take_action(state) {
 					rank: identity.rank
 				}, state.ourPlayerIndex, partner, state.locked_shifts[playable.order]);
 
-				if (unlocked_order && state.me.thoughts[unlocked_order].matches({ suitIndex: identity.suitIndex, rank: identity.rank + 1 }))
-					return { tableID, type: ACTION.PLAY, target: playable.order };
+				if (unlocked_order) {
+					if (state.me.thoughts[unlocked_order].matches({ suitIndex: identity.suitIndex, rank: identity.rank + 1 }))
+						return { tableID, type: ACTION.PLAY, target: playable.order };
+				}
+				else {
+					safe_playables.push(playable);
+				}
 			}
 		}
 
@@ -172,8 +180,20 @@ export function take_action(state) {
 		if (trash_cards.length > 0)
 			return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 
-		if (playable_cards.length > 0)
-			return { tableID, type: ACTION.PLAY, target: Utils.maxOn(playable_cards, (card) => -card.reasoning.at(-1)).order };
+		if (safe_playables.length > 0) {
+			// Play playable that leads to closest card
+			const partner_lowest_ranks = state.suits.map(_ => 6);
+
+			for (const card of state.hands[partner])
+				partner_lowest_ranks[card.suitIndex] = Math.min(partner_lowest_ranks[card.suitIndex], card.rank);
+
+			const target = Utils.maxOn(safe_playables, (card) => {
+				const { suitIndex, rank } = card.identity({ infer: true });
+				return rank - partner_lowest_ranks[suitIndex];
+			}).order;
+
+			return { tableID, type: ACTION.PLAY, target };
+		}
 
 		return locked_discard_action;
 	}
@@ -181,7 +201,7 @@ export function take_action(state) {
 	// Partner isn't loaded/locked and their chop isn't playable
 
 	if (chop_away === 1) {
-		const connecting_playable = playable_cards.find(card => card.suitIndex === chop.suitIndex);
+		const connecting_playable = playable_cards.find(card => card.identity({ infer: true })?.suitIndex === chop.suitIndex);
 
 		if (connecting_playable !== undefined)
 			return { tableID, type: ACTION.PLAY, target: connecting_playable.order };
@@ -194,6 +214,18 @@ export function take_action(state) {
 
 	if (playable_sarcastic !== undefined && state.clue_tokens !== 8)
 		return { tableID, type: ACTION.DISCARD, target: playable_sarcastic.order };
+
+	const direct_connections = playable_cards.filter(card => {
+		const id = card.identity({ infer: true });
+
+		if (id === undefined)
+			return false;
+
+		return id !== undefined && partner_hand.some(c => common.thoughts[c.order].matches({ suitIndex: id.suitIndex, rank: id.rank + 1 }));
+	});
+
+	if (direct_connections.length > 0)
+		return { tableID, type: ACTION.PLAY, target: direct_connections[0].order };
 
 	if (state.clue_tokens === 0)
 		return locked_discard_action;

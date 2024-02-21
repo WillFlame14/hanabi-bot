@@ -19,6 +19,7 @@ import { logPerformAction } from '../tools/log.js';
  * @typedef {import('../types.js').PlayAction} PlayAction
  * @typedef {import('../types.js').PerformAction} PerformAction
  * @typedef {import('../variants.js').Variant} Variant
+ * @typedef {import('../types-live.js').TableOptions} TableOptions
  */
 
 export class State {
@@ -69,9 +70,10 @@ export class State {
 	 * @param {number} ourPlayerIndex
 	 * @param {string[]} suits
 	 * @param {Variant} variant
+	 * @param {TableOptions} options
 	 * @param {boolean} in_progress
 	 */
-	constructor(tableID, playerNames, ourPlayerIndex, suits, variant, in_progress) {
+	constructor(tableID, playerNames, ourPlayerIndex, suits, variant, options, in_progress) {
 		/** @type {number} */
 		this.tableID = tableID;
 		/** @type {string[]} */
@@ -86,6 +88,9 @@ export class State {
 
 		/** @type {Variant}} */
 		this.variant = variant;
+
+		/** @type {TableOptions} */
+		this.options = options;
 
 		this.in_progress = in_progress;
 
@@ -128,7 +133,7 @@ export class State {
 	 * Returns a blank copy of the state, as if the game had restarted.
 	 */
 	createBlank() {
-		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.in_progress);
+		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.options, this.in_progress);
 		newState.notes = this.notes;
 		newState.rewinds = this.rewinds;
 		return newState;
@@ -138,7 +143,7 @@ export class State {
 	 * Returns a copy of the state with only minimal properties (cheaper than cloning).
 	 */
 	minimalCopy() {
-		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.in_progress);
+		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.variant, this.options, this.in_progress);
 
 		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');

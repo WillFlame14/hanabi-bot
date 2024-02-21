@@ -114,7 +114,11 @@ export function interpret_play(state, action) {
 		common.thoughts[c.order].inferred.every(i => playableAway(state, i) === 0 || (i.suitIndex === inf.suitIndex && playableAway(state, i) === 1))));
 
 	// No safe action, chop is playable
-	if (!common.thinksLocked(state, other) && !common.thinksLoaded(state, other) && !other_hand.some(c => common.thoughts[c.order].called_to_discard) && !known_connecting && state.clue_tokens > 0) {
+	if (!common.thinksLocked(state, other) &&
+		!common.thinksLoaded(state, other) &&
+		!other_hand.some(c => common.thoughts[c.order].called_to_discard) &&
+		!known_connecting && state.clue_tokens > 0
+	) {
 		const playable_possibilities = state.play_stacks.map((rank, suitIndex) => {
 			return { suitIndex, rank: rank + 1 };
 		});
@@ -136,7 +140,8 @@ export function interpret_play(state, action) {
 
 			// Unlocked player might have another card connecting to this
 			if (hand.some(card => common.thoughts[card.order].identity({ infer: true })?.matches(connecting)) &&
-				other_hand.some(card => common.thoughts[card.order].inferred.some(c => c.suitIndex === suitIndex && c.rank > rank + 1))) {
+				other_hand.some(card => common.thoughts[card.order].inferred.some(c => c.suitIndex === suitIndex && c.rank > rank + 1))
+			) {
 				logger.info(`unlocked player may have connecting ${logCard(connecting)}, not unlocking yet`);
 			}
 			else {

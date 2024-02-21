@@ -32,15 +32,16 @@
  * @property {number} maxPlayers
  * 
  * @typedef TableOptions
- * @property {number} numPlayers
- * @property {number} startingPlayer
- * @property {string} variantName
- * @property {boolean} deckPlays
- * @property {boolean} emptyClues
- * @property {boolean} oneExtraCard
- * @property {boolean} oneLessCard
- * @property {boolean} allOrNothing
- * @property {boolean} detrimentalCharacters
+ * @property {number} [numPlayers]
+ * @property {number} [startingPlayer]
+ * @property {string} [variantName]
+ * @property {boolean} [deckPlays]
+ * @property {boolean} [emptyClues]
+ * @property {boolean} [oneExtraCard]
+ * @property {boolean} [oneLessCard]
+ * @property {boolean} [allOrNothing]
+ * @property {boolean} [detrimentalCharacters]
+ * @property {boolean} [speedrun]
  * 
  * @typedef InitData
  * @property {number} tableID

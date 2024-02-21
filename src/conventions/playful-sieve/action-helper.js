@@ -23,15 +23,19 @@ export function get_result(state, clue) {
 		throw new Error(`Tried to get a result with a clue ${logClue(clue)} that touches no cards!`);
 
 	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target: partner, list: touch.map(c => c.order), clue });
-	const { bad_touch, trash } = bad_touch_result(hypo_state, hypo_state.common, hypo_state.hands[partner]);
+	const { bad_touch, trash } = bad_touch_result(hypo_state, hypo_state.common, partner);
 
 	const { new_touched, fill, elim } = elim_result(state.common, hypo_state.common, hypo_state.hands[partner], touch.map(c => c.order));
 	const revealed_trash = hypo_state.common.thinksTrash(hypo_state, partner).filter(c1 =>
 		c1.clued && !state.common.thinksTrash(state, partner).some(c2 => c1.order !== c2.order));
 	const { playables } = playables_result(hypo_state, state.common, hypo_state.common);
 
-	const { card: bad_playable } = playables.find(({card}) =>
-		hypo_state.common.thoughts[card.order].inferred.every(inf => !state.me.thoughts[card.order].matches(inf))) ?? {};
+	// Card that looks playable but actually isn't
+	const bad_playable = state.hands[partner].find((card) => {
+		const thoughts = hypo_state.common.thoughts[card.order];
+
+		return thoughts.finessed && thoughts.inferred.every(inf => !state.me.thoughts[card.order].matches(inf));
+	});
 
 	if (bad_playable) {
 		logger.info(logClue(clue), 'results in', logCard(state.me.thoughts[bad_playable.order]), 'looking playable when it isn\'t');

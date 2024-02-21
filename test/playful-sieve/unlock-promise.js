@@ -5,8 +5,9 @@ import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import PlayfulSieve from '../../src/conventions/playful-sieve.js';
 
-import { ACTION } from '../../src/constants.js';
+import { ACTION, CLUE } from '../../src/constants.js';
 import { take_action } from '../../src/conventions/playful-sieve/take-action.js';
+import { team_elim } from '../../src/basics/helper.js';
 
 import logger from '../../src/tools/logger.js';
 import { logPerformAction } from '../../src/tools/log.js';
@@ -192,5 +193,36 @@ describe('unlock promise', () => {
 		// Alice should play r1 instead of discarding.
 		assert.equal(action.type, ACTION.PLAY, `Actual action was (${logPerformAction(action)})`);
 		assert.ok([2,3].map(index => state.hands[PLAYER.ALICE][index].order).includes(action.target));
+	});
+
+	it('plays the closest card when none will unlock', () => {
+		const state = setup(PlayfulSieve, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g5', 'y5', 'r3', 'p3', 'p5']
+		], {
+			starting: PLAYER.BOB,
+			play_stacks: [0, 1, 0, 0, 0],
+			discarded: ['r3']
+		});
+
+		for (const card of state.hands[PLAYER.BOB]) {
+			card.clued = true;
+			card.clues.push({ type: CLUE.RANK, value: card.rank });
+			for (const poss of /** @type {const} */ (['inferred', 'possible']))
+				state.common.thoughts[card.order].intersect(poss, state.suits.map((_, suitIndex) => ({ suitIndex, rank: card.rank })));
+		}
+
+		team_elim(state);
+
+		takeTurn(state, 'Bob clues 2 to Alice (slots 2,3)');
+		takeTurn(state, 'Alice discards y1 (slot 4)');
+		takeTurn(state, 'Bob clues yellow to Alice (slots 3,5)');
+		takeTurn(state, 'Alice discards b4 (slot 1)');
+		takeTurn(state, 'Bob clues purple to Alice (slots 1,2)');	// Alice's hand is [p1, p, y2, 2, y]
+
+		const action = take_action(state);
+
+		// Alice should play p1 instead of y2.
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: state.hands[PLAYER.ALICE][0].order });
 	});
 });

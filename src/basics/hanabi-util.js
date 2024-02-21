@@ -141,7 +141,7 @@ export function save2(state, player, identity) {
 
 	return rank === 2 &&
         state.play_stacks[suitIndex] < 2 &&						// play stack not yet at 2
-        visibleFind(state, player, identity).length === 1;		// other copy isn't visible
+        visibleFind(state, player, identity, { infer: true }).length === 1;		// other copy isn't visible
 }
 
 /**

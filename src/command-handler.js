@@ -202,7 +202,7 @@ export const handle = {
 		await getShortForms(variant.suits);
 
 		// Initialize game state using convention set
-		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, variant, true, settings.level);
+		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, variant, options, true, settings.level);
 
 		Utils.globalModify({state});
 

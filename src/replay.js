@@ -54,14 +54,8 @@ async function main() {
 	if (id !== undefined && file !== undefined)
 		throw new Error('Both id and file provided, only provide one.');
 
-
 	try {
-		if (id !== undefined)
-			game_data = await fetchReplay(id);
-
-		else
-			game_data = JSON.parse(fs.readFileSync(file, 'utf8'));
-
+		game_data = id !== undefined ? await fetchReplay(id) : JSON.parse(fs.readFileSync(file, 'utf8'));
 	}
 	catch (err) {
 		throw new Error(err);
@@ -80,14 +74,13 @@ async function main() {
 	if (conventions[convention] === undefined)
 		throw new Error(`Convention ${convention} is not supported.`);
 
-
 	await getShortForms(variant.suits);
 
-	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant.suits, variant, false, Number(level ?? 1));
+	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant.suits, variant, options, false, Number(level ?? 1));
 
 	Utils.globalModify({state});
 
-	const handSize = HAND_SIZE[state.numPlayers] + (options?.oneLessCard ? -1 : options?.oneMoreCard ? 1 : 0);
+	const handSize = HAND_SIZE[state.numPlayers] + (options?.oneLessCard ? -1 : options?.oneExtraCard ? 1 : 0);
 
 	// Draw cards in starting hands
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
