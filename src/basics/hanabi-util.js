@@ -127,7 +127,7 @@ export function inEndgame(state) {
  * @param {ActualCard} card
  */
 export function inStartingHand(state, card) {
-	return card.order < state.numPlayers * HAND_SIZE[state.numPlayers];
+	return card.order < state.numPlayers * (HAND_SIZE[state.numPlayers] + (state.options?.oneLessCard ? -1 : state.options?.oneExtraCard ? 1 : 0));
 }
 
 /**
