@@ -14,7 +14,12 @@ import { CLUE } from './constants.js';
  * @property {boolean} [specialRankAllClueRanks]
  * @property {boolean} [specialRankNoClueColors]
  * @property {boolean} [specialRankNoClueRanks]
+ * @property {boolean} [specialRankDeceptive]
+ * @property {boolean} [chimneys]
+ * @property {boolean} [funnels]
  * @property {number} [criticalRank]
+ * @property {number} [specialRank]
+ * @property {number[]} [clueRanks]
  */
 
 const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/variants.json';
@@ -164,9 +169,17 @@ export function cardTouched(card, variant, clue) {
 		if (rank === variant.specialRank) {
 			if (variant.specialRankAllClueRanks)
 				return true;
-			else if (variant.specialRankNoClueRanks)
+			if (variant.specialRankNoClueRanks)
 				return false;
+
+			if (variant.specialRankDeceptive)
+				return (suitIndex % 4) + (variant.specialRank === 1 ? 2 : 1) === value;
 		}
+
+		if (variant.chimneys)
+			return rank >= value;
+		if (variant.funnels)
+			return rank <= value;
 
 		return rank === value;
 	}
@@ -185,7 +198,7 @@ export function isCluable(variant, clue) {
 		'Dark Null', 'Dark Omni', 'Gray', 'Dark Rainbow', 'Gray Pink', 'Cocoa Rainbow', 'Dark Prism'
 	].includes(variant.suits[value]))
 		return false;
-	if (type === CLUE.RANK && value === variant.specialRank && (variant.specialRankAllClueRanks || variant.specialRankNoClueRanks))
+	if (type === CLUE.RANK && !(variant.clueRanks?.includes(value) ?? true))
 		return false;
 	return true;
 }
