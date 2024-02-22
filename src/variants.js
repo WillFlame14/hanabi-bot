@@ -194,6 +194,7 @@ export function isCluable(variant, clue) {
 	if (type === CLUE.COLOUR && (
 		variant.suits[value].match(variantRegexes.whitish)
 		|| variant.suits[value].match(variantRegexes.rainbowish)
+		|| variant.suits[value].match(/Prism/)
 	))
 		return false;
 	if (type === CLUE.RANK && !(variant.clueRanks?.includes(value) ?? true))

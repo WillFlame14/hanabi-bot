@@ -115,7 +115,7 @@ export function setup(StateClass, hands, test_options = {}) {
 	const playerNames = names.slice(0, hands.length);
 	const variant = test_options.variant ?? noVar;
 
-	const state = new StateClass(-1, playerNames, 0, variant.suits, variant, test_options, false, test_options.level ?? 1);
+	const state = new StateClass(-1, playerNames, 0, variant, test_options, false, test_options.level ?? 1);
 	Utils.globalModify({state});
 
 	let orderCounter = 0;

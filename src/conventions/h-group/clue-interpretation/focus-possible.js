@@ -83,10 +83,10 @@ function find_colour_focus(state, suitIndex, action) {
 	if (chop) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
 			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
-			if (!state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish)))
+			if (rank === 5 && !state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish)))
 				continue;
 			// Determine if possible save on k2, k5 with colour
-			{if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
+			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
 				let fill_ins = 0;
 
 				for (const card of state.hands[target]) {
@@ -102,7 +102,7 @@ function find_colour_focus(state, suitIndex, action) {
 				// Only touched/filled in 1 new card
 				if (fill_ins < 2)
 					continue;
-			}}
+			}
 
 			// Check if card is critical
 			if (isCritical(state, { suitIndex, rank }))
