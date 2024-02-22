@@ -5,6 +5,7 @@ import { isCritical, playableAway, visibleFind } from '../../../basics/hanabi-ut
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
+import { variantRegexes } from '../../../variants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -80,9 +81,12 @@ function find_colour_focus(state, suitIndex, action) {
 
 	// Save clue on chop (5 save cannot be done with colour)
 	if (chop) {
-		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 4); rank++) {
+		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
+			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
+			if (!state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish)))
+				continue;
 			// Determine if possible save on k2, k5 with colour
-			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
+			{if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
 				let fill_ins = 0;
 
 				for (const card of state.hands[target]) {
@@ -98,7 +102,7 @@ function find_colour_focus(state, suitIndex, action) {
 				// Only touched/filled in 1 new card
 				if (fill_ins < 2)
 					continue;
-			}
+			}}
 
 			// Check if card is critical
 			if (isCritical(state, { suitIndex, rank }))

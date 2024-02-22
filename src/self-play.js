@@ -14,6 +14,7 @@ import logger from './tools/logger.js';
  * @typedef {import('./types.js').Identity} Identity
  * @typedef {import('./types.js').Action} Action
  * @typedef {import('./types.js').PerformAction} PerformAction
+ * @typedef {import('./variants.js').Variant} Variant
  */
 
 const conventions = /** @type {const} */ ({
@@ -23,11 +24,11 @@ const conventions = /** @type {const} */ ({
 
 const playerNames = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily', 'Fred'];
 
-const noVar = {
+const noVar = /** @type {Variant} */ ({
 	"id": 0,
 	"name": "No Variant",
 	"suits": ["Red", "Yellow", "Green", "Blue", "Purple"]
-};
+});
 
 async function main() {
 	const { convention = 'HGroup', level: lStr = '1', games = '10', players: pStr = '2', seed, variant: vStr = 'No Variant' } = Utils.parse_args();

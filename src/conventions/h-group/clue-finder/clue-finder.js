@@ -1,6 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
-import { cardTouched } from '../../../variants.js';
+import { cardTouched, variantRegexes } from '../../../variants.js';
 import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { determine_clue, get_result } from './determine-clue.js';
@@ -38,18 +38,19 @@ function find_save(state, target, card) {
 	if (isCritical(state, card)) {
 		logger.highlight('yellow', 'saving critical card', logCard(card));
 		if (rank === 5) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [], safe: true };
+			const defaultClue = { type: CLUE.RANK, value: 5, target, playable: false, cm: [], safe: true };
+			if (cardTouched(card, state.variant, defaultClue))
+				return defaultClue;
+			logger.highlight('red', 'unable to save', logCard(card), 'with a 5 clue due to the variant.');
 		}
-		else {
-			// The card is on chop, so it can always be focused
-			const save_clue = determine_clue(state, target, card, { save: true });
+		// The card is on chop, so it can always be focused
+		const save_clue = determine_clue(state, target, card, { save: true });
 
-			if (save_clue === undefined) {
-				logger.error(`unable to find save clue for ${logCard(card)}!`);
-				return;
-			}
-			return Object.assign(save_clue, { playable: false, cm: [], safe: true });
+		if (save_clue === undefined) {
+			logger.error(`unable to find save clue for ${logCard(card)}!`);
+			return;
 		}
+		return Object.assign(save_clue, { playable: false, cm: [], safe: true });
 	}
 	// Save a non-critical delayed playable card that isn't visible somewhere else
 	else if (state.me.hypo_stacks[suitIndex] + 1 === rank && visibleFind(state, state.me, card).length === 1) {
@@ -65,6 +66,11 @@ function find_save(state, target, card) {
 	}
 	else if (save2(state, state.me, card)) {
 		logger.highlight('yellow', 'saving unique 2', logCard(card));
+
+		if (state.variant.suits[card.suitIndex].match(variantRegexes.brownish)) {
+			logger.highlight('red', 'unable to save', logCard(card), 'with a 2 clue due to variant.');
+			return;
+		}
 
 		const safe = clue_safe(state, state.me, { type: CLUE.RANK, value: 2 , target });
 		return { type: CLUE.RANK, value: 2, target, playable: false, cm: [], safe };

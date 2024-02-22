@@ -25,6 +25,13 @@ import { CLUE } from './constants.js';
 const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/variants.json';
 const coloursURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/suits.json';
 
+const whitish = /White|Gray|Light|Null/;
+const rainbowish = /Rainbow|Omni/;
+const brownish = /Brown|Muddy|Cocoa|Null/;
+const pinkish = /Pink|Omni/;
+const dark = /Black|Dark|Gray|Cocoa/;
+export const variantRegexes = {whitish, rainbowish, brownish, pinkish, dark};
+
 /** @type {Promise<Variant[]>} */
 const variants_promise = new Promise((resolve, reject) => {
 	https.get(variantsURL, (res) => {
@@ -131,18 +138,14 @@ export function cardTouched(card, variant, clue) {
 		return true;
 
 	if (type === CLUE.COLOUR) {
-		if (['White', 'Gray', 'Light Pink', 'Gray Pink'].includes(suit)) {
+		if (suit.match(variantRegexes.whitish)) {
 			return false;
 		}
-		else if (['Rainbow', 'Dark Rainbow', 'Muddy Rainbow', 'Cocoa Rainbow'].includes(suit)) {
+		else if (suit.match(variantRegexes.rainbowish)) {
 			return true;
 		}
 		else if (suit === 'Prism' || suit === 'Dark Prism') {
-			const colourlessCount = variant.suits.filter(s => [
-				'White', 'Gray', 'Light Pink', 'Gray Pink',
-				'Rainbow', 'Dark Rainbow', 'Muddy Rainbow', 'Cocoa Rainbow',
-				'Prism', 'Dark Prism'
-			].includes(s)).length;
+			const colourlessCount = variant.suits.filter(s => s.match(rainbowish) || s.match(whitish) || s.match(/Prism/)).length;
 			return ((rank - 1) % (variant.suits.length - colourlessCount)) === value;
 		}
 
@@ -156,9 +159,9 @@ export function cardTouched(card, variant, clue) {
 		return suitIndex === value;
 	}
 	else if (type === CLUE.RANK) {
-		if (['Brown', 'Dark Brown', 'Muddy Rainbow', 'Cocoa Rainbow'].includes(suit))
+		if (suit.match(variantRegexes.brownish))
 			return false;
-		else if (['Pink', 'Dark Pink', 'Light Pink', 'Gray Pink'].includes(suit))
+		else if (suit.match(variantRegexes.pinkish))
 			return true;
 
 		if (rank === variant.specialRank) {
@@ -188,10 +191,10 @@ export function cardTouched(card, variant, clue) {
 export function isCluable(variant, clue) {
 	const { type, value } = clue;
 
-	if (type === CLUE.COLOUR && [
-		'Null', 'Omni', 'White', 'Rainbow', 'Light Pink', 'Muddy Rainbow', 'Prism',
-		'Dark Null', 'Dark Omni', 'Gray', 'Dark Rainbow', 'Gray Pink', 'Cocoa Rainbow', 'Dark Prism'
-	].includes(variant.suits[value]))
+	if (type === CLUE.COLOUR && (
+		variant.suits[value].match(variantRegexes.whitish)
+		|| variant.suits[value].match(variantRegexes.rainbowish)
+	))
 		return false;
 	if (type === CLUE.RANK && !(variant.clueRanks?.includes(value) ?? true))
 		return false;
@@ -204,12 +207,7 @@ export function isCluable(variant, clue) {
  * @param {Identity} identity
  */
 export function cardCount(variant, { suitIndex, rank }) {
-	if ([
-		'Dark Null', 'Dark Brown', 'Cocoa Rainbow',
-		'Gray', 'Black', 'Dark Rainbow',
-		'Gray Pink', 'Dark Pink', 'Dark Omni',
-		'Dark Prism'
-	].includes(variant.suits[suitIndex]))
+	if (variant.suits[suitIndex].match(variantRegexes.dark))
 		return 1;
 
 	if (variant.criticalRank === rank)
