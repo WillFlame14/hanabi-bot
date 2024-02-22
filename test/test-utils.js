@@ -35,11 +35,11 @@ export const PLAYER = /** @type {const} */ ({
 });
 
 const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
-const noVar = /** @type {Variant} */ {
+const noVar = /** @type {Variant} */ ({
 	"id": 0,
 	"name": "No Variant",
 	"suits": ["Red", "Yellow", "Green", "Blue", "Purple"]
-};
+});
 
 /**
  * @param {string} short
@@ -73,7 +73,7 @@ function init_state(state, options) {
 		state.discard_stacks[suitIndex][rank - 1]++;
 
 		// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
-		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, state.variant, identity) && state.max_ranks[suitIndex] > rank - 1)
+		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, identity) && state.max_ranks[suitIndex] > rank - 1)
 			state.max_ranks[suitIndex] = rank - 1;
 	}
 
@@ -217,7 +217,7 @@ export function parseAction(state, rawAction) {
 		case 'clues': {
 			const clue = ('12345'.indexOf(parts[2]) !== -1) ?
 				{ type: CLUE.RANK, value: Number(parts[2]) } :
-				{ type: CLUE.COLOUR, value: state.suits.findIndex(suit => suit.toLowerCase() === parts[2].toLowerCase()) };
+				{ type: CLUE.COLOUR, value: state.variant.suits.findIndex(suit => suit.toLowerCase() === parts[2].toLowerCase()) };
 
 			if (clue.type === CLUE.COLOUR && clue.value === -1)
 				throw new Error(`Unable to parse clue ${parts[2]}`);

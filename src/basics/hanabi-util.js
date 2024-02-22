@@ -1,4 +1,5 @@
-import { CLUE, HAND_SIZE } from '../constants.js';
+import { getHandSize } from './helper.js';
+import { CLUE } from '../constants.js';
 import { cardCount, cardTouched, isCluable } from '../variants.js';
 
 /**
@@ -45,7 +46,7 @@ export function baseCount(state, { suitIndex, rank }) {
  */
 export function unknownIdentities(state, player, identity) {
 	const visibleCount = state.hands.flat().filter(c => player.thoughts[c.order].matches(identity)).length;
-	return cardCount(state.suits, state.variant, identity) - baseCount(state, identity) - visibleCount;
+	return cardCount(state.variant, identity) - baseCount(state, identity) - visibleCount;
 }
 
 /**
@@ -54,7 +55,7 @@ export function unknownIdentities(state, player, identity) {
  * @param {Identity} identity
  */
 export function isCritical(state, { suitIndex, rank }) {
-	return state.discard_stacks[suitIndex][rank - 1] === (cardCount(state.suits, state.variant, { suitIndex, rank }) - 1);
+	return state.discard_stacks[suitIndex][rank - 1] === (cardCount(state.variant, { suitIndex, rank }) - 1);
 }
 
 /**
@@ -127,7 +128,7 @@ export function inEndgame(state) {
  * @param {ActualCard} card
  */
 export function inStartingHand(state, card) {
-	return card.order < state.numPlayers * (HAND_SIZE[state.numPlayers] + (state.options?.oneLessCard ? -1 : state.options?.oneExtraCard ? 1 : 0));
+	return card.order < state.numPlayers * getHandSize(state);
 }
 
 /**
@@ -187,7 +188,7 @@ export function direct_clues(state, target, card, options) {
 	const direct_clues = [];
 
 	if (!options?.excludeColour) {
-		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+		for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 			const clue = { type: CLUE.COLOUR, value: suitIndex, target };
 
 			if (isCluable(state.variant, clue) && cardTouched(card, state.variant, clue))

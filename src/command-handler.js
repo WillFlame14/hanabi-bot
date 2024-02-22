@@ -199,10 +199,10 @@ export const handle = {
 		const { tableID, playerNames, ourPlayerIndex, options } = data;
 		const variant = await getVariant(options.variantName);
 
-		await getShortForms(variant.suits);
+		await getShortForms(variant);
 
 		// Initialize game state using convention set
-		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant.suits, variant, options, true, settings.level);
+		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant, options, true, settings.level);
 
 		Utils.globalModify({state});
 

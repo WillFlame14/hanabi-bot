@@ -88,7 +88,7 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
  */
 function find_unknown_connecting(state, giver, target, playerIndex, identity, ignoreOrders = []) {
 	const hand = state.hands[playerIndex];
-	const prompt = state.common.find_prompt(hand, identity, state.suits, ignoreOrders);
+	const prompt = state.common.find_prompt(hand, identity, state.variant.suits, ignoreOrders);
 	const finesse = state.common.find_finesse(hand, ignoreOrders);
 
 	// Prompt takes priority over finesse
@@ -145,7 +145,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, identity, ig
 export function find_connecting(state, giver, target, identity, looksDirect, ignoreOrders = [], options = {}) {
 	const { suitIndex, rank } = identity;
 
-	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, state.variant, identity)) {
+	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, identity)) {
 		logger.info(`all ${logCard(identity)} in trash`);
 		return [];
 	}
@@ -303,7 +303,7 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 
 		if (giver !== state.ourPlayerIndex) {
 			// Otherwise, try to find prompt in our hand
-			const prompt = state.common.find_prompt(our_hand, next_identity, state.suits, currIgnoreOrders);
+			const prompt = state.common.find_prompt(our_hand, next_identity, state.variant.suits, currIgnoreOrders);
 			logger.debug('prompt in slot', prompt ? our_hand.findIndex(c => c.order === prompt.order) + 1 : '-1');
 			if (prompt !== undefined) {
 				if (state.level === 1 && finesses >= 1) {
@@ -343,7 +343,7 @@ export function find_own_finesses(state, giver, target, { suitIndex, rank }, loo
 		// Use the ignoring player's hand
 		if (ignorePlayer !== -1) {
 			const their_hand = hypo_state.hands[ignorePlayer];
-			const prompt = state.common.find_prompt(their_hand, next_identity, state.suits, currIgnoreOrders);
+			const prompt = state.common.find_prompt(their_hand, next_identity, state.variant.suits, currIgnoreOrders);
 
 			if (prompt !== undefined) {
 				if (state.level === 1 && finesses >= 1)

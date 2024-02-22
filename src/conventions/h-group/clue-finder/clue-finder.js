@@ -115,7 +115,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		// Ensure that the card will become known trash
 		const tcm = possible_clues.find(clue =>
 			(clue.type === CLUE.COLOUR && state.play_stacks[clue.value] === state.max_ranks[clue.value]) ||
-			(clue.type === CLUE.RANK   && state.suits.every((_, i) => (state.play_stacks[i] >= clue.value) || (state.max_ranks[i] < clue.value))));
+			(clue.type === CLUE.RANK   && state.variant.suits.every((_, i) => (state.play_stacks[i] >= clue.value) || (state.max_ranks[i] < clue.value))));
 
 		if (tcm !== undefined)
 			return Object.assign(tcm, { playable: false, cm: saved_cards, safe: true });

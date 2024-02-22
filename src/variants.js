@@ -23,7 +23,7 @@ import { CLUE } from './constants.js';
  */
 
 const variantsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/variants.json';
-const colorsURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/suits.json';
+const coloursURL = 'https://raw.githubusercontent.com/Hanabi-Live/hanabi-live/main/packages/game/src/json/suits.json';
 
 /** @type {Promise<Variant[]>} */
 const variants_promise = new Promise((resolve, reject) => {
@@ -54,8 +54,8 @@ const variants_promise = new Promise((resolve, reject) => {
 });
 
 /** @type {Promise<Array>} */
-const colors_promise = new Promise((resolve, reject) => {
-	https.get(colorsURL, (res) => {
+const colours_promise = new Promise((resolve, reject) => {
+	https.get(coloursURL, (res) => {
 		const { statusCode } = res;
 
 		if (statusCode !== 200) {
@@ -94,26 +94,21 @@ export let shortForms = /** @type {string[]} */ (['r', 'y', 'g', 'b', 'p']);
 
 /**
  * Edits shortForms to have the correct acryonyms.
- * @param {string[]} suits
+ * @param {Variant} variant
  */
-export async function getShortForms(suits) {
-	const colors = await colors_promise;
+export async function getShortForms(variant) {
+	const colors = await colours_promise;
 	const abbreviations = [];
-	for (const suitName of suits) {
+	for (const suitName of variant.suits) {
 		if (['Black', 'Pink', 'Brown'].includes(suitName)) {
 			abbreviations.push(['k', 'i', 'n'][['Black', 'Pink', 'Brown'].indexOf(suitName)]);
 		} else {
 			const abbreviation = colors.find(color => color.name === suitName)?.abbreviation ?? suitName.charAt(0);
-			if (abbreviations.includes(abbreviation.toLowerCase())) {
-				for (const char of suitName) {
-					if (!abbreviations.includes(char)) {
-						abbreviations.push(char.toLowerCase());
-						break;
-					}
-				}
-			} else {
+			if (abbreviations.includes(abbreviation.toLowerCase()))
+				abbreviations.push(suitName.toLowerCase().split('').find(char => !abbreviations.includes(char)));
+			else
 				abbreviations.push(abbreviation.toLowerCase());
-			}
+
 		}
 	}
 	shortForms = abbreviations;
@@ -205,17 +200,16 @@ export function isCluable(variant, clue) {
 
 /**
  * Returns the total number of cards for an identity.
- * @param {string[]} suits
  * @param {Variant} variant
  * @param {Identity} identity
  */
-export function cardCount(suits, variant, { suitIndex, rank }) {
+export function cardCount(variant, { suitIndex, rank }) {
 	if ([
 		'Dark Null', 'Dark Brown', 'Cocoa Rainbow',
 		'Gray', 'Black', 'Dark Rainbow',
 		'Gray Pink', 'Dark Pink', 'Dark Omni',
 		'Dark Prism'
-	].includes(suits[suitIndex]))
+	].includes(variant.suits[suitIndex]))
 		return 1;
 
 	if (variant.criticalRank === rank)

@@ -29,7 +29,7 @@ export function card_elim(state) {
 		const certain_cards = visibleFind(state, this, identity);
 
 		if (!this.all_possible.some(c => c.matches(identity)) ||
-			baseCount(state, identity) + certain_cards.length !== cardCount(state.suits, state.variant, identity)
+			baseCount(state, identity) + certain_cards.length !== cardCount(state.variant, identity)
 		)
 			continue;
 

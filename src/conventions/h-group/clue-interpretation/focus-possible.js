@@ -82,7 +82,7 @@ function find_colour_focus(state, suitIndex, action) {
 	if (chop) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 4); rank++) {
 			// Determine if possible save on k2, k5 with colour
-			if (state.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
+			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
 				let fill_ins = 0;
 
 				for (const card of state.hands[target]) {
@@ -125,7 +125,7 @@ function find_rank_focus(state, rank, action) {
 
 	// Save clue on chop
 	if (chop) {
-		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+		for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 			const identity = { suitIndex, rank };
 
 			// Don't need to consider save on playable cards
@@ -133,7 +133,7 @@ function find_rank_focus(state, rank, action) {
 				continue;
 
 			// Don't consider save on k3, k4 with rank
-			if (state.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
+			if (state.variant.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
 				continue;
 
 			// Critical save or 2 save
@@ -144,7 +144,7 @@ function find_rank_focus(state, rank, action) {
 		}
 	}
 	// Play clue
-	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 		let next_rank = state.play_stacks[suitIndex] + 1;
 
 		/** @type {Connection[]} */
@@ -233,7 +233,7 @@ export function find_focus_possible(state, action) {
 	let focus_possible = [];
 
 	if (clue.type === CLUE.COLOUR) {
-		const colour = state.suits.includes('Rainbow') ? state.suits.indexOf('Rainbow') : clue.value;
+		const colour = state.variant.suits.includes('Rainbow') ? state.variant.suits.indexOf('Rainbow') : clue.value;
 		focus_possible = focus_possible.concat(find_colour_focus(state, colour, action));
 	}
 	else {
@@ -241,8 +241,8 @@ export function find_focus_possible(state, action) {
 		focus_possible = focus_possible.concat(find_rank_focus(state, clue.value, action));
 	}
 
-	if (state.suits.includes('Omni'))
-		focus_possible = focus_possible.concat(find_colour_focus(state, state.suits.indexOf('Omni'), action));
+	if (state.variant.suits.includes('Omni'))
+		focus_possible = focus_possible.concat(find_colour_focus(state, state.variant.suits.indexOf('Omni'), action));
 
 	// Remove earlier duplicates (since save overrides play)
 	return focus_possible.filter((p1, index1) => {
