@@ -77,7 +77,7 @@ async function main() {
 
 	await getShortForms(variant);
 
-	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant.suits, variant, options, false, Number(level ?? 1));
+	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant, options, false, Number(level ?? 1));
 
 	Utils.globalModify({state});
 

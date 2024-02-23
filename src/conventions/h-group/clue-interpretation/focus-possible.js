@@ -107,6 +107,10 @@ function find_colour_focus(state, suitIndex, action) {
 			// Check if card is critical
 			if (isCritical(state, { suitIndex, rank }))
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
+
+			// Check if the card is a brownish-2
+			if (state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) && c.rank === 2))
+				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 		}
 	}
 	return focus_possible;
@@ -237,16 +241,14 @@ export function find_focus_possible(state, action) {
 	let focus_possible = [];
 
 	if (clue.type === CLUE.COLOUR) {
-		const colour = state.variant.suits.includes('Rainbow') ? state.variant.suits.indexOf('Rainbow') : clue.value;
-		focus_possible = focus_possible.concat(find_colour_focus(state, colour, action));
+		const colours = state.variant.suits.filter(s => s.match(variantRegexes.rainbowish)).map(s => state.variant.suits.indexOf(s));
+		colours.push(clue.value);
+		colours.forEach(s => focus_possible = focus_possible.concat(find_colour_focus(state, s, action)));
 	}
 	else {
 		// Pink promise assumed
 		focus_possible = focus_possible.concat(find_rank_focus(state, clue.value, action));
 	}
-
-	if (state.variant.suits.includes('Omni'))
-		focus_possible = focus_possible.concat(find_colour_focus(state, state.variant.suits.indexOf('Omni'), action));
 
 	// Remove earlier duplicates (since save overrides play)
 	return focus_possible.filter((p1, index1) => {

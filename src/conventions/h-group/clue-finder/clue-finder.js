@@ -11,6 +11,7 @@ import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
+import { find_possibilities } from '../../../basics/helper.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -69,7 +70,9 @@ function find_save(state, target, card) {
 
 		if (state.variant.suits[card.suitIndex].match(variantRegexes.brownish)) {
 			logger.highlight('red', 'unable to save', logCard(card), 'with a 2 clue due to variant.');
-			return;
+			const save_clue = determine_clue(state, target, card, { save: true });
+			const safe = clue_safe(state, state.me, save_clue);
+			return { type: save_clue.type, value: save_clue.value, target, playable: false, cm: [], safe };
 		}
 
 		const safe = clue_safe(state, state.me, { type: CLUE.RANK, value: 2 , target });
@@ -119,9 +122,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		const possible_clues = direct_clues(state, target, trash_card);
 
 		// Ensure that the card will become known trash
-		const tcm = possible_clues.find(clue =>
-			(clue.type === CLUE.COLOUR && state.play_stacks[clue.value] === state.max_ranks[clue.value]) ||
-			(clue.type === CLUE.RANK   && state.variant.suits.every((_, i) => (state.play_stacks[i] >= clue.value) || (state.max_ranks[i] < clue.value))));
+		const tcm = possible_clues.find(clue => !find_possibilities(clue, state.variant).some(c => isBasicTrash(state, c)));
 
 		if (tcm !== undefined)
 			return Object.assign(tcm, { playable: false, cm: saved_cards, safe: true });
@@ -226,7 +227,7 @@ export function find_clues(state, options = {}) {
 				}
 
 				// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
-				if (!tried_5cm && rank === 5 && !card.saved && severity === 0) {
+				if (!tried_5cm && !state.variant.suits[card.suitIndex].match(variantRegexes.brownish) && rank === 5 && !card.saved && severity === 0) {
 					logger.info('trying 5cm with 5 at index', cardIndex);
 					tried_5cm = true;
 
