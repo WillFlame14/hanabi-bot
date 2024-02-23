@@ -14,7 +14,7 @@ logger.setLevel(logger.LEVELS.ERROR);
 // TODO: Make this actually conventionless and not dependant on the HGroup conventions?
 
 describe('rainbow', () => {
-	it('has rainbow possibilities from color clues', () => {
+	it('has rainbow possibilities from colour clues', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
@@ -32,7 +32,7 @@ describe('rainbow', () => {
 		assert.ok(state.common.thoughts[4].possible.some(c => c.matches({suitIndex: 4, rank: 1})));
 	});
 
-	it('excludes rainbow possibilities from color clues', () => {
+	it('excludes rainbow possibilities from colour clues', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g3', 'p1', 'b3', 'b2', 'b5']
@@ -110,7 +110,7 @@ describe('pink', () => {
 });
 
 describe('white', () => {
-	it('eliminates white possibilities from color clues', () => {
+	it('eliminates white possibilities from colour clues', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],

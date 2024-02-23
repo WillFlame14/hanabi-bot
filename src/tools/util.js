@@ -311,3 +311,13 @@ export function nextIndex(arr, testFunc, startIndex) {
 	}
 	return -1;
 }
+
+/**
+ * Combines multiple regular expressions into one.
+ * 
+ * @param  {...RegExp} regexes 
+ * @returns {RegExp}
+ */
+export function combineRegex(...regexes) {
+	return new RegExp(regexes.map(re => re.source).join('|'));
+}

@@ -1,5 +1,6 @@
 import * as https from 'https';
 import { CLUE } from './constants.js';
+import { combineRegex } from './tools/util.js';
 
 /**
  * @typedef {import('./types.js').Clue} Clue
@@ -30,7 +31,9 @@ const rainbowish = /Rainbow|Omni/;
 const brownish = /Brown|Muddy|Cocoa|Null/;
 const pinkish = /Pink|Omni/;
 const dark = /Black|Dark|Gray|Cocoa/;
-export const variantRegexes = {whitish, rainbowish, brownish, pinkish, dark};
+const prism = /Prism/;
+const noColour = combineRegex(whitish, rainbowish, prism);
+export const variantRegexes = {whitish, rainbowish, brownish, pinkish, dark, prism, noColour};
 
 /** @type {Promise<Variant[]>} */
 const variants_promise = new Promise((resolve, reject) => {
@@ -68,7 +71,7 @@ const colours_promise = new Promise((resolve, reject) => {
 		if (statusCode !== 200) {
 			// Consume response data to free up memory
 			res.resume();
-			reject(`Failed to retrieve colors. Status Code: ${statusCode}`);
+			reject(`Failed to retrieve colours. Status Code: ${statusCode}`);
 		}
 
 		res.setEncoding('utf8');
@@ -84,7 +87,7 @@ const colours_promise = new Promise((resolve, reject) => {
 			}
 		});
 	}).on('error', (e) => {
-		console.error(`Error when retrieving colors: ${e.message}`);
+		console.error(`Error when retrieving colours: ${e.message}`);
 	});
 });
 
@@ -104,13 +107,13 @@ export let shortForms = /** @type {string[]} */ (['r', 'y', 'g', 'b', 'p']);
  * @param {Variant} variant
  */
 export async function getShortForms(variant) {
-	const colors = await colours_promise;
+	const colours = await colours_promise;
 	const abbreviations = [];
 	for (const suitName of variant.suits) {
 		if (['Black', 'Pink', 'Brown'].includes(suitName)) {
 			abbreviations.push(['k', 'i', 'n'][['Black', 'Pink', 'Brown'].indexOf(suitName)]);
 		} else {
-			const abbreviation = colors.find(color => color.name === suitName)?.abbreviation ?? suitName.charAt(0);
+			const abbreviation = colours.find(colour => colour.name === suitName)?.abbreviation ?? suitName.charAt(0);
 			if (abbreviations.includes(abbreviation.toLowerCase()))
 				abbreviations.push(suitName.toLowerCase().split('').find(char => !abbreviations.includes(char)));
 			else
@@ -132,11 +135,6 @@ export function cardTouched(card, variant, clue) {
 	const { suitIndex, rank } = card;
 	const suit = variant.suits[suitIndex];
 
-	if (suit === 'Null' || suit === 'Dark Null')
-		return false;
-	else if (suit === 'Omni' || suit === 'Dark Omni')
-		return true;
-
 	if (type === CLUE.COLOUR) {
 		if (suit.match(variantRegexes.whitish)) {
 			return false;
@@ -144,8 +142,8 @@ export function cardTouched(card, variant, clue) {
 		else if (suit.match(variantRegexes.rainbowish)) {
 			return true;
 		}
-		else if (suit === 'Prism' || suit === 'Dark Prism') {
-			const colourlessCount = variant.suits.filter(s => s.match(rainbowish) || s.match(whitish) || s.match(/Prism/)).length;
+		else if (suit.match(variantRegexes.prism)) {
+			const colourlessCount = variant.suits.filter(s => s.match(variantRegexes.noColour)).length;
 			return ((rank - 1) % (variant.suits.length - colourlessCount)) === value;
 		}
 
@@ -191,11 +189,7 @@ export function cardTouched(card, variant, clue) {
 export function isCluable(variant, clue) {
 	const { type, value } = clue;
 
-	if (type === CLUE.COLOUR && (
-		variant.suits[value].match(variantRegexes.whitish)
-		|| variant.suits[value].match(variantRegexes.rainbowish)
-		|| variant.suits[value].match(/Prism/)
-	))
+	if (type === CLUE.COLOUR && (variant.suits[value].match(variantRegexes.noColour)))
 		return false;
 	if (type === CLUE.RANK && !(variant.clueRanks?.includes(value) ?? true))
 		return false;
