@@ -91,7 +91,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 	const chop = saved_cards.at(-1);
 
 	// Critical cards and unique 2s can be saved directly if touching all cards
-	if ((isCritical(state, chop) || (save2(state, state.me, chop) && clue_safe(state, state.me, { type: CLUE.RANK, value: 2, target }))) &&
+	if ((isCritical(state, chop) || (save2(state, state.me, chop) && !state.variant.suits[chop.suitIndex].match(variantRegexes.brownish) && clue_safe(state, state.me, { type: CLUE.RANK, value: 2, target }))) &&
 		(direct_clues(state, target, chop).some(clue => saved_cards.every(c => cardTouched(c, state.variant, clue))))
 	) {
 		logger.info('prefer direct save');
