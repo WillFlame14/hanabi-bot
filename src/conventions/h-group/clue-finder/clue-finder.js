@@ -122,7 +122,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		const possible_clues = direct_clues(state, target, trash_card);
 
 		// Ensure that the card will become known trash
-		const tcm = possible_clues.find(clue => !find_possibilities(clue, state.variant).some(c => isBasicTrash(state, c)));
+		const tcm = possible_clues.find(clue => find_possibilities(clue, state.variant).every(c => isBasicTrash(state, c)));
 
 		if (tcm !== undefined)
 			return Object.assign(tcm, { playable: false, cm: saved_cards, safe: true });
