@@ -83,7 +83,7 @@ describe('asymmetric clues', () => {
 
 		takeTurn(state, 'Alice clues 5 to Bob');	// 5 Save
 		takeTurn(state, 'Bob plays b2', 'y5');
-		takeTurn(state, 'Cathy clues 5 to Bob');	// 5 Save
+		takeTurn(state, 'Cathy clues 5 to Alice (slot 4)');	// 5 Save
 		takeTurn(state, 'Donald plays b3', 'r2');
 
 		// We should no longer think that we have b3 in slot 1.

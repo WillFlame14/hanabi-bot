@@ -58,10 +58,11 @@ function remove_finesse(state, waiting_connection, undo_infs = true) {
 function resolve_card_retained(state, waiting_connection) {
 	const { common } = state;
 	const { connections, conn_index, inference, action_index, ambiguousPassback } = waiting_connection;
-	const { type, reacting, card: old_card } = connections[conn_index];
+	const { type, reacting } = connections[conn_index];
+	const { order } = connections[conn_index].card;
 
 	// Card may have been updated, so need to find it again
-	const card = state.hands[reacting].findOrder(old_card.order);
+	const card = state.hands[reacting].findOrder(order);
 
 	// Determines if we need to pass back an ambiguous finesse.
 	const passback = () => {
@@ -76,29 +77,35 @@ function resolve_card_retained(state, waiting_connection) {
 	const { card: reacting_card } = state.last_actions[reacting];
 
 	// Didn't play into finesse
-	if (type === 'finesse') {
+	if (type === 'finesse' || type === 'prompt') {
 		if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
-			logger.info(`${state.playerNames[reacting]} didn't play into unplayable finesse`);
+			logger.info(`${state.playerNames[reacting]} didn't play into unplayable ${type}`);
 		}
-		else if (state.last_actions[reacting].type === 'play' && reacting_card && common.thoughts[reacting_card.order].finessed) {
-			logger.info(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
+		else if (state.last_actions[reacting].type === 'play') {
+			if (type === 'finesse' && reacting_card && common.thoughts[reacting_card.order].finessed)
+				logger.info(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
+
+			else if (type === 'prompt')
+				logger.info(`${state.playerNames[reacting]} played into something else, continuing to wait`);
 		}
 		else if (passback()) {
-			logger.warn(`${state.playerNames[reacting]} didn't play into finesse but they need to play multiple non-hidden cards, passing back`);
+			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but they need to play multiple non-hidden cards, passing back`);
 			waiting_connection.ambiguousPassback = true;
 		}
 		else {
 			// Check if the card could be superpositioned on a finesse that is not yet playable.
 			const unplayable_connections = common.waiting_connections.filter(wc =>
 				wc !== waiting_connection && wc.connections.some((conn, index) =>
-					index >= conn_index && conn.card.order === old_card.order && conn.identities.some(i => playableAway(state, i) > 0)));
+					index >= conn_index && conn.card.order === order && conn.identities.some(i => playableAway(state, i) > 0)));
 
 			if (unplayable_connections.length > 0) {
-				logger.warn(unplayable_connections.map(wc =>
-					logCard(wc.connections.find((conn, index) => index >= conn_index && conn.card.order === old_card.order).card)), 'not all possibilities playable');
+				logger.warn('not all possibilities playable', unplayable_connections.map(wc =>
+					wc.connections.find((conn, index) =>
+						index >= conn_index && conn.card.order === order && conn.identities.some(i => playableAway(state, i) > 0)
+					).identities.map(logCard)));
 			}
 			else {
-				logger.info(`${state.playerNames[reacting]} didn't play into finesse, removing inference ${logCard(inference)}`);
+				logger.info(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);
 				if (reacting !== state.ourPlayerIndex) {
 					const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
 					state.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects });
@@ -209,10 +216,7 @@ export function update_turn(state, action) {
 		const { reacting, card: old_card, identities } = connections[conn_index];
 		logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
 
-		/** @type {boolean} */
 		let remove = false;
-
-		/** @type {boolean} */
 		let quit = false;
 
 		/** @type {{card: ActualCard, inferences: Identity[], connections: Connection[]}}*/

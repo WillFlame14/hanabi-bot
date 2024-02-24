@@ -7,7 +7,6 @@ import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
-import { CLUE } from '../../../constants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -58,7 +57,7 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 	});
 
 	// Print out logs if the result is correct
-	logger.flush(incorrect_card === undefined || (clue.target === 2 && clue.type === CLUE.COLOUR));
+	logger.flush(incorrect_card === undefined);
 
 	if (incorrect_card) {
 		let reason = '';
