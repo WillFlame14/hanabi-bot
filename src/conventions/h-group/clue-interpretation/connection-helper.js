@@ -1,6 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { determine_focus } from '../hanabi-logic.js';
-import { find_own_finesses } from './connecting-cards.js';
+import { find_own_finesses } from './own-finesses.js';
 import { isBasicTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';

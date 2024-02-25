@@ -71,7 +71,7 @@ async function main() {
 			simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
 
 		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions }));
-		console.log(score, strikeout);
+		console.log(score, 'strikeout?', strikeout);
 	}
 	else {
 		for (let i = 0; i < Number(games); i++) {
@@ -80,8 +80,7 @@ async function main() {
 			const { score, strikeout, actions } =
 				simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
 
-			if (score !== 25)
-				fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions }));
+			fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions }));
 
 			console.log(score, strikeout);
 		}

@@ -35,15 +35,17 @@ export function take_action(state) {
 	const discards = playable_cards.filter(card => {
 		const id = card.identity({ infer: true });
 
-		return id !== undefined &&
+		return state.level >= LEVEL.SARCASTIC &&
+			id !== undefined &&
 			trash_cards.some(c => c.order === card.order) &&
 			!playable_cards.some(c => state.me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
 	});
 
-	// Pick the leftmost of all playable trash cards
 	const playable_trash = playable_cards.filter(card => {
 		const id = card.identity({ infer: true });
-		return id !== undefined && playable_cards.some(c => c.matches(id, { infer: true }) && c.order < card.order);
+
+		// Pick the leftmost of all playable trash cards
+		return id !== undefined && !playable_cards.some(c => c.matches(id, { infer: true }) && c.order > card.order);
 	});
 
 	// Remove trash from playables (but not playable trash) and discards and playable trash from trash cards

@@ -47,8 +47,11 @@ export function card_elim(state) {
 				card.subtract('possible', [identity]);
 				card.subtract('inferred', [identity]);
 
+				if (card.inferred.length === 0 && !card.reset)
+					this.reset_card(order);
+
 				// Card can be further eliminated
-				if (card.possible.length === 1)
+				else if (card.possible.length === 1)
 					identities.push(card.identity());
 			}
 		}
