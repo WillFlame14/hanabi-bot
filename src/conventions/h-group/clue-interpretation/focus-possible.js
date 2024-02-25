@@ -28,6 +28,9 @@ function find_colour_focus(state, suitIndex, action) {
 	const focus_possible = [];
 	let next_rank = state.play_stacks[suitIndex] + 1;
 
+	if (next_rank > state.max_ranks[suitIndex])
+		return [];
+
 	// Play clue
 	/** @type {Connection[]} */
 	let connections = [];
@@ -83,7 +86,8 @@ function find_colour_focus(state, suitIndex, action) {
 	if (chop) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
 			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
-			if (rank === 5 && !state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish)))
+			// OR if the clue given is not black.
+			if (rank === 5 && !(state.variant.suits[suitIndex] === 'Black' || state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish))))
 				continue;
 			// Determine if possible save on k2, k5 with colour
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
@@ -105,8 +109,10 @@ function find_colour_focus(state, suitIndex, action) {
 			}
 
 			// Check if card is critical
-			if (isCritical(state, { suitIndex, rank }))
+			if (isCritical(state, { suitIndex, rank })) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
+				continue;
+			}
 
 			// Check if the card is a brownish-2
 			if (state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) && c.rank === 2))
@@ -243,11 +249,12 @@ export function find_focus_possible(state, action) {
 	if (clue.type === CLUE.COLOUR) {
 		const colours = state.variant.suits.filter(s => s.match(variantRegexes.rainbowish)).map(s => state.variant.suits.indexOf(s));
 		colours.push(clue.value);
-		colours.forEach(s => focus_possible = focus_possible.concat(find_colour_focus(state, s, action)));
+		for (const colour of colours)
+			focus_possible = focus_possible.concat(find_colour_focus(state, colour, action));
 	}
 	else {
 		// Pink promise assumed
-		focus_possible = focus_possible.concat(find_rank_focus(state, clue.value, action));
+		focus_possible = find_rank_focus(state, clue.value, action);
 	}
 
 	// Remove earlier duplicates (since save overrides play)
