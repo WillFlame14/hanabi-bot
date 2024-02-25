@@ -85,7 +85,7 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
  */
 function find_unknown_connecting(state, giver, target, playerIndex, identity, ignoreOrders = []) {
 	const hand = state.hands[playerIndex];
-	const prompt = state.common.find_prompt(hand, identity, state.suits, ignoreOrders);
+	const prompt = state.common.find_prompt(hand, identity, state.variant.suits, ignoreOrders);
 	const finesse = state.common.find_finesse(hand, ignoreOrders);
 
 	// Prompt takes priority over finesse
@@ -141,7 +141,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, identity, ig
 export function find_connecting(state, giver, target, identity, looksDirect, ignoreOrders = [], options = {}) {
 	const { suitIndex, rank } = identity;
 
-	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, identity)) {
+	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, identity)) {
 		logger.info(`all ${logCard(identity)} in trash`);
 		return [];
 	}

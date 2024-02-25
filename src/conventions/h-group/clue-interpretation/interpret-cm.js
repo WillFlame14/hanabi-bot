@@ -108,7 +108,7 @@ export function interpret_tccm(state, oldCommon, target, list, focused_card) {
 
 	const chop = state.common.chop(state.hands[target], { afterClue: true });
 	const touched_cards = state.hands[target].filter(card => list.includes(card.order));
-	const prompt = oldCommon.find_prompt(state.hands[target], focused_card, state.suits);
+	const prompt = oldCommon.find_prompt(state.hands[target], focused_card, state.variant.suits);
 
 	if (chop === undefined ||											// Target was locked
 		touched_cards.some(card => card.newly_clued) ||					// At least one card touched was newly clued

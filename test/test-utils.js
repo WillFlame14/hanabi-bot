@@ -6,6 +6,7 @@ import { logAction, logClue } from '../src/tools/log.js';
 /**
  * @typedef {import ('../src/basics/State.js').State} State
  * @typedef {import('../src/types.js').Action} Action
+ * @typedef {import('../src/variants.js').Variant} Variant
  * 
  * @typedef SetupOptions
  * @property {number} level
@@ -13,6 +14,7 @@ import { logAction, logClue } from '../src/tools/log.js';
  * @property {string[]} discarded
  * @property {number} clue_tokens
  * @property {number} starting
+ * @property {Variant} variant
  * @property {(state: State) => void} init
  */
 
@@ -33,7 +35,11 @@ export const PLAYER = /** @type {const} */ ({
 });
 
 const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
-const suits = ['Red', 'Yellow', 'Green', 'Blue', 'Purple'];
+const noVar = /** @type {Variant} */ ({
+	"id": 0,
+	"name": "No Variant",
+	"suits": ["Red", "Yellow", "Green", "Blue", "Purple"]
+});
 
 /**
  * @param {string} short
@@ -67,7 +73,7 @@ function init_state(state, options) {
 		state.discard_stacks[suitIndex][rank - 1]++;
 
 		// Discarded all copies of a card - the new max rank is 1 less than the rank of discarded card
-		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, identity) && state.max_ranks[suitIndex] > rank - 1)
+		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, identity) && state.max_ranks[suitIndex] > rank - 1)
 			state.max_ranks[suitIndex] = rank - 1;
 	}
 
@@ -107,8 +113,9 @@ function injectFuncs(options) {
  */
 export function setup(StateClass, hands, test_options = {}) {
 	const playerNames = names.slice(0, hands.length);
+	const variant = test_options.variant ?? noVar;
 
-	const state = new StateClass(-1, playerNames, 0, suits, {}, false, test_options.level ?? 1);
+	const state = new StateClass(-1, playerNames, 0, variant, test_options, false, test_options.level ?? 1);
 	Utils.globalModify({state});
 
 	let orderCounter = 0;
@@ -210,7 +217,7 @@ export function parseAction(state, rawAction) {
 		case 'clues': {
 			const clue = ('12345'.indexOf(parts[2]) !== -1) ?
 				{ type: CLUE.RANK, value: Number(parts[2]) } :
-				{ type: CLUE.COLOUR, value: state.suits.findIndex(suit => suit.toLowerCase() === parts[2].toLowerCase()) };
+				{ type: CLUE.COLOUR, value: state.variant.suits.findIndex(suit => suit.toLowerCase() === parts[2].toLowerCase()) };
 
 			if (clue.type === CLUE.COLOUR && clue.value === -1)
 				throw new Error(`Unable to parse clue ${parts[2]}`);
@@ -222,7 +229,7 @@ export function parseAction(state, rawAction) {
 				throw new Error(`Couldn't parse target ${playerName}, not in list of players ${state.playerNames}.`);
 
 			if (target !== state.ourPlayerIndex) {
-				const list = state.hands[target].clueTouched(clue, state.suits).map(c => c.order);
+				const list = state.hands[target].clueTouched(clue, state.variant).map(c => c.order);
 
 				if (list.length === 0)
 					throw new Error(`Clue ${logClue(Object.assign({}, clue, { target }))} touches no cards.`);

@@ -1,11 +1,12 @@
 import * as https from 'https';
 import * as fs from 'fs';
 
-import { ACTION, END_CONDITION, HAND_SIZE } from './constants.js';
+import { ACTION, END_CONDITION } from './constants.js';
 
+import { getHandSize } from './basics/helper.js';
 import HGroup from './conventions/h-group.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
-import { getVariant } from './variants.js';
+import { getShortForms, getVariant } from './variants.js';
 import { initConsole } from './tools/console.js';
 import * as Utils from './tools/util.js';
 
@@ -74,11 +75,13 @@ async function main() {
 	if (conventions[convention] === undefined)
 		throw new Error(`Convention ${convention} is not supported.`);
 
-	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant.suits, {}, false, Number(level ?? 1));
+	await getShortForms(variant);
+
+	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant, options, false, Number(level ?? 1));
 
 	Utils.globalModify({state});
 
-	const handSize = HAND_SIZE[state.numPlayers] + (options?.oneLessCard ? -1 : options?.oneExtraCard ? 1 : 0);
+	const handSize = getHandSize(state);
 
 	// Draw cards in starting hands
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {

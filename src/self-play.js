@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 
+import { getHandSize } from './basics/helper.js';
 import HGroup from './conventions/h-group.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
-import { ACTION, END_CONDITION, HAND_SIZE, MAX_H_LEVEL } from './constants.js';
+import { ACTION, END_CONDITION, MAX_H_LEVEL } from './constants.js';
 import { cardCount, getVariant } from './variants.js';
 import * as Utils from './tools/util.js';
 
@@ -13,6 +14,7 @@ import logger from './tools/logger.js';
  * @typedef {import('./types.js').Identity} Identity
  * @typedef {import('./types.js').Action} Action
  * @typedef {import('./types.js').PerformAction} PerformAction
+ * @typedef {import('./variants.js').Variant} Variant
  */
 
 const conventions = /** @type {const} */ ({
@@ -21,6 +23,12 @@ const conventions = /** @type {const} */ ({
 });
 
 const playerNames = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily', 'Fred'];
+
+const noVar = /** @type {Variant} */ ({
+	"id": 0,
+	"name": "No Variant",
+	"suits": ["Red", "Yellow", "Green", "Blue", "Purple"]
+});
 
 async function main() {
 	const { convention = 'HGroup', level: lStr = '1', games = '10', players: pStr = '2', seed, variant: vStr = 'No Variant' } = Utils.parse_args();
@@ -46,7 +54,7 @@ async function main() {
 		for (let rank = 1; rank <= 5; rank++) {
 			const identity = Object.freeze({ suitIndex, rank });
 
-			for (let i = 0; i < cardCount(variant.suits, identity); i++)
+			for (let i = 0; i < cardCount(variant, identity); i++)
 				deck.push(identity);
 		}
 	}
@@ -60,7 +68,7 @@ async function main() {
 		const shuffled = shuffle(deck, seed);
 
 		const { score, strikeout, actions } =
-			simulate_game(players, shuffled, variant.suits, /** @type {keyof typeof conventions} */ (convention), level);
+			simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
 
 		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions }));
 		console.log(score, 'strikeout?', strikeout);
@@ -70,7 +78,7 @@ async function main() {
 			const players = playerNames.slice(0, numPlayers);
 			const shuffled = shuffle(deck, `${i}`);
 			const { score, strikeout, actions } =
-				simulate_game(players, shuffled, variant.suits, /** @type {keyof typeof conventions} */ (convention), level);
+				simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
 
 			fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions }));
 
@@ -84,18 +92,16 @@ async function main() {
  * Returns the score of the game.
  * @param {string[]} playerNames
  * @param {Identity[]} deck
- * @param {string[]} suits
  * @param {keyof typeof conventions} convention
  * @param {number} level
  */
-function simulate_game(playerNames, deck, suits, convention, level) {
-	const states = playerNames.map((_, index) => ({ state: new conventions[convention](-1, playerNames, index, suits, {}, false, level), order: 0 }));
+function simulate_game(playerNames, deck, convention, level) {
+	const states = playerNames.map((_, index) => ({ state: new conventions[convention](-1, playerNames, index, noVar, {}, false, level), order: 0 }));
 	Utils.globalModify({ state: states[0].state });
-
-	const handSize = HAND_SIZE[playerNames.length];
 
 	for (let stateIndex = 0; stateIndex < playerNames.length; stateIndex++) {
 		const { state } = states[stateIndex];
+		const handSize = getHandSize(state);
 
 		// Draw cards in starting hands
 		for (let playerIndex = 0; playerIndex < playerNames.length; playerIndex++) {
@@ -115,7 +121,7 @@ function simulate_game(playerNames, deck, suits, convention, level) {
 	/** @type {Pick<PerformAction, 'type' | 'target' | 'value'>[]} */
 	const actions = [];
 
-	while (endgameTurns !== 0 && _state.strikes !== 3 && _state.score !== _state.suits.length * 5) {
+	while (endgameTurns !== 0 && _state.strikes !== 3 && _state.score !== _state.variant.suits.length * 5) {
 		if (turn !== 0) {
 			states.forEach(({ state }) => {
 				Utils.globalModify({ state });

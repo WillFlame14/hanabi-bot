@@ -6,6 +6,7 @@ import { cardTouched } from '../variants.js';
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('./Card.js').ActualCard} ActualCard
  * @typedef {import('./Card.js').MatchOptions} MatchOptions
+ * @typedef {import('../variants.js').Variant} Variant
  */
 
 /**
@@ -64,9 +65,9 @@ export class Hand extends Array {
 	/**
 	 * Returns an array of cards touched by the clue.
 	 * @param {BaseClue} clue
-	 * @param {string[]} suits
+	 * @param {Variant} variant
 	 */
-	clueTouched(clue, suits) {
-		return Array.from(this.filter(card => cardTouched(card, suits, clue)));
+	clueTouched(clue, variant) {
+		return Array.from(this.filter(card => cardTouched(card, variant, clue)));
 	}
 }

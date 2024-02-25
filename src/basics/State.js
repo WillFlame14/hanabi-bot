@@ -18,6 +18,7 @@ import { logPerformAction } from '../tools/log.js';
  * @typedef {import('../types.js').TurnAction} TurnAction
  * @typedef {import('../types.js').PlayAction} PlayAction
  * @typedef {import('../types.js').PerformAction} PerformAction
+ * @typedef {import('../variants.js').Variant} Variant
  * @typedef {import('../types-live.js').TableOptions} TableOptions
  */
 
@@ -67,11 +68,11 @@ export class State {
 	 * @param {number} tableID
 	 * @param {string[]} playerNames
 	 * @param {number} ourPlayerIndex
-	 * @param {string[]} suits
+	 * @param {Variant} variant
 	 * @param {TableOptions} options
 	 * @param {boolean} in_progress
 	 */
-	constructor(tableID, playerNames, ourPlayerIndex, suits, options, in_progress) {
+	constructor(tableID, playerNames, ourPlayerIndex, variant, options, in_progress) {
 		/** @type {number} */
 		this.tableID = tableID;
 		/** @type {string[]} */
@@ -81,8 +82,8 @@ export class State {
 		/** @type {number} */
 		this.ourPlayerIndex = ourPlayerIndex;
 
-		/** @type {string[]} */
-		this.suits = suits;
+		/** @type {Variant}} */
+		this.variant = variant;
 
 		/** @type {TableOptions} */
 		this.options = options;
@@ -90,11 +91,11 @@ export class State {
 		this.in_progress = in_progress;
 
 		/** @type {number} */
-		this.cardsLeft = this.suits.reduce((acc, _, suitIndex) =>
-			acc + [1, 2, 3, 4, 5].reduce((cards, rank) => cards + cardCount(suits, { suitIndex, rank }), 0), 0);
+		this.cardsLeft = this.variant.suits.reduce((acc, _, suitIndex) =>
+			acc + [1, 2, 3, 4, 5].reduce((cards, rank) => cards + cardCount(variant, { suitIndex, rank }), 0), 0);
 
 		const all_possible = [];
-		for (let suitIndex = 0; suitIndex < this.suits.length; suitIndex++) {
+		for (let suitIndex = 0; suitIndex < this.variant.suits.length; suitIndex++) {
 			this.play_stacks.push(0);
 			this.discard_stacks.push([0, 0, 0, 0, 0]);
 			this.max_ranks.push(5);
@@ -105,10 +106,11 @@ export class State {
 
 		for (let i = 0; i < this.numPlayers; i++) {
 			this.hands.push(new Hand());
-			this.players[i] = new Player(i, all_possible.slice(), all_possible.slice(), Array.from({ length: this.suits.length }, _ => 0));
+			this.players[i] = new Player(i, all_possible.slice(), all_possible.slice(), Array.from({ length: this.variant.suits.length }, _ => 0));
 		}
 
-		this.common = new Player(-1, all_possible.slice(), all_possible.slice(), Array.from({ length: this.suits.length }, _ => 0));
+		this.common = new Player(-1, all_possible.slice(), all_possible.slice(), Array.from({ length: this.variant.suits.length }, _ => 0));
+
 	}
 
 	get me() {
@@ -127,7 +129,7 @@ export class State {
 	 * Returns a blank copy of the state, as if the game had restarted.
 	 */
 	createBlank() {
-		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.options, this.in_progress);
+		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress);
 		newState.notes = this.notes;
 		newState.rewinds = this.rewinds;
 		return newState;
@@ -137,7 +139,7 @@ export class State {
 	 * Returns a copy of the state with only minimal properties (cheaper than cloning).
 	 */
 	minimalCopy() {
-		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.suits, this.options, this.in_progress);
+		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress);
 
 		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');

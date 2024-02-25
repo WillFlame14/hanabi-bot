@@ -93,7 +93,7 @@ export function get_result(state, hypo_state, clue, giver, provisions = {}) {
 	const { target } = clue;
 	const hand = state.hands[target];
 
-	const touch = provisions.touch ?? hand.clueTouched(clue, state.suits);
+	const touch = provisions.touch ?? hand.clueTouched(clue, state.variant);
 	const list = provisions.list ?? touch.map(c => c.order);
 
 	const { focused_card } = determine_focus(hand, state.common, list, { beforeClue: true });
@@ -127,7 +127,7 @@ export function determine_clue(state, target, target_card, options) {
 	const results = [];
 
 	for (const clue of possible_clues) {
-		const touch = hand.clueTouched(clue, state.suits);
+		const touch = hand.clueTouched(clue, state.variant);
 		const list = touch.map(c => c.order);
 
 		const { focused_card, chop } = determine_focus(hand, state.common, list, { beforeClue: true });

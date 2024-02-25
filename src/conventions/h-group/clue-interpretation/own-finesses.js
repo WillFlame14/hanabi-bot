@@ -71,7 +71,7 @@ function connect(state, giver, target, identity, looksDirect, ignoreOrders, igno
 
 	if (giver !== state.ourPlayerIndex) {
 		// Otherwise, try to find prompt in our hand
-		const prompt = state.common.find_prompt(our_hand, identity, state.suits, ignoreOrders);
+		const prompt = state.common.find_prompt(our_hand, identity, state.variant.suits, ignoreOrders);
 		logger.debug('prompt in slot', prompt ? our_hand.findIndex(c => c.order === prompt.order) + 1 : '-1');
 
 		if (prompt !== undefined) {
@@ -93,7 +93,7 @@ function connect(state, giver, target, identity, looksDirect, ignoreOrders, igno
 	// Use the ignoring player's hand
 	if (ignorePlayer !== -1) {
 		const their_hand = state.hands[ignorePlayer];
-		const prompt = state.common.find_prompt(their_hand, identity, state.suits, ignoreOrders);
+		const prompt = state.common.find_prompt(their_hand, identity, state.variant.suits, ignoreOrders);
 
 		if (prompt !== undefined) {
 			if (state.level === 1 && finesses >= 1)
@@ -219,7 +219,7 @@ function resolve_layered_finesse(state, identity, ignoreOrders) {
 
 		// Touching a matching card to the finesse - all untouched cards are layered
 		// Touching a non-matching card - all touched cards are layered
-		const matching = cardTouched(identity, state.suits, clue);
+		const matching = cardTouched(identity, state.variant, clue);
 
 		logger.info(start_index, matching, list.includes(our_hand[start_index].order));
 
@@ -233,7 +233,7 @@ function resolve_layered_finesse(state, identity, ignoreOrders) {
 
 			// Touching a non-matching card - we know exactly what playbable identities it should be
 			if (!matching) {
-				const possibilities = find_possibilities(clue, state.suits);
+				const possibilities = find_possibilities(clue, state.variant);
 				identities = identities.filter(card => possibilities.some(p => p.suitIndex === card.suitIndex && p.rank === identity.rank));
 			}
 

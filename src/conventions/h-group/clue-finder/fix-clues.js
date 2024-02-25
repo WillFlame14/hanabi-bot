@@ -105,7 +105,7 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 					// Go through all other clues to see if one fixes
 					for (const clue of other_clues) {
 						// The clue cannot touch the fixed card or it will look like just a fix
-						if (cardTouched(card, state.suits, clue))
+						if (cardTouched(card, state.variant, clue))
 							continue;
 
 						const { fixed, trash, result } = check_fixed(state, target, order, clue, fix_criteria);
@@ -157,7 +157,7 @@ function duplication_known(state, card, _target) {
  * @param {(state: State, card: Card, target: number) => boolean} fix_criteria
  */
 function check_fixed(state, target, order, clue, fix_criteria) {
-	const touch = state.hands[target].clueTouched(clue, state.suits);
+	const touch = state.hands[target].clueTouched(clue, state.variant);
 
 	const action = /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue });
 

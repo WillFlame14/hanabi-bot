@@ -16,7 +16,7 @@ import { find_possibilities } from './basics/helper.js';
  */
 export function onClue(state, action) {
 	const { target, clue, list } = action;
-	const new_possible = find_possibilities(clue, state.suits);
+	const new_possible = find_possibilities(clue, state.variant);
 
 	for (const { order } of state.hands[target]) {
 		const c = state.hands[target].findOrder(order);
@@ -66,7 +66,7 @@ export function onDiscard(state, action) {
 	}
 
 	// Discarded all copies of a card - the new max rank is (discarded rank - 1) if not already lower
-	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.suits, { suitIndex, rank }))
+	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, { suitIndex, rank }))
 		state.max_ranks[suitIndex] = Math.min(state.max_ranks[suitIndex], rank - 1);
 
 	if (failed)

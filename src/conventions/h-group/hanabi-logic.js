@@ -92,7 +92,7 @@ export function rankLooksPlayable(state, rank, order) {
 			visibleFind(state, state.common, identity).filter(c => c.order !== order).length;
 		const matching_inference = state.common.thoughts[order].inferred.some(inf => inf.matches(identity));
 
-		return playable_identity && other_visibles < cardCount(state.suits, identity) && matching_inference;
+		return playable_identity && other_visibles < cardCount(state.variant, identity) && matching_inference;
 	});
 }
 
@@ -107,12 +107,12 @@ export function rankLooksPlayable(state, rank, order) {
  */
 export function valuable_tempo_clue(state, player, clue, playables, focused_card) {
 	const { target } = clue;
-	const touch = state.hands[target].clueTouched(clue, state.suits);
+	const touch = state.hands[target].clueTouched(clue, state.variant);
 
 	if (touch.some(card => !card.clued))
 		return { tempo: false, valuable: false };
 
-	const prompt = player.find_prompt(state.hands[target], focused_card, state.suits);
+	const prompt = player.find_prompt(state.hands[target], focused_card, state.variant.suits);
 
 	// No prompt exists for this card (i.e. it is a hard burn)
 	if (prompt === undefined)

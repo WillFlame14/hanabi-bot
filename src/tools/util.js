@@ -259,14 +259,14 @@ export function performToAction(state, action, playerIndex, deck) {
 		case ACTION.RANK: {
 			const clue = { type: CLUE.RANK, value };
 			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = hand.clueTouched(clue, state.suits).map(c => c.order);
+			const list = hand.clueTouched(clue, state.variant).map(c => c.order);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
 		case ACTION.COLOUR: {
 			const clue = { type: CLUE.COLOUR, value };
 			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = hand.clueTouched(clue, state.suits).map(c => c.order);
+			const list = hand.clueTouched(clue, state.variant).map(c => c.order);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
@@ -310,4 +310,14 @@ export function nextIndex(arr, testFunc, startIndex) {
 			return index;
 	}
 	return -1;
+}
+
+/**
+ * Combines multiple regular expressions into one.
+ * 
+ * @param  {...RegExp} regexes 
+ * @returns {RegExp}
+ */
+export function combineRegex(...regexes) {
+	return new RegExp(regexes.map(re => re.source).join('|'));
 }

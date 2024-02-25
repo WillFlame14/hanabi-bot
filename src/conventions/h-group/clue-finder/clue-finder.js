@@ -1,6 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
-import { cardTouched } from '../../../variants.js';
+import { cardTouched, variantRegexes } from '../../../variants.js';
 import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { determine_clue, get_result } from './determine-clue.js';
@@ -11,6 +11,7 @@ import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
+import { find_possibilities } from '../../../basics/helper.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -38,18 +39,19 @@ function find_save(state, target, card) {
 	if (isCritical(state, card)) {
 		logger.highlight('yellow', 'saving critical card', logCard(card));
 		if (rank === 5) {
-			return { type: CLUE.RANK, value: 5, target, playable: false, cm: [], safe: true };
+			const defaultClue = { type: CLUE.RANK, value: 5, target, playable: false, cm: [], safe: true };
+			if (cardTouched(card, state.variant, defaultClue))
+				return defaultClue;
+			logger.highlight('red', 'unable to save', logCard(card), 'with a 5 clue due to the variant.');
 		}
-		else {
-			// The card is on chop, so it can always be focused
-			const save_clue = determine_clue(state, target, card, { save: true });
+		// The card is on chop, so it can always be focused
+		const save_clue = determine_clue(state, target, card, { save: true });
 
-			if (save_clue === undefined) {
-				logger.error(`unable to find save clue for ${logCard(card)}!`);
-				return;
-			}
-			return Object.assign(save_clue, { playable: false, cm: [], safe: true });
+		if (save_clue === undefined) {
+			logger.error(`unable to find save clue for ${logCard(card)}!`);
+			return;
 		}
+		return Object.assign(save_clue, { playable: false, cm: [], safe: true });
 	}
 	// Save a non-critical delayed playable card that isn't visible somewhere else
 	else if (state.me.hypo_stacks[suitIndex] + 1 === rank && visibleFind(state, state.me, card).length === 1) {
@@ -65,6 +67,13 @@ function find_save(state, target, card) {
 	}
 	else if (save2(state, state.me, card)) {
 		logger.highlight('yellow', 'saving unique 2', logCard(card));
+
+		if (state.variant.suits[card.suitIndex].match(variantRegexes.brownish)) {
+			logger.highlight('red', 'unable to save', logCard(card), 'with a 2 clue due to variant.');
+			const save_clue = determine_clue(state, target, card, { save: true });
+			const safe = clue_safe(state, state.me, save_clue);
+			return { type: save_clue.type, value: save_clue.value, target, playable: false, cm: [], safe };
+		}
 
 		const safe = clue_safe(state, state.me, { type: CLUE.RANK, value: 2 , target });
 		return { type: CLUE.RANK, value: 2, target, playable: false, cm: [], safe };
@@ -85,13 +94,13 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 	const chop = saved_cards.at(-1);
 
 	// Critical cards and unique 2s can be saved directly if touching all cards
-	if ((isCritical(state, chop) || (save2(state, state.me, chop) && clue_safe(state, state.me, { type: CLUE.RANK, value: 2, target }))) &&
-		(direct_clues(state, target, chop).some(clue => saved_cards.every(c => cardTouched(c, state.suits, clue))))
+	if ((isCritical(state, chop) || (save2(state, state.me, chop) && !state.variant.suits[chop.suitIndex].match(variantRegexes.brownish) && clue_safe(state, state.me, { type: CLUE.RANK, value: 2, target }))) &&
+		(direct_clues(state, target, chop).some(clue => saved_cards.every(c => cardTouched(c, state.variant, clue))))
 	) {
 		logger.info('prefer direct save');
 		return;
 	}
-	else if (play_clues.some(clue => saved_cards.every(c => cardTouched(c, state.suits, clue)))) {
+	else if (play_clues.some(clue => saved_cards.every(c => cardTouched(c, state.variant, clue)))) {
 		logger.info('prefer play clue to save');
 		return;
 	}
@@ -113,9 +122,7 @@ function find_tcm(state, target, saved_cards, trash_card, play_clues) {
 		const possible_clues = direct_clues(state, target, trash_card);
 
 		// Ensure that the card will become known trash
-		const tcm = possible_clues.find(clue =>
-			(clue.type === CLUE.COLOUR && state.play_stacks[clue.value] === state.max_ranks[clue.value]) ||
-			(clue.type === CLUE.RANK   && state.suits.every((_, i) => (state.play_stacks[i] >= clue.value) || (state.max_ranks[i] < clue.value))));
+		const tcm = possible_clues.find(clue => find_possibilities(clue, state.variant).every(c => isBasicTrash(state, c)));
 
 		if (tcm !== undefined)
 			return Object.assign(tcm, { playable: false, cm: saved_cards, safe: true });
@@ -220,7 +227,7 @@ export function find_clues(state, options = {}) {
 				}
 
 				// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
-				if (!tried_5cm && rank === 5 && !card.saved && severity === 0) {
+				if (!tried_5cm && !state.variant.suits[card.suitIndex].match(variantRegexes.brownish) && rank === 5 && !card.saved && severity === 0) {
 					logger.info('trying 5cm with 5 at index', cardIndex);
 					tried_5cm = true;
 
@@ -292,7 +299,7 @@ export function find_clues(state, options = {}) {
 
 		save_clues[target] = Utils.maxOn(saves.filter(c => c !== undefined), (save_clue) => {
 			const { type, value, target } = save_clue;
-			const list = hand.clueTouched(save_clue, state.suits).map(c => c.order);
+			const list = hand.clueTouched(save_clue, state.variant).map(c => c.order);
 			const hypo_state = state.simulate_clue({ type: 'clue', clue: { type, value }, giver: state.ourPlayerIndex, target, list });
 			const result = get_result(state, hypo_state, save_clue, state.ourPlayerIndex);
 

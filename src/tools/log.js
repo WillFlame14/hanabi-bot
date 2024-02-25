@@ -37,7 +37,7 @@ export function logCard(card) {
 	else {
 		return '(unknown)';
 	}
-	return shortForms[globals.state.suits[suitIndex]] + rank + (append !== undefined ? ' ' + append : '');
+	return shortForms[suitIndex] + rank + (append !== undefined ? ' ' + append : '');
 }
 
 /**
@@ -72,7 +72,7 @@ export function logClue(clue) {
 	if (clue === undefined)
 		return;
 
-	const value = (clue.type === CLUE.COLOUR || clue.type === ACTION.COLOUR) ? globals.state.suits[clue.value].toLowerCase() : clue.value;
+	const value = (clue.type === CLUE.COLOUR || clue.type === ACTION.COLOUR) ? globals.state.variant.suits[clue.value].toLowerCase() : clue.value;
 
 	return `(${value} to ${globals.state.playerNames[clue.target]})`;
 }
@@ -131,7 +131,7 @@ export function logAction(action) {
 			let clue_value;
 
 			if (clue.type === CLUE.COLOUR)
-				clue_value = state.suits[clue.value].toLowerCase();
+				clue_value = state.variant.suits[clue.value].toLowerCase();
 			else
 				clue_value = clue.value;
 

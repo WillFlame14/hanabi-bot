@@ -1,4 +1,4 @@
-import { CLUE } from '../constants.js';
+import { CLUE, HAND_SIZE } from '../constants.js';
 import { cardTouched } from '../variants.js';
 import { visibleFind } from './hanabi-util.js';
 
@@ -14,6 +14,7 @@ import { logCard } from '../tools/log.js';
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').ClueAction} ClueAction
+ * @typedef {import('../variants.js').Variant} Variant
  */
 
 /**
@@ -31,10 +32,10 @@ export function all_identities(suits) {
 
 /**
  * @param {BaseClue} clue
- * @param {string[]} suits
+ * @param {Variant} variant
  */
-export function find_possibilities(clue, suits) {
-	return all_identities(suits).filter(id => cardTouched(id, suits, clue));
+export function find_possibilities(clue, variant) {
+	return all_identities(variant.suits).filter(id => cardTouched(id, variant, clue));
 }
 
 /**
@@ -48,12 +49,11 @@ export function all_valid_clues(state, target) {
 	for (let rank = 1; rank <= 5; rank++)
 		clues.push({ type: CLUE.RANK, value: rank, target });
 
-	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++)
+	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++)
 		clues.push({ type: CLUE.COLOUR, value: suitIndex, target });
 
-	return clues.filter(clue => hand.clueTouched(clue, state.suits).length > 0);
+	return clues.filter(clue => hand.clueTouched(clue, state.variant).length > 0);
 }
-
 
 /**
  * @param {State} state
@@ -220,4 +220,12 @@ export function checkFix(state, oldThoughts, clueAction) {
 export function undo_hypo_stacks(state, { suitIndex, rank }) {
 	logger.info(`discarded useful card ${logCard({suitIndex, rank})}, setting hypo stack to ${rank - 1}`);
 	state.common.hypo_stacks[suitIndex] = Math.min(state.common.hypo_stacks[suitIndex], rank - 1);
+}
+
+/**
+ * Returns the hand size of the given state.
+ * @param {State} state
+ */
+export function getHandSize(state) {
+	return HAND_SIZE[state.numPlayers] + (state.options?.oneLessCard ? -1 : state.options?.oneExtraCard ? 1 : 0);
 }

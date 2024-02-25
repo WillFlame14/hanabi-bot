@@ -96,7 +96,7 @@ export function take_action(state) {
 
 		// Can't give colour clues touching chop
 		const valid_clues = all_valid_clues(state, partner).filter(clue =>
-			!(clue.type === CLUE.COLOUR && partner_hand.clueTouched(clue, state.suits).some(card => card.order === chop.order)));
+			!(clue.type === CLUE.COLOUR && partner_hand.clueTouched(clue, state.variant).some(card => card.order === chop.order)));
 
 		const best_clue = Utils.maxOn(valid_clues, (clue) => clue_value(state, clue), 0);
 
@@ -182,7 +182,7 @@ export function take_action(state) {
 
 		if (safe_playables.length > 0) {
 			// Play playable that leads to closest card
-			const partner_lowest_ranks = state.suits.map(_ => 6);
+			const partner_lowest_ranks = state.variant.suits.map(_ => 6);
 
 			for (const card of state.hands[partner])
 				partner_lowest_ranks[card.suitIndex] = Math.min(partner_lowest_ranks[card.suitIndex], card.rank);

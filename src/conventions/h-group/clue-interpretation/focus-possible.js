@@ -5,6 +5,7 @@ import { isCritical, playableAway, visibleFind } from '../../../basics/hanabi-ut
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
+import { variantRegexes } from '../../../variants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} State
@@ -26,6 +27,9 @@ function find_colour_focus(state, suitIndex, action) {
 	/** @type {FocusPossibility[]} */
 	const focus_possible = [];
 	let next_rank = state.play_stacks[suitIndex] + 1;
+
+	if (next_rank > state.max_ranks[suitIndex])
+		return [];
 
 	// Play clue
 	/** @type {Connection[]} */
@@ -80,9 +84,13 @@ function find_colour_focus(state, suitIndex, action) {
 
 	// Save clue on chop (5 save cannot be done with colour)
 	if (chop) {
-		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 4); rank++) {
+		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
+			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
+			// OR if the clue given is not black.
+			if (rank === 5 && !(state.variant.suits[suitIndex] === 'Black' || state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish))))
+				continue;
 			// Determine if possible save on k2, k5 with colour
-			if (state.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
+			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
 				let fill_ins = 0;
 
 				for (const card of state.hands[target]) {
@@ -101,7 +109,13 @@ function find_colour_focus(state, suitIndex, action) {
 			}
 
 			// Check if card is critical
-			if (isCritical(state, { suitIndex, rank }))
+			if (isCritical(state, { suitIndex, rank })) {
+				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
+				continue;
+			}
+
+			// Check if the card is a brownish-2
+			if (state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) && c.rank === 2))
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 		}
 	}
@@ -125,7 +139,7 @@ function find_rank_focus(state, rank, action) {
 
 	// Save clue on chop
 	if (chop) {
-		for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+		for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 			const identity = { suitIndex, rank };
 
 			// Don't need to consider save on playable cards
@@ -133,7 +147,7 @@ function find_rank_focus(state, rank, action) {
 				continue;
 
 			// Don't consider save on k3, k4 with rank
-			if (state.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
+			if (state.variant.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
 				continue;
 
 			// Critical save or 2 save
@@ -144,7 +158,7 @@ function find_rank_focus(state, rank, action) {
 		}
 	}
 	// Play clue
-	for (let suitIndex = 0; suitIndex < state.suits.length; suitIndex++) {
+	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 		let next_rank = state.play_stacks[suitIndex] + 1;
 
 		/** @type {Connection[]} */
@@ -233,16 +247,15 @@ export function find_focus_possible(state, action) {
 	let focus_possible = [];
 
 	if (clue.type === CLUE.COLOUR) {
-		const colour = state.suits.includes('Rainbow') ? state.suits.indexOf('Rainbow') : clue.value;
-		focus_possible = focus_possible.concat(find_colour_focus(state, colour, action));
+		const colours = state.variant.suits.filter(s => s.match(variantRegexes.rainbowish)).map(s => state.variant.suits.indexOf(s));
+		colours.push(clue.value);
+		for (const colour of colours)
+			focus_possible = focus_possible.concat(find_colour_focus(state, colour, action));
 	}
 	else {
 		// Pink promise assumed
-		focus_possible = focus_possible.concat(find_rank_focus(state, clue.value, action));
+		focus_possible = find_rank_focus(state, clue.value, action);
 	}
-
-	if (state.suits.includes('Omni'))
-		focus_possible = focus_possible.concat(find_colour_focus(state, state.suits.indexOf('Omni'), action));
 
 	// Remove earlier duplicates (since save overrides play)
 	return focus_possible.filter((p1, index1) => {
