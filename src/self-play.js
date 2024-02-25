@@ -78,7 +78,7 @@ async function main() {
 		const shuffled = shuffle(deck, seed);
 
 		const { score, result, actions, notes } =
-			simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
+			simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level, variant);
 
 		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions, notes }));
 		console.log(`seed ${seed}, score: ${score}/${variant.suits.length * 5}, ${result}`);
@@ -91,7 +91,7 @@ async function main() {
 			const players = playerNames.slice(0, numPlayers);
 			const shuffled = shuffle(deck, `${i}`);
 			const { score, result, actions, notes } =
-				simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
+				simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level, variant);
 
 			fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions, notes }));
 
@@ -117,10 +117,11 @@ async function main() {
  * @param {Identity[]} deck
  * @param {keyof typeof conventions} convention
  * @param {number} level
+ * @param {Variant} variant
  */
-function simulate_game(playerNames, deck, convention, level) {
+function simulate_game(playerNames, deck, convention, level, variant = noVar) {
 	const games = playerNames.map((_, index) => {
-		const state = new State(playerNames, index, noVar, {});
+		const state = new State(playerNames, index, variant, {});
 		return new conventions[convention](-1, state, false, level);
 	});
 
@@ -202,7 +203,7 @@ function simulate_game(playerNames, deck, convention, level) {
 			logger.flush();
 	}
 
-	const { score, strikes, variant, max_ranks } = games[0].state;
+	const { score, strikes, max_ranks } = games[0].state;
 
 	const result = strikes === 3 ? 'strikeout' :
 		score === variant.suits.length * 5 ? 'perfect!' :
