@@ -48,7 +48,7 @@ function find_save(state, target, card) {
 		const save_clue = determine_clue(state, target, card, { save: true });
 
 		if (save_clue === undefined) {
-			logger.error(`unable to find save clue for ${logCard(card)}!`);
+			logger.error(`unable to find critical save clue for ${logCard(card)}!`);
 			return;
 		}
 		return Object.assign(save_clue, { playable: false, cm: [], safe: true });
@@ -59,7 +59,7 @@ function find_save(state, target, card) {
 		const save_clue = determine_clue(state, target, card, { save: true });
 
 		if (save_clue === undefined) {
-			logger.error(`unable to find save clue for ${logCard(card)}!`);
+			logger.error(`unable to find playable save clue for ${logCard(card)}!`);
 			return;
 		}
 
@@ -242,10 +242,17 @@ export function find_clues(state, options = {}) {
 					}
 
 					if (distance_from_chop === 1) {
-						saves.push(find_5cm(state, target, hand[chopIndex], cardIndex));
+						if (state.common.thoughts[hand[chopIndex].order].possible.some(p =>
+							p.rank !== 5 && !isTrash(state, state.common, p, hand[chopIndex].order, { infer: true }))
+						) {
+							saves.push(find_5cm(state, target, hand[chopIndex], cardIndex));
 
-						logger.info('found 5cm');
-						interpreted_5cm = true;
+							logger.info('found 5cm');
+							interpreted_5cm = true;
+						}
+						else {
+							logger.info('no cards left to 5cm');
+						}
 					}
 					else {
 						logger.info(`rightmost 5 is ${distance_from_chop} from chop, cannot 5cm`);

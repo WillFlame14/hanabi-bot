@@ -167,6 +167,8 @@ describe('asymmetric clues', () => {
 
 		takeTurn(state, 'Cathy clues 5 to Donald');		// 5 Save
 		takeTurn(state, 'Donald plays y1', 'r4');
+
+		// Note that at level 5, Alice cannot play y2, since it could be a hidden finesse.
 		takeTurn(state, 'Alice plays y2 (slot 4)');
 
 		// y3 should be known, since y2 played before g1 played.

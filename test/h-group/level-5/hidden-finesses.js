@@ -277,6 +277,34 @@ describe('layered finesse', () => {
 		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['r2']);
 	});
 
+	it('understands a fake clandestine finesse', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r4', 'g4', 'r5', 'b4'],
+			['g1', 'r1', 'b2', 'y3', 'p3']
+		], {
+			level: 5,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(state, 'Bob clues 2 to Alice (slot 3)');	// r2 clandestine finesse
+
+		// Alice's slot 3 should be [g2,r2].
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][2].order], ['r2', 'g2']);
+
+		takeTurn(state, 'Cathy plays g1', 'b1');			// expecing r1 finesse
+
+		// Alice's slot 3 should still be [g2,r2] to allow for the possibility of a clandestine finesse.
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][2].order], ['r2', 'g2']);
+
+		takeTurn(state, 'Alice discards b1 (slot 5)');
+		takeTurn(state, 'Bob discards b4', 'g5');
+		takeTurn(state, 'Cathy clues 5 to Bob');
+
+		// Alice's slot 4 (used to be 3) should just be g2 now.
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['g2']);
+	});
+
 	it('understands a queued finesse', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

@@ -64,10 +64,10 @@ export function all_valid_clues(state, target) {
 export function update_hypo_stacks(state, player) {
 	// Reset hypo stacks to play stacks
 	const hypo_stacks = state.play_stacks.slice();
-	const unknown_plays = [];
+	const unknown_plays = new Set();
 
 	let found_new_playable = true;
-	const good_touch_elim = /** @type {Card[]}*/ ([]);
+	const good_touch_elim = /** @type {BasicCard[]}*/ ([]);
 
 	const linked_orders = player.linkedOrders(state);
 
@@ -108,13 +108,20 @@ export function update_hypo_stacks(state, player) {
 				// Do not allow false updating of hypo stacks
 				if (player.playerIndex === -1 && (
 					(id && actual_id && !id.matches(actual_id)) ||		// Identity doesn't match
-					(actual_id && unknown_plays.some(o => state.hands.flat().find(c => c.order === o).matches(actual_id)))		// Duping playable
+					(actual_id && state.hands.flat().some(c => unknown_plays.has(c.order) && c.matches(actual_id)))	||	// Duping playable
+					(player.waiting_connections.some(wc =>				// Only part of a fake ambiguous connection
+						!state.me.thoughts[wc.focused_card.order].matches(wc.inference, { assume: true }) &&
+						wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order))
+					&&
+						!player.waiting_connections.some(wc =>
+							state.me.thoughts[wc.focused_card.order].matches(wc.inference, { assume: true }) &&
+							wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order)))
 				))
 					continue;
 
 				if (id === undefined) {
 					// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
-					unknown_plays.push(order);
+					unknown_plays.add(order);
 					continue;
 				}
 
@@ -122,12 +129,12 @@ export function update_hypo_stacks(state, player) {
 
 				if (rank !== hypo_stacks[suitIndex] + 1) {
 					// e.g. a duplicated 1 before any 1s have played will have all bad possibilities eliminated by good touch
-					logger.debug(`tried to add new playable card ${logCard(card)} but was duplicated`);
+					logger.warn(`tried to add new playable card ${logCard(card)} but was duplicated`);
 					continue;
 				}
 
 				hypo_stacks[suitIndex] = rank;
-				good_touch_elim.push(card);
+				good_touch_elim.push(id);
 				found_new_playable = true;
 			}
 		}
@@ -228,4 +235,13 @@ export function undo_hypo_stacks(state, { suitIndex, rank }) {
  */
 export function getHandSize(state) {
 	return HAND_SIZE[state.numPlayers] + (state.options?.oneLessCard ? -1 : state.options?.oneExtraCard ? 1 : 0);
+}
+
+/**
+ * Resets superposition on all cards.
+ * @param {State} state
+ */
+export function reset_superpositions(state) {
+	for (const { order } of state.hands.flat())
+		state.common.thoughts[order].superposition = false;
 }

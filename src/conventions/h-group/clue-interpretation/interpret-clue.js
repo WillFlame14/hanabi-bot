@@ -4,9 +4,9 @@ import { interpret_tcm, interpret_5cm, interpret_tccm } from './interpret-cm.js'
 import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
-import { find_own_finesses } from './own-finesses.js';
+import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 import { assign_connections, inference_known, inference_rank, find_symmetric_connections, add_symmetric_connections } from './connection-helper.js';
-import { update_hypo_stacks, team_elim, checkFix } from '../../../basics/helper.js';
+import { update_hypo_stacks, team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { isBasicTrash, isTrash, playableAway } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
@@ -43,6 +43,7 @@ function apply_good_touch(state, action) {
 			const card = common.thoughts[order];
 
 			if (card.finessed && oldThoughts[order].inferred.length >= 1 && card.inferred.length === 0) {
+				logger.info('revealed layered finesse on card', card.order, oldThoughts[order].inferred.map(logCard));
 				// TODO: Possibly try rewinding older reasoning until rewind works?
 				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
 				if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue }))
@@ -52,14 +53,6 @@ function apply_good_touch(state, action) {
 	}
 
 	return { fix: checkFix(state, oldThoughts, action) };
-}
-
-/**
- * Resets superposition on all cards.
- * @param {State} state
- */
-function reset_superpositions(state) {
-	state.hands.forEach(hand => hand.forEach(({ order }) => state.common.thoughts[order].superposition = false));
 }
 
 /**
@@ -209,7 +202,7 @@ export function interpret_clue(state, action) {
 
 		const looksDirect = focus_thoughts.identity() === undefined && (	// Focused card must be unknown AND
 			action.clue.type === CLUE.COLOUR ||											// Colour clue always looks direct
-			rankLooksPlayable(state, action.clue.value, focused_card.order) ||			// Looks like a play
+			rankLooksPlayable(state, action.clue.value, giver, target, focused_card.order) ||			// Looks like a play
 			focus_possible.some(fp => fp.save));										// Looks like a save
 
 		if (target === state.ourPlayerIndex) {
@@ -221,11 +214,11 @@ export function interpret_clue(state, action) {
 				if (isBasicTrash(state, id))
 					continue;
 
-				const { feasible, connections } = find_own_finesses(state, giver, target, id, looksDirect);
-				const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
-				logger.info('found connections:', logConnections(connections, id));
+				try {
+					const connections = find_own_finesses(state, giver, target, id, looksDirect);
+					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
+					logger.info('found connections:', logConnections(connections, id));
 
-				if (feasible) {
 					// Starts with self-finesse or self-prompt
 					if (connections[0]?.self) {
 						// TODO: This interpretation should always exist, but must wait for all players to ignore first
@@ -241,6 +234,12 @@ export function interpret_clue(state, action) {
 						all_connections.push({ connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections) });
 					}
 				}
+				catch (error) {
+					if (error instanceof IllegalInterpretation)
+						logger.warn(error.message);
+					else
+						throw error;
+				}
 			}
 
 			if (self && conn_save !== undefined)
@@ -250,12 +249,17 @@ export function interpret_clue(state, action) {
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!isBasicTrash(state, focused_card)) {
 			const { suitIndex } = focused_card;
-			const { feasible, connections } = find_own_finesses(state, giver, target, focused_card, looksDirect);
-
-			logger.info('found connections:', logConnections(connections, focused_card));
-
-			if (feasible)
+			try {
+				const connections = find_own_finesses(state, giver, target, focused_card, looksDirect);
+				logger.info('found connections:', logConnections(connections, focused_card));
 				all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections) });
+			}
+			catch (error) {
+				if (error instanceof IllegalInterpretation)
+					logger.warn(error.message);
+				else
+					throw error;
+			}
 		}
 
 		// No inference, but a finesse isn't possible

@@ -175,7 +175,7 @@ function find_rank_focus(state, rank, action) {
 			let finesses = 0;
 
 			let ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-			let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(state, rank, focused_card.order));
+			let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(state, rank, giver, target, focused_card.order));
 			let connecting = find_connecting(hypo_state, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
 
 			while (connecting.length !== 0) {

@@ -1,10 +1,12 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, setup, takeTurn } from '../../test-utils.js';
+import { COLOUR, PLAYER, setup, takeTurn } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
 import logger from '../../../src/tools/logger.js';
+import { get_result } from '../../../src/conventions/h-group/clue-finder/determine-clue.js';
+import { CLUE } from '../../../src/constants.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -104,5 +106,22 @@ describe('ambiguous finesse', () => {
 
 		// Bob's slot 1 can be either g3 or y3, since he doesn't know which 1 is connecting.
 		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][0].order], ['y3', 'g3']);
+	});
+
+	it('correctly counts playables for ambiguous finesses', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g1', 'g3', 'g4', 'r5', 'b4'],
+			['g2', 'b3', 'r2', 'y3', 'p3'],
+			['b2', 'b4', 'y5', 'y2', 'g2'],
+		], { level: 5 });
+
+		const clue = { type: CLUE.COLOUR, target: PLAYER.DONALD, value: COLOUR.GREEN };
+		const list = state.hands[PLAYER.DONALD].clueTouched(clue, state.variant).map(c => c.order);
+		const hypo_state = state.simulate_clue({ type: 'clue', giver: PLAYER.ALICE, target: PLAYER.DONALD, list, clue });
+		const { playables } = get_result(state, hypo_state, clue, PLAYER.ALICE);
+
+		// There should be 2 playables: g1 (Bob) and g2 (Donald).
+		assert.equal(playables.length, 2);
 	});
 });

@@ -196,7 +196,7 @@ export function interpret_clue(state, action) {
 					let playable_possibilities;
 
 					if (common.thinksLoaded(state, target)) {
-						const unknown_plays = common.unknown_plays.filter(order => state.hands[target].findOrder(order));
+						const unknown_plays = Array.from(common.unknown_plays).filter(order => state.hands[target].findOrder(order));
 
 						// The playable card could connect to any unknown plays
 						const unknown_playables = unknown_plays.flatMap(order =>

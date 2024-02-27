@@ -121,52 +121,60 @@ function simulate_game(playerNames, deck, convention, level) {
 	/** @type {Pick<PerformAction, 'type' | 'target' | 'value'>[]} */
 	const actions = [];
 
-	while (endgameTurns !== 0 && _state.strikes !== 3 && _state.score !== _state.variant.suits.length * 5) {
-		if (turn !== 0) {
-			states.forEach(({ state }) => {
-				Utils.globalModify({ state });
-				state.handle_action({ type: 'turn', num: turn, currentPlayerIndex });
-			}, true);
-		}
-
-		const { state: currentPlayerState } = states[currentPlayerIndex];
-		Utils.globalModify({ state: currentPlayerState });
-
-		// @ts-ignore (one day static analysis will get better)
-		const performAction = currentPlayerState.take_action(currentPlayerState);
-		actions.push(Utils.objPick(performAction, ['type', 'target', 'value'], { default: 0 }));
-
-		for (let stateIndex = 0; stateIndex < playerNames.length; stateIndex++) {
-			const { state, order } = states[stateIndex];
-			const action = Utils.performToAction(state, performAction, currentPlayerIndex, deck);
-
-			// logger.setLevel(stateIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
-
-			Utils.globalModify({ state });
-			state.handle_action(action, true);
-
-			if ((action.type === 'play' || action.type === 'discard') && order < deck.length) {
-				const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
-				state.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank }, true);
-				states[stateIndex].order++;
+	try {
+		while (endgameTurns !== 0 && _state.strikes !== 3 && _state.score !== _state.variant.suits.length * 5) {
+			if (turn !== 0) {
+				states.forEach(({ state }, index) => {
+					logger.debug('Turn for', state.playerNames[index]);
+					Utils.globalModify({ state });
+					state.handle_action({ type: 'turn', num: turn, currentPlayerIndex });
+				}, true);
 			}
+
+			const { state: currentPlayerState } = states[currentPlayerIndex];
+			Utils.globalModify({ state: currentPlayerState });
+
+			// @ts-ignore (one day static analysis will get better)
+			const performAction = currentPlayerState.take_action(currentPlayerState);
+			actions.push(Utils.objPick(performAction, ['type', 'target', 'value'], { default: 0 }));
+
+			for (let stateIndex = 0; stateIndex < playerNames.length; stateIndex++) {
+				const { state, order } = states[stateIndex];
+				const action = Utils.performToAction(state, performAction, currentPlayerIndex, deck);
+
+				logger.debug('Action for', state.playerNames[stateIndex]);
+
+				// logger.setLevel(stateIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
+
+				Utils.globalModify({ state });
+				state.handle_action(action, true);
+
+				if ((action.type === 'play' || action.type === 'discard') && order < deck.length) {
+					const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
+					state.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank }, true);
+					states[stateIndex].order++;
+				}
+			}
+
+			if (states[currentPlayerIndex].order === deck.length && endgameTurns === -1)
+				endgameTurns = playerNames.length;
+			else if (endgameTurns > 0)
+				endgameTurns--;
+
+			currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.length;
+			// logger.setLevel(currentPlayerIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
+			turn++;
 		}
 
-		if (states[currentPlayerIndex].order === deck.length && endgameTurns === -1)
-			endgameTurns = playerNames.length;
-		else if (endgameTurns > 0)
-			endgameTurns--;
-
-		currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.length;
-		// logger.setLevel(currentPlayerIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
-		turn++;
+		actions.push({
+			type: ACTION.END_GAME,
+			target: (currentPlayerIndex + playerNames.length - 1) % playerNames.length,
+			value: endgameTurns === 0 ? END_CONDITION.NORMAL : END_CONDITION.STRIKEOUT
+		});
 	}
-
-	actions.push({
-		type: ACTION.END_GAME,
-		target: (currentPlayerIndex + playerNames.length - 1) % playerNames.length,
-		value: endgameTurns === 0 ? END_CONDITION.NORMAL : END_CONDITION.STRIKEOUT
-	});
+	catch (err) {
+		logger.error(err);
+	}
 
 	return {
 		score: states[0].state.score,

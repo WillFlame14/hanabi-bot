@@ -40,6 +40,7 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 
 	const incorrect_card = state.hands[target].find(c => {
 		const card = hypo_state.common.thoughts[c.order];
+		const visible_card = hypo_state.me.thoughts[c.order];
 
 		// The focused card must not have been reset and must match inferences
 		if (c.order === target_card.order)
@@ -48,11 +49,11 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 		const old_card = state.common.thoughts[c.order];
 
 		// For non-focused cards:
-		return !((!card.reset && card.matches_inferences()) || 											// Matches inferences
+		return !((!card.reset && (card.identity() === undefined || card.possible.length === 1 || card.matches(visible_card))) || 											// Matches inferences
 			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||		// Didn't match inference even before clue
 			card.chop_moved ||																			// Chop moved (might have become trash)
-			(c.clued && isTrash(state, state.common, card)) ||		// Previously-clued duplicate or recently became basic trash
-			bad_touch_cards.some(c => c.order === c.order) ||										// Bad touched
+			(c.clued && isTrash(state, state.me, visible_card)) ||		// Previously-clued duplicate or recently became basic trash
+			bad_touch_cards.some(b => b.order === c.order) ||										// Bad touched
 			card.possible.every(id => isTrash(hypo_state, state.common, id, c.order)));	// Known trash
 	});
 

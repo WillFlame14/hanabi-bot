@@ -1,6 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { determine_focus } from '../hanabi-logic.js';
-import { find_own_finesses } from './own-finesses.js';
+import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 import { isBasicTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
@@ -59,7 +59,7 @@ export function add_symmetric_connections(state, symmetric_connections, existing
 		if (existing_connections.some((conn) => conn.suitIndex === suitIndex && conn.rank === rank))
 			continue;
 
-		state.common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake });
+		state.common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake, symmetric: true });
 	}
 }
 
@@ -95,15 +95,21 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 			looksSave);																		// Looks like a save
 
 		logger.collect();
-		const { feasible, connections } = find_own_finesses(state, giver, target, id, looksDirect, target, selfRanks);
-		logger.flush(false);
-
-		if (feasible) {
+		try {
+			const connections = find_own_finesses(state, giver, target, id, looksDirect, target, selfRanks);
 			if (connections[0]?.reacting === target)
 				self_connections.push({ id, connections });
 			else
 				non_self_connections.push({ id, connections });
 		}
+		catch (error) {
+			if (error instanceof IllegalInterpretation)
+				// Will probably never be seen
+				logger.warn(error.message);
+			else
+				throw error;
+		}
+		logger.flush(false);
 	}
 
 	/** @type {(conns: Connection[], playerIndex: number) => number} */
@@ -158,7 +164,7 @@ export function assign_connections(state, connections, options = {}) {
 			continue;
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
-		if (!card.superposition)
+		if (!card.superposition && card.old_inferred === undefined)
 			card.old_inferred = card.inferred.slice();
 
 		if (type === 'finesse') {

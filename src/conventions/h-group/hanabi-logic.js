@@ -81,10 +81,16 @@ export function minimum_clue_value(state) {
 /**
  * @param {State} state
  * @param {number} rank
+ * @param {number} giver
+ * @param {number} target
  * @param {number} order 	The order to exclude when searching for duplicates.
  */
-export function rankLooksPlayable(state, rank, order) {
-	return state.common.hypo_stacks.some((stack, suitIndex) => {
+export function rankLooksPlayable(state, rank, giver, target, order) {
+	/**
+	 * @param {number} stack
+	 * @param {number} suitIndex
+	 */
+	const looksPlayableRank = (stack, suitIndex) => {
 		const identity = { suitIndex, rank };
 
 		const playable_identity = stack + 1 === rank;
@@ -93,6 +99,16 @@ export function rankLooksPlayable(state, rank, order) {
 		const matching_inference = state.common.thoughts[order].inferred.some(inf => inf.matches(identity));
 
 		return playable_identity && other_visibles < cardCount(state.variant, identity) && matching_inference;
+	};
+
+	return state.common.hypo_stacks.some(looksPlayableRank) || state.players[target].hypo_stacks.some((stack, suitIndex) => {
+		// Don't allow target to connect through unknown plays in giver's hand
+		if (stack > state.common.hypo_stacks[suitIndex] &&
+			state.hands[giver].some(c =>
+				c.suitIndex === suitIndex && c.rank > state.common.hypo_stacks[suitIndex] && state.common.unknown_plays.has(c.order)))
+			return false;
+
+		return looksPlayableRank(stack, suitIndex);
 	});
 }
 

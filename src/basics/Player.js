@@ -30,11 +30,11 @@ export class Player {
 	 * @param {number[]} hypo_stacks
 	 * @param {Card[]} [thoughts]
 	 * @param {Link[]} [links]
-	 * @param {number[]} unknown_plays
+	 * @param {Set<number>} unknown_plays
 	 * @param {WaitingConnection[]} waiting_connections
 	 * @param {Record<string, number[]>} elims
 	 */
-	constructor(playerIndex, all_possible, all_inferred, hypo_stacks, thoughts = [], links = [], unknown_plays = [], waiting_connections = [], elims = {}) {
+	constructor(playerIndex, all_possible, all_inferred, hypo_stacks, thoughts = [], links = [], unknown_plays = new Set(), waiting_connections = [], elims = {}) {
 		this.playerIndex = playerIndex;
 
 		this.thoughts = thoughts;
@@ -66,7 +66,7 @@ export class Player {
 	}
 
 	get hypo_score() {
-		return this.hypo_stacks.reduce((sum, stack) => sum + stack) + this.unknown_plays.length;
+		return this.hypo_stacks.reduce((sum, stack) => sum + stack) + this.unknown_plays.size;
 	}
 
 	/**

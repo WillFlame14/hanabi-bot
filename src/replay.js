@@ -64,7 +64,7 @@ async function main() {
 
 	let order = 0;
 
-	const { players, deck, actions, options } = game_data;
+	const { players, deck, actions, options = {} } = game_data;
 	const variant = await getVariant(options?.variant ?? 'No Variant');
 	const ourPlayerIndex = Number(index ?? 0);
 

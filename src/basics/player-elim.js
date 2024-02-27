@@ -132,8 +132,15 @@ export function reset_card(order) {
 
 	if (card.finessed) {
 		card.finessed = false;
-		card.inferred = card.old_inferred;
-		card.intersect('inferred', card.possible);
+		card.hidden = false;
+		if (card.old_inferred !== undefined) {
+			card.inferred = card.old_inferred;
+			card.intersect('inferred', card.possible);
+		}
+		else {
+			logger.error(`no old inferred on card with order ${order}! player ${this.playerIndex}`);
+			card.inferred = card.possible.slice();
+		}
 
 		// Filter out future waiting connections involving this card
 		this.waiting_connections = this.waiting_connections.filter(wc =>

@@ -7,7 +7,7 @@ import { cardTouched } from '../../../variants.js';
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
 
-class IllegalInterpretation extends Error {
+export class IllegalInterpretation extends Error {
 	/** @param {string} message */
 	constructor(message) {
 		super(message);
@@ -30,14 +30,14 @@ class IllegalInterpretation extends Error {
  */
 function own_prompt(state, finesses, prompt, identity) {
 	if (state.level === 1 && finesses >= 1)
-		throw new IllegalInterpretation('Blocked prompt + finesse at level 1');
+		throw new IllegalInterpretation('blocked prompt + finesse at level 1');
 
 	const card = state.me.thoughts[prompt.order];
 	const reacting = state.ourPlayerIndex;
 
 	if (card.rewinded && identity.suitIndex !== prompt.suitIndex && playableAway(state, prompt) === 0) {
 		if (state.level < LEVEL.INTERMEDIATE_FINESSES)
-			throw new IllegalInterpretation('Blocked hidden finesse at level 1');
+			throw new IllegalInterpretation('blocked hidden finesse at level 1');
 
 		return [{ type: 'known', reacting, card: prompt, hidden: true, self: true, identities: [prompt.raw()] }];
 	}
@@ -85,7 +85,11 @@ function connect(state, giver, target, identity, looksDirect, ignoreOrders, igno
 				return find_self_finesse(state, identity, ignoreOrders.slice(), finesses);
 			}
 			catch (error) {
-				logger.warn(error.message);
+				if (error instanceof IllegalInterpretation)
+					// Will probably never be seen
+					logger.warn(error.message);
+				else
+					throw error;
 			}
 		}
 	}
@@ -97,7 +101,7 @@ function connect(state, giver, target, identity, looksDirect, ignoreOrders, igno
 
 		if (prompt !== undefined) {
 			if (state.level === 1 && finesses >= 1)
-				throw new IllegalInterpretation('Blocked double finesse at level 1');
+				throw new IllegalInterpretation('blocked double finesse at level 1');
 
 			if (state.common.thoughts[prompt.order].matches(identity, { assume: true }))
 				return [{ type: 'prompt', reacting: target, card: prompt, self: true, identities: [identity] }];
@@ -110,7 +114,7 @@ function connect(state, giver, target, identity, looksDirect, ignoreOrders, igno
 
 				if (card.inferred.some(p => p.matches(identity)) && card.matches(identity, { assume: true })) {
 					if (state.level === 1 && ignoreOrders.length >= 1)
-						throw new IllegalInterpretation('Blocked double finesse at level 1');
+						throw new IllegalInterpretation('blocked double finesse at level 1');
 
 					return [{ type: 'finesse', reacting: target, card: finesse, self: true, identities: [identity] }];
 				}
@@ -123,7 +127,10 @@ function connect(state, giver, target, identity, looksDirect, ignoreOrders, igno
 				return find_self_finesse(state, identity, ignoreOrders.slice(), finesses);
 			}
 			catch (error) {
-				logger.warn(error.message);
+				if (error instanceof IllegalInterpretation)
+					logger.warn(error.message);
+				else
+					throw error;
 			}
 		}
 	}
@@ -139,67 +146,62 @@ function connect(state, giver, target, identity, looksDirect, ignoreOrders, igno
  * @param {boolean} looksDirect
  * @param {number} [ignorePlayer]
  * @param {number[]} [selfRanks]
- * @returns {{feasible: boolean, connections: Connection[]}}
+ * @throws {IllegalInterpretation} If no connection can be found.
+ * @returns {Connection[]}
  */
 export function find_own_finesses(state, giver, target, { suitIndex, rank }, looksDirect, ignorePlayer = -1, selfRanks = []) {
-	try {
-		// We cannot finesse ourselves
-		if (giver === state.ourPlayerIndex && ignorePlayer === -1)
-			throw new IllegalInterpretation('Cannot finesse ourselves.');
+	// We cannot finesse ourselves
+	if (giver === state.ourPlayerIndex && ignorePlayer === -1)
+		throw new IllegalInterpretation('cannot finesse ourselves.');
 
-		// Create hypothetical state where we have the missing cards (and others can elim from them)
-		const hypo_state = state.minimalCopy();
+	// Create hypothetical state where we have the missing cards (and others can elim from them)
+	const hypo_state = state.minimalCopy();
 
-		const connections = /** @type {Connection[]} */ ([]);
-		const ignoreOrders = /** @type {number[]} */ ([]);
-		let finesses = 0;
+	const connections = /** @type {Connection[]} */ ([]);
+	const ignoreOrders = /** @type {number[]} */ ([]);
+	let finesses = 0;
 
-		for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
-			const next_identity = { suitIndex, rank: next_rank };
-			const currIgnoreOrders = ignoreOrders.concat(state.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1] ?? []);
+	for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
+		const next_identity = { suitIndex, rank: next_rank };
+		const currIgnoreOrders = ignoreOrders.concat(state.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1] ?? []);
 
-			const curr_connections = connect(hypo_state, giver, target, next_identity, looksDirect, currIgnoreOrders, ignorePlayer, selfRanks, finesses);
+		const curr_connections = connect(hypo_state, giver, target, next_identity, looksDirect, currIgnoreOrders, ignorePlayer, selfRanks, finesses);
 
-			if (curr_connections.length === 0)
-				throw new IllegalInterpretation(`No connecting cards found for identity ${logCard(next_identity)}`);
+		if (curr_connections.length === 0)
+			throw new IllegalInterpretation(`no connecting cards found for identity ${logCard(next_identity)}`);
 
-			let allHidden = true;
-			for (const connection of curr_connections) {
-				connections.push(connection);
+		let allHidden = true;
+		for (const connection of curr_connections) {
+			connections.push(connection);
 
-				const { card, hidden, type } = connection;
+			const { card, hidden, type } = connection;
 
-				if (type === 'finesse')
-					finesses++;
+			if (type === 'finesse')
+				finesses++;
 
-				if (hidden) {
-					const id = card.identity();
+			if (hidden) {
+				const id = card.identity();
 
-					if (id !== undefined) {
-						hypo_state.play_stacks[id.suitIndex]++;
-						hypo_state.common.hypo_stacks[id.suitIndex]++;		// Everyone knows this card is playing
-					}
+				if (id !== undefined) {
+					hypo_state.play_stacks[id.suitIndex]++;
+					hypo_state.common.hypo_stacks[id.suitIndex]++;		// Everyone knows this card is playing
 				}
-				else {
-					allHidden = false;
-
-					// Assume this is actually the card
-					hypo_state.common.thoughts[card.order].intersect('inferred', [next_identity]);
-					hypo_state.common.good_touch_elim(hypo_state);
-				}
-				ignoreOrders.push(card.order);
 			}
+			else {
+				allHidden = false;
 
-			// Hidden connection, need to look for this rank again
-			if (allHidden)
-				next_rank--;
+				// Assume this is actually the card
+				hypo_state.common.thoughts[card.order].intersect('inferred', [next_identity]);
+				hypo_state.common.good_touch_elim(hypo_state);
+			}
+			ignoreOrders.push(card.order);
 		}
-		return { feasible: true, connections };
+
+		// Hidden connection, need to look for this rank again
+		if (allHidden)
+			next_rank--;
 	}
-	catch (error) {
-		logger.warn(error.message);
-		return { feasible: false, connections: [] };
-	}
+	return connections;
 }
 
 /**
@@ -221,13 +223,7 @@ function resolve_layered_finesse(state, identity, ignoreOrders) {
 		// Touching a non-matching card - all touched cards are layered
 		const matching = cardTouched(identity, state.variant, clue);
 
-		logger.info(start_index, matching, list.includes(our_hand[start_index].order));
-
 		for (let i = start_index; matching !== list.includes(our_hand[i].order); i++) {
-			logger.info('hi', i);
-			if (i === our_hand.length)
-				throw new IllegalInterpretation('Blocked layered finesse with no end');
-
 			const card = our_hand[i];
 			let identities = state.common.hypo_stacks.map((stack_rank, suitIndex) => ({ suitIndex, rank: stack_rank + 1 }));
 
@@ -240,6 +236,9 @@ function resolve_layered_finesse(state, identity, ignoreOrders) {
 			connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card, hidden: true, self: true, identities });
 			state.common.thoughts[card.order].intersect('inferred', identities);
 			ignoreOrders.push(card.order);
+
+			if (i === our_hand.length - 1)
+				throw new IllegalInterpretation('blocked layered finesse with no end');
 		}
 	}
 
@@ -248,7 +247,7 @@ function resolve_layered_finesse(state, identity, ignoreOrders) {
 
 	// Layered finesse is impossible
 	if (finesse === undefined)
-		throw new IllegalInterpretation(`Couldn't find a valid finesse target after layers`);
+		throw new IllegalInterpretation(`couldn't find a valid finesse target after layers`);
 
 	connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card: finesse, self: true, identities: [identity] });
 	return connections;
@@ -268,21 +267,21 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 	logger.debug('finesse in slot', finesse ? our_hand.findIndex(c => c.order === finesse.order) + 1 : '-1');
 
 	if (finesse === undefined)
-		throw new IllegalInterpretation('No finesse slot');
+		throw new IllegalInterpretation('no finesse slot');
 
 	const card = state.me.thoughts[finesse.order];
 	const reacting = state.ourPlayerIndex;
 
 	if (card.rewinded && finesse.suitIndex !== identity.suitIndex && playableAway(state, finesse) === 0) {
 		if (state.level < LEVEL.INTERMEDIATE_FINESSES)
-			throw new IllegalInterpretation(`Blocked layered finesse at level ${state.level}`);
+			throw new IllegalInterpretation(`blocked layered finesse at level ${state.level}`);
 
 		return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, identities: [finesse.raw()] }];
 	}
 
 	if (card.inferred.some(p => p.matches(identity)) && card.matches(identity, { assume: true })) {
 		if (state.level === 1 && ignoreOrders.length >= 1)
-			throw new IllegalInterpretation(`Blocked ${finesses >= 1 ? 'double finesse' : 'prompt + finesse'} at level 1`);
+			throw new IllegalInterpretation(`blocked ${finesses >= 1 ? 'double finesse' : 'prompt + finesse'} at level 1`);
 
 		// We have some information about the next finesse
 		if (state.next_finesse.length > 0)
@@ -291,5 +290,5 @@ function find_self_finesse(state, identity, ignoreOrders, finesses) {
 		return [{ type: 'finesse', reacting, card: finesse, self: true, identities: [identity] }];
 	}
 
-	throw new IllegalInterpretation('Self-finesse not found');
+	throw new IllegalInterpretation('self-finesse not found');
 }

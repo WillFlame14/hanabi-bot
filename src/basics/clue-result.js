@@ -49,7 +49,7 @@ export function bad_touch_result(state, hypo_player, target, focus_order = -1) {
 		if (!card.newly_clued || card.order === focus_order)
 			continue;
 
-		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order)))
+		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order, { infer: true })))
 			trash++;
 
 		// TODO: Don't double count bad touch when cluing two of the same card
@@ -96,17 +96,20 @@ export function playables_result(state, player, hypo_player) {
 				finesses++;
 
 			// Only counts as a playable if it wasn't already playing
-			if (!player.unknown_plays.some(order => order === hypo_card.order))
+			if (!player.unknown_plays.has(hypo_card.order))
 				playables.push({ playerIndex, card: hypo_card });
 		}
 	}
 
 	for (const order of hypo_player.unknown_plays) {
-		if (player.unknown_plays.includes(order))
+		if (player.unknown_plays.has(order))
 			continue;
 
 		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
-		playables.push({ playerIndex, card: hypo_player.thoughts[order] });
+
+		// Only count unknown playables if they actually go on top of the stacks
+		if (state.me.thoughts[order].rank > player.hypo_stacks[state.me.thoughts[order].suitIndex])
+			playables.push({ playerIndex, card: hypo_player.thoughts[order] });
 	}
 
 	return { finesses, playables };

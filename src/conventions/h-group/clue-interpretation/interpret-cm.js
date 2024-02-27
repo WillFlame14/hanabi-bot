@@ -73,7 +73,7 @@ export function interpret_5cm(state, target) {
 				const { order } = state.hands[target][chopIndex];
 				const saved_card = state.common.thoughts[order];
 
-				if (saved_card.possible.every(p => isTrash(state, state.common, p, order))) {
+				if (saved_card.possible.every(p => isTrash(state, state.common, p, order, { infer: true }))) {
 					logger.info(`saved card ${logCard(saved_card)} has only trash possibilities, not 5cm`);
 					return false;
 				}

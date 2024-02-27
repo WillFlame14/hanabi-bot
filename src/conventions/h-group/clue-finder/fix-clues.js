@@ -131,21 +131,28 @@ export function find_fix_clues(state, play_clues, save_clues, options = {}) {
 /**
  * A fix criterion. Considered fixed when the card matches at least one of its inferences.
  * @param {State} state
- * @param {Card} card
+ * @param {number} order
  * @param {number} _target
  */
-function inference_corrected(state, card, _target) {
+function inference_corrected(state, order, _target) {
+	const card = state.common.thoughts[order];
+	const actualCard = state.hands.flat().find(c => c.order === order);
+
+	if (isBasicTrash(state, actualCard))
+		return card.possible.every(p => isBasicTrash(state, p));
+
 	return card.possible.every(p => playableAway(state, p) !== 0);
 }
 
 /**
  * A fix criterion. Considered fixed when the card becomes known duplicated as an already saved card.
  * @param {State} state
- * @param {Card} card
+ * @param {number} order
  * @param {number} _target
  */
-function duplication_known(state, card, _target) {
-	return card.possible.length === 1 && isSaved(state, state.common, card, card.order);
+function duplication_known(state, order, _target) {
+	const card = state.common.thoughts[order];
+	return card.possible.length === 1 && isSaved(state, state.common, card, order);
 }
 
 /**
@@ -154,7 +161,7 @@ function duplication_known(state, card, _target) {
  * @param {number} target
  * @param {number} order
  * @param {Clue} clue
- * @param {(state: State, card: Card, target: number) => boolean} fix_criteria
+ * @param {(state: State, order: number, target: number) => boolean} fix_criteria
  */
 function check_fixed(state, target, order, clue, fix_criteria) {
 	const touch = state.hands[target].clueTouched(clue, state.variant);
@@ -168,7 +175,7 @@ function check_fixed(state, target, order, clue, fix_criteria) {
 	const card_after_cluing = hypo_state.common.thoughts[order];
 
 	const result = {
-		fixed: fix_criteria(hypo_state, card_after_cluing, target),
+		fixed: fix_criteria(hypo_state, order, target),
 		trash: card_after_cluing.possible.every(p => isTrash(hypo_state, state.common, p, order)),
 		result: get_result(state, hypo_state, clue, state.ourPlayerIndex)
 	};

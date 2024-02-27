@@ -152,13 +152,15 @@ export function handle_action(action, catchup = false) {
 			break;
 		}
 		case 'ignore': {
-			const { playerIndex, conn_index } = action;
+			const { playerIndex, conn_index, order } = action;
 
 			this.next_ignore[conn_index] ??= [];
 
-			for (const card of this.hands[playerIndex])
-				this.next_ignore[conn_index].push(card.order);
-
+			// Ignore the card and all cards older than it
+			for (const card of this.hands[playerIndex]) {
+				if (card.order <= order)
+					this.next_ignore[conn_index].push(card.order);
+			}
 			break;
 		}
 		case 'finesse':  {
