@@ -80,7 +80,7 @@ async function main() {
 		const { score, result, actions, notes } =
 			simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level, variant);
 
-		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions, notes }));
+		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions, notes, options: { variant: variant.name } }));
 		console.log(`seed ${seed}, score: ${score}/${variant.suits.length * 5}, ${result}`);
 	}
 	else {
@@ -93,7 +93,7 @@ async function main() {
 			const { score, result, actions, notes } =
 				simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level, variant);
 
-			fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions, notes }));
+			fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions, notes, options: { variant: variant.name } }));
 
 			results[result] ||= [];
 			results[result].push({ score, i });
