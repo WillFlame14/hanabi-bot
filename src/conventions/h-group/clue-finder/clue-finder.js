@@ -278,7 +278,7 @@ export function find_clues(state, options = {}) {
 				}
 				// Stall clues
 				else if (severity > 0) {
-					if (clue.type === CLUE.RANK && clue.value === 5) {
+					if (clue.type === CLUE.RANK && clue.value === 5 && !hand[cardIndex].clued) {
 						logger.info('5 stall', logClue(clue));
 						stall_clues[0].push(clue);
 					}

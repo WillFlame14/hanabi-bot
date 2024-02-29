@@ -43,11 +43,18 @@ function apply_good_touch(state, action) {
 			const card = common.thoughts[order];
 
 			if (card.finessed && oldThoughts[order].inferred.length >= 1 && card.inferred.length === 0) {
-				logger.info('revealed layered finesse on card', card.order, oldThoughts[order].inferred.map(logCard));
 				// TODO: Possibly try rewinding older reasoning until rewind works?
 				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
-				if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue }))
-					return { layered_reveal: true };
+				try {
+					if (state.rewind(action_index, { type: 'finesse', list, clue: action.clue }))
+						return { layered_reveal: true };
+				}
+				catch (error) {
+					// Rewinding the layered finesse doesn't work, just ignore us then.
+					logger.warn(error.message);
+					if (state.rewind(action_index, { type: 'ignore', playerIndex: target, order, conn_index: 0 }))
+						return { layered_reveal: true };
+				}
 			}
 		}
 	}
@@ -181,24 +188,25 @@ export function interpret_clue(state, action) {
 	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) => logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
 
 	const matched_inferences = focus_possible.filter(p => focus_thoughts.inferred.some(c => c.matches(p)));
-	const correct_match = matched_inferences.find(p => focused_card.matches(p));
-	const matched_correct = target === state.ourPlayerIndex || correct_match !== undefined;
-
 	const old_state = state.minimalCopy();
 
 	// Card matches an inference and not a save/stall
 	// If we know the identity of the card, one of the matched inferences must also be correct before we can give this clue.
-	if (matched_inferences.length >= 1 && matched_correct) {
+	if (matched_inferences.length >= 1 && matched_inferences.find(p => focused_card.matches(p))) {
 		focus_thoughts.intersect('inferred', focus_possible);
 
 		resolve_clue(state, old_state, action, matched_inferences, focused_card);
 	}
-	// Card doesn't match any inferences
+	// Card doesn't match any inferences (or we don't know the card)
 	else {
-		logger.info(`card ${logCard(focused_card)} order ${focused_card.order} doesn't match any inferences! currently ${focus_thoughts.inferred.map(logCard).join(',')}`);
+		if (target !== state.ourPlayerIndex)
+			logger.info(`card ${logCard(focused_card)} order ${focused_card.order} doesn't match any inferences! currently ${focus_thoughts.inferred.map(logCard).join(',')}`);
 
 		/** @type {FocusPossibility[]} */
 		const all_connections = [];
+
+		if (target === state.ourPlayerIndex)
+			matched_inferences.forEach(fp => all_connections.push(fp));
 
 		const looksDirect = focus_thoughts.identity() === undefined && (	// Focused card must be unknown AND
 			action.clue.type === CLUE.COLOUR ||											// Colour clue always looks direct
@@ -207,11 +215,17 @@ export function interpret_clue(state, action) {
 
 		if (target === state.ourPlayerIndex) {
 			// We are the clue target, so we need to consider all the possibilities of the card
-			let conn_save, min_blind_plays = state.hands[state.ourPlayerIndex].length + 1;
-			let self = true;
+			let conn_save;
+			let min_blind_plays = Math.min(...all_connections.map(fp => fp.connections.filter(conn => conn.type === 'finesse').length),
+				state.hands[state.ourPlayerIndex].length + 1);
+			let self = all_connections.every(fp => fp.connections[0]?.self);
 
 			for (const id of focus_thoughts.inferred) {
-				if (isBasicTrash(state, id))
+				if (isTrash(state, state.players[giver], id))
+					continue;
+
+				// Focus possibility, skip
+				if (all_connections.some(fp => id.matches(fp)))
 					continue;
 
 				try {
@@ -219,8 +233,8 @@ export function interpret_clue(state, action) {
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('found connections:', logConnections(connections, id));
 
-					// Starts with self-finesse or self-prompt
-					if (connections[0]?.self) {
+					// Skipping knowns/playables, starts with self-finesse or self-prompt
+					if (connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.self) {
 						// TODO: This interpretation should always exist, but must wait for all players to ignore first
 						if (self && blind_plays < min_blind_plays) {
 							conn_save = { connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections) };

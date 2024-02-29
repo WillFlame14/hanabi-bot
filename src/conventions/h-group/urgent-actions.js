@@ -267,7 +267,6 @@ export function find_urgent_actions(state, play_clues, save_clues, fix_clues, st
 				if (hypo_state.common.thinksPlayables(hypo_state, target).length > 0)
 					all_play_clues.push(Object.assign({}, save, { result: get_result(state, hypo_state, save, state.ourPlayerIndex )}));
 
-
 				logger.debug('hand after save', logHand(hand_after_save));
 
 				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad

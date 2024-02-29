@@ -17,9 +17,8 @@ import { LEVEL } from './h-constants.js';
  * "Undoes" a connection by reverting/removing notes on connecting cards.
  * @param {State} state
  * @param {WaitingConnection} waiting_connection
- * @param {boolean} undo_infs
  */
-function remove_finesse(state, waiting_connection, undo_infs = true) {
+function remove_finesse(state, waiting_connection) {
 	const { connections, focused_card, inference, fake, symmetric } = waiting_connection;
 	const focus_thoughts = state.common.thoughts[focused_card.order];
 
@@ -42,12 +41,12 @@ function remove_finesse(state, waiting_connection, undo_infs = true) {
 		if (symmetric && connection.reacting !== target)
 			continue;
 
-		if (connection.type === 'finesse') {
+		if (connection.type === 'finesse' && !card.superposition) {
 			card.finessed = false;
 			card.hidden = false;
 		}
 
-		if (undo_infs && !card.superposition) {
+		if (!card.superposition) {
 			if (card.old_inferred !== undefined) {
 				// Restore old inferences
 				card.inferred = card.old_inferred;
@@ -92,8 +91,17 @@ function resolve_card_retained(state, waiting_connection) {
 
 	const { card: reacting_card } = state.last_actions[reacting];
 
+	const new_finesse_queued = () => {
+		const old_finesse = connections.find((conn, i) => i >= conn_index && conn.reacting === state.ourPlayerIndex && conn.type === 'finesse')?.card;
+
+		return old_finesse !== undefined && state.hands[state.ourPlayerIndex].some(c => {
+			const { finessed, finesse_index } = state.me.thoughts[c.order];
+			return finessed && finesse_index > state.me.thoughts[old_finesse.order].finesse_index;
+		});
+	};
+
 	// Didn't play into finesse
-	if (type === 'finesse' || type === 'prompt') {
+	if (type === 'finesse' || type === 'prompt' || new_finesse_queued()) {
 		if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
 			logger.info(`${state.playerNames[reacting]} didn't play into unplayable ${type}`);
 			return { remove: false };
@@ -140,17 +148,14 @@ function resolve_card_retained(state, waiting_connection) {
 		}
 
 		// Can't remove finesses if we allow ourselves to "defer" an ambiguous finesse the first time around.
-		if (waiting_connection.symmetric)
-			remove_finesse(state, waiting_connection);
-		else
+		if (!waiting_connection.symmetric)
 			logger.warn('deciding not to remove finesse with connections:', waiting_connection.connections.map(logConnection));
 
-		return { remove: true };
+		return { remove: true, remove_finesse: waiting_connection.symmetric };
 	}
 	else if (state.last_actions[reacting].type === 'discard') {
 		logger.info(`${state.playerNames[reacting]} discarded with a waiting connection, removing inference ${logCard(inference)}`);
-		remove_finesse(state, waiting_connection);
-		return { remove: true };
+		return { remove: true, remove_finesse: true };
 	}
 	return { remove: false };
 }
@@ -240,19 +245,22 @@ export function update_turn(state, action) {
 	const { currentPlayerIndex } = action;
 	const lastPlayerIndex = (currentPlayerIndex + state.numPlayers - 1) % state.numPlayers;
 
-	/** @type {number[]} */
-	const to_remove = [];
+	/** @type {Set<number>} */
+	const to_remove = new Set();
 
-	/** @type {{card: ActualCard, inferences: {suitIndex: number, rank: number}[], connections: Connection[]}[]} */
+	/** @type {{card: ActualCard, inferences: Identity[], connections: Connection[]}[]} */
 	const demonstrated = [];
 
+	/** @type {Set<number>} Waiting connections that we have to remove finesses for. */
+	const remove_finesses = new Set();
+
 	for (let i = 0; i < common.waiting_connections.length; i++) {
-		const { connections, conn_index, focused_card, inference, giver, action_index } = common.waiting_connections[i];
+		const waiting_connection = common.waiting_connections[i];
+		const { connections, conn_index, focused_card, inference, giver, action_index } = waiting_connection;
 		const { reacting, card: old_card, identities } = connections[conn_index];
 		logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
 
-		let remove = false;
-		let quit = false;
+		let remove = false, remove_finesse = false, quit = false;
 
 		/** @type {{card: ActualCard, inferences: Identity[], connections: Connection[]}}*/
 		let demonstration = undefined;
@@ -269,7 +277,7 @@ export function update_turn(state, action) {
 
 		if (impossible_conn !== undefined) {
 			logger.warn(`future connection depends on played card having identities ${impossible_conn.identities.map(logCard)}, removing`);
-			remove_finesse(state, common.waiting_connections[i]);
+			remove_finesse = true;
 			remove = true;
 		}
 		else {
@@ -277,17 +285,17 @@ export function update_turn(state, action) {
 			if (lastPlayerIndex === reacting) {
 				// They still have the card
 				if (state.hands[reacting].findOrder(old_card.order) !== undefined) {
-					({ remove, quit} = resolve_card_retained(state, common.waiting_connections[i]));
+					({ remove, remove_finesse, quit } = resolve_card_retained(state, waiting_connection));
 				}
 				// The card was played
 				else if (state.last_actions[reacting].type === 'play') {
-					({remove, demonstration} = resolve_card_played(state, common.waiting_connections[i]));
+					({remove, demonstration } = resolve_card_played(state, waiting_connection));
 				}
 				// The card was discarded and its copy is not visible
 				else if (state.last_actions[reacting].type === 'discard' && visibleFind(state, state.me, old_card).length === 0) {
 					logger.info(`waiting card ${logCard(old_card)} discarded?? removing finesse`);
-					remove_finesse(state, common.waiting_connections[i]);
 					remove = true;
+					remove_finesse = true;
 				}
 			}
 			// Check if giver played card that matches next connection
@@ -301,7 +309,7 @@ export function update_turn(state, action) {
 					common.thoughts[old_card.order].finessed &&
 					common.thoughts[last_action.card.order].reasoning[0] < action_index
 				)
-					({ remove } = resolve_giver_play(state, common.waiting_connections[i]));
+					({ remove } = resolve_giver_play(state, waiting_connection));
 			}
 		}
 
@@ -309,7 +317,10 @@ export function update_turn(state, action) {
 			return;
 
 		if (remove)
-			to_remove.push(i);
+			to_remove.add(i);
+
+		if (remove_finesse)
+			remove_finesses.add(i);
 
 		if (demonstration !== undefined) {
 			const prev_card = demonstrated.find(({ card }) => card.order === demonstration.card.order);
@@ -360,13 +371,16 @@ export function update_turn(state, action) {
 		if (demonstrated.some(d => d.card.order === focused_card.order &&
 			!d.inferences.some(inf => inference.suitIndex === inf.suitIndex && inference.rank === inf.rank))
 		) {
-			to_remove.push(i);
-			remove_finesse(state, common.waiting_connections[i]);
+			to_remove.add(i);
+			remove_finesses.add(i);
 		}
 	}
 
+	for (const i of remove_finesses)
+		remove_finesse(state, common.waiting_connections[i]);
+
 	// Note that good_touch_elim() can remove waiting_connections; it is probably better to do this first.
-	common.waiting_connections = common.waiting_connections.filter((_, i) => !to_remove.includes(i));
+	common.waiting_connections = common.waiting_connections.filter((_, i) => !to_remove.has(i));
 
 	update_hypo_stacks(state, state.common);
 

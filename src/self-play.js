@@ -31,7 +31,7 @@ const noVar = /** @type {Variant} */ ({
 });
 
 async function main() {
-	const { convention = 'HGroup', level: lStr = '1', games = '10', players: pStr = '2', seed, variant: vStr = 'No Variant' } = Utils.parse_args();
+	const { convention = 'HGroup', level: lStr = '1', games: gStr = '10', players: pStr = '2', seed = '0', variant: vStr = 'No Variant' } = Utils.parse_args();
 	const variant = await getVariant(vStr);
 
 	if (conventions[convention] === undefined)
@@ -46,6 +46,16 @@ async function main() {
 
 	if (convention === 'HGroup' && (!Number.isInteger(level) || level < 1 || level > MAX_H_LEVEL))
 		throw new Error(`Invalid level provided (${lStr}). Please enter a number from 1-${MAX_H_LEVEL}.`);
+
+	const games = Number(gStr);
+
+	if (!Number.isInteger(games) || games < 1)
+		throw new Error(`Invalid number of games (${gStr}). Please enter a positive integer.`);
+
+	const seedNum = Number(seed);
+
+	if (!Number.isInteger(seedNum) && games !== 1)
+		throw new Error(`A non-integer seed (${seed}) only supports games=1.`);
 
 	/** @type {Identity[]} */
 	const deck = [];
@@ -63,27 +73,40 @@ async function main() {
 
 	fs.mkdir('./seeds', { recursive: true }, (err) => console.log(err));
 
-	if (seed !== undefined) {
+	if (!Number.isInteger(seedNum) || games === 1) {
 		const players = playerNames.slice(0, numPlayers);
 		const shuffled = shuffle(deck, seed);
 
-		const { score, strikeout, actions } =
+		const { score, result, actions } =
 			simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
 
 		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions }));
-		console.log(score, 'strikeout?', strikeout);
+		console.log(`seed ${seed}, score: ${score}/${variant.suits.length * 5}, ${result}`);
 	}
 	else {
-		for (let i = 0; i < Number(games); i++) {
+		/** @type {Record<string, { score: number, i: number }[]>} */
+		const results = {};
+
+		for (let i = seedNum; i < seedNum + games; i++) {
 			const players = playerNames.slice(0, numPlayers);
 			const shuffled = shuffle(deck, `${i}`);
-			const { score, strikeout, actions } =
+			const { score, result, actions } =
 				simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
 
 			fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions }));
 
-			console.log(score, strikeout);
+			results[result] ||= [];
+			results[result].push({ score, i });
+
+			console.log(`seed ${i}, score: ${score}/${variant.suits.length * 5}, ${result}`);
 		}
+
+		console.log('----------------');
+
+		const perfect = (results['perfect!'] ?? []).length;
+		console.log(`Perfect scores: ${perfect}/${games}, ${parseFloat(`${perfect / games}`).toFixed(2)}`);
+		console.log(`Average score: ${Object.values(results).flatMap(rs => rs.map(r => r.score)).reduce((sum, curr) => sum + curr) / games}`);
+		console.log('Game summary:', results);
 	}
 }
 
@@ -176,11 +199,15 @@ function simulate_game(playerNames, deck, convention, level) {
 		logger.error(err);
 	}
 
-	return {
-		score: states[0].state.score,
-		strikeout: states[0].state.strikes === 3,
-		actions
-	};
+	const { score, strikes, variant, max_ranks } = states[0].state;
+
+	const result = strikes === 3 ? 'strikeout' :
+		score === variant.suits.length * 5 ? 'perfect!' :
+		score === max_ranks.reduce((sum, max) => sum + max) ? 'discarded critical (max)' :
+		max_ranks.some(max => max !== 5) ? 'discarded critical, out of pace' :
+		'out of pace';
+
+	return { score: states[0].state.score, result, actions };
 }
 
 main();

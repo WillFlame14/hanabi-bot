@@ -86,11 +86,26 @@ export function minimum_clue_value(state) {
  * @param {number} order 	The order to exclude when searching for duplicates.
  */
 export function rankLooksPlayable(state, rank, giver, target, order) {
-	/**
-	 * @param {number} stack
-	 * @param {number} suitIndex
-	 */
-	const looksPlayableRank = (stack, suitIndex) => {
+	const resolved_hypo_stacks = state.common.hypo_stacks.slice();
+
+	// Update the hypo stacks to everything the giver thinks the target knows
+	for (const order of state.common.unknown_plays) {
+		// Target can't resolve unknown plays in their own hand
+		if (state.hands[target].findOrder(order))
+			continue;
+
+		// Giver can't use private info in their hand
+		if (state.hands[giver].findOrder(order) && state.common.thoughts[order].identity({ infer: true }) === undefined)
+			continue;
+
+		const card = state.players[giver].thoughts[order];
+		if (card.identity() === undefined)
+			continue;
+
+		resolved_hypo_stacks[card.suitIndex] = Math.max(resolved_hypo_stacks[card.suitIndex], card.rank);
+	}
+
+	return resolved_hypo_stacks.some((stack, suitIndex) => {
 		const identity = { suitIndex, rank };
 
 		const playable_identity = stack + 1 === rank;
@@ -99,16 +114,6 @@ export function rankLooksPlayable(state, rank, giver, target, order) {
 		const matching_inference = state.common.thoughts[order].inferred.some(inf => inf.matches(identity));
 
 		return playable_identity && other_visibles < cardCount(state.variant, identity) && matching_inference;
-	};
-
-	return state.common.hypo_stacks.some(looksPlayableRank) || state.players[target].hypo_stacks.some((stack, suitIndex) => {
-		// Don't allow target to connect through unknown plays in giver's hand
-		if (stack > state.common.hypo_stacks[suitIndex] &&
-			state.hands[giver].some(c =>
-				c.suitIndex === suitIndex && c.rank > state.common.hypo_stacks[suitIndex] && state.common.unknown_plays.has(c.order)))
-			return false;
-
-		return looksPlayableRank(stack, suitIndex);
 	});
 }
 

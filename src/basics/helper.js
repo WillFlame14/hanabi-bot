@@ -160,7 +160,7 @@ export function team_elim(state) {
 
 			card.old_inferred = ccard.old_inferred?.slice();
 
-			for (const property of ['focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'hidden', 'called_to_discard', 'finesse_index', 'rewinded'])
+			for (const property of ['focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'hidden', 'called_to_discard', 'finesse_index', 'rewinded', 'certain_finessed'])
 				card[property] = ccard[property];
 
 			card.reasoning = ccard.reasoning.slice();

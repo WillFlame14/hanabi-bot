@@ -95,6 +95,7 @@ export class Card extends BasicCard {
 	superposition = false;	// Whether the card is currently in a superposition
 	hidden = false;
 	called_to_discard = false;
+	certain_finessed = false;
 
 	finesse_index = -1;	// Action index of when the card was finessed
 	reasoning = /** @type {number[]} */ ([]);		// The action indexes of when the card's possibilities/inferences were updated

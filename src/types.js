@@ -88,6 +88,7 @@
  * @property {boolean} [self]
  * @property {boolean} [hidden]
  * @property {boolean} [known]
+ * @property {boolean} [certainFinesse]
  * 
  * @typedef FocusPossibility
  * @property {number} suitIndex

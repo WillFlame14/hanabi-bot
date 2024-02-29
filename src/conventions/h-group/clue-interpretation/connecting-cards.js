@@ -47,6 +47,7 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 			const card = state.common.thoughts[order];
 
 			return !ignoreOrders.includes(order) &&
+				card.touched &&
 				card.inferred.some(c => c.matches(identity)) &&
 				(card.inferred.every(c => playableAway(state, c) === 0) || card.finessed);
 		});

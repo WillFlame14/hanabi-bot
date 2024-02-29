@@ -96,7 +96,8 @@ export function good_touch_elim(state, only_self = false) {
 				(hard_matches.length === 0 && matches.some(c => c.order === order)) ||	// Soft matches when there are no hard matches
 				card.inferred.length === 0 ||											// Cards with no inferences
 				!card.inferred.some(c => c.matches(identity)) ||						// Cards that don't have this inference
-				card.inferred.every(inf => isBasicTrash(state, inf))) {					// Clued trash
+				card.inferred.every(inf => isBasicTrash(state, inf)) ||					// Clued trash
+				card.certain_finessed) {												// Certain finessed
 				continue;
 			}
 

@@ -65,7 +65,7 @@ export function evaluate_clue(state, action, clue, target, target_card, bad_touc
 
 		const card = hypo_state.common.thoughts[incorrect_card.order];
 		if (card.reset) {
-			reason = `card ${logCard(card)} lost all inferences and was reset`;
+			reason = `card ${logCard(card)} ${card.order} lost all inferences and was reset`;
 		}
 		else if (!card.matches_inferences()) {
 			reason = `card ${logCard(card)} has inferences [${card.inferred.map(logCard).join(',')}], doesn't match`;

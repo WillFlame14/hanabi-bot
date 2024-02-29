@@ -89,6 +89,18 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 		if (isBasicTrash(state, id))
 			continue;
 
+		const visible_dupe = state.hands.some((hand, i) => {
+			const useCommon = i === giver || i === target;
+
+			return hand.some(c => {
+				const card = (useCommon ? state.common : state.players[target]).thoughts[c.order];
+				return card.matches(id, { infer: useCommon }) && c.order !== order && card.touched;
+			});
+		});
+
+		if (visible_dupe)
+			continue;
+
 		const looksDirect = focused_card.identity() === undefined && (		// Focus must be unknown AND
 			action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
 			state.common.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
@@ -171,6 +183,9 @@ export function assign_connections(state, connections, options = {}) {
 			card.finessed = true;
 			card.finesse_index = state.actionList.length;
 			card.hidden = hidden;
+
+			if (connection.certainFinesse)
+				card.certain_finessed = true;
 		}
 
 		if (hidden) {

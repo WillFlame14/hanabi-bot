@@ -52,20 +52,21 @@ describe('ambiguous finesse', () => {
 
 	it('passes back a layered ambiguous finesse', () => {
 		const state = setup(HGroup, [
-			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['r4', 'g2', 'g4', 'r5', 'b4'],
-			['r1', 'b1', 'r2', 'y3', 'p3']
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'g2', 'g4', 'r5'],
+			['g3', 'y4', 'p4', 'y3'],
+			['r1', 'r2', 'b4', 'p3']
 		], {
 			level: 5,
-			starting: PLAYER.BOB
+			starting: PLAYER.CATHY
 		});
 
-		takeTurn(state, 'Bob clues 3 to Alice (slot 3)');
-		takeTurn(state, 'Cathy discards p3', 'b3');
+		takeTurn(state, 'Cathy clues 3 to Bob');
+		takeTurn(state, 'Donald discards p3', 'b3');
 
-		// Alice should pass back, making her slot 1 not finessed and Cathy's slot 2 (used to be slot 1) finessed.
+		// Alice should pass back, making her slot 1 not finessed and Donald's slots 2 and 3 (used to be slots 1 and 2) finessed.
 		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
-		assert.equal(state.common.thoughts[state.hands[PLAYER.CATHY][1].order].finessed, true);
+		assert.ok([1,2].every(index => state.common.thoughts[state.hands[PLAYER.DONALD][index].order].finessed));
 	});
 
 	it('understands an ambigous finesse pass-back', () => {

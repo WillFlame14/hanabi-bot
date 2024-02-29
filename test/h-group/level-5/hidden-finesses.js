@@ -166,6 +166,32 @@ describe('layered finesse', () => {
 		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['y1']);
 	});
 
+	it('understands playing into a complex layered finesse', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b5', 'p4', 'y2', 'g3'],
+			['g1', 'r4', 'g4', 'r5'],
+			['g2', 'r4', 'b4', 'g1']
+		], {
+			level: 5,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(state, 'Bob clues 4 to Alice (slot 4)');	// touching g4
+		takeTurn(state, 'Cathy plays g1 (slot 1)', 'p3');
+		takeTurn(state, 'Donald plays g2 (slot 1)', 'r5');
+		takeTurn(state, 'Alice plays p1 (slot 1)');
+
+		const slot3 = state.common.thoughts[state.hands[PLAYER.ALICE][1].order];
+		ExAsserts.cardHasInferences(slot3, ['g3']);
+		assert.equal(slot3.finessed, true);
+
+		// Double-check that Alice also thinks slot 3 is g3 and finessed
+		const alice_slot3 = state.players[PLAYER.ALICE].thoughts[state.hands[PLAYER.ALICE][1].order];
+		ExAsserts.cardHasInferences(alice_slot3, ['g3']);
+		assert.equal(alice_slot3.finessed, true);
+	});
+
 	it('does not try giving layered finesses on the same card', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
