@@ -1,6 +1,5 @@
 import { cardCount } from '../variants.js';
 import { baseCount, isBasicTrash, unknownIdentities, visibleFind } from './hanabi-util.js';
-import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
