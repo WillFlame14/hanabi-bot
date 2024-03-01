@@ -67,7 +67,7 @@ export function update_hypo_stacks(state, player) {
 	const unknown_plays = new Set();
 
 	let found_new_playable = true;
-	const good_touch_elim = /** @type {BasicCard[]}*/ ([]);
+	const good_touch_elim = /** @type {Identity[]}*/ ([]);
 
 	const linked_orders = player.linkedOrders(state);
 
@@ -78,7 +78,7 @@ export function update_hypo_stacks(state, player) {
 		for (const { order } of state.hands.flat()) {
 			const card = player.thoughts[order];
 
-			if (!card.saved || good_touch_elim.some(e => e.matches(card)) || linked_orders.has(order))
+			if (!card.saved || good_touch_elim.some(e => card.matches(e)) || linked_orders.has(order))
 				continue;
 
 			/**
@@ -86,7 +86,7 @@ export function update_hypo_stacks(state, player) {
 			 * @param {BasicCard[]} poss
 			 */
 			const delayed_playable = (poss) => {
-				const remaining_poss = poss.filter(c => !good_touch_elim.some(e => e.matches(c)));
+				const remaining_poss = poss.filter(c => !good_touch_elim.some(e => c.matches(e)));
 				return remaining_poss.length > 0 && remaining_poss.every(c => hypo_stacks[c.suitIndex] + 1 === c.rank);
 			};
 
@@ -122,6 +122,22 @@ export function update_hypo_stacks(state, player) {
 				if (id === undefined) {
 					// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
 					unknown_plays.add(order);
+
+					const promised_link = player.links.find(link => link.promised && link.cards.some(c => c.order === order));
+
+					// All cards in a promised link will be played
+					if (promised_link?.cards.every(c => unknown_plays.has(c.order))) {
+						const { suitIndex, rank } = promised_link.identities[0];
+
+						if (rank !== hypo_stacks[suitIndex] + 1) {
+							logger.warn(`tried to add ${logCard(promised_link.identities[0])} onto hypo stacks, but they were at ${hypo_stacks[suitIndex]}??`);
+						}
+						else {
+							hypo_stacks[suitIndex] = rank;
+							good_touch_elim.push(promised_link.identities[0]);
+							found_new_playable = true;
+						}
+					}
 					continue;
 				}
 

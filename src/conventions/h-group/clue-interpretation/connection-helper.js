@@ -26,7 +26,7 @@ export function inference_known(all_connections) {
 		return false;
 
 	const { connections } = all_connections[0];
-	return connections.length === 0 || connections.every(conn => conn.type === 'known' || (conn.type === 'playable' && conn.known));
+	return connections.length === 0 || connections.every(conn => conn.type === 'known' || (conn.type === 'playable' && conn.linked.length === 1));
 }
 
 /**
@@ -165,7 +165,7 @@ export function assign_connections(state, connections, options = {}) {
 	const hypo_stacks = Utils.objClone(state.common.hypo_stacks);
 
 	for (const connection of connections) {
-		const { type, reacting, hidden, card: conn_card, known, identities } = connection;
+		const { type, reacting, hidden, card: conn_card, linked, identities } = connection;
 		// The connections can be cloned, so need to modify the card directly
 		const card = state.common.thoughts[conn_card.order];
 
@@ -184,7 +184,7 @@ export function assign_connections(state, connections, options = {}) {
 			card.finesse_index = state.actionList.length;
 			card.hidden = hidden;
 
-			if (connection.certainFinesse)
+			if (connection.certain)
 				card.certain_finessed = true;
 		}
 
@@ -209,8 +209,19 @@ export function assign_connections(state, connections, options = {}) {
 				card.union('inferred', identities);
 			}
 			else {
-				if (!(type === 'playable' && !known))
+				if (type === 'playable' && linked.length > 1) {
+					const existing_link = state.common.links.find(link => {
+						const { promised } = link;
+						const { suitIndex, rank } = link.identities[0];
+						return promised && identities[0].suitIndex === suitIndex && identities[0].rank === rank;
+					});
+
+					if (!(existing_link?.cards.length === linked.length && existing_link.cards.every(c => linked.some(l => l.order === c.order))))
+						state.common.links.push({ promised: true, identities, cards: linked });
+				}
+				else {
 					card.assign('inferred', identities);
+				}
 
 				card.superposition = true;
 			}

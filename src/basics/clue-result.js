@@ -90,6 +90,10 @@ export function playables_result(state, player, hypo_player) {
 	// Count the number of finesses and newly known playable cards
 	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 		for (let rank = player.hypo_stacks[suitIndex] + 1; rank <= hypo_player.hypo_stacks[suitIndex]; rank++) {
+			// Hypo stack increased from promised link, card won't be findable
+			if (hypo_player.links.some(link => link.promised && link.identities[0].suitIndex === suitIndex && link.identities[0].rank === rank))
+				continue;
+
 			const { playerIndex, old_card, hypo_card } = find_card({ suitIndex, rank });
 
 			if (hypo_card.finessed && !old_card.finessed)

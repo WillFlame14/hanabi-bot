@@ -9,6 +9,7 @@ import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
+import { get_result } from '../../src/conventions/h-group/clue-finder/determine-clue.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -103,6 +104,29 @@ describe('save clue', () => {
 
 		// We should save with 2 since it reveals r2 playable.
 		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 2 });
+	});
+});
+
+describe('play clues', () => {
+	it('correctly counts the number of playables when connecting on unknown plays', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'g1', 'p5', 'r2', 'y2'],
+			['g2', 'g3', 'p2', 'p1', 'b4']
+		], {
+			level: 1,
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(state, 'Cathy clues 1 to Bob');
+
+		const clue = { type: CLUE.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN };
+		const list = state.hands[PLAYER.CATHY].clueTouched(clue, state.variant).map(c => c.order);
+		const hypo_state = state.simulate_clue({ type: 'clue', clue, list, giver: PLAYER.ALICE, target: PLAYER.CATHY });
+		const { playables } = get_result(state, hypo_state, clue, PLAYER.ALICE);
+
+		// g2 should be counted as newly playable.
+		assert.equal(playables.length, 1);
 	});
 });
 

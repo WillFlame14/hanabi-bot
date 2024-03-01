@@ -30,9 +30,19 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 	for (let i = 0; i < state.numPlayers; i++) {
 		const playerIndex = (giver + i) % state.numPlayers;
 
-		const globally_known = state.hands[playerIndex].find(({ order }) =>
-			!ignoreOrders.includes(order) && common.thoughts[order].matches(identity, { infer: true }) && common.thoughts[order].touched &&
-			!state.common.waiting_connections.some(wc => wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order) && wc.fake));
+		const globally_known = state.hands[playerIndex].find(({ order }) => {
+			if (ignoreOrders.includes(order))
+				return false;
+
+			const card = state.common.thoughts[order].clone();
+
+			// Remove inferences that will be proven false (i.e. after someone plays the card with such identity)
+			card.inferred = card.inferred.filter(inf => !inf.playedBefore(identity));
+
+			return card.matches(identity, { infer: true }) && card.touched &&
+				!state.common.waiting_connections.some(wc =>
+					wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order) && wc.fake);
+		});
 
 		if (globally_known)
 			return { type: 'known', reacting: playerIndex, card: globally_known, identities: [identity] };
@@ -69,7 +79,7 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 			if (common.thoughts[match.order].hidden)
 				logger.warn(`hidden connecting card ${logCard(identity)} in ${state.playerNames[playerIndex]}'s hand, might be confusing`);
 
-			return { type: 'playable', reacting: playerIndex, card: match, known: playables.length === 1, identities: [identity] };
+			return { type: 'playable', reacting: playerIndex, card: match, linked: playables, identities: [identity] };
 		}
 	}
 }
@@ -217,7 +227,7 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 				type: 'playable',
 				reacting: state.ourPlayerIndex,
 				card: (multiple_1s ? order_1s(state, state.common, playable_conns) : playable_conns)[0],	  // If necessary, reorder to oldest 1 to avoid prompting
-				known: playable_conns.length === 1,
+				linked: playable_conns,
 				identities: [identity]
 			}];
 		}

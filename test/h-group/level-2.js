@@ -128,6 +128,43 @@ describe('asymmetric clues', () => {
 		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][0].order], ['y3']);
 	});
 
+	it('prefers not starting with self, even if there are known playables before', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y3', 'b2', 'y4', 'r3'],
+			['g1', 'y3', 'r4', 'p2'],
+			['g2', 'p4', 'y5', 'b4']
+		], {
+			level: 2,
+			play_stacks: [0, 2, 0, 0, 0]
+		});
+
+		takeTurn(state, 'Alice clues green to Donald');
+		takeTurn(state, 'Bob clues 4 to Alice (slot 2)');
+
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['y4']);
+
+		// Alice's slot 1 should not be finessed.
+		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
+	});
+
+	it('allows finesses to look direct if someone else plays into it first', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g1', 'b2', 'y4', 'r3', 'r5'],
+			['r5', 'y3', 'r4', 'p2', 'r3']
+		], {
+			level: 2,
+			play_stacks: [0, 2, 0, 0, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(state, 'Cathy clues 3 to Alice (slot 2)');
+
+		// While ALice's slot 2 could be y3, it could also be g3 (reverse finesse on Bob + self-finesse).
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['y3', 'g3']);
+	});
+
 	it('includes the correct interpretation, even if it requires more blind plays', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],

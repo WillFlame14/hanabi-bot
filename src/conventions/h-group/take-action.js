@@ -31,6 +31,14 @@ export function take_action(state) {
 	let playable_cards = state.me.thinksPlayables(state, state.ourPlayerIndex).map(({ order }) => state.me.thoughts[order]);
 	let trash_cards = state.me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued).map(({ order }) => state.me.thoughts[order]);
 
+	logger.info('begin');
+
+	if (playable_cards.length > 0)
+		logger.info('playable cards', logHand(playable_cards));
+
+	if (trash_cards.length > 0)
+		logger.info('trash cards', logHand(trash_cards));
+
 	// Discards must be inferred, playable, trash and not duplicated in our hand
 	const discards = playable_cards.filter(card => {
 		const id = card.identity({ infer: true });

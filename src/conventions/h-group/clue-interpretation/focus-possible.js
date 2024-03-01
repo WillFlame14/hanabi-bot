@@ -227,8 +227,12 @@ function find_rank_focus(state, rank, action) {
 				logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
 
 			// Connected cards can stack up to this rank
-			if (rank === next_rank)
-				focus_possible.push({ suitIndex, rank, save: false, connections });
+			if (rank === next_rank) {
+				if (connections.some(conn => conn.reacting === target && conn.hidden && conn.identities[0].rank + 1 === rank))
+					logger.warn('illegal clandestine self-finesse!');
+				else
+					focus_possible.push({ suitIndex, rank, save: false, connections });
+			}
 		}
 	}
 	return focus_possible;

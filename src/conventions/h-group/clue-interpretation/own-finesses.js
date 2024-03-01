@@ -305,7 +305,7 @@ function find_self_finesse(state, giver, identity, ignoreOrders, finesses) {
 			return resolve_layered_finesse(state, identity, ignoreOrders);
 
 		const duplicated_in_own = state.hands[giver].find(c => c.matches(identity) && state.common.unknown_plays.has(c.order));
-		return [{ type: 'finesse', reacting, card: finesse, self: true, identities: [identity], certainFinesse: duplicated_in_own !== undefined }];
+		return [{ type: 'finesse', reacting, card: finesse, self: true, identities: [identity], certain: duplicated_in_own !== undefined }];
 	}
 
 	throw new IllegalInterpretation('self-finesse not found');

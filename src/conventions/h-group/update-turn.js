@@ -1,8 +1,9 @@
+import { LEVEL } from './h-constants.js';
 import { reset_superpositions, team_elim, update_hypo_stacks } from '../../basics/helper.js';
 import { playableAway, visibleFind } from '../../basics/hanabi-util.js';
+
 import logger from '../../tools/logger.js';
 import { logCard, logConnection } from '../../tools/log.js';
-import { LEVEL } from './h-constants.js';
 
 /**
  * @typedef {import('../h-group.js').default} State

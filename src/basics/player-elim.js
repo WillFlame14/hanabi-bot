@@ -202,17 +202,47 @@ export function find_links(state, hand = state.hands[this.playerIndex]) {
  */
 export function refresh_links(state) {
 	// Get the link indices that we need to redo (after learning new things about them)
-	const redo_elim_indices = Utils.findIndices(this.links, ({cards, identities}) =>
-		cards.some(c => {
-			const card = this.thoughts[c.order];
+	const remove_indices = [];
 
-			// The card is globally known or an identity is no longer possible
-			return card.identity() || identities.some(id => !card.possible.some(p => p.matches(id)));
-		})
-	);
+	for (let i = 0; i < this.links.length; i++) {
+		const { cards, identities, promised } = this.links[i];
 
-	// Clear links that we're redoing
-	this.links = this.links.filter((_, index) => !redo_elim_indices.includes(index));
+		if (promised) {
+			if (identities.length > 1)
+				throw new Error(`found promised link with cards ${cards.map(c => c.order)} but multiple identities ${identities.map(logCard)}`);
+
+			// At least one card matches, promise resolved
+			if (cards.some(c => this.thoughts[c.order].identity()?.matches(identities[0]))) {
+				remove_indices.push(i);
+			}
+			else {
+				// Reduce cards to ones that still have the identity as a possibility
+				const viable_cards = cards.filter(c => this.thoughts[c.order].possible.some(p => p.matches(identities[0])));
+
+				if (viable_cards.length <= 1) {
+					if (viable_cards.length === 0)
+						logger.warn(`promised identity ${logCard(identities[0])} not found among cards ${cards.map(c => c.order)}, rewind?`);
+					else
+						this.thoughts[viable_cards[0].order].intersect('inferred', [identities[0]]);
+					remove_indices.push(i);
+				}
+			}
+		}
+		else {
+			const revealed = cards.filter(c => {
+				const card = this.thoughts[c.order];
+
+				// The card is globally known or an identity is no longer possible
+				return card.identity() || identities.some(id => !card.possible.some(p => p.matches(id)));
+			});
+
+			if (revealed.length > 0)
+				remove_indices.push(i);
+		}
+	}
+
+	// Clear links that we're removing
+	this.links = this.links.filter((_, index) => !remove_indices.includes(index));
 
 	this.card_elim(state);
 	this.find_links(state);

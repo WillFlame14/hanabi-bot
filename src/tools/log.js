@@ -186,7 +186,7 @@ export function logConnection(connection) {
 	const { type, reacting, identities, card } = connection;
 	const identity = identities.length === 1 ? logCard(identities[0]) : `[${identities.map(logCard)}]`;
 
-	return `${card.order} ${identity} ${type} (${globals.state.playerNames[reacting]})${connection.certainFinesse ? ' (certain)' : ''}`;
+	return `${card.order} ${identity} ${type} (${globals.state.playerNames[reacting]})${connection.certain ? ' (certain)' : ''}`;
 }
 
 /**

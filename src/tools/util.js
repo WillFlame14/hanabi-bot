@@ -296,7 +296,6 @@ export function findIndices(arr, testFunc) {
  * Returns the next index of the array (with wraparound) that satisfies the provided function.
  * (If wraparound isn't desired, use Array.findIndex() with a starting index.)
  * Returns startIndex if no other element satsifies the function, or -1 if no element satisfies it.
- * 
  * @template T
  * @param  {T[]} arr 						The array of objects.
  * @param  {(obj: T) => boolean} testFunc	A function that takes in an object and tests whether it satisfies the condition.
@@ -314,10 +313,74 @@ export function nextIndex(arr, testFunc, startIndex) {
 
 /**
  * Combines multiple regular expressions into one.
- * 
  * @param  {...RegExp} regexes 
  * @returns {RegExp}
  */
 export function combineRegex(...regexes) {
 	return new RegExp(regexes.map(re => re.source).join('|'));
+}
+
+/**
+ * Checks if two sets are equal.
+ * @template T
+ * @param {Set<T>} set1
+ * @param {Set<T>} set2
+ */
+export function setEquals(set1, set2) {
+	if (set1.size !== set2.size)
+		return false;
+
+	for (const item of set1) {
+		if (!set2.has(item))
+			return false;
+	}
+
+	return true;
+}
+
+/**
+ * Returns the intersection of two sets.
+ * @template T
+ * @param {Set<T>} set1
+ * @param {Set<T>} set2
+ */
+export function setIntersect(set1, set2) {
+	const [smallerSet, largerSet] = set1.size < set2.size ? [set1, set2] : [set2, set1];
+
+	const result = new Set();
+
+	for (const item of smallerSet) {
+		if (largerSet.has(item))
+			result.add(item);
+	}
+}
+
+/**
+ * Returns (set1 \diff set2).
+ * @template T
+ * @param {Set<T>} set1
+ * @param {Set<T>} set2
+ */
+export function setDifference(set1, set2) {
+	const result = new Set();
+
+	for (const item of set1) {
+		if (!set2.has(item))
+			result.add(item);
+	}
+}
+
+/**
+ * Returns the union of two sets.
+ * @template T
+ * @param {Set<T>} set1
+ * @param {Set<T>} set2
+ */
+export function setUnion(set1, set2) {
+	const [smallerSet, largerSet] = set1.size < set2.size ? [set1, set2] : [set2, set1];
+
+	const result = new Set(largerSet);
+
+	for (const item of smallerSet)
+		result.add(item);
 }

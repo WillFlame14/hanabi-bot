@@ -331,6 +331,20 @@ describe('layered finesse', () => {
 		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][3].order], ['g2']);
 	});
 
+	it(`doesn't give illegal clandestine self-finesses`, () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g2', 'r1', 'g1', 'y3', 'p3'],
+			['r4', 'r4', 'g4', 'r5', 'b4']
+		], { level: 5 });
+
+		const { play_clues } = find_clues(state);
+
+		// 2 to Bob is an illegal play clue.
+		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 2));
+		takeTurn(state, 'Alice clues 2 to Bob');
+	});
+
 	it('understands a queued finesse', () => {
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
