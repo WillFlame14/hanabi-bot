@@ -100,6 +100,13 @@ export function good_touch_elim(state, only_self = false) {
 				continue;
 			}
 
+			// TODO: Temporary stop-gap so that Bob still plays into it. Bob should actually clue instead.
+			if (card.finessed && [0, 1].some(i => card.finesse_index === state.actionList.length - i)) {
+				logger.warn(`OOO play clue detected (player ${this.playerIndex}, order ${card.order}) when eliminating ${logCard(identity)}!`);
+				card.certain_finessed = true;
+				continue;
+			}
+
 			const pre_inferences = card.inferred.length;
 			card.subtract('inferred', [identity]);
 

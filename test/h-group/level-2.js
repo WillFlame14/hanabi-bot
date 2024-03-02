@@ -62,6 +62,43 @@ describe('self-finesse', () => {
 	});
 });
 
+describe('direct clues', () => {
+	it(`doesn't self-prompt when a clue could be direct`, () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g5', 'b4', 'r4', 'r5', 'g2'],
+			['b2', 'y3', 'r4', 'p2', 'p3']
+		], {
+			level: 2,
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(state, 'Cathy clues blue to Alice (slots 4,5)');
+		takeTurn(state, 'Alice plays b1 (slot 5)');
+		takeTurn(state, 'Bob clues blue to Alice (slots 1,5)');
+
+		// Alice's slot 1 should only be [b2,b3], not [b2,b3,b4].
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][0].order], ['b2', 'b3']);
+	});
+
+	it('allows finesses to look direct if someone else plays into it first', () => {
+		const state = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g1', 'b2', 'y4', 'r3', 'r5'],
+			['r5', 'y3', 'r4', 'p2', 'r3']
+		], {
+			level: 2,
+			play_stacks: [0, 2, 0, 0, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(state, 'Cathy clues 3 to Alice (slot 2)');
+
+		// While ALice's slot 2 could be y3, it could also be g3 (reverse finesse on Bob + self-finesse).
+		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['y3', 'g3']);
+	});
+});
+
 describe('asymmetric clues', () => {
 	it('understands delayed play clues through asymetrically known cards', () => {
 		const state = setup(HGroup, [
@@ -146,23 +183,6 @@ describe('asymmetric clues', () => {
 
 		// Alice's slot 1 should not be finessed.
 		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
-	});
-
-	it('allows finesses to look direct if someone else plays into it first', () => {
-		const state = setup(HGroup, [
-			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['g1', 'b2', 'y4', 'r3', 'r5'],
-			['r5', 'y3', 'r4', 'p2', 'r3']
-		], {
-			level: 2,
-			play_stacks: [0, 2, 0, 0, 0],
-			starting: PLAYER.CATHY
-		});
-
-		takeTurn(state, 'Cathy clues 3 to Alice (slot 2)');
-
-		// While ALice's slot 2 could be y3, it could also be g3 (reverse finesse on Bob + self-finesse).
-		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['y3', 'g3']);
 	});
 
 	it('includes the correct interpretation, even if it requires more blind plays', () => {

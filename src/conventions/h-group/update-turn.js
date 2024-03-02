@@ -74,7 +74,7 @@ function remove_finesse(state, waiting_connection) {
 function resolve_card_retained(state, waiting_connection) {
 	const { common } = state;
 	const { connections, conn_index, inference, action_index, ambiguousPassback } = waiting_connection;
-	const { type, reacting } = connections[conn_index];
+	const { type, reacting, ambiguous } = connections[conn_index];
 	const { order } = connections[conn_index].card;
 
 	// Card may have been updated, so need to find it again
@@ -149,10 +149,10 @@ function resolve_card_retained(state, waiting_connection) {
 		}
 
 		// Can't remove finesses if we allow ourselves to "defer" an ambiguous finesse the first time around.
-		if (!waiting_connection.symmetric)
-			logger.warn('deciding not to remove finesse with connections:', waiting_connection.connections.map(logConnection));
+		if (ambiguous)
+			logger.warn('not removing ambiguous finesse with connections:', waiting_connection.connections.map(logConnection));
 
-		return { remove: true, remove_finesse: waiting_connection.symmetric };
+		return { remove: true, remove_finesse: !ambiguous };
 	}
 	else if (state.last_actions[reacting].type === 'discard') {
 		logger.info(`${state.playerNames[reacting]} discarded with a waiting connection, removing inference ${logCard(inference)}`);

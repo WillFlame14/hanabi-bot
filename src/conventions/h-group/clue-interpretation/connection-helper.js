@@ -108,7 +108,7 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 
 		logger.collect();
 		try {
-			const connections = find_own_finesses(state, giver, target, id, looksDirect, target, selfRanks);
+			const connections = find_own_finesses(state, action, id, looksDirect, target, selfRanks);
 			if (connections[0]?.reacting === target)
 				self_connections.push({ id, connections });
 			else

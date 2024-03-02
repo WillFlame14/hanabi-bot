@@ -199,7 +199,7 @@ export function interpret_clue(state, action) {
 	}
 	// Card doesn't match any inferences (or we don't know the card)
 	else {
-		if (target !== state.ourPlayerIndex)
+		if (target !== state.ourPlayerIndex || matched_inferences.length === 0)
 			logger.info(`card ${logCard(focused_card)} order ${focused_card.order} doesn't match any inferences! currently ${focus_thoughts.inferred.map(logCard).join(',')}`);
 
 		/** @type {FocusPossibility[]} */
@@ -221,7 +221,7 @@ export function interpret_clue(state, action) {
 			let self = all_connections.every(fp => fp.connections[0]?.self);
 
 			for (const id of focus_thoughts.inferred) {
-				if (isTrash(state, state.players[giver], id))
+				if (isTrash(state, state.players[giver], id, focused_card.order))
 					continue;
 
 				// Focus possibility, skip
@@ -229,7 +229,7 @@ export function interpret_clue(state, action) {
 					continue;
 
 				try {
-					const connections = find_own_finesses(state, giver, target, id, looksDirect);
+					const connections = find_own_finesses(state, action, id, looksDirect);
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('found connections:', logConnections(connections, id));
 
@@ -264,7 +264,7 @@ export function interpret_clue(state, action) {
 		else if (!isBasicTrash(state, focused_card)) {
 			const { suitIndex } = focused_card;
 			try {
-				const connections = find_own_finesses(state, giver, target, focused_card, looksDirect);
+				const connections = find_own_finesses(state, action, focused_card, looksDirect);
 				logger.info('found connections:', logConnections(connections, focused_card));
 				all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections) });
 			}

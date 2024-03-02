@@ -89,6 +89,7 @@
  * @property {boolean} [hidden]
  * @property {ActualCard[]} [linked]
  * @property {boolean} [certain]
+ * @property {boolean} [ambiguous]
  * 
  * @typedef FocusPossibility
  * @property {number} suitIndex
