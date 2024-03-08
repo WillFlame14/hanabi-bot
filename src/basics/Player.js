@@ -9,7 +9,7 @@ import { logCard } from '../tools/log.js';
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
- * @typedef {import('./Card.js').BasicCard} BasicCard
+ * @typedef {import('./IdentitySet.js').IdentitySet} IdentitySet
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Link} Link
  * @typedef {import('../types.js').WaitingConnection} WaitingConnection
@@ -25,8 +25,8 @@ export class Player {
 
 	/**
 	 * @param {number} playerIndex
-	 * @param {BasicCard[]} all_possible
-	 * @param {BasicCard[]} all_inferred
+	 * @param {IdentitySet} all_possible
+	 * @param {IdentitySet} all_inferred
 	 * @param {number[]} hypo_stacks
 	 * @param {Card[]} [thoughts]
 	 * @param {Link[]} [links]
@@ -55,8 +55,8 @@ export class Player {
 
 	clone() {
 		return new Player(this.playerIndex,
-			this.all_possible.slice(),
-			this.all_inferred.slice(),
+			this.all_possible.clone(),
+			this.all_inferred.clone(),
 			this.hypo_stacks.slice(),
 			this.thoughts.map(infs => infs.clone()),
 			this.links.map(link => Utils.objClone(link)),

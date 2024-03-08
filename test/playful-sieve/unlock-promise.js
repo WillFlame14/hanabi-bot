@@ -209,7 +209,7 @@ describe('unlock promise', () => {
 			card.clued = true;
 			card.clues.push({ type: CLUE.RANK, value: card.rank });
 			for (const poss of /** @type {const} */ (['inferred', 'possible']))
-				state.common.thoughts[card.order].intersect(poss, state.variant.suits.map((_, suitIndex) => ({ suitIndex, rank: card.rank })));
+				state.common.thoughts[card.order][poss].intersect(state.variant.suits.map((_, suitIndex) => ({ suitIndex, rank: card.rank })));
 		}
 
 		team_elim(state);

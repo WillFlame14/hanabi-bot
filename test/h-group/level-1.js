@@ -176,7 +176,7 @@ describe('sacrifice discards', () => {
 
 		// Alice knows all of her cards (all crit).
 		['r4', 'b4', 'r5', 'b2', 'y5'].forEach((short, index) => {
-			state.common.thoughts[state.hands[PLAYER.ALICE][index].order].intersect('inferred', [expandShortCard(short)]);
+			state.common.thoughts[state.hands[PLAYER.ALICE][index].order].inferred.intersect(expandShortCard(short));
 		});
 
 		// Alice should discard y5.

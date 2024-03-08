@@ -34,7 +34,7 @@ export function get_result(state, clue) {
 	const bad_playable = state.hands[partner].find((card) => {
 		const thoughts = hypo_state.common.thoughts[card.order];
 
-		return thoughts.finessed && thoughts.inferred.every(inf => !state.me.thoughts[card.order].matches(inf));
+		return thoughts.finessed && !thoughts.inferred.has(state.me.thoughts[card.order]);
 	});
 
 	if (bad_playable) {

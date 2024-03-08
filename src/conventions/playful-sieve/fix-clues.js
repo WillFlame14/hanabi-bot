@@ -30,7 +30,7 @@ export function find_fix_clue(state) {
 		const fixed = fix_needed.some(c => {
 			const actual = hypo_state.hands[partner].findOrder(c.order);
 			const card = hypo_state.common.thoughts[c.order];
-			return card.inferred.some(inf => inf.matches(actual)) || card.inferred.length === 0 || card.reset;
+			return card.inferred.has(actual) || card.inferred.length === 0 || card.reset;
 		});
 
 		if (fixed)

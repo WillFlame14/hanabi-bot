@@ -23,8 +23,8 @@ describe('save clue interpretation', () => {
 
 		takeTurn(state, 'Bob clues black to Alice (slots 4,5)');
 
-		assert.ok(state.common.thoughts[0].inferred.some(c => c.matches({suitIndex: 4, rank: 2})));
-		assert.ok(state.common.thoughts[0].inferred.some(c => c.matches({suitIndex: 4, rank: 5})));
+		assert.ok(state.common.thoughts[0].inferred.has({suitIndex: 4, rank: 2}));
+		assert.ok(state.common.thoughts[0].inferred.has({suitIndex: 4, rank: 5}));
 	});
 
 	it('understands k2/5 save with black for filling in', () => {
@@ -43,7 +43,7 @@ describe('save clue interpretation', () => {
 
 		takeTurn(state, 'Bob clues black to Alice (slot 1,5)');
 
-		assert.ok(state.common.thoughts[0].inferred.some(c => c.matches({suitIndex: 4, rank: 2})));
-		assert.ok(state.common.thoughts[0].inferred.some(c => c.matches({suitIndex: 4, rank: 5})));
+		assert.ok(state.common.thoughts[0].inferred.has({suitIndex: 4, rank: 2}));
+		assert.ok(state.common.thoughts[0].inferred.has({suitIndex: 4, rank: 5}));
 	});
 });

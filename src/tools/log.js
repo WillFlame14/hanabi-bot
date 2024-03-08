@@ -27,11 +27,11 @@ export function logCard(card) {
 		({ suitIndex, rank } = card);
 	}
 	else if (card instanceof Card && card.possible.length === 1) {
-		({ suitIndex, rank } = card.possible[0]);
+		({ suitIndex, rank } = card.possible.array[0]);
 		append = '(known)';
 	}
 	else if (card instanceof Card && card.inferred.length === 1) {
-		({ suitIndex, rank } = card.inferred[0]);
+		({ suitIndex, rank } = card.inferred.array[0]);
 		append = '(inferred)';
 	}
 	else {

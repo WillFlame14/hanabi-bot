@@ -97,10 +97,10 @@ export function update_hypo_stacks(state, player) {
 
 			// Ignore all waiting connections that will be proven wrong
 			const diff = card.clone();
-			diff.subtract('inferred', fake_wcs.flatMap(wc => wc.inference));
+			diff.inferred.subtract(fake_wcs.flatMap(wc => wc.inference));
 
 			if (diff.matches_inferences() &&
-				(delayed_playable(diff.possible) || delayed_playable(diff.inferred) || (diff.finessed && delayed_playable([card])))
+				(delayed_playable(diff.possible.array) || delayed_playable(diff.inferred.array) || (diff.finessed && delayed_playable([card])))
 			) {
 				const id = card.identity({ infer: true });
 				const actual_id = state.me.thoughts[order].identity();
@@ -169,12 +169,12 @@ export function team_elim(state) {
 			const card = player.thoughts[i];
 			const ccard = state.common.thoughts[i];
 
-			card.intersect('possible', ccard.possible);
+			card.possible.intersect(ccard.possible);
 
-			card.inferred = ccard.inferred.slice();
-			card.intersect('inferred', card.possible);
+			card.inferred = ccard.inferred.clone();
+			card.inferred.intersect(card.possible);
 
-			card.old_inferred = ccard.old_inferred?.slice();
+			card.old_inferred = ccard.old_inferred?.clone();
 
 			for (const property of ['focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'hidden', 'called_to_discard', 'finesse_index', 'rewinded', 'certain_finessed'])
 				card[property] = ccard[property];

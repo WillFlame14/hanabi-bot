@@ -64,7 +64,7 @@ function interpret_locked_clue(state, action) {
 
 		// Slot 1 is playable
 		if (slot1.newly_clued) {
-			slot1.intersect('inferred', [{ suitIndex, rank: common.hypo_stacks[suitIndex] + 1 }]);
+			slot1.inferred.intersect({ suitIndex, rank: common.hypo_stacks[suitIndex] + 1 });
 
 			if (locked_hand_ptd) {
 				common.thoughts[locked_hand_ptd.order].called_to_discard = true;
@@ -123,8 +123,8 @@ export function interpret_clue(state, action) {
 
 			logger.warn('revoking finesse?', card.possible.map(logCard), logCard(identity));
 
-			if (card.possible.some(c => c.matches(identity))) {
-				card.assign('inferred', [identity]);
+			if (card.possible.has(identity)) {
+				card.inferred.assign([identity]);
 				card.finessed = false;
 				card.reset = true;
 				fix = true;
@@ -232,10 +232,10 @@ export function interpret_clue(state, action) {
 					}
 
 					const target_card = common.thoughts[hand[target_index].order];
-					target_card.old_inferred = target_card.inferred.slice();
+					target_card.old_inferred = target_card.inferred.clone();
 					target_card.finessed = true;
 					target_card.focused = true;
-					target_card.intersect('inferred', playable_possibilities);
+					target_card.inferred.intersect(playable_possibilities);
 
 					logger.info(`ref play on ${state.playerNames[target]}'s slot ${target_index + 1}`);
 				}

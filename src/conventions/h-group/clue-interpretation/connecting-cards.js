@@ -37,7 +37,7 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 			const card = state.common.thoughts[order].clone();
 
 			// Remove inferences that will be proven false (i.e. after someone plays the card with such identity)
-			card.inferred = card.inferred.filter(inf => !inf.playedBefore(identity));
+			card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
 
 			return card.matches(identity, { infer: true }) && card.touched &&
 				!state.common.waiting_connections.some(wc =>
@@ -58,14 +58,14 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 
 			return !ignoreOrders.includes(order) &&
 				card.touched &&
-				card.inferred.some(c => c.matches(identity)) &&
+				card.inferred.has(identity) &&
 				(card.inferred.every(c => playableAway(state, c) === 0) || card.finessed);
 		});
 		const match = playables.find(card => card.matches(identity));
 
 		// More than 1 such playable and it could be duplicated in giver's hand - disallow hidden delayed play
 		if (playables.length > 1 &&
-			state.hands[giver].some(c => c.clued && state.players[giver].thoughts[c.order].inferred.some(inf => inf.matches(identity)))
+			state.hands[giver].some(c => c.clued && state.players[giver].thoughts[c.order].inferred.has(identity))
 		) {
 			if (match !== undefined) {
 				// Everyone other than giver will recognize this card as the connection - stop looking further
@@ -107,7 +107,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, identity, ig
 		// Prompted card is delayed playable
 		if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank) {
 			// Could be duplicated in giver's hand - disallow hidden prompt
-			if (state.hands[giver].some(c => c.clued && state.players[giver].thoughts[c.order].inferred.some(inf => inf.matches(identity)))) {
+			if (state.hands[giver].some(c => c.clued && state.players[giver].thoughts[c.order].inferred.has(identity))) {
 				logger.warn(`disallowed hidden prompt on ${logCard(prompt)}, could be duplicated in giver's hand`);
 				return;
 			}
@@ -129,7 +129,7 @@ function find_unknown_connecting(state, giver, target, playerIndex, identity, ig
 		// Finessed card is delayed playable
 		else if (state.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
 			// Could be duplicated in giver's hand - disallow hidden finesse
-			if (state.hands[giver].some(c => c.clued && state.players[giver].thoughts[c.order].inferred.some(inf => inf.matches(identity)))) {
+			if (state.hands[giver].some(c => c.clued && state.players[giver].thoughts[c.order].inferred.has(identity))) {
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)}, could be duplicated in giver's hand`);
 				return;
 			}
@@ -214,8 +214,8 @@ export function find_connecting(state, giver, target, identity, looksDirect, ign
 			const card = state.me.thoughts[order];
 
 			return !ignoreOrders.includes(order) &&
-				card.inferred.some(inf => inf.matches(identity)) &&							// At least one inference must match
-				card.matches(identity, { assume: true }) &&									// If we know the card (from a rewind), it must match
+				card.inferred.has(identity) &&							// At least one inference must match
+				card.matches(identity, { assume: true }) &&				// If we know the card (from a rewind), it must match
 				((card.inferred.every(c => playableAway(state, c) === 0) && card.clued) || card.finessed);	// Must be playable
 		});
 

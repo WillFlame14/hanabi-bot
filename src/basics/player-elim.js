@@ -1,5 +1,5 @@
 import { cardCount } from '../variants.js';
-import { baseCount, isBasicTrash, unknownIdentities, visibleFind } from './hanabi-util.js';
+import { baseCount, isBasicTrash, unknownIdentities } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
@@ -21,37 +21,63 @@ import { logCard } from '../tools/log.js';
  * @param {State} state
  */
 export function card_elim(state) {
-	const identities = this.all_possible.slice();
+	const identities = this.all_possible.array.slice();
+
+	/** @type {Map<string, Set<number>>} */
+	const certain_map = new Map();
+
+	for (const { order } of state.hands.flat()) {
+		const id = this.thoughts[order].identity();
+
+		if (id === undefined)
+			continue;
+
+		const id_hash = logCard(id);
+
+		if (!certain_map.has(id_hash))
+			certain_map.set(id_hash, new Set());
+
+		certain_map.get(id_hash).add(order);
+	}
 
 	for (let i = 0; i < identities.length; i++) {
 		const identity = identities[i];
-		const certain_cards = visibleFind(state, this, identity);
+		const id_hash = logCard(identity);
 
-		if (!this.all_possible.some(c => c.matches(identity)) ||
-			baseCount(state, identity) + certain_cards.length !== cardCount(state.variant, identity)
+		if (!this.all_possible.has(identity) ||
+			baseCount(state, identity) + (certain_map.get(id_hash)?.size ?? 0) !== cardCount(state.variant, identity)
 		)
 			continue;
 
-		if (!this.all_possible.some(c => c.matches(identity)) || !this.all_inferred.some(c => c.matches(identity)))
-			throw new Error(`Failing to eliminate identity ${logCard(identity)} from ${this.all_possible.some(c => c.matches(identity)) ? 'possible' : 'inferred'}`);
+		if (!this.all_inferred.has(identity))
+			throw new Error(`Failing to eliminate identity ${logCard(identity)} from inferred`);
 
 		// Remove it from the list of future possibilities
-		this.all_possible.splice(this.all_possible.findIndex(c => c.matches(identity)), 1);
-		this.all_inferred.splice(this.all_inferred.findIndex(c => c.matches(identity)), 1);
+		this.all_possible.subtract(identity);
+		this.all_inferred.subtract(identity);
 
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];
 
-			if (card.possible.length > 1 && !certain_cards.some(c => c.order === order)) {
-				card.subtract('possible', [identity]);
-				card.subtract('inferred', [identity]);
+			if (card.possible.length <= 1 || certain_map.get(id_hash)?.has(order))
+				continue;
 
-				if (card.inferred.length === 0 && !card.reset)
-					this.reset_card(order);
+			card.possible.subtract(identity);
+			card.inferred.subtract(identity);
 
-				// Card can be further eliminated
-				else if (card.possible.length === 1)
-					identities.push(card.identity());
+			if (card.inferred.length === 0 && !card.reset)
+				this.reset_card(order);
+
+			// Card can be further eliminated
+			else if (card.possible.length === 1)
+				identities.push(card.identity());
+
+			const determined = card.identity();
+			if (determined !== undefined) {
+				const determined_hash = logCard(determined);
+				if (!certain_map.has(determined_hash))
+					certain_map.set(determined_hash, new Set());
+				certain_map.get(determined_hash).add(order);
 			}
 		}
 		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
@@ -66,7 +92,7 @@ export function card_elim(state) {
  * @param {boolean} only_self 	Whether to only use cards in own hand for elim (e.g. in 2-player games, where GTP is less strong.)
  */
 export function good_touch_elim(state, only_self = false) {
-	const identities = this.all_possible.slice();
+	const identities = this.all_possible.array.slice();
 	const resets = /** @type {Set<number>} */ (new Set());
 
 	for (let i = 0; i < identities.length; i++) {
@@ -94,7 +120,7 @@ export function good_touch_elim(state, only_self = false) {
 				hard_matches.some(c => c.order === order) ||							// Hard matches
 				(hard_matches.length === 0 && matches.some(c => c.order === order)) ||	// Soft matches when there are no hard matches
 				card.inferred.length === 0 ||											// Cards with no inferences
-				!card.inferred.some(c => c.matches(identity)) ||						// Cards that don't have this inference
+				!card.inferred.has(identity) ||											// Cards that don't have this inference
 				card.inferred.every(inf => isBasicTrash(state, inf)) ||					// Clued trash
 				card.certain_finessed) {												// Certain finessed
 				continue;
@@ -108,7 +134,7 @@ export function good_touch_elim(state, only_self = false) {
 			}
 
 			const pre_inferences = card.inferred.length;
-			card.subtract('inferred', [identity]);
+			card.inferred.subtract(identity);
 
 			if (this.playerIndex === -1) {
 				this.elims[logCard(identity)] ??= [];
@@ -120,8 +146,8 @@ export function good_touch_elim(state, only_self = false) {
 				resets.add(order);
 			}
 			// Newly eliminated
-			else if (card.inferred.length === 1 && pre_inferences > 1 && !isBasicTrash(state, card.inferred[0])) {
-				identities.push(card.inferred[0]);
+			else if (card.inferred.length === 1 && pre_inferences > 1 && !isBasicTrash(state, card.inferred.array[0])) {
+				identities.push(card.inferred.array[0]);
 			}
 		}
 	}
@@ -142,11 +168,11 @@ export function reset_card(order) {
 		card.hidden = false;
 		if (card.old_inferred !== undefined) {
 			card.inferred = card.old_inferred;
-			card.intersect('inferred', card.possible);
+			card.inferred.intersect(card.possible);
 		}
 		else {
 			logger.error(`no old inferred on card with order ${order}! player ${this.playerIndex}`);
-			card.inferred = card.possible.slice();
+			card.inferred = card.possible.clone();
 		}
 
 		// Filter out future waiting connections involving this card
@@ -154,7 +180,7 @@ export function reset_card(order) {
 			!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order));
 	}
 	else {
-		card.inferred = card.possible.slice();
+		card.inferred = card.possible.clone();
 	}
 }
 
@@ -172,31 +198,35 @@ export function find_links(state, hand = state.hands[this.playerIndex]) {
 		return;
 	}
 
+	const linked_orders = new Set(this.links.flatMap(link => link.cards.map(c => c.order)));
+
 	for (const { order } of hand) {
 		const card = this.thoughts[order];
 
-		if (this.links.some(({cards}) => cards.some(c => c.order === order)) ||		// Already in a link
-			card.identity() !== undefined ||										// We know what this card is
-			card.inferred.length === 0 ||											// // Card has no inferences
-			card.inferred.every(inf => isBasicTrash(state, inf))) {					// Card is trash
+		if (linked_orders.has(order) ||									// Already in a link
+			card.identity() !== undefined ||							// We know what this card is
+			card.inferred.length === 0 ||								// Card has no inferences
+			card.inferred.length > 4 ||									// Card has too many inferences
+			card.inferred.every(inf => isBasicTrash(state, inf))) {		// Card is trash
 			continue;
 		}
 
 		// Find all unknown cards with the same inferences
-		const linked_cards = Array.from(hand.filter(c => {
-			const card2 = this.thoughts[c.order];
+		const linked_cards = Array.from(hand.filter(c =>
+			card.identity() === undefined && card.inferred.equals(this.thoughts[c.order].inferred)
+		));
 
-			return card.identity() === undefined &&
-				card.inferred.length === card2.inferred.length &&
-				card2.inferred.every(inf => card.inferred.some(inf2 => inf2.matches(inf)));
-		}));
+		if (linked_cards.length === 1)
+			continue;
 
 		// We have enough inferred cards to eliminate elsewhere
 		// TODO: Sudoku elim from this
 		if (linked_cards.length > card.inferred.reduce((sum, inf) => sum += unknownIdentities(state, this, inf), 0)) {
-			logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(inf => logCard(inf)), state.playerNames[this.playerIndex]);
+			logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(logCard), state.playerNames[this.playerIndex]);
 
 			this.links.push({ cards: linked_cards, identities: card.inferred.map(c => c.raw()), promised: false });
+			for (const c of linked_cards)
+				linked_orders.add(c.order);
 		}
 	}
 }
@@ -223,13 +253,13 @@ export function refresh_links(state) {
 			}
 			else {
 				// Reduce cards to ones that still have the identity as a possibility
-				const viable_cards = cards.filter(c => this.thoughts[c.order].possible.some(p => p.matches(identities[0])));
+				const viable_cards = cards.filter(c => this.thoughts[c.order].possible.has(identities[0]));
 
 				if (viable_cards.length <= 1) {
 					if (viable_cards.length === 0)
 						logger.warn(`promised identity ${logCard(identities[0])} not found among cards ${cards.map(c => c.order)}, rewind?`);
 					else
-						this.thoughts[viable_cards[0].order].intersect('inferred', [identities[0]]);
+						this.thoughts[viable_cards[0].order].inferred.intersect(identities[0]);
 					remove_indices.push(i);
 				}
 			}
@@ -239,7 +269,7 @@ export function refresh_links(state) {
 				const card = this.thoughts[c.order];
 
 				// The card is globally known or an identity is no longer possible
-				return card.identity() || identities.some(id => !card.possible.some(p => p.matches(id)));
+				return card.identity() || identities.some(id => !card.possible.has(id));
 			});
 
 			if (revealed.length > 0)
@@ -269,13 +299,11 @@ export function restore_elim(identity) {
 			const card = this.thoughts[order];
 
 			// Add the inference back if it's still a possibility
-			if (card.possible.some(c => c.matches(identity)))
-				card.union('inferred', [identity]);
+			if (card.possible.has(identity))
+				card.inferred.union(identity);
 		}
 
-		if (!this.all_inferred.some(i => i.matches(identity)))
-			this.all_inferred.push(identity);
-
+		this.all_inferred.union(identity);
 		this.elims[id] = undefined;
 	}
 }

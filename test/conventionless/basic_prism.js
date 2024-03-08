@@ -38,18 +38,18 @@ describe('prism cluing', () => {
 
 		takeTurn(state, 'Bob clues red to Alice (slot 1)');
 		[1, 5].forEach(r =>
-			assert.ok(state.common.thoughts[4].possible.some(c => c.matches({suitIndex: 4, rank: r})))
+			assert.ok(state.common.thoughts[4].possible.has({suitIndex: 4, rank: r}))
 		);
 		[2, 3, 4].forEach(r =>
-			assert.ok(!state.common.thoughts[4].possible.some(c => c.matches({suitIndex: 4, rank: r})))
+			assert.ok(!state.common.thoughts[4].possible.has({suitIndex: 4, rank: r}))
 		);
 
 		takeTurn(state, 'Alice clues blue to Bob');
 
 		takeTurn(state, 'Bob clues green to Alice (slot 2)');
-		assert.ok(state.common.thoughts[3].possible.some(c => c.matches({suitIndex: 4, rank: 3})));
+		assert.ok(state.common.thoughts[3].possible.has({suitIndex: 4, rank: 3}));
 		[1, 2, 4, 5].forEach(r =>
-			assert.ok(!state.common.thoughts[3].possible.some(c => c.matches({suitIndex: 4, rank: r})))
+			assert.ok(!state.common.thoughts[3].possible.has({suitIndex: 4, rank: r}))
 		);
 	});
 });

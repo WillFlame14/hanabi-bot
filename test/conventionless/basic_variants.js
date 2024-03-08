@@ -29,7 +29,7 @@ describe('rainbow', () => {
 
 		takeTurn(state, 'Bob clues red to Alice (slot 1)');
 
-		assert.ok(state.common.thoughts[4].possible.some(c => c.matches({suitIndex: 4, rank: 1})));
+		assert.ok(state.common.thoughts[4].possible.has({suitIndex: 4, rank: 1}));
 	});
 
 	it('excludes rainbow possibilities from colour clues', () => {
@@ -47,7 +47,7 @@ describe('rainbow', () => {
 
 		takeTurn(state, 'Bob clues red to Alice (slot 5)');
 
-		assert.ok(!state.common.thoughts[4].possible.some(c => c.matches({suitIndex: 4, rank: 1})));
+		assert.ok(!state.common.thoughts[4].possible.has({suitIndex: 4, rank: 1}));
 	});
 
 	it('cannot clue rainbow', () => {
@@ -77,7 +77,7 @@ describe('pink', () => {
 
 		takeTurn(state, 'Bob clues 1 to Alice (slot 1)');
 
-		assert.ok(state.common.thoughts[4].possible.some(c => c.matches({suitIndex: 4, rank: 5})));
+		assert.ok(state.common.thoughts[4].possible.has({suitIndex: 4, rank: 5}));
 	});
 
 	it('excludes pink possibilities from number clues', () => {
@@ -95,7 +95,7 @@ describe('pink', () => {
 
 		takeTurn(state, 'Bob clues 1 to Alice (slot 5)');
 
-		assert.ok(!state.common.thoughts[4].possible.some(c => c.matches({suitIndex: 4, rank: 5})));
+		assert.ok(!state.common.thoughts[4].possible.has({suitIndex: 4, rank: 5}));
 	});
 
 	it('can clue pink', () => {
@@ -125,7 +125,7 @@ describe('white', () => {
 
 		takeTurn(state, 'Bob clues red to Alice (slot 1)');
 
-		assert.ok(!state.common.thoughts[4].possible.some(c => c.matches({suitIndex: 4, rank: 1})));
+		assert.ok(!state.common.thoughts[4].possible.has({suitIndex: 4, rank: 1}));
 	});
 
 	it('cannot clue white', () => {

@@ -130,7 +130,7 @@ export function interpret_tccm(state, oldCommon, target, list, focused_card) {
 			for (const { order } of possibly_playable) {
 				const card = state.common.thoughts[order];
 
-				card.inferred = card.inferred.filter(inf => inf.rank === state.common.hypo_stacks[inf.suitIndex] + 1);
+				card.inferred.assign(card.inferred.filter(inf => inf.rank === state.common.hypo_stacks[inf.suitIndex] + 1));
 				update_hypo_stacks(state, state.common);
 			}
 			const slots = possibly_playable.map(c => state.hands[target].findIndex(card => card.order === c.order) + 1);

@@ -67,7 +67,7 @@ export function unlock_promise(state, action, unlocked_player, locked_player, lo
 		const card = common.thoughts[locked_hand[i].order];
 
 		// Looks like a connection
-		if (card.inferred.some(inf => inf.matches({ suitIndex, rank: rank + 1 })) &&
+		if (card.inferred.has({ suitIndex, rank: rank + 1 }) &&
 			(possible_matches.length === 0 || possible_matches.some(order => card.order === order) || shifts >= possible_matches.length)
 		) {
 			if (shifts < locked_shifts) {
@@ -99,7 +99,7 @@ export function interpret_play(state, action) {
 
 	// Now that we know about this card, rewind from when the card was drawn
 	if (playerIndex === state.ourPlayerIndex) {
-		if ((card.inferred.length !== 1 || !card.inferred[0].matches(identity)) && !card.rewinded) {
+		if ((card.inferred.length !== 1 || !card.inferred.array[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
 			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
 				return;
@@ -127,9 +127,9 @@ export function interpret_play(state, action) {
 			playable_possibilities[suitIndex] = { suitIndex, rank: rank + 1 };
 
 		const chop = common.thoughts[other_hand[0].order];
-		chop.old_inferred = chop.inferred.slice();
+		chop.old_inferred = chop.inferred.clone();
 		chop.finessed = true;
-		chop.intersect('inferred', playable_possibilities);
+		chop.inferred.intersect(playable_possibilities);
 	}
 	else if (common.thinksLocked(state, other)) {
 		const unlocked_order = unlock_promise(state, action, playerIndex, other, locked_shifts);
@@ -146,19 +146,19 @@ export function interpret_play(state, action) {
 			}
 			else {
 				const unlocked = common.thoughts[unlocked_order];
-				if (!unlocked.inferred.some(c => c.matches(connecting))) {
+				if (!unlocked.inferred.has(connecting)) {
 					logger.warn('no inferred connecting card!');
 
-					if (unlocked.possible.some(c => c.matches(connecting))) {
+					if (unlocked.possible.has(connecting)) {
 						logger.info(`overwriting slot ${slot} as ${logCard(connecting)} from possiilities`);
-						unlocked.assign('inferred', [connecting]);
+						unlocked.inferred.assign(connecting);
 					}
 					else {
 						logger.warn('ignoring unlock promise');
 					}
 				}
 				else {
-					unlocked.intersect('inferred', [connecting]);
+					unlocked.inferred.intersect(connecting);
 					logger.info(`unlocking slot ${slot} as ${logCard(connecting)}`);
 					state.locked_shifts = [];
 				}

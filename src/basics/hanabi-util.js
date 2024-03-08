@@ -23,10 +23,15 @@ import { cardCount, cardTouched, isCluable } from '../variants.js';
  * @param {Player} player     The inferring player.
  * @param {Identity} identity
  * @param {MatchOptions & {ignore?: number[]}} [options]
+ * @returns {ActualCard[]}
  */
 export function visibleFind(state, player, identity, options = {}) {
-	const hands = state.hands.filter((_, index) => !(options.ignore ?? []).includes(index));
-	return hands.flat().filter(c => player.thoughts[c.order].matches(identity, options));
+	return Array.from(state.hands.reduce((cards, hand, index) => {
+		if (options.ignore?.includes(index))
+			return cards;
+
+		return cards.concat(hand.filter(c => player.thoughts[c.order].matches(identity, options)));
+	}, []));
 }
 
 /**

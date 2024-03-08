@@ -4,6 +4,7 @@ import { logCard } from '../tools/log.js';
  * @typedef {{infer?: boolean, assume?: boolean}} MatchOptions
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Identity} Identity
+ * @typedef {import('./IdentitySet.js').IdentitySet} IdentitySet
  */
 
 export class BasicCard {
@@ -82,9 +83,23 @@ export class ActualCard extends BasicCard {
  * Class for a single card (i.e. a suitIndex and rank). Other attributes are optional.
  */
 export class Card extends BasicCard {
-	possible = /** @type {BasicCard[]} */ ([]);						// All possibilities of the card (from positive/negative information)
-	inferred = /** @type {BasicCard[]} */ ([]);						// All inferences of the card (from conventions)
-	old_inferred = /** @type {BasicCard[] | undefined} */ (undefined);		// Only used when undoing a finesse
+	/**
+	 * All possibilities of the card (from positive/negative information)
+	 * @type {IdentitySet}
+	 */
+	possible;
+
+	/**
+	 * All inferences of the card (from conventions)
+	 * @type {IdentitySet}
+	 */
+	inferred;
+
+	/**
+	 * Only used when undoing a finesse.
+	 * @type {IdentitySet | undefined}
+	 */
+	old_inferred;
 
 	// Boolean flags about the state of the card
 	focused = false;
@@ -108,9 +123,7 @@ export class Card extends BasicCard {
 	 */
 	constructor(actualCard, { suitIndex, rank , ...additions }) {
 		super(suitIndex, rank);
-
 		this.actualCard = actualCard;
-
 		Object.assign(this, additions);
 	}
 
@@ -120,8 +133,11 @@ export class Card extends BasicCard {
 	clone() {
 		const new_card = new Card(this.actualCard.clone(), this);
 
-		for (const field of ['possible', 'inferred', 'clues', 'reasoning', 'reasoning_turn'])
+		for (const field of ['clues', 'reasoning', 'reasoning_turn'])
 			new_card[field] = this[field].slice();
+
+		for (const field of ['possible', 'inferred'])
+			new_card[field] = this[field].clone();
 
 		return new_card;
 	}
@@ -166,13 +182,13 @@ export class Card extends BasicCard {
 	 */
 	identity(options = {}) {
 		if (this.possible.length === 1)
-			return this.possible[0];
+			return this.possible.array[0];
 
 		else if (this.suitIndex !== -1 && this.rank !== -1)
 			return new BasicCard(this.suitIndex, this.rank);
 
 		else if (options.infer && this.inferred.length === 1)
-			return this.inferred[0];
+			return this.inferred.array[0];
 	}
 
 	/**
@@ -203,46 +219,7 @@ export class Card extends BasicCard {
 	 * Returns true if the card has only 1 possibility or the card is unknown (i.e. in our hand). 
 	 */
 	matches_inferences() {
-		return this.identity() === undefined || this.possible.length === 1 || this.inferred.some(c => c.matches(this));
-	}
-
-	/**
-	 * Sets the inferences/possibilities to the intersection of the existing field and the provided array of identities.
-	 * @param {'possible' | 'inferred'} type
-	 * @param {Identity[]} identities
-	 */
-	intersect(type, identities) {
-		this[type] = this[type].filter(c1 => identities.some(c2 => c1.matches(c2)));
-	}
-
-	/**
-	 * Sets the inferences/possibilities to the difference of the existing field and the provided array of identities.
-	 * @param {'possible' | 'inferred'} type
-	 * @param {Identity[]} identities
-	 */
-	subtract(type, identities) {
-		this[type] = this[type].filter(c1 => !identities.some(c2 => c1.matches(c2)));
-	}
-
-	/**
-	 * Sets the inferences/possibilities to the union of the existing field and the provided array of identities.
-	 * @param {'possible' | 'inferred'} type
-	 * @param {Identity[]} identities
-	 */
-	union(type, identities) {
-		for (const card of identities) {
-			if (!this[type].some(c => c.matches(card)))
-				this[type].push(Object.freeze(new BasicCard(card.suitIndex, card.rank)));
-		}
-	}
-
-	/**
-	 * Sets the inferences/possibilities to the provided array of identities.
-	 * @param {'possible' | 'inferred'} type
-	 * @param {Identity[]} identities
-	 */
-	assign(type, identities) {
-		this[type] = identities.map(({ suitIndex, rank }) => Object.freeze(new BasicCard(suitIndex, rank)));
+		return this.identity() === undefined || this.possible.length === 1 || this.inferred.has(this);
 	}
 
 	/**

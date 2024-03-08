@@ -54,7 +54,7 @@ function find_colour_focus(state, suitIndex, action) {
 		const { type, card } = connecting.at(-1);
 
 		if (type === 'known' && card.newly_clued && state.common.thoughts[card.order].possible.length > 1 &&
-			state.common.thoughts[focused_card.order].inferred.some(c => c.matches(identity))) {
+			state.common.thoughts[focused_card.order].inferred.has(identity)) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
 			// e.g. If 2 reds are clued with only r5 remaining, the focus should not connect to the other card as r6
 			logger.warn(`blocked connection - focused card could be ${logCard(identity)}`);
@@ -87,7 +87,9 @@ function find_colour_focus(state, suitIndex, action) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
 			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
 			// OR if the clue given is not black.
-			if (rank === 5 && !(state.variant.suits[suitIndex] === 'Black' || state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish))))
+			if (rank === 5 &&
+				!(state.variant.suits[suitIndex] === 'Black' ||
+					state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish))))
 				continue;
 			// Determine if possible save on k2, k5 with colour
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
@@ -181,7 +183,7 @@ function find_rank_focus(state, rank, action) {
 			while (connecting.length !== 0) {
 				const { type, card } = connecting.at(-1);
 
-				if (card.newly_clued && state.common.thoughts[card.order].possible.length > 1 && focus_thoughts.inferred.some(c => c.matches({ suitIndex, rank: next_rank }))) {
+				if (card.newly_clued && state.common.thoughts[card.order].possible.length > 1 && focus_thoughts.inferred.has({ suitIndex, rank: next_rank })) {
 					// Trying to use a newly known/playable connecting card, but the focused card could be that
 					// e.g. If two 4s are clued (all other 4s visible), the other 4 should not connect and render this card with only one inference
 					logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_rank})}`);

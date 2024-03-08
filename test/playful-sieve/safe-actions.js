@@ -115,7 +115,7 @@ describe('connecting cards', () => {
 		const card = state.common.thoughts[state.hands[PLAYER.ALICE][1].order];
 		card.clued = true;
 		for (const poss of /** @type {const} */ (['possible', 'inferred']))
-			card.intersect(poss, [{ suitIndex: 2, rank: 1 }]);
+			card[poss].intersect([{ suitIndex: 2, rank: 1 }]);
 
 		team_elim(state);
 		update_hypo_stacks(state, state.common);
@@ -137,7 +137,7 @@ describe('urgency principle', () => {
 		const card = state.common.thoughts[state.hands[PLAYER.ALICE][1].order];
 		card.clued = true;
 		for (const poss of /** @type {const} */ (['possible', 'inferred']))
-			card.intersect(poss, [{ suitIndex: 0, rank: 1 }]);
+			card[poss].intersect([{ suitIndex: 0, rank: 1 }]);
 
 		team_elim(state);
 		update_hypo_stacks(state, state.common);

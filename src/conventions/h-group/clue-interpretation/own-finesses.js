@@ -121,7 +121,7 @@ function connect(state, giver, target, identity, looksDirect, ignoreOrders, igno
 			if (finesse) {
 				const card = state.common.thoughts[finesse.order];
 
-				if (card.inferred.some(p => p.matches(identity)) && card.matches(identity, { assume: true })) {
+				if (card.inferred.has(identity) && card.matches(identity, { assume: true })) {
 					if (state.level === 1 && ignoreOrders.length >= 1)
 						throw new IllegalInterpretation('blocked double finesse at level 1');
 
@@ -190,7 +190,7 @@ export function find_own_finesses(state, action, { suitIndex, rank }, looksDirec
 			if (type === 'finesse') {
 				finesses++;
 
-				// Someone else playing into a finesse reveals that it's not direct (UNLESS it was a colour clue)
+				// Someone else playing into a finesse reveals that it's not direct (UNLESS it was a colour clue, we already checked if fully known)
 				// Note that just playing a hidden card doesn't work - they have to actually play the connecting card eventually
 				if (direct && !hidden && reacting !== target && clue.type !== CLUE.COLOUR)
 					direct = false;
@@ -208,7 +208,7 @@ export function find_own_finesses(state, action, { suitIndex, rank }, looksDirec
 				allHidden = false;
 
 				// Assume this is actually the card
-				hypo_state.common.thoughts[card.order].intersect('inferred', [next_identity]);
+				hypo_state.common.thoughts[card.order].inferred.intersect(next_identity);
 				hypo_state.common.good_touch_elim(hypo_state);
 			}
 			ignoreOrders.push(card.order);
@@ -254,7 +254,7 @@ function resolve_layered_finesse(state, identity, ignoreOrders) {
 				throw new IllegalInterpretation(`impossible layered finesse, card ${card.order} has no playable identities`);
 
 			connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card, hidden: true, self: true, identities });
-			state.common.thoughts[card.order].intersect('inferred', identities);
+			state.common.thoughts[card.order].inferred.intersect(identities);
 			ignoreOrders.push(card.order);
 
 			if (i === our_hand.length - 1)
@@ -301,7 +301,7 @@ function find_self_finesse(state, giver, identity, ignoreOrders, finesses) {
 		return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, identities: [finesse.raw()] }];
 	}
 
-	if (card.inferred.some(p => p.matches(identity)) && card.matches(identity, { assume: true })) {
+	if (card.inferred.has(identity) && card.matches(identity, { assume: true })) {
 		if (state.level === 1 && ignoreOrders.length >= 1)
 			throw new IllegalInterpretation(`blocked ${finesses >= 1 ? 'double finesse' : 'prompt + finesse'} at level 1`);
 

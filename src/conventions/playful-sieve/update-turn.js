@@ -36,7 +36,7 @@ export function update_turn(state, action) {
 			if (!identities.some(identity => state.last_actions[reacting].card.matches(identity))) {
 				logger.info('card revealed to not be', identities.map(logCard).join(), 'removing connection as', logCard(inference));
 
-				common.thoughts[focused_card.order].subtract('inferred', [inference]);
+				common.thoughts[focused_card.order].inferred.subtract(inference);
 				to_remove.push(i);
 			}
 			else {

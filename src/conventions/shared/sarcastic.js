@@ -29,8 +29,8 @@ export function find_sarcastic(hand, player, identity) {
 	return Array.from(hand.filter(c => {
 		const card = player.thoughts[c.order];
 
-		return c.clued && card.possible.some(p => p.matches(identity)) &&
-			!(card.inferred.length === 1 && card.inferred[0].rank < identity.rank);		// Do not sarcastic on connecting cards
+		return c.clued && card.possible.has(identity) &&
+			!(card.inferred.length === 1 && card.inferred.array[0].rank < identity.rank);		// Do not sarcastic on connecting cards
 	}));
 }
 
@@ -43,7 +43,7 @@ export function find_sarcastic(hand, player, identity) {
 function apply_unknown_sarcastic(state, sarcastic, identity) {
 	// Need to add the inference back if it was previously eliminated due to good touch
 	for (const { order } of sarcastic)
-		state.common.thoughts[order].union('inferred', [identity]);
+		state.common.thoughts[order].inferred.union(identity);
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
 	if (sarcastic.length === 0 || sarcastic.some(({ order }) => state.common.thoughts[order].inferred.some(c => playableAway(state, c) > 0)))
@@ -86,7 +86,7 @@ export function interpret_sarcastic(state, discardAction) {
 
 		if (sarcastic.length === 1) {
 			logger.info('writing sarcastic on slot', state.hands[state.ourPlayerIndex].findIndex(c => c.order === sarcastic[0].order) + 1);
-			common.thoughts[sarcastic[0].order].intersect('inferred', [identity]);
+			common.thoughts[sarcastic[0].order].inferred.intersect(identity);
 		}
 		else {
 			apply_unknown_sarcastic(state, sarcastic, identity);
@@ -103,7 +103,7 @@ export function interpret_sarcastic(state, discardAction) {
 			if (sarcastic.some(c => state.me.thoughts[c.order].matches(identity, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
 				// The matching card must be the only possible option in the hand to be known sarcastic
 				if (sarcastic.length === 1) {
-					common.thoughts[sarcastic[0].order].assign('inferred', [identity]);
+					common.thoughts[sarcastic[0].order].inferred.assign(identity);
 					logger.info(`writing ${logCard(identity)} from sarcastic discard`);
 				}
 				else {

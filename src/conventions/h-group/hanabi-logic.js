@@ -111,7 +111,7 @@ export function rankLooksPlayable(state, rank, giver, target, order) {
 		const playable_identity = stack + 1 === rank;
 		const other_visibles = baseCount(state, identity) +
 			visibleFind(state, state.common, identity).filter(c => c.order !== order).length;
-		const matching_inference = state.common.thoughts[order].inferred.some(inf => inf.matches(identity));
+		const matching_inference = state.common.thoughts[order].inferred.has(identity);
 
 		return playable_identity && other_visibles < cardCount(state.variant, identity) && matching_inference;
 	});

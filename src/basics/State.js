@@ -1,4 +1,4 @@
-import { BasicCard } from './Card.js';
+import { IdentitySet } from './IdentitySet.js';
 import { Hand } from './Hand.js';
 import { Player } from './Player.js';
 
@@ -94,22 +94,20 @@ export class State {
 		this.cardsLeft = this.variant.suits.reduce((acc, _, suitIndex) =>
 			acc + [1, 2, 3, 4, 5].reduce((cards, rank) => cards + cardCount(variant, { suitIndex, rank }), 0), 0);
 
-		const all_possible = [];
 		for (let suitIndex = 0; suitIndex < this.variant.suits.length; suitIndex++) {
 			this.play_stacks.push(0);
 			this.discard_stacks.push([0, 0, 0, 0, 0]);
 			this.max_ranks.push(5);
-
-			for (let rank = 1; rank <= 5; rank++)
-				all_possible.push(Object.freeze(new BasicCard(suitIndex, rank)));
 		}
+
+		const all_possible = new IdentitySet(this.variant.suits.length);
 
 		for (let i = 0; i < this.numPlayers; i++) {
 			this.hands.push(new Hand());
-			this.players[i] = new Player(i, all_possible.slice(), all_possible.slice(), Array.from({ length: this.variant.suits.length }, _ => 0));
+			this.players[i] = new Player(i, all_possible.clone(), all_possible.clone(), Array.from({ length: this.variant.suits.length }, _ => 0));
 		}
 
-		this.common = new Player(-1, all_possible.slice(), all_possible.slice(), Array.from({ length: this.variant.suits.length }, _ => 0));
+		this.common = new Player(-1, all_possible.clone(), all_possible.clone(), Array.from({ length: this.variant.suits.length }, _ => 0));
 
 	}
 

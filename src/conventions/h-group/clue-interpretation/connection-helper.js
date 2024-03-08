@@ -177,7 +177,7 @@ export function assign_connections(state, connections, options = {}) {
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		if (!card.superposition && card.old_inferred === undefined)
-			card.old_inferred = card.inferred.slice();
+			card.old_inferred = card.inferred.clone();
 
 		if (type === 'finesse') {
 			card.finessed = true;
@@ -192,7 +192,7 @@ export function assign_connections(state, connections, options = {}) {
 			const playable_identities = hypo_stacks.map((stack_rank, index) => {
 				return { suitIndex: index, rank: stack_rank + 1 };
 			});
-			card.intersect('inferred', playable_identities);
+			card.inferred.intersect(playable_identities);
 
 			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
 			if (card.identity() !== undefined) {
@@ -206,7 +206,7 @@ export function assign_connections(state, connections, options = {}) {
 		else {
 			// There are multiple possible connections on this card
 			if (card.superposition) {
-				card.union('inferred', identities);
+				card.inferred.union(identities);
 			}
 			else {
 				if (type === 'playable' && linked.length > 1) {
@@ -220,7 +220,7 @@ export function assign_connections(state, connections, options = {}) {
 						state.common.links.push({ promised: true, identities, cards: linked });
 				}
 				else {
-					card.assign('inferred', identities);
+					card.inferred.assign(identities);
 				}
 
 				card.superposition = true;
