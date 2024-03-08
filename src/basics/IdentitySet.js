@@ -1,4 +1,4 @@
-import { BasicCard } from './Card';
+import { BasicCard } from './Card.js';
 
 /**
  * @typedef {import('./Card.js').Identity} Identity
