@@ -67,7 +67,7 @@ export class ActualCard extends BasicCard {
 	}
 
 	clone() {
-		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues);
+		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues.slice());
 	}
 
 	/**
@@ -131,13 +131,20 @@ export class Card extends BasicCard {
 	 * Creates a deep copy of the card.
 	 */
 	clone() {
-		const new_card = new Card(this.actualCard.clone(), this);
+		const new_card = new Card(this.actualCard.clone(), {
+			suitIndex: this.suitIndex,
+			rank: this.rank
+		});
 
-		for (const field of ['clues', 'reasoning', 'reasoning_turn'])
+		for (const field of ['focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued',
+			'superposition', 'hidden', 'called_to_discard', 'certain_finessed', 'finesse_index', 'rewinded'])
+			new_card[field] = this[field];
+
+		for (const field of ['reasoning', 'reasoning_turn'])
 			new_card[field] = this[field].slice();
 
-		for (const field of ['possible', 'inferred'])
-			new_card[field] = this[field].clone();
+		for (const field of ['possible', 'inferred', 'old_inferred'])
+			new_card[field] = this[field]?.clone();
 
 		return new_card;
 	}

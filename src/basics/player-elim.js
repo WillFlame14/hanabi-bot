@@ -22,23 +22,21 @@ import { logCard } from '../tools/log.js';
  */
 export function card_elim(state) {
 	const identities = this.all_possible.array.slice();
+	const certain_map = /** @type {Map<string, Set<number>>} */ (new Map());
 
-	/** @type {Map<string, Set<number>>} */
-	const certain_map = new Map();
-
-	for (const { order } of state.hands.flat()) {
+	/** @type {(order: number) => void} */
+	const addToMap = (order) => {
 		const id = this.thoughts[order].identity();
 
 		if (id === undefined)
-			continue;
+			return;
 
 		const id_hash = logCard(id);
+		certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
+	};
 
-		if (!certain_map.has(id_hash))
-			certain_map.set(id_hash, new Set());
-
-		certain_map.get(id_hash).add(order);
-	}
+	for (const { order } of state.hands.flat())
+		addToMap(order);
 
 	for (let i = 0; i < identities.length; i++) {
 		const identity = identities[i];
@@ -72,13 +70,7 @@ export function card_elim(state) {
 			else if (card.possible.length === 1)
 				identities.push(card.identity());
 
-			const determined = card.identity();
-			if (determined !== undefined) {
-				const determined_hash = logCard(determined);
-				if (!certain_map.has(determined_hash))
-					certain_map.set(determined_hash, new Set());
-				certain_map.get(determined_hash).add(order);
-			}
+			addToMap(order);
 		}
 		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
 	}
@@ -95,34 +87,54 @@ export function good_touch_elim(state, only_self = false) {
 	const identities = this.all_possible.array.slice();
 	const resets = /** @type {Set<number>} */ (new Set());
 
-	for (let i = 0; i < identities.length; i++) {
-		const identity = identities[i];
-		const matches = state.hands.filter((_, index) => !only_self || index === this.playerIndex).flat().filter(c => {
-			const card = this.thoughts[c.order];
-			return card.touched &&
-				card.matches(identity, { infer: true }) &&
-				(card.matches(identity) || !card.newly_clued || card.focused) &&		// Don't good touch from unknown newly clued cards off focus?
-				!this.waiting_connections.some(wc => wc.connections.some(conn => conn.card.order === c.order));
-		});
+	const match_map = /** @type {Map<string, Set<number>>} */ (new Map());
+	const hard_match_map = /** @type {Map<string, Set<number>>} */ (new Map());
 
-		if (matches.length === 0 && !isBasicTrash(state, identity))
+	/** @type {(order: number) => void} */
+	const addToMaps = (order) => {
+		const card = this.thoughts[order];
+		const id = card.identity({ infer: true });
+
+		if (!card.touched || id === undefined ||
+			(!card.matches(id) && card.newly_clued && !card.focused) ||			// Unknown newly clued cards off focus?
+			this.waiting_connections.some(wc => wc.connections.some(conn => conn.card.order === order)))	// Unconfirmed connections
+			return;
+
+		const id_hash = logCard(id);
+
+		if (card.matches(id) || card.focused)
+			hard_match_map.set(id_hash, (hard_match_map.get(id_hash) ?? new Set()).add(order));
+
+		match_map.set(id_hash, (match_map.get(id_hash) ?? new Set()).add(order));
+	};
+
+	for (let i = 0; i < state.hands.length; i++) {
+		if (only_self && i !== this.playerIndex)
 			continue;
 
-		const hard_matches = matches.filter(c => {
-			const card = this.thoughts[c.order];
-			return card.matches(identity) || card.focused;
-		});
+		for (const { order } of state.hands[i])
+			addToMaps(order);
+	}
+
+	for (let i = 0; i < identities.length; i++) {
+		const identity = identities[i];
+		const matches = match_map.get(logCard(identity)) ?? new Set();
+
+		if (matches.size === 0 && !isBasicTrash(state, identity))
+			continue;
+
+		const hard_matches = hard_match_map.get(logCard(identity)) ?? new Set();
 
 		for (const { order } of state.hands.filter((_, index) => !only_self || index === this.playerIndex).flat()) {
 			const card = this.thoughts[order];
 
-			if (!card.saved ||															// Unsaved cards
-				hard_matches.some(c => c.order === order) ||							// Hard matches
-				(hard_matches.length === 0 && matches.some(c => c.order === order)) ||	// Soft matches when there are no hard matches
-				card.inferred.length === 0 ||											// Cards with no inferences
-				!card.inferred.has(identity) ||											// Cards that don't have this inference
-				card.inferred.every(inf => isBasicTrash(state, inf)) ||					// Clued trash
-				card.certain_finessed) {												// Certain finessed
+			if (!card.saved ||												// Unsaved cards
+				hard_matches.has(order) ||									// Hard matches
+				(hard_matches.size === 0 && matches.has(order)) ||			// Soft matches when there are no hard matches
+				card.inferred.length === 0 ||								// Cards with no inferences
+				!card.inferred.has(identity) ||								// Cards that don't have this inference
+				card.inferred.every(inf => isBasicTrash(state, inf)) ||		// Clued trash
+				card.certain_finessed) {									// Certain finessed
 				continue;
 			}
 
@@ -149,6 +161,8 @@ export function good_touch_elim(state, only_self = false) {
 			else if (card.inferred.length === 1 && pre_inferences > 1 && !isBasicTrash(state, card.inferred.array[0])) {
 				identities.push(card.inferred.array[0]);
 			}
+
+			addToMaps(order);
 		}
 	}
 
@@ -206,7 +220,7 @@ export function find_links(state, hand = state.hands[this.playerIndex]) {
 		if (linked_orders.has(order) ||									// Already in a link
 			card.identity() !== undefined ||							// We know what this card is
 			card.inferred.length === 0 ||								// Card has no inferences
-			card.inferred.length > 4 ||									// Card has too many inferences
+			card.inferred.length > 3 ||									// Card has too many inferences
 			card.inferred.every(inf => isBasicTrash(state, inf))) {		// Card is trash
 			continue;
 		}
