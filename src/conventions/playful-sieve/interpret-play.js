@@ -1,4 +1,5 @@
 import { CLUE } from '../../constants.js';
+import { IdentitySet } from '../../basics/IdentitySet.js';
 import { team_elim } from '../../basics/helper.js';
 import { playableAway } from '../../basics/hanabi-util.js';
 import * as Basics from '../../basics.js';
@@ -127,9 +128,9 @@ export function interpret_play(state, action) {
 			playable_possibilities[suitIndex] = { suitIndex, rank: rank + 1 };
 
 		const chop = common.thoughts[other_hand[0].order];
-		chop.old_inferred = chop.inferred.clone();
+		chop.old_inferred = chop.inferred;
 		chop.finessed = true;
-		chop.inferred.intersect(playable_possibilities);
+		chop.inferred = chop.inferred.intersect(playable_possibilities);
 	}
 	else if (common.thinksLocked(state, other)) {
 		const unlocked_order = unlock_promise(state, action, playerIndex, other, locked_shifts);
@@ -151,14 +152,14 @@ export function interpret_play(state, action) {
 
 					if (unlocked.possible.has(connecting)) {
 						logger.info(`overwriting slot ${slot} as ${logCard(connecting)} from possiilities`);
-						unlocked.inferred.assign(connecting);
+						unlocked.inferred = IdentitySet.create(state.variant.suits.length, connecting);
 					}
 					else {
 						logger.warn('ignoring unlock promise');
 					}
 				}
 				else {
-					unlocked.inferred.intersect(connecting);
+					unlocked.inferred = unlocked.inferred.intersect(connecting);
 					logger.info(`unlocking slot ${slot} as ${logCard(connecting)}`);
 					state.locked_shifts = [];
 				}

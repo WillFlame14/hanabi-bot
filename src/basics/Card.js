@@ -136,15 +136,13 @@ export class Card extends BasicCard {
 			rank: this.rank
 		});
 
-		for (const field of ['focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued',
-			'superposition', 'hidden', 'called_to_discard', 'certain_finessed', 'finesse_index', 'rewinded'])
+		for (const field of ['inferred', 'possible', 'old_inferred', 'focused',
+			'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'superposition',
+			'hidden', 'called_to_discard', 'certain_finessed','finesse_index', 'rewinded'])
 			new_card[field] = this[field];
 
 		for (const field of ['reasoning', 'reasoning_turn'])
 			new_card[field] = this[field].slice();
-
-		for (const field of ['possible', 'inferred', 'old_inferred'])
-			new_card[field] = this[field]?.clone();
 
 		return new_card;
 	}

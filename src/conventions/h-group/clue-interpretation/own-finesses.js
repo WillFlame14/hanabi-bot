@@ -208,7 +208,8 @@ export function find_own_finesses(state, action, { suitIndex, rank }, looksDirec
 				allHidden = false;
 
 				// Assume this is actually the card
-				hypo_state.common.thoughts[card.order].inferred.intersect(next_identity);
+				const conn_card = hypo_state.common.thoughts[card.order];
+				conn_card.inferred = conn_card.inferred.intersect(next_identity);
 				hypo_state.common.good_touch_elim(hypo_state);
 			}
 			ignoreOrders.push(card.order);
@@ -254,7 +255,7 @@ function resolve_layered_finesse(state, identity, ignoreOrders) {
 				throw new IllegalInterpretation(`impossible layered finesse, card ${card.order} has no playable identities`);
 
 			connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, card, hidden: true, self: true, identities });
-			state.common.thoughts[card.order].inferred.intersect(identities);
+			state.common.thoughts[card.order].inferred = state.common.thoughts[card.order].inferred.intersect(identities);
 			ignoreOrders.push(card.order);
 
 			if (i === our_hand.length - 1)

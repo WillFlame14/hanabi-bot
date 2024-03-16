@@ -1,4 +1,5 @@
 import { CLUE } from '../../constants.js';
+import { IdentitySet } from '../../basics/IdentitySet.js';
 import { isTrash, playableAway, refer_right } from '../../basics/hanabi-util.js';
 import { checkFix, team_elim, update_hypo_stacks } from '../../basics/helper.js';
 import * as Basics from '../../basics.js';
@@ -6,7 +7,6 @@ import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
-
 
 /**
  * @typedef {import('../../basics/State.js').State} State
@@ -64,7 +64,7 @@ function interpret_locked_clue(state, action) {
 
 		// Slot 1 is playable
 		if (slot1.newly_clued) {
-			slot1.inferred.intersect({ suitIndex, rank: common.hypo_stacks[suitIndex] + 1 });
+			slot1.inferred = slot1.inferred.intersect({ suitIndex, rank: common.hypo_stacks[suitIndex] + 1 });
 
 			if (locked_hand_ptd) {
 				common.thoughts[locked_hand_ptd.order].called_to_discard = true;
@@ -124,7 +124,7 @@ export function interpret_clue(state, action) {
 			logger.warn('revoking finesse?', card.possible.map(logCard), logCard(identity));
 
 			if (card.possible.has(identity)) {
-				card.inferred.assign([identity]);
+				card.inferred = IdentitySet.create(state.variant.suits.length, identity);
 				card.finessed = false;
 				card.reset = true;
 				fix = true;
@@ -232,10 +232,10 @@ export function interpret_clue(state, action) {
 					}
 
 					const target_card = common.thoughts[hand[target_index].order];
-					target_card.old_inferred = target_card.inferred.clone();
+					target_card.old_inferred = target_card.inferred;
 					target_card.finessed = true;
 					target_card.focused = true;
-					target_card.inferred.intersect(playable_possibilities);
+					target_card.inferred = target_card.inferred.intersect(playable_possibilities);
 
 					logger.info(`ref play on ${state.playerNames[target]}'s slot ${target_index + 1}`);
 				}

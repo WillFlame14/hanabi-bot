@@ -14,13 +14,6 @@ import { cardTouched } from '../variants.js';
  * @extends Array<ActualCard>
  */
 export class Hand extends Array {
-	/**
-	 * @param {ActualCard[]} args
-	 */
-	constructor( ...args) {
-		super(...args);
-	}
-
 	clone() {
 		const newHand = new Hand();
 		for (const card of this)
@@ -42,7 +35,18 @@ export class Hand extends Array {
 		}
 
 		// Remove the card from their hand
-		this.splice(card_index, 1);
+		const newHand = new Hand(this.length - 1);
+
+		let index = 0;
+		for (let i = 0; i < this.length; i++) {
+			if (i == card_index)
+				continue;
+
+			newHand[index] = this[i];
+			index++;
+		}
+
+		return newHand;
 	}
 
 	/**

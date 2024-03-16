@@ -14,8 +14,8 @@ import * as Utils from '../tools/util.js';
 export class HGroup_Player extends Player {
 	clone() {
 		return new HGroup_Player(this.playerIndex,
-			this.all_possible.clone(),
-			this.all_inferred.clone(),
+			this.all_possible,
+			this.all_inferred,
 			this.hypo_stacks.slice(),
 			this.thoughts.map(infs => infs.clone()),
 			this.links.map(link => Utils.objClone(link)),

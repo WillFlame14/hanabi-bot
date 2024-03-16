@@ -75,7 +75,7 @@ function resolve_clue(state, old_state, action, inf_possibilities, focused_card)
 	const focus_thoughts = common.thoughts[focused_card.order];
 	const old_inferred = old_state.common.thoughts[focused_card.order].inferred;
 
-	focus_thoughts.inferred.intersect(inf_possibilities);
+	focus_thoughts.inferred = focus_thoughts.inferred.intersect(inf_possibilities);
 
 	for (const { connections, suitIndex, rank, save } of inf_possibilities) {
 		if (save)
@@ -103,7 +103,7 @@ function resolve_clue(state, old_state, action, inf_possibilities, focused_card)
 		for (const { fake, connections } of symmetric_connections)
 			assign_connections(state, connections, { symmetric: true, target, fake });
 
-		focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_connections.some(c => !c.fake && inf.matches(c))));
+		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_connections.some(c => !c.fake && inf.matches(c))));
 	}
 	reset_superpositions(state);
 }
@@ -134,7 +134,7 @@ export function interpret_clue(state, action) {
 		focus_thoughts.chop_when_first_clued = true;
 
 	if (focus_thoughts.inferred.length === 0) {
-		focus_thoughts.inferred = focus_thoughts.possible.clone();
+		focus_thoughts.inferred = focus_thoughts.possible;
 		logger.warn(`focus had no inferences after applying good touch (previously ${oldCommon.thoughts[focused_card.order].inferred.map(logCard).join()})`);
 
 		// There is a waiting connection that depends on this card
@@ -193,7 +193,7 @@ export function interpret_clue(state, action) {
 	// Card matches an inference and not a save/stall
 	// If we know the identity of the card, one of the matched inferences must also be correct before we can give this clue.
 	if (matched_inferences.length >= 1 && matched_inferences.find(p => focused_card.matches(p))) {
-		focus_thoughts.inferred.intersect(focus_possible);
+		focus_thoughts.inferred = focus_thoughts.inferred.intersect(focus_possible);
 
 		resolve_clue(state, old_state, action, matched_inferences, focused_card);
 	}
@@ -287,7 +287,7 @@ export function interpret_clue(state, action) {
 			// We must force a finesse?
 			else {
 				const saved_inferences = focus_thoughts.inferred;
-				focus_thoughts.inferred.intersect(focus_possible);
+				focus_thoughts.inferred = focus_thoughts.inferred.intersect(focus_possible);
 
 				if (focus_thoughts.inferred.length === 0)
 					focus_thoughts.inferred = saved_inferences;
@@ -296,7 +296,7 @@ export function interpret_clue(state, action) {
 			}
 		}
 		else {
-			focus_thoughts.inferred = focus_thoughts.possible.clone();
+			focus_thoughts.inferred = focus_thoughts.possible;
 			logger.info('selecting inferences', all_connections.map(conns => logCard(conns)));
 
 			resolve_clue(state, old_state, action, all_connections, focused_card);

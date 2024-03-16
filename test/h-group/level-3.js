@@ -122,14 +122,14 @@ describe('sarcastic discard', () => {
 
 		// Bob's y4 is clued yellow.
 		const y4 = state.common.thoughts[state.hands[PLAYER.BOB][3].order];
-		y4.inferred.intersect(['y4'].map(expandShortCard));
-		y4.possible.intersect(['y1', 'y2', 'y3', 'y4'].map(expandShortCard));
+		y4.inferred = y4.inferred.intersect(['y4'].map(expandShortCard));
+		y4.possible = y4.possible.intersect(['y1', 'y2', 'y3', 'y4'].map(expandShortCard));
 		y4.clued = true;
 
 		// Bob's y5 is known.
 		const y5 = state.common.thoughts[state.hands[PLAYER.BOB][2].order];
-		y5.inferred.intersect(['y5'].map(expandShortCard));
-		y5.possible.intersect(['y5'].map(expandShortCard));
+		y5.inferred = y5.inferred.intersect(['y5'].map(expandShortCard));
+		y5.possible = y5.possible.intersect(['y5'].map(expandShortCard));
 		y5.clued = true;
 
 		takeTurn(state, 'Cathy clues yellow to Alice (slot 5)');

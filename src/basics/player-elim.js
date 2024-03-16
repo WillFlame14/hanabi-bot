@@ -51,8 +51,8 @@ export function card_elim(state) {
 			throw new Error(`Failing to eliminate identity ${logCard(identity)} from inferred`);
 
 		// Remove it from the list of future possibilities
-		this.all_possible.subtract(identity);
-		this.all_inferred.subtract(identity);
+		this.all_possible = this.all_possible.subtract(identity);
+		this.all_inferred = this.all_inferred.subtract(identity);
 
 		for (const { order } of state.hands.flat()) {
 			const card = this.thoughts[order];
@@ -60,8 +60,8 @@ export function card_elim(state) {
 			if (card.possible.length <= 1 || certain_map.get(id_hash)?.has(order))
 				continue;
 
-			card.possible.subtract(identity);
-			card.inferred.subtract(identity);
+			card.possible = card.possible.subtract(identity);
+			card.inferred = card.inferred.subtract(identity);
 
 			if (card.inferred.length === 0 && !card.reset)
 				this.reset_card(order);
@@ -146,7 +146,7 @@ export function good_touch_elim(state, only_self = false) {
 			}
 
 			const pre_inferences = card.inferred.length;
-			card.inferred.subtract(identity);
+			card.inferred = card.inferred.subtract(identity);
 
 			if (this.playerIndex === -1) {
 				this.elims[logCard(identity)] ??= [];
@@ -181,12 +181,11 @@ export function reset_card(order) {
 		card.finessed = false;
 		card.hidden = false;
 		if (card.old_inferred !== undefined) {
-			card.inferred = card.old_inferred;
-			card.inferred.intersect(card.possible);
+			card.inferred = card.old_inferred.intersect(card.possible);
 		}
 		else {
 			logger.error(`no old inferred on card with order ${order}! player ${this.playerIndex}`);
-			card.inferred = card.possible.clone();
+			card.inferred = card.possible;
 		}
 
 		// Filter out future waiting connections involving this card
@@ -194,7 +193,7 @@ export function reset_card(order) {
 			!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order));
 	}
 	else {
-		card.inferred = card.possible.clone();
+		card.inferred = card.possible;
 	}
 }
 
@@ -270,10 +269,13 @@ export function refresh_links(state) {
 				const viable_cards = cards.filter(c => this.thoughts[c.order].possible.has(identities[0]));
 
 				if (viable_cards.length <= 1) {
-					if (viable_cards.length === 0)
+					if (viable_cards.length === 0) {
 						logger.warn(`promised identity ${logCard(identities[0])} not found among cards ${cards.map(c => c.order)}, rewind?`);
-					else
-						this.thoughts[viable_cards[0].order].inferred.intersect(identities[0]);
+					}
+					else {
+						const viable_card = this.thoughts[viable_cards[0].order];
+						viable_card.inferred = viable_card.inferred.intersect(identities[0]);
+					}
 					remove_indices.push(i);
 				}
 			}
@@ -314,10 +316,10 @@ export function restore_elim(identity) {
 
 			// Add the inference back if it's still a possibility
 			if (card.possible.has(identity))
-				card.inferred.union(identity);
+				card.inferred = card.inferred.union(identity);
 		}
 
-		this.all_inferred.union(identity);
+		this.all_inferred = this.all_inferred.union(identity);
 		this.elims[id] = undefined;
 	}
 }

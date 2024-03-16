@@ -34,8 +34,8 @@ export function onClue(state, action) {
 			const inferences_before = card.inferred.length;
 
 			const operation = list.includes(order) ? 'intersect' : 'subtract';
-			card.possible[operation](new_possible);
-			card.inferred[operation](new_possible);
+			card.possible = card.possible[operation](new_possible);
+			card.inferred = card.inferred[operation](new_possible);
 
 			if (list.includes(order) && card.inferred.length < inferences_before) {
 				card.reasoning.push(state.actionList.length - 1);
@@ -56,7 +56,7 @@ export function onClue(state, action) {
  */
 export function onDiscard(state, action) {
 	const { failed, order, playerIndex, rank, suitIndex } = action;
-	state.hands[playerIndex].removeOrder(order);
+	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
 
 	state.discard_stacks[suitIndex][rank - 1]++;
 
@@ -92,8 +92,8 @@ export function onDraw(state, action) {
 			suitIndex: (i !== playerIndex) ? suitIndex : -1,
 			rank: (i !== playerIndex) ? rank : -1,
 			order,
-			possible: player.all_possible.clone(),
-			inferred: player.all_possible.clone(),
+			possible: player.all_possible,
+			inferred: player.all_possible,
 			drawn_index: state.actionList.length
 		});
 	}
@@ -107,8 +107,8 @@ export function onDraw(state, action) {
 		suitIndex: -1,
 		rank: -1,
 		order,
-		possible: state.common.all_possible.clone(),
-		inferred: state.common.all_possible.clone(),
+		possible: state.common.all_possible,
+		inferred: state.common.all_possible,
 		drawn_index: state.actionList.length
 	});
 
@@ -122,7 +122,7 @@ export function onDraw(state, action) {
  */
 export function onPlay(state, action) {
 	const { order, playerIndex, rank, suitIndex } = action;
-	state.hands[playerIndex].removeOrder(order);
+	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
 
 	state.play_stacks[suitIndex] = rank;
 

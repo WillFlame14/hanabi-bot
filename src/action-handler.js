@@ -145,7 +145,7 @@ export function handle_action(action, catchup = false) {
 				Object.assign(this.hands[playerIndex].findOrder(order), { suitIndex, rank });
 			}
 			else {
-				card.inferred.intersect({ suitIndex, rank });
+				card.inferred = card.inferred.intersect({ suitIndex, rank });
 			}
 			card.rewinded = true;
 			team_elim(this);

@@ -1,4 +1,5 @@
 import { CLUE } from '../../../constants.js';
+import { IdentitySet } from '../../../basics/IdentitySet.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 import { update_hypo_stacks } from '../../../basics/helper.js';
 
@@ -129,8 +130,9 @@ export function interpret_tccm(state, oldCommon, target, list, focused_card) {
 			// All touched cards must be delayed playable
 			for (const { order } of possibly_playable) {
 				const card = state.common.thoughts[order];
+				const playable_identities = card.inferred.filter(inf => inf.rank === state.common.hypo_stacks[inf.suitIndex] + 1);
 
-				card.inferred.assign(card.inferred.filter(inf => inf.rank === state.common.hypo_stacks[inf.suitIndex] + 1));
+				card.inferred = IdentitySet.create(state.variant.suits.length, playable_identities);
 				update_hypo_stacks(state, state.common);
 			}
 			const slots = possibly_playable.map(c => state.hands[target].findIndex(card => card.order === c.order) + 1);

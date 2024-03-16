@@ -77,8 +77,8 @@ describe('play clue', () => {
 		// Cathy's r1 is clued and inferred.
 		state.hands[PLAYER.CATHY][1].clued = true;
 		const card = state.common.thoughts[state.hands[PLAYER.CATHY][1].order];
-		card.possible.intersect(['r1', 'r2', 'r3', 'r4', 'r5'].map(expandShortCard));
-		card.inferred.intersect(['r1'].map(expandShortCard));
+		card.possible = card.possible.intersect(['r1', 'r2', 'r3', 'r4', 'r5'].map(expandShortCard));
+		card.inferred = card.inferred.intersect(['r1'].map(expandShortCard));
 
 		takeTurn(state, 'Alice clues red to Bob');
 
@@ -96,8 +96,8 @@ describe('play clue', () => {
 		// Bob has a 1 in slot 2.
 		state.hands[PLAYER.BOB][1].clued = true;
 		const card = state.common.thoughts[state.hands[PLAYER.BOB][1].order];
-		card.possible.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
-		card.inferred.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+		card.possible = card.possible.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+		card.inferred = card.inferred.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
 
 		takeTurn(state, 'Alice clues red to Bob');
 

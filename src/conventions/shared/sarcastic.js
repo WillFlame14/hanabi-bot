@@ -1,3 +1,4 @@
+import { IdentitySet } from '../../basics/IdentitySet.js';
 import { playableAway, visibleFind } from '../../basics/hanabi-util.js';
 import { undo_hypo_stacks } from '../../basics/helper.js';
 
@@ -42,8 +43,10 @@ export function find_sarcastic(hand, player, identity) {
  */
 function apply_unknown_sarcastic(state, sarcastic, identity) {
 	// Need to add the inference back if it was previously eliminated due to good touch
-	for (const { order } of sarcastic)
-		state.common.thoughts[order].inferred.union(identity);
+	for (const { order } of sarcastic) {
+		const card = state.common.thoughts[order];
+		card.inferred = card.inferred.union(identity);
+	}
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
 	if (sarcastic.length === 0 || sarcastic.some(({ order }) => state.common.thoughts[order].inferred.some(c => playableAway(state, c) > 0)))
@@ -86,7 +89,8 @@ export function interpret_sarcastic(state, discardAction) {
 
 		if (sarcastic.length === 1) {
 			logger.info('writing sarcastic on slot', state.hands[state.ourPlayerIndex].findIndex(c => c.order === sarcastic[0].order) + 1);
-			common.thoughts[sarcastic[0].order].inferred.intersect(identity);
+			const common_sarcastic = common.thoughts[sarcastic[0].order];
+			common_sarcastic.inferred = common_sarcastic.inferred.intersect(identity);
 		}
 		else {
 			apply_unknown_sarcastic(state, sarcastic, identity);
@@ -103,7 +107,7 @@ export function interpret_sarcastic(state, discardAction) {
 			if (sarcastic.some(c => state.me.thoughts[c.order].matches(identity, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
 				// The matching card must be the only possible option in the hand to be known sarcastic
 				if (sarcastic.length === 1) {
-					common.thoughts[sarcastic[0].order].inferred.assign(identity);
+					common.thoughts[sarcastic[0].order].inferred = IdentitySet.create(state.variant.suits.length, identity);
 					logger.info(`writing ${logCard(identity)} from sarcastic discard`);
 				}
 				else {

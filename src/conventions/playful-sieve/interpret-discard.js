@@ -76,8 +76,8 @@ export function interpret_discard(state, action, card) {
 		// 	playable_possibilities[suitIndex] = { suitIndex, rank: rank + 1 };
 
 		const chop = common.thoughts[state.hands[other][0].order];
-		chop.old_inferred = chop.inferred.clone();
+		chop.old_inferred = chop.inferred;
 		chop.finessed = true;
-		chop.inferred.intersect(playable_possibilities);
+		chop.inferred = chop.inferred.intersect(playable_possibilities);
 	}
 }

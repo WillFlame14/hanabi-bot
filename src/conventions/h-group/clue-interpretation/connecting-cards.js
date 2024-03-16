@@ -37,7 +37,7 @@ function find_known_connecting(state, giver, identity, ignoreOrders = []) {
 			const card = state.common.thoughts[order].clone();
 
 			// Remove inferences that will be proven false (i.e. after someone plays the card with such identity)
-			card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
+			card.inferred = card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
 
 			return card.matches(identity, { infer: true }) && card.touched &&
 				!state.common.waiting_connections.some(wc =>

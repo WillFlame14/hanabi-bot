@@ -63,7 +63,7 @@ function remove_finesse(state, waiting_connection) {
 	}
 
 	// Remove inference
-	focus_thoughts.inferred.subtract(inference);
+	focus_thoughts.inferred = focus_thoughts.inferred.subtract(inference);
 	update_hypo_stacks(state, state.common);
 }
 
@@ -219,7 +219,7 @@ function resolve_giver_play(state, waiting_connection) {
 	if (!fake) {
 		const thoughts = state.common.thoughts[card.order];
 		// Remove finesse
-		thoughts.inferred.subtract(identities);
+		thoughts.inferred = thoughts.inferred.subtract(identities);
 
 		if (thoughts.inferred.length === 0) {
 			if (thoughts.old_inferred !== undefined) {
@@ -348,20 +348,20 @@ export function update_turn(state, action) {
 				continue;
 
 			if (!connecting_card.superposition) {
-				connecting_card.inferred.intersect(identities);
+				connecting_card.inferred = connecting_card.inferred.intersect(identities);
 				connecting_card.superposition = true;
 			}
 			else {
-				connecting_card.inferred.union(identities);
+				connecting_card.inferred = connecting_card.inferred.union(identities);
 			}
 		}
 
 		if (!thoughts.superposition) {
-			thoughts.inferred.intersect(inferences);
+			thoughts.inferred = thoughts.inferred.intersect(inferences);
 			thoughts.superposition = true;
 		}
 		else {
-			thoughts.inferred.union(inferences);
+			thoughts.inferred = thoughts.inferred.union(inferences);
 		}
 	}
 

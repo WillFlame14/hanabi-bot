@@ -104,10 +104,10 @@ export class State {
 
 		for (let i = 0; i < this.numPlayers; i++) {
 			this.hands.push(new Hand());
-			this.players[i] = new Player(i, all_possible.clone(), all_possible.clone(), Array.from({ length: this.variant.suits.length }, _ => 0));
+			this.players[i] = new Player(i, all_possible, all_possible, Array.from({ length: this.variant.suits.length }, _ => 0));
 		}
 
-		this.common = new Player(-1, all_possible.clone(), all_possible.clone(), Array.from({ length: this.variant.suits.length }, _ => 0));
+		this.common = new Player(-1, all_possible, all_possible, Array.from({ length: this.variant.suits.length }, _ => 0));
 
 	}
 

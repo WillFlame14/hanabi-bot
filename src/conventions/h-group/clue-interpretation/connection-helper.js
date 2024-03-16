@@ -1,4 +1,5 @@
 import { CLUE } from '../../../constants.js';
+import { IdentitySet } from '../../../basics/IdentitySet.js';
 import { determine_focus } from '../hanabi-logic.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 import { isBasicTrash } from '../../../basics/hanabi-util.js';
@@ -177,7 +178,7 @@ export function assign_connections(state, connections, options = {}) {
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		if (!card.superposition && card.old_inferred === undefined)
-			card.old_inferred = card.inferred.clone();
+			card.old_inferred = card.inferred;
 
 		if (type === 'finesse') {
 			card.finessed = true;
@@ -192,7 +193,7 @@ export function assign_connections(state, connections, options = {}) {
 			const playable_identities = hypo_stacks.map((stack_rank, index) => {
 				return { suitIndex: index, rank: stack_rank + 1 };
 			});
-			card.inferred.intersect(playable_identities);
+			card.inferred = card.inferred.intersect(playable_identities);
 
 			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
 			if (card.identity() !== undefined) {
@@ -206,7 +207,7 @@ export function assign_connections(state, connections, options = {}) {
 		else {
 			// There are multiple possible connections on this card
 			if (card.superposition) {
-				card.inferred.union(identities);
+				card.inferred = card.inferred.union(identities);
 			}
 			else {
 				if (type === 'playable' && linked.length > 1) {
@@ -220,7 +221,7 @@ export function assign_connections(state, connections, options = {}) {
 						state.common.links.push({ promised: true, identities, cards: linked });
 				}
 				else {
-					card.inferred.assign(identities);
+					card.inferred = IdentitySet.create(state.variant.suits.length, identities);
 				}
 
 				card.superposition = true;

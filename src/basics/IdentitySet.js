@@ -8,6 +8,9 @@ export class IdentitySet {
 	/** @type {BasicCard[]} */
 	#array;
 
+	/** @type {number} */
+	#length;
+
 	/**
 	 * @param {number} numSuits
 	 * @param {number} [value]
@@ -18,30 +21,55 @@ export class IdentitySet {
 		this.numSuits = numSuits;
 		this.value = value ?? Math.pow(2, this.numSuits * this.maxStackRank) - 1;
 		this.#array = undefined;
-	}
-
-	clone() {
-		return new IdentitySet(this.numSuits, this.value);
+		this.#length = 0;
 	}
 
 	/**
 	 * @param {Identity} identity
+	 * @param {number} [maxStackRank]
 	 */
-	#toMask({ suitIndex, rank }) {
-		return 1 << (suitIndex * this.maxStackRank + (rank - 1));
+	static toMask({ suitIndex, rank }, maxStackRank = 5) {
+		return 1 << (suitIndex * maxStackRank + (rank - 1));
 	}
 
 	/**
 	 * @param {Identity[]} identities
+	 * @param {number} [maxStackRank]
 	 */
-	#identitiesToMask(identities) {
-		return identities.reduce((mask, id) => mask | this.#toMask(id), 0);
+	static identitiesToMask(identities, maxStackRank = 5) {
+		return identities.reduce((mask, id) => mask | IdentitySet.toMask(id, maxStackRank), 0);
+	}
+
+	/**
+	 * @param {Identity[] | IdentitySet | Identity} identities
+	 * @param {number} [maxStackRank]
+	 */
+	static parse(identities, maxStackRank = 5) {
+		if (identities instanceof IdentitySet)
+			return identities.value;
+
+		if (Array.isArray(identities))
+			return IdentitySet.identitiesToMask(identities, maxStackRank);
+
+		return IdentitySet.toMask(identities, maxStackRank);
+	}
+
+	/**
+	 * @param {number} numSuits
+	 * @param {Identity[] | IdentitySet | Identity} identities
+	 * @param {number} [maxStackRank]
+	 */
+	static create(numSuits, identities, maxStackRank = 5) {
+		return new IdentitySet(numSuits, IdentitySet.parse(identities, maxStackRank));
 	}
 
 	/**
 	 * Returns the number of possible identities.
 	 */
 	get length() {
+		if (this.#length)
+			return this.#length;
+
 		let copy = this.value;
 		copy = copy - ((copy >> 1) & 0x55555555);
 		copy = (copy & 0x33333333) + ((copy >> 2) & 0x33333333);
@@ -53,8 +81,8 @@ export class IdentitySet {
 	 * @returns {BasicCard[]}
 	 */
 	get array() {
-		// if (this.#array)
-		// 	return this.#array;
+		if (this.#array)
+			return this.#array;
 
 		let run = 1;
 		this.#array = [];
@@ -97,56 +125,31 @@ export class IdentitySet {
 	 * @param {Identity} identity
 	 */
 	has(identity) {
-		return (this.value & this.#toMask(identity)) !== 0;
+		return (this.value & IdentitySet.toMask(identity, this.maxStackRank)) !== 0;
 	}
 
 	/**
-	 * @param {Identity[] | IdentitySet | Identity} identities
-	 */
-	#resolveParam(identities) {
-		if (identities instanceof IdentitySet)
-			return identities.value;
-
-		if (Array.isArray(identities))
-			return this.#identitiesToMask(identities);
-
-		return this.#toMask(identities);
-	}
-
-	/**
-	 * Intersects the existing set and the provided array of identities.
+	 * Returns the intersection of the existing set and the provided array of identities.
 	 * @param {Identity[] | IdentitySet | Identity} identities
 	 */
 	intersect(identities) {
-		this.value &= this.#resolveParam(identities);
-		this.#array = undefined;
+		return new IdentitySet(this.numSuits, this.value & IdentitySet.parse(identities, this.maxStackRank));
 	}
 
 	/**
-	 * Subtracts the provided array of identities from the existing set.
+	 * Returns the difference of the provided array of identities from the existing set.
 	 * @param {Identity[] | IdentitySet | Identity} identities
 	 */
 	subtract(identities) {
-		this.value &= ~this.#resolveParam(identities);
-		this.#array = undefined;
+		return new IdentitySet(this.numSuits, this.value & ~IdentitySet.parse(identities, this.maxStackRank));
 	}
 
 	/**
-	 * Performs the union of the existing set and the provided array of identities.
+	 * Returns the union of the existing set and the provided array of identities.
 	 * @param {Identity[] | IdentitySet | Identity} identities
 	 */
 	union(identities) {
-		this.value |= this.#resolveParam(identities);
-		this.#array = undefined;
-	}
-
-	/**
-	 * Assigns the existing set to the provided array of identities.
-	 * @param {Identity[] | IdentitySet | Identity} identities
-	 */
-	assign(identities) {
-		this.value = this.#resolveParam(identities);
-		this.#array = undefined;
+		return new IdentitySet(this.numSuits, this.value | IdentitySet.parse(identities, this.maxStackRank));
 	}
 
 	/**
@@ -154,7 +157,7 @@ export class IdentitySet {
 	 * @param {Identity[] | IdentitySet | Identity} identities
 	 */
 	equals(identities) {
-		return this.value === this.#resolveParam(identities);
+		return this.value === IdentitySet.parse(identities, this.maxStackRank);
 	}
 
 	*[Symbol.iterator]() {
