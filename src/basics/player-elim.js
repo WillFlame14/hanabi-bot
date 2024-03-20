@@ -8,7 +8,6 @@ import { logCard } from '../tools/log.js';
  * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').ActualCard} ActualCard
- * @typedef {import('./Card.js').BasicCard} BasicCard
  * @typedef {import('./Player.js').Player} Player
  * @typedef {import('./State.js').State} State
  * @typedef {import('../types.js').Identity} Identity
@@ -302,7 +301,7 @@ export function refresh_links(state) {
 
 /**
  * @this {Player}
- * @param {BasicCard} identity
+ * @param {Identity} identity
  */
 export function restore_elim(identity) {
 	const id = logCard(identity);

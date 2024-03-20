@@ -65,6 +65,18 @@ export class Player {
 			Utils.objClone(this.elims));
 	}
 
+	shallowCopy() {
+		return new Player(this.playerIndex,
+			this.all_possible,
+			this.all_inferred,
+			this.hypo_stacks,
+			this.thoughts,
+			this.links,
+			this.unknown_plays,
+			this.waiting_connections,
+			this.elims);
+	}
+
 	get hypo_score() {
 		return this.hypo_stacks.reduce((sum, stack) => sum + stack) + this.unknown_plays.size;
 	}

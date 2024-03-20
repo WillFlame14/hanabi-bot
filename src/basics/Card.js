@@ -17,10 +17,6 @@ export class BasicCard {
 		this.rank = rank;
 	}
 
-	clone() {
-		return new BasicCard(this.suitIndex, this.rank);
-	}
-
 	raw() {
 		return Object.freeze({ suitIndex: this.suitIndex, rank: this.rank });
 	}
@@ -28,7 +24,6 @@ export class BasicCard {
 	identity() {
 		if (this.suitIndex !== -1 && this.rank !== -1)
 			return { suitIndex: this.suitIndex, rank: this.rank };
-
 	}
 
 	matches({suitIndex, rank}) {
@@ -68,6 +63,10 @@ export class ActualCard extends BasicCard {
 
 	clone() {
 		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues.slice());
+	}
+
+	shallowCopy() {
+		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues);
 	}
 
 	/**
@@ -147,6 +146,12 @@ export class Card extends BasicCard {
 		return new_card;
 	}
 
+	shallowCopy() {
+		const new_card = new Card(this.actualCard, { suitIndex: this.suitIndex, rank: this.rank });
+		Object.assign(new_card, this);
+		return new_card;
+	}
+
 	get order() { return this.actualCard.order; }
 	get clued() { return this.actualCard.clued; }
 	get newly_clued() { return this.actualCard.newly_clued; }
@@ -190,7 +195,7 @@ export class Card extends BasicCard {
 			return this.possible.array[0];
 
 		else if (this.suitIndex !== -1 && this.rank !== -1)
-			return new BasicCard(this.suitIndex, this.rank);
+			return Object.freeze(new BasicCard(this.suitIndex, this.rank));
 
 		else if (options.infer && this.inferred.length === 1)
 			return this.inferred.array[0];

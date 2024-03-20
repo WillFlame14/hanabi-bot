@@ -34,6 +34,9 @@ export class State {
 	deck = /** @type {Identity[]} */ ([]);
 	hands = /** @type {Hand[]} */ ([]);
 
+	/** @type {Player} */
+	common;
+
 	play_stacks = /** @type {number[]} */ ([]);
 	discard_stacks = /** @type {number[][]} */ ([]);
 	max_ranks = /** @type {number[]} */ ([]);
@@ -108,7 +111,6 @@ export class State {
 		}
 
 		this.common = new Player(-1, all_possible, all_possible, Array.from({ length: this.variant.suits.length }, _ => 0));
-
 	}
 
 	get me() {
@@ -130,6 +132,12 @@ export class State {
 		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress);
 		newState.notes = this.notes;
 		newState.rewinds = this.rewinds;
+		return newState;
+	}
+
+	shallowCopy() {
+		const newState = new State(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress);
+		Object.assign(newState, this);
 		return newState;
 	}
 

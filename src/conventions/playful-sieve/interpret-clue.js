@@ -10,7 +10,6 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * @typedef {import('../../basics/State.js').State} State
- * @typedef {import('../../basics/Card.js').BasicCard} BasicCard
  * @typedef {import('../../types.js').ClueAction} ClueAction
  * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').Identity} Identity

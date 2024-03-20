@@ -13,9 +13,6 @@ import * as Utils from '../tools/util.js';
  * @typedef {import('../types-live.js').TableOptions} TableOptions
  */
 
-/**
- * @property {HGroup_Player[]} players
- */
 export default class HGroup extends State {
 	convention_name = 'HGroup';
 	interpret_clue = interpret_clue;
@@ -23,8 +20,6 @@ export default class HGroup extends State {
 	take_action = take_action;
 	update_turn = update_turn;
 	interpret_play = interpret_play;
-
-	player_history = /** @type {HGroup_Player[]} */ ([]);
 
 	/**
 	 * @param {number} tableID
@@ -56,6 +51,12 @@ export default class HGroup extends State {
 		blank.notes = this.notes;
 		blank.rewinds = this.rewinds;
 		return blank;
+	}
+
+	shallowCopy() {
+		const newState = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress, this.level);
+		Object.assign(newState, this);
+		return newState;
 	}
 
 	minimalCopy() {

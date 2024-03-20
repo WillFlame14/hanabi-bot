@@ -23,6 +23,17 @@ export class HGroup_Player extends Player {
 			Utils.objClone(this.waiting_connections));
 	}
 
+	shallowCopy() {
+		return new HGroup_Player(this.playerIndex,
+			this.all_possible,
+			this.all_inferred,
+			this.hypo_stacks,
+			this.thoughts,
+			this.links,
+			this.unknown_plays,
+			this.waiting_connections);
+	}
+
 	/**
 	 * Returns the index (0-indexed) of the chop card, or -1 if the hand doesn't have a chop.
 	 * 

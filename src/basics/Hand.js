@@ -22,6 +22,10 @@ export class Hand extends Array {
 		return newHand;
 	}
 
+	shallowCopy() {
+		return new Hand(...this);
+	}
+
 	/**
 	 * Removes the card with the given order from the hand.
 	 * @param {number} order

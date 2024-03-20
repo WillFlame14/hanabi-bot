@@ -1,12 +1,13 @@
-import { BasicCard, ActualCard } from '../basics/Card.js';
+import { BasicCard, ActualCard, Card } from '../basics/Card.js';
 import { Hand } from '../basics/Hand.js';
 import { Player } from '../basics/Player.js';
+import { State } from '../basics/State.js';
 import { ACTION, CLUE } from '../constants.js';
+import { types } from 'node:util';
 import logger from './logger.js';
 
 /**
  * @typedef {typeof import('../constants.js').ACTION} ACTION
- * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Clue} Clue
  * @typedef {import('../types.js').Action} Action
@@ -106,24 +107,44 @@ export function objClone(obj, depth = 0) {
 	if (depth > 15)
 		throw new Error('Maximum recursion depth reached.');
 
-	if (typeof obj === 'object') {
-		if (obj instanceof BasicCard || obj instanceof Hand || obj instanceof Player) {
-			return /** @type {T} */ (obj.clone());
-		}
-		else if (Array.isArray(obj)) {
-			return /** @type {T} */ (obj.map(elem => objClone(elem)));
-		}
-		else {
-			const new_obj = {};
-			for (const [name, value] of Object.entries(obj))
-				new_obj[name] = objClone(value, depth + 1);
-
-			return /** @type {T} */ (new_obj);
-		}
-	}
-	else {
+	if (typeof obj !== 'object' || obj instanceof BasicCard)
 		return obj;
-	}
+
+	if (obj instanceof Hand || obj instanceof Player)
+		return /** @type {T} */ (obj.clone());
+
+	if (Array.isArray(obj))
+		return /** @type {T} */ (obj.map(elem => objClone(elem)));
+
+	const new_obj = {};
+	for (const [name, value] of Object.entries(obj))
+		new_obj[name] = objClone(value, depth + 1);
+
+	return /** @type {T} */ (new_obj);
+}
+
+/**
+ * @template T
+ * @param {T} obj
+ * @returns {T}
+ */
+export function shallowCopy (obj) {
+	if (obj instanceof Map)
+		return /** @type {T} */ (new Map(obj));
+
+	if (obj instanceof Set)
+		return /** @type {T} */ (new Set(obj));
+
+	if (Array.isArray(obj))
+		return /** @type {T} */ (obj.slice());
+
+	if (obj instanceof ActualCard || obj instanceof Card || obj instanceof Hand || obj instanceof Player || obj instanceof State)
+		return /** @type {T} */ (obj.shallowCopy());
+
+	if (types.isProxy(obj) || typeof obj !== 'object' || obj instanceof BasicCard)
+		return obj;
+
+	return Object.assign({}, obj);
 }
 
 /**
