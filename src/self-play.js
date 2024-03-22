@@ -205,6 +205,9 @@ function simulate_game(playerNames, deck, convention, level) {
 	}
 	catch (err) {
 		logger.error(err);
+
+		while (logger.accumulateDepth > 0)
+			logger.flush();
 	}
 
 	const { score, strikes, variant, max_ranks } = games[0].game.state;

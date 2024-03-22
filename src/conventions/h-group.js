@@ -63,7 +63,7 @@ export default class HGroup extends Game {
 		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');
 
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse',];
+		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory'];
 
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);

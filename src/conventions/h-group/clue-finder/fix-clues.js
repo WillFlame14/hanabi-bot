@@ -176,7 +176,7 @@ function check_fixed(game, target, order, clue, fix_criteria) {
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();
 
-	const hypo_game = game.simulate_clue(action, { enableLogs: true, simulatePlayerIndex: target });
+	const hypo_game = game.simulate_clue(action, { enableLogs: true });
 	const { common: hypo_common, state: hypo_state } = hypo_game;
 	const card_after_cluing = hypo_common.thoughts[order];
 

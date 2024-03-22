@@ -106,7 +106,7 @@ export class Game {
 		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');
 
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse'];
+		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory'];
 
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);
@@ -205,6 +205,7 @@ export class Game {
 
 		const newGame = this.createBlank();
 		const history = actionList.slice(0, action_index);
+		Utils.globalModify({ game: newGame });
 
 		/** @param {Action} action */
 		const catchup_action = (action) => {
@@ -221,7 +222,9 @@ export class Game {
 
 			// Simulate the actual hand as well for replacement
 			logger.collect();
+			Utils.globalModify({ game: hypoGame });
 			hypoGame.handle_action(action, true);
+			Utils.globalModify({ game: newGame });
 			logger.flush(false);
 
 			if (our_action) {
@@ -326,15 +329,12 @@ export class Game {
 	 * The 'enableLogs' option causes all logs from the simulated state to be printed.
 	 * Otherwise, only errors are printed from the simulated state.
 	 * @param {ClueAction} action
-	 * @param {{simulatePlayerIndex?: number, enableLogs?: boolean}} options
+	 * @param {{enableLogs?: boolean}} options
 	 */
 	simulate_clue(action, options = {}) {
 		const hypo_game = /** @type {this} */ (this.minimalCopy());
 
 		Utils.globalModify({ game: hypo_game });
-
-		if (options.simulatePlayerIndex !== undefined)
-			hypo_game.state.ourPlayerIndex = options.simulatePlayerIndex;
 
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
 			hypo_game.interpret_clue(hypo_game, action);

@@ -73,8 +73,7 @@ async function main() {
 	if (ourPlayerIndex < 0 || ourPlayerIndex >= players.length)
 		throw new Error(`Replay only has ${players.length} players!`);
 
-
-	if (!(convention in conventions[convention]))
+	if (!(convention in conventions))
 		throw new Error(`Convention ${convention} is not supported.`);
 
 	await getShortForms(variant);

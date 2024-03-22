@@ -22,7 +22,7 @@ export function handle_action(action, catchup = false) {
 	const { state } = this;
 	state.actionList.push(action);
 
-	if (['clue', 'discard', 'play'].includes(action.type))
+	if (action.type === 'clue' && action.giver === state.ourPlayerIndex)
 		this.handHistory[state.turn_count] = Utils.objClone(state.hands[state.ourPlayerIndex]);
 
 	switch(action.type) {
