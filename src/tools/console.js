@@ -33,8 +33,11 @@ export function initConsole() {
 					return;
 				}
 
-				/** @type {import('../basics/State.js').State} */
-				const state = Utils.globals.state;
+				/** @type {import('../basics/Game.js').Game} */
+				const game = Utils.globals.game;
+
+				/** @type {import('../basics/Game.js').Game} */
+				const { state } = game;
 
 				switch(parts[0]) {
 					case 'hand': {
@@ -43,15 +46,15 @@ export function initConsole() {
 							break;
 						}
 						const playerName = parts[1];
-						if (!state.playerNames.includes(playerName)) {
+						if (!game.state.playerNames.includes(playerName)) {
 							logger.error('That player is not in this room.');
 							console.log(state.playerNames, playerName);
 							break;
 						}
 						const playerIndex = state.playerNames.indexOf(playerName);
-						const player = !isNaN(Number(parts[2])) ? state.players[Number(parts[2])] : undefined;
+						const player = !isNaN(Number(parts[2])) ? game.players[Number(parts[2])] : undefined;
 						console.log('viewing from', player === undefined ? 'common' : state.playerNames[player.playerIndex]);
-						console.log(logHand(state.hands[playerIndex], player), logLinks(state.players[playerIndex].links));
+						console.log(logHand(state.hands[playerIndex], player), logLinks(game.players[playerIndex].links));
 						break;
 					}
 					case 'state':
@@ -64,7 +67,7 @@ export function initConsole() {
 							break;
 						}
 
-						if (state.in_progress) {
+						if (game.in_progress) {
 							logger.warn('Cannot navigate while game is in progress.');
 							break;
 						}
@@ -87,7 +90,7 @@ export function initConsole() {
 							break;
 						}
 
-						state.navigate(turn);
+						game.navigate(turn);
 						break;
 					}
 					case 'spectate':
@@ -102,7 +105,7 @@ export function initConsole() {
 						Utils.sendCmd('tableSpectate', { tableID: Number(parts[1]), shadowingPlayerIndex: Number(parts[2] ?? -1) });
 						break;
 					case 'unattend':
-						Utils.sendCmd('tableUnattend', { tableID: state.tableID });
+						Utils.sendCmd('tableUnattend', { tableID: game.tableID });
 						break;
 					default:
 						logger.warn('Command not recognized.');

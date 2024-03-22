@@ -1,4 +1,4 @@
-import { State } from '../basics/State.js';
+import { Game } from '../basics/Game.js';
 import { interpret_clue } from './h-group/clue-interpretation/interpret-clue.js';
 import { interpret_discard } from './h-group/interpret-discard.js';
 import { interpret_play } from './h-group/interpret-play.js';
@@ -9,11 +9,12 @@ import { HGroup_Player } from './h-player.js';
 import * as Utils from '../tools/util.js';
 
 /**
+ * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../variants.js').Variant} Variant
  * @typedef {import('../types-live.js').TableOptions} TableOptions
  */
 
-export default class HGroup extends State {
+export default class HGroup extends Game {
 	convention_name = 'HGroup';
 	interpret_clue = interpret_clue;
 	interpret_discard = interpret_discard;
@@ -23,15 +24,12 @@ export default class HGroup extends State {
 
 	/**
 	 * @param {number} tableID
-	 * @param {string[]} playerNames
-	 * @param {number} ourPlayerIndex
-	 * @param {Variant} variant
-	 * @param {TableOptions} options
+	 * @param {State} state
 	 * @param {boolean} in_progress
 	 * @param {number} [level] 	The convention level (defaults to 1).
 	 */
-	constructor(tableID, playerNames, ourPlayerIndex, variant, options, in_progress, level = 1) {
-		super(tableID, playerNames, ourPlayerIndex, variant, options, in_progress);
+	constructor(tableID, state, in_progress, level = 1) {
+		super(tableID, state, in_progress);
 
 		this.players = this.players.map(p =>
 			new HGroup_Player(p.playerIndex, p.all_possible, p.all_inferred, p.hypo_stacks, p.thoughts, p.links, p.unknown_plays, p.waiting_connections, p.elims));
@@ -43,40 +41,42 @@ export default class HGroup extends State {
 	}
 
 	get me() {
-		return this.players[this.ourPlayerIndex];
+		return this.players[this.state.ourPlayerIndex];
 	}
 
 	createBlank() {
-		const blank = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress, this.level);
+		const blank = new HGroup(this.tableID, this.state.createBlank(), this.in_progress, this.level);
 		blank.notes = this.notes;
 		blank.rewinds = this.rewinds;
 		return blank;
 	}
 
 	shallowCopy() {
-		const newState = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress, this.level);
-		Object.assign(newState, this);
-		return newState;
+		const newGame = new HGroup(this.tableID, this.state, this.in_progress, this.level);
+		Object.assign(newGame, this);
+		return newGame;
 	}
 
 	minimalCopy() {
-		const newState = new HGroup(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress, this.level);
+		const newGame = new HGroup(this.tableID, this.state.minimalCopy(), this.in_progress, this.level);
 
 		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'last_actions',
-			'turn_count', 'clue_tokens', 'strikes', 'early_game', 'rewindDepth', 'next_ignore', 'next_finesse', 'cardsLeft'];
+		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse',];
 
 		for (const property of minimalProps)
-			newState[property] = Utils.objClone(this[property]);
+			newGame[property] = Utils.objClone(this[property]);
 
-		for (const player of newState.players.concat([newState.common])) {
-			for (const c of newState.hands.flat())
+		for (const player of newGame.players.concat([newGame.common])) {
+			for (const c of newGame.state.hands.flat()) {
+				if (player.thoughts[c.order] === undefined)
+					console.log(c.order, player.playerIndex, player.thoughts, this.players[player.playerIndex].thoughts);
 				player.thoughts[c.order].actualCard = c;
+			}
 		}
 
-		newState.copyDepth = this.copyDepth + 1;
-		return newState;
+		newGame.copyDepth = this.copyDepth + 1;
+		return newGame;
 	}
 }

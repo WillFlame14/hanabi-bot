@@ -3,7 +3,6 @@ import { describe, it } from 'node:test';
 
 import { setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
-import { isCritical } from '../../src/basics/hanabi-util.js';
 
 import logger from '../../src/tools/logger.js';
 
@@ -19,7 +18,7 @@ describe('dark variants', () => {
 			'Gray Pink', 'Dark Pink', 'Dark Omni',
 			'Dark Prism'
 		]) {
-			const state = setup(HGroup, [
+			const game = setup(HGroup, [
 				['xx', 'xx', 'xx', 'xx', 'xx'],
 				['g2', 'b1', 'r2', 'r3', 'g5'],
 			], {
@@ -29,7 +28,7 @@ describe('dark variants', () => {
 				variant: {'id': -1, 'name': '...', 'suits': ['Red', 'Yellow', 'Green', 'Blue', variant]}
 			},
 			);
-			assert.ok(isCritical(state, {suitIndex: 4, rank: 1}));
+			assert.ok(game.state.isCritical({suitIndex: 4, rank: 1}));
 		}
 	});
 });

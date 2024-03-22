@@ -1,11 +1,11 @@
 import { CLUE } from '../../constants.js';
-import { inStartingHand, playableAway } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logClue } from '../../tools/log.js';
 
 /**
- * @typedef {import('../h-group.js').default} State
+ * @typedef {import('../h-group.js').default} Game
+ * @typedef {import('../../basics/State.js').State} State
  * @typedef {import('../../basics/Player.js').Player} Player
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
@@ -50,15 +50,15 @@ export function select_play_clue(play_clues) {
 
 /**
  * Given a set of playable cards, returns the unknown 1s in the order that they should be played.
- * @param  {State} state
- * @param  {Player} player
- * @param  {ActualCard[]} cards
+ * @param {State} state
+ * @param {Player} player
+ * @param {ActualCard[]} cards
  */
 export function order_1s(state, player, cards) {
 	const unknown_1s = cards.filter(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
 
 	return unknown_1s.sort((card1, card2) => {
-		const [c1_start, c2_start] = [card1, card2].map(c => inStartingHand(state, c));
+		const [c1_start, c2_start] = [card1, card2].map(c => state.inStartingHand(c.order));
 		const [c1, c2] = [card1, card2].map(c => player.thoughts[c.order]);
 
 		if (c1.finessed && c2.finessed)
@@ -92,16 +92,18 @@ export function order_1s(state, player, cards) {
 
 /**
  * Returns the playable cards categorized by priority.
- * @param {State} state
+ * @param {Game} game
  * @param {ActualCard[]} playable_cards
  */
-export function determine_playable_card(state, playable_cards) {
+export function determine_playable_card(game, playable_cards) {
+	const { state } = game;
+
 	/** @type {Card[][]} */
 	const priorities = [[], [], [], [], [], []];
 
 	let min_rank = 5;
 	for (const { order } of playable_cards) {
-		const card = state.me.thoughts[order];
+		const card = game.me.thoughts[order];
 
 		// Part of a finesse
 		if (card.finessed) {
@@ -110,7 +112,7 @@ export function determine_playable_card(state, playable_cards) {
 		}
 
 		// Blind playing unknown chop moved cards should be a last resort with < 2 strikes
-		if (card.chop_moved && !card.clued && card.possible.some(p => playableAway(state, p) !== 0)) {
+		if (card.chop_moved && !card.clued && card.possible.some(p => state.playableAway(p) !== 0)) {
 			if (state.strikes !== 2)
 				priorities[5].push(card);
 
@@ -126,7 +128,7 @@ export function determine_playable_card(state, playable_cards) {
 			// Start at next player so that connecting in our hand has lowest priority
 			for (let i = 1; i < state.numPlayers + 1; i++) {
 				const target = (state.ourPlayerIndex + i) % state.numPlayers;
-				if (state.hands[target].find(c => state.me.thoughts[c.order].matches({ suitIndex, rank: rank + 1 }, { infer: true }))) {
+				if (state.hands[target].find(c => game.me.thoughts[c.order].matches({ suitIndex, rank: rank + 1 }, { infer: true }))) {
 					connected = true;
 
 					// Connecting in own hand, demote priority to 2

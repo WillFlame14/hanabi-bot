@@ -4,6 +4,7 @@ import { combineRegex } from './tools/util.js';
 
 /**
  * @typedef {import('./types.js').Clue} Clue
+ * @typedef {import('./types.js').BaseClue} BaseClue
  * @typedef {import('./types.js').Identity} Identity
  * 
  * @typedef Variant
@@ -194,6 +195,58 @@ export function isCluable(variant, clue) {
 	if (type === CLUE.RANK && !(variant.clueRanks?.includes(value) ?? true))
 		return false;
 	return true;
+}
+
+/**
+ * Generates a list of clues that would touch the card.
+ * @param {Variant} variant
+ * @param {number} target
+ * @param {Identity} card
+ * @param {{ excludeColour?: boolean, excludeRank?: boolean, save?: boolean }} [options] 	Any additional options.
+ */
+export function direct_clues(variant, target, card, options) {
+	const direct_clues = [];
+
+	if (!options?.excludeColour) {
+		for (let suitIndex = 0; suitIndex < variant.suits.length; suitIndex++) {
+			const clue = { type: CLUE.COLOUR, value: suitIndex, target };
+
+			if (isCluable(variant, clue) && cardTouched(card, variant, clue))
+				direct_clues.push(clue);
+		}
+	}
+
+	if (!options?.excludeRank) {
+		for (let rank = 1; rank <= 5; rank++) {
+			const clue = { type: CLUE.RANK, value: rank, target };
+
+			if (isCluable(variant, clue) && cardTouched(card, variant, clue))
+				direct_clues.push(clue);
+		}
+	}
+
+	return direct_clues;
+}
+
+/**
+ * @param {string[]} suits
+ */
+export function all_identities(suits) {
+	const identities = [];
+
+	for (let suitIndex = 0; suitIndex < suits.length; suitIndex++) {
+		for (let rank = 1; rank <= 5; rank++)
+			identities.push({ suitIndex, rank });
+	}
+	return identities;
+}
+
+/**
+ * @param {BaseClue} clue
+ * @param {Variant} variant
+ */
+export function find_possibilities(clue, variant) {
+	return all_identities(variant.suits).filter(id => cardTouched(id, variant, clue));
 }
 
 /**

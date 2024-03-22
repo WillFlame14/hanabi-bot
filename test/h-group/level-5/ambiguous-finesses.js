@@ -12,7 +12,7 @@ logger.setLevel(logger.LEVELS.ERROR);
 
 describe('ambiguous finesse', () => {
 	it('understands an ambiguous finesse', () => {
-		const state = setup(HGroup, [
+		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'g2', 'g4', 'r5', 'b4'],
 			['r1', 'b3', 'r2', 'y3', 'p3'],
@@ -22,19 +22,19 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.CATHY
 		});
 
-		takeTurn(state, 'Cathy clues green to Bob');
+		takeTurn(game, 'Cathy clues green to Bob');
 
 		// Donald's g1 should be finessed
-		assert.equal(state.common.thoughts[state.hands[PLAYER.DONALD][0].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.DONALD][0].order].finessed, true);
 
-		takeTurn(state, 'Donald discards p4', 'r1');
+		takeTurn(game, 'Donald discards p4', 'r1');
 
 		// Alice's slot 2 should be [g1].
-		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][0].order], ['g1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g1']);
 	});
 
 	it('understands an ambiguous finesse with a self component', () => {
-		const state = setup(HGroup, [
+		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'g2', 'g4', 'r5', 'b4'],
 			['r1', 'b3', 'r2', 'y3', 'p3']
@@ -43,15 +43,15 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.BOB
 		});
 
-		takeTurn(state, 'Bob clues 2 to Alice (slot 3)');
-		takeTurn(state, 'Cathy discards p3', 'r1');
+		takeTurn(game, 'Bob clues 2 to Alice (slot 3)');
+		takeTurn(game, 'Cathy discards p3', 'r1');
 
 		// Alice's slot 1 should be finessed.
-		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 	});
 
 	it('passes back a layered ambiguous finesse', () => {
-		const state = setup(HGroup, [
+		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r3', 'g2', 'g4', 'r5'],
 			['g3', 'y4', 'p4', 'y3'],
@@ -61,16 +61,16 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.CATHY
 		});
 
-		takeTurn(state, 'Cathy clues 3 to Bob');
-		takeTurn(state, 'Donald discards p3', 'b3');
+		takeTurn(game, 'Cathy clues 3 to Bob');
+		takeTurn(game, 'Donald discards p3', 'b3');
 
 		// Alice should pass back, making her slot 1 not finessed and Donald's slots 2 and 3 (used to be slots 1 and 2) finessed.
-		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
-		assert.ok([1,2].every(index => state.common.thoughts[state.hands[PLAYER.DONALD][index].order].finessed));
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.ok([1,2].every(index => game.common.thoughts[game.state.hands[PLAYER.DONALD][index].order].finessed));
 	});
 
 	it('understands an ambigous finesse pass-back', () => {
-		const state = setup(HGroup, [
+		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'b5', 'r3', 'y5', 'p4'],
 			['r4', 'g2', 'g4', 'r5', 'b4']
@@ -79,19 +79,19 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.CATHY
 		});
 
-		takeTurn(state, 'Cathy clues 3 to Bob');		// Ambiguous finesse on us and Bob
-		takeTurn(state, 'Alice discards p3 (slot 5)');
-		takeTurn(state, 'Bob discards p4', 'b2');		// Bob passes back
+		takeTurn(game, 'Cathy clues 3 to Bob');		// Ambiguous finesse on us and Bob
+		takeTurn(game, 'Alice discards p3 (slot 5)');
+		takeTurn(game, 'Bob discards p4', 'b2');		// Bob passes back
 
-		takeTurn(state, 'Cathy clues 5 to Bob');		// 5 Save
+		takeTurn(game, 'Cathy clues 5 to Bob');		// 5 Save
 
 		// Alice's slot 1 has now moved to slot 2.
-		assert.equal(state.common.thoughts[state.hands[PLAYER.ALICE][1].order].finessed, true);
-		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.ALICE][1].order], ['r1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r1']);
 	});
 
 	it('prefers hidden prompt over ambiguous', () => {
-		const state = setup(HGroup, [
+		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['g3', 'b2', 'g4', 'r3'],
 			['g4', 'y3', 'r4', 'p2'],
@@ -102,15 +102,15 @@ describe('ambiguous finesse', () => {
 			starting: PLAYER.BOB
 		});
 
-		takeTurn(state, 'Bob clues 2 to Donald');
-		takeTurn(state, 'Cathy clues 4 to Bob');	// connecting on g2 (Donald, prompt) and g3 (Bob, finesse)
+		takeTurn(game, 'Bob clues 2 to Donald');
+		takeTurn(game, 'Cathy clues 4 to Bob');	// connecting on g2 (Donald, prompt) and g3 (Bob, finesse)
 
 		// Bob's slot 1 can be either g3 or y3, since he doesn't know which 1 is connecting.
-		ExAsserts.cardHasInferences(state.common.thoughts[state.hands[PLAYER.BOB][0].order], ['y3', 'g3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['y3', 'g3']);
 	});
 
 	it('correctly counts playables for ambiguous finesses', () => {
-		const state = setup(HGroup, [
+		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g1', 'g3', 'g4', 'r5', 'b4'],
 			['g2', 'b3', 'r2', 'y3', 'p3'],
@@ -118,9 +118,9 @@ describe('ambiguous finesse', () => {
 		], { level: 5 });
 
 		const clue = { type: CLUE.COLOUR, target: PLAYER.DONALD, value: COLOUR.GREEN };
-		const list = state.hands[PLAYER.DONALD].clueTouched(clue, state.variant).map(c => c.order);
-		const hypo_state = state.simulate_clue({ type: 'clue', giver: PLAYER.ALICE, target: PLAYER.DONALD, list, clue });
-		const { playables } = get_result(state, hypo_state, clue, PLAYER.ALICE);
+		const list = game.state.hands[PLAYER.DONALD].clueTouched(clue, game.state.variant).map(c => c.order);
+		const hypo_state = game.simulate_clue({ type: 'clue', giver: PLAYER.ALICE, target: PLAYER.DONALD, list, clue });
+		const { playables } = get_result(game, hypo_state, clue, PLAYER.ALICE);
 
 		// There should be 2 playables: g1 (Bob) and g2 (Donald).
 		assert.equal(playables.length, 2);

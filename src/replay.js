@@ -1,14 +1,16 @@
 import * as https from 'https';
 import * as fs from 'fs';
 
-import { ACTION, END_CONDITION } from './constants.js';
-
-import { getHandSize } from './basics/helper.js';
 import HGroup from './conventions/h-group.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
+
+import { ACTION, END_CONDITION } from './constants.js';
 import { getShortForms, getVariant } from './variants.js';
+
 import { initConsole } from './tools/console.js';
 import * as Utils from './tools/util.js';
+import { State } from './basics/State.js';
+
 
 const conventions = {
 	HGroup,
@@ -72,22 +74,21 @@ async function main() {
 		throw new Error(`Replay only has ${players.length} players!`);
 
 
-	if (conventions[convention] === undefined)
+	if (!(convention in conventions[convention]))
 		throw new Error(`Convention ${convention} is not supported.`);
 
 	await getShortForms(variant);
 
-	const state = new conventions[convention](Number(id), players, ourPlayerIndex, variant, options, false, Number(level ?? 1));
+	const state = new State(players, ourPlayerIndex, variant, options);
+	const game = new conventions[/** @type {keyof typeof conventions} */(convention)](Number(id), state, false, Number(level ?? 1));
 
-	Utils.globalModify({state});
-
-	const handSize = getHandSize(state);
+	Utils.globalModify({ game });
 
 	// Draw cards in starting hands
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
-		for (let i = 0; i < handSize; i++) {
+		for (let i = 0; i < state.handSize; i++) {
 			const { suitIndex, rank } = playerIndex !== state.ourPlayerIndex ? deck[order] : { suitIndex: -1, rank: -1 };
-			state.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank }, true);
+			game.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank }, true);
 			order++;
 		}
 	}
@@ -97,25 +98,25 @@ async function main() {
 	// Take actions
 	for (const action of actions) {
 		if (turn !== 0)
-			state.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
+			game.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
 
-		state.handle_action(Utils.performToAction(state, action, currentPlayerIndex, deck), true);
+		game.handle_action(Utils.performToAction(state, action, currentPlayerIndex, deck), true);
 
 		if ((action.type === ACTION.PLAY || action.type === ACTION.DISCARD) && order < deck.length) {
 			const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
-			state.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank }, true);
+			game.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank }, true);
 			order++;
 		}
 
 		if (action.type === ACTION.PLAY && state.strikes === 3)
-			state.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.STRIKEOUT, votes: -1 });
+			game.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.STRIKEOUT, votes: -1 });
 
 		currentPlayerIndex = (currentPlayerIndex + 1) % state.numPlayers;
 		turn++;
 	}
 
 	if (actions.at(-1).type !== 'gameOver')
-		state.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.NORMAL, votes: -1 });
+		game.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.NORMAL, votes: -1 });
 
 }
 

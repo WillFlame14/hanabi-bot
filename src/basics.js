@@ -1,9 +1,8 @@
 import { ActualCard, Card } from './basics/Card.js';
-import { cardCount } from './variants.js';
-import { find_possibilities } from './basics/helper.js';
+import { cardCount, find_possibilities } from './variants.js';
 
 /**
- * @typedef {import('./basics/State.js').State} State
+ * @typedef {import('./basics/Game.js').Game} Game
  * @typedef {import('./types.js').ClueAction} ClueAction
  * @typedef {import('./types.js').DiscardAction} DiscardAction
  * @typedef {import('./types.js').CardAction} DrawAction
@@ -11,10 +10,11 @@ import { find_possibilities } from './basics/helper.js';
  */
 
 /**
- * @param {State} state
+ * @param {Game} game
  * @param {ClueAction} action
  */
-export function onClue(state, action) {
+export function onClue(game, action) {
+	const { state } = game;
 	const { target, clue, list } = action;
 	const new_possible = find_possibilities(clue, state.variant);
 
@@ -29,7 +29,7 @@ export function onClue(state, action) {
 			c.clues.push(clue);
 		}
 
-		for (const player of state.allPlayers) {
+		for (const player of game.allPlayers) {
 			const card = player.thoughts[order];
 			const inferences_before = card.inferred.length;
 
@@ -51,16 +51,18 @@ export function onClue(state, action) {
 }
 
 /**
- * @param {State} state
+ * @param {Game} game
  * @param {DiscardAction} action
  */
-export function onDiscard(state, action) {
+export function onDiscard(game, action) {
+	const { state } = game;
 	const { failed, order, playerIndex, rank, suitIndex } = action;
+
 	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
-
 	state.discard_stacks[suitIndex][rank - 1]++;
+	Object.assign(state.deck[order], { suitIndex, rank });
 
-	for (const player of state.allPlayers) {
+	for (const player of game.allPlayers) {
 		player.card_elim(state);
 		player.refresh_links(state);
 	}
@@ -76,17 +78,19 @@ export function onDiscard(state, action) {
 }
 
 /**
- * @param {State} state
+ * @param {Game} game
  * @param {DrawAction} action
  */
-export function onDraw(state, action) {
+export function onDraw(game, action) {
+	const { state } = game;
 	const { order, playerIndex, suitIndex, rank } = action;
 
 	const card = new ActualCard(suitIndex, rank, order, state.actionList.length);
 	state.hands[playerIndex].unshift(card);
+	state.deck[order] = card;
 
 	for (let i = 0; i < state.numPlayers; i++) {
-		const player = state.players[i];
+		const player = game.players[i];
 
 		player.thoughts[order] = new Card(card, {
 			suitIndex: (i !== playerIndex) ? suitIndex : -1,
@@ -98,17 +102,17 @@ export function onDraw(state, action) {
 		});
 	}
 
-	state.players.forEach(player => {
+	game.players.forEach(player => {
 		player.card_elim(state);
 		player.refresh_links(state);
 	});
 
-	state.common.thoughts[order] = new Card(card, {
+	game.common.thoughts[order] = new Card(card, {
 		suitIndex: -1,
 		rank: -1,
 		order,
-		possible: state.common.all_possible,
-		inferred: state.common.all_possible,
+		possible: game.common.all_possible,
+		inferred: game.common.all_possible,
 		drawn_index: state.actionList.length
 	});
 
@@ -117,16 +121,18 @@ export function onDraw(state, action) {
 }
 
 /**
- * @param {State} state
+ * @param {Game} game
  * @param {PlayAction} action
  */
-export function onPlay(state, action) {
+export function onPlay(game, action) {
+	const { state } = game;
 	const { order, playerIndex, rank, suitIndex } = action;
+
 	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
-
 	state.play_stacks[suitIndex] = rank;
+	Object.assign(state.deck[order], { suitIndex, rank });
 
-	for (const player of state.allPlayers) {
+	for (const player of game.allPlayers) {
 		player.card_elim(state);
 		player.refresh_links(state);
 	}

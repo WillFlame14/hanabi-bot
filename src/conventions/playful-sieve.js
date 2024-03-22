@@ -1,4 +1,4 @@
-import { State } from '../basics/State.js';
+import { Game } from '../basics/Game.js';
 import { interpret_clue } from './playful-sieve/interpret-clue.js';
 import { interpret_discard } from './playful-sieve/interpret-discard.js';
 import { interpret_play } from './playful-sieve/interpret-play.js';
@@ -9,10 +9,11 @@ import * as Utils from '../tools/util.js';
 
 /**
  * @typedef {import('../variants.js').Variant} Variant
+ * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../types-live.js').TableOptions} TableOptions
  */
 
-export default class PlayfulSieve extends State {
+export default class PlayfulSieve extends Game {
 	convention_name = 'PlayfulSieve';
 	interpret_clue = interpret_clue;
 	interpret_discard = interpret_discard;
@@ -25,18 +26,15 @@ export default class PlayfulSieve extends State {
 
 	/**
 	 * @param {number} tableID
-	 * @param {string[]} playerNames
-	 * @param {number} ourPlayerIndex
-	 * @param {Variant} variant
-	 * @param {TableOptions} options
+	 * @param {State} state
 	 * @param {boolean} in_progress
 	 */
-	constructor(tableID, playerNames, ourPlayerIndex, variant, options, in_progress) {
-		super(tableID, playerNames, ourPlayerIndex, variant, options, in_progress);
+	constructor(tableID, state, in_progress) {
+		super(tableID, state, in_progress);
 	}
 
 	createBlank() {
-		const blank = new PlayfulSieve(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress);
+		const blank = new PlayfulSieve(this.tableID, this.state.createBlank(), this.in_progress);
 		blank.notes = this.notes;
 		blank.rewinds = this.rewinds;
 		blank.locked_shifts = this.locked_shifts;
@@ -44,23 +42,22 @@ export default class PlayfulSieve extends State {
 	}
 
 	minimalCopy() {
-		const newState = new PlayfulSieve(this.tableID, this.playerNames, this.ourPlayerIndex, this.variant, this.options, this.in_progress);
+		const newGame = new PlayfulSieve(this.tableID, this.state.minimalCopy(), this.in_progress);
 
 		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'players', 'common', 'max_ranks', 'hands', 'last_actions',
-			'turn_count', 'clue_tokens', 'strikes', 'rewindDepth', 'cardsLeft', 'locked_shifts'];
+		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'locked_shifts'];
 
 		for (const property of minimalProps)
-			newState[property] = Utils.objClone(this[property]);
+			newGame[property] = Utils.objClone(this[property]);
 
-		for (const player of newState.players.concat([newState.common])) {
-			for (const c of newState.hands.flat())
+		for (const player of newGame.players.concat([newGame.common])) {
+			for (const c of newGame.state.hands.flat())
 				player.thoughts[c.order].actualCard = c;
 		}
 
-		newState.copyDepth = this.copyDepth + 1;
-		return newState;
+		newGame.copyDepth = this.copyDepth + 1;
+		return newGame;
 	}
 }

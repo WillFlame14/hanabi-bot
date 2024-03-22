@@ -4,6 +4,7 @@ import { shortForms } from '../variants.js';
 import { globals } from './util.js';
 
 /**
+ * @typedef {import('../basics/Game.js').Game} Game
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../basics/Hand.js').Hand} Hand
  * @typedef {import('../basics/Card.js').ActualCard} ActualCard
@@ -45,7 +46,7 @@ export function logCard(card) {
  * @param {{ order: number }[]} hand
  * @param {Player} [player]
  */
-export function logHand(hand, player = globals.state.common) {
+export function logHand(hand, player = globals.game.common) {
 	const new_hand = [];
 
 	for (const { order } of hand) {
@@ -72,9 +73,9 @@ export function logClue(clue) {
 	if (clue === undefined)
 		return;
 
-	const value = (clue.type === CLUE.COLOUR || clue.type === ACTION.COLOUR) ? globals.state.variant.suits[clue.value].toLowerCase() : clue.value;
+	const value = (clue.type === CLUE.COLOUR || clue.type === ACTION.COLOUR) ? globals.game.state.variant.suits[clue.value].toLowerCase() : clue.value;
 
-	return `(${value} to ${globals.state.playerNames[clue.target]})`;
+	return `(${value} to ${globals.game.state.playerNames[clue.target]})`;
 }
 
 /**
@@ -87,19 +88,22 @@ export function logPerformAction(action) {
 
 	const { type, target } = action;
 
-	/** @type {Hand} */
-	const hand = globals.state.hands[globals.state.ourPlayerIndex];
+	/** @type {Game} */
+	const game = globals.game;
+
+	const { common, state } = game;
+	const hand = state.hands[state.ourPlayerIndex];
 
 	switch(type) {
 		case ACTION.PLAY: {
 			const slot = hand.findIndex(card => card.order === target) + 1;
-			const card = globals.state.common.thoughts[hand[slot - 1].order];
+			const card = common.thoughts[hand[slot - 1].order];
 
 			return `Play slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}
 		case ACTION.DISCARD: {
 			const slot = hand.findIndex(card => card.order === target) + 1;
-			const card = globals.state.common.thoughts[hand[slot - 1].order];
+			const card = common.thoughts[hand[slot - 1].order];
 
 			return `Discard slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}
@@ -119,7 +123,7 @@ export function logPerformAction(action) {
  */
 export function logAction(action) {
 	/** @type {State} */
-	const state = globals.state;
+	const state = globals.game.state;
 
 	if (action === undefined)
 		return;
@@ -186,7 +190,7 @@ export function logConnection(connection) {
 	const { type, reacting, identities, card } = connection;
 	const identity = identities.length === 1 ? logCard(identities[0]) : `[${identities.map(logCard)}]`;
 
-	return `${card.order} ${identity} ${type} (${globals.state.playerNames[reacting]})${connection.certain ? ' (certain)' : ''}`;
+	return `${card.order} ${identity} ${type} (${globals.game.state.playerNames[reacting]})${connection.certain ? ' (certain)' : ''}`;
 }
 
 /**
@@ -195,7 +199,7 @@ export function logConnection(connection) {
  */
 export function logConnections(connections, nextIdentity) {
 	const { suitIndex, rank } = nextIdentity;
-	const showNext = globals.state.max_ranks[suitIndex] >= rank;
+	const showNext = globals.game.state.max_ranks[suitIndex] >= rank;
 
 	return `[${connections.map(conn => logConnection(conn)).join(' -> ')} ${showNext ? `-> ${logCard(nextIdentity)}?` : ''}]`;
 }

@@ -1,31 +1,32 @@
 import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
-import { team_elim, update_hypo_stacks } from '../../basics/helper.js';
+import { team_elim } from '../../basics/helper.js';
 import { order_1s } from './action-helper.js';
 
 import * as Basics from '../../basics.js';
 import logger from '../../tools/logger.js';
 
 /**
- * @typedef {import('../h-group.js').default} State
+ * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../h-player.js').HGroup_Player} Player
  * @typedef {import('../../types.js').PlayAction} PlayAction
  */
 
 /**
- * @param  {State} state
- * @param  {PlayAction} action
+ * @param {Game} game
+ * @param {PlayAction} action
  */
-function check_ocm(state, action) {
+function check_ocm(game, action) {
+	const { common, state } = game;
 	const { order, playerIndex } = action;
-	const card = state.common.thoughts[order];
+	const card = common.thoughts[order];
 
 	// Played an unknown 1
 	if (card.clues.length > 0 &&
 		card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) &&
 		(card.inferred.length > 1 || card.rewinded)
 	) {
-		const ordered_1s = order_1s(state, state.common, state.hands[playerIndex]);
+		const ordered_1s = order_1s(state, common, state.hands[playerIndex]);
 		const offset = ordered_1s.findIndex(c => c.order === order);
 
 		if (offset === 0) {
@@ -40,46 +41,47 @@ function check_ocm(state, action) {
 			return;
 		}
 
-		const chop = state.common.chop(state.hands[target]);
+		const chop = common.chop(state.hands[target]);
 		if (chop === undefined) {
 			logger.warn(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
 			return;
 		}
 
-		state.common.thoughts[chop.order].chop_moved = true;
+		common.thoughts[chop.order].chop_moved = true;
 		logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
 	}
 }
 
 /**
- * @param  {State} state
+ * @param  {Game} game
  * @param  {PlayAction} action
  */
-export function interpret_play(state, action) {
+export function interpret_play(game, action) {
+	const { common, state } = game;
 	const { playerIndex, order, suitIndex, rank } = action;
 	const identity = { suitIndex, rank };
 
 	// Now that we know about this card, rewind from when the card was drawn
 	if (playerIndex === state.ourPlayerIndex) {
-		const card = state.common.thoughts[order];
+		const card = common.thoughts[order];
 		if ((card.inferred.length !== 1 || !card.inferred.array[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
-			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
+			if (game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
 				return;
 		}
 	}
 
-	if (state.level >= LEVEL.BASIC_CM && rank === 1)
-		check_ocm(state, action);
+	if (game.level >= LEVEL.BASIC_CM && rank === 1)
+		check_ocm(game, action);
 
 	Basics.onPlay(this, action);
 
-	state.common.good_touch_elim(state);
-	team_elim(state);
+	common.good_touch_elim(state);
+	team_elim(game);
 
-	for (const player of state.allPlayers)
+	for (const player of game.allPlayers)
 		player.refresh_links(state);
 
 	// Update hypo stacks
-	update_hypo_stacks(this, this.common);
+	common.update_hypo_stacks(state);
 }

@@ -2,6 +2,7 @@ import { Hand } from './Hand.js';
 import { isTrash } from './hanabi-util.js';
 
 /**
+ * @typedef {import('./Game.js').Game} Game
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Player.js').Player} Player
  * @typedef {import('./Card.js').Card} Card
@@ -36,12 +37,13 @@ export function elim_result(player, hypo_player, hand, list) {
 }
 
 /**
- * @param  {State} state
+ * @param  {Game} game
  * @param  {Player} hypo_player
  * @param  {number} target
  * @param  {number} focus_order
  */
-export function bad_touch_result(state, hypo_player, target, focus_order = -1) {
+export function bad_touch_result(game, hypo_player, target, focus_order = -1) {
+	const { me, state } = game;
 	let bad_touch = 0, trash = 0;
 
 	for (const card of state.hands[target]) {
@@ -53,7 +55,7 @@ export function bad_touch_result(state, hypo_player, target, focus_order = -1) {
 			trash++;
 
 		// TODO: Don't double count bad touch when cluing two of the same card
-		else if (isTrash(state, state.me, state.me.thoughts[card.order], card.order))
+		else if (isTrash(state, me, me.thoughts[card.order], card.order))
 			bad_touch++;
 	}
 
@@ -112,7 +114,7 @@ export function playables_result(state, player, hypo_player) {
 		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
 
 		// Only count unknown playables if they actually go on top of the stacks
-		if (state.me.thoughts[order].rank > player.hypo_stacks[state.me.thoughts[order].suitIndex])
+		if (state.deck[order].rank > player.hypo_stacks[state.deck[order].suitIndex])
 			playables.push({ playerIndex, card: hypo_player.thoughts[order] });
 	}
 

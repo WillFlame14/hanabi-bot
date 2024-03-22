@@ -1,5 +1,3 @@
-import { playableAway } from '../../basics/hanabi-util.js';
-import { all_valid_clues } from '../../basics/helper.js';
 import { get_result } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
 
@@ -7,16 +5,17 @@ import logger from '../../tools/logger.js';
 import { logCard, logClue } from '../../tools/log.js';
 
 /**
- * @typedef {import('../playful-sieve.js').default} State
+ * @typedef {import('../playful-sieve.js').default} Game
  * @typedef {import('../../types.js').Clue} Clue
  */
 
 /**
- * @param {State} state
+ * @param {Game} game
  */
-export function find_fix_clue(state) {
+export function find_fix_clue(game) {
+	const { common, state } = game;
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
-	const fix_needed = state.common.thinksPlayables(state, partner).filter(c => playableAway(state, c) !== 0);
+	const fix_needed = common.thinksPlayables(state, partner).filter(c => !state.isPlayable(c));
 
 	if (fix_needed.length === 0) {
 		logger.info('no fix needed');
@@ -25,11 +24,11 @@ export function find_fix_clue(state) {
 
 	logger.info(`fix needed on [${fix_needed.map(logCard)}]`);
 
-	const best_clue = Utils.maxOn(all_valid_clues(state, partner), clue => {
-		const { hypo_state, value } = get_result(state, clue);
+	const best_clue = Utils.maxOn(state.allValidClues(partner), clue => {
+		const { hypo_game, value } = get_result(game, clue);
 		const fixed = fix_needed.some(c => {
-			const actual = hypo_state.hands[partner].findOrder(c.order);
-			const card = hypo_state.common.thoughts[c.order];
+			const actual = hypo_game.state.hands[partner].findOrder(c.order);
+			const card = hypo_game.common.thoughts[c.order];
 			return card.inferred.has(actual) || card.inferred.length === 0 || card.reset;
 		});
 

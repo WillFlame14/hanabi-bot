@@ -5,9 +5,10 @@ import * as Utils from './tools/util.js';
 import HGroup from './conventions/h-group.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
 import { BOT_VERSION, MAX_H_LEVEL } from './constants.js';
+import { State } from './basics/State.js';
 
 /**
- * @typedef {import('./basics/State.js').State} State
+ * @typedef {import('./basics/Game.js').Game} Game
  * @typedef {import('./types.js').Action} Action
  * @typedef {import('./types-live.js').ChatMessage} ChatMessage
  * @typedef {import('./types-live.js').InitData} InitData
@@ -27,7 +28,7 @@ const tables = {};
 /** @type {Self} */
 let self;
 
-let state = /** @type {State} */ ({});
+let game = /** @type {Game} */ ({});
 
 let gameStarted = false;
 
@@ -87,7 +88,7 @@ export const handle = {
 		}
 		// Readds the bot to a game (format: /rejoin)
 		if (data.msg.startsWith('/rejoin')) {
-			if (state?.tableID) {
+			if (game?.tableID) {
 				Utils.sendPM(data.who, 'Could not rejoin, as the bot is already in a game.');
 				return;
 			}
@@ -104,7 +105,7 @@ export const handle = {
 		}
 		// Kicks the bot from a game (format: /leave)
 		if (data.msg.startsWith('/leave')) {
-			if (state?.tableID === undefined) {
+			if (game?.tableID === undefined) {
 				Utils.sendPM(data.who, 'Could not leave, as the bot is not currently in a room.');
 				return;
 			}
@@ -120,17 +121,17 @@ export const handle = {
 		}
 		// Starts the game (format: /start)
 		if (data.msg.startsWith('/start')) {
-			Utils.sendCmd('tableStart', { tableID: state.tableID });
+			Utils.sendCmd('tableStart', { tableID: game.tableID });
 			return;
 		}
 		// Restarts a game (format: /restart)
 		if (data.msg.startsWith('/restart')) {
-			Utils.sendCmd('tableRestart', { tableID: state.tableID, hidePregame: true });
+			Utils.sendCmd('tableRestart', { tableID: game.tableID, hidePregame: true });
 			return;
 		}
 		// Remakes a table (format: /remake)
 		if (data.msg.startsWith('/remake')) {
-			Utils.sendCmd('tableRestart', { tableID: state.tableID, hidePregame: false });
+			Utils.sendCmd('tableRestart', { tableID: game.tableID, hidePregame: false });
 			return;
 		}
 		// Displays or modifies the current settings (format: /settings [convention = 'HGroup'] [level = 1])
@@ -139,7 +140,7 @@ export const handle = {
 			return;
 		}
 		if (data.msg.startsWith('/terminate')) {
-			Utils.sendCmd('tableTerminate', { tableID: state.tableID });
+			Utils.sendCmd('tableTerminate', { tableID: game.tableID });
 			return;
 		}
 		if (data.msg.startsWith('/version')) {
@@ -157,7 +158,7 @@ export const handle = {
 	 */
 	gameAction: (data, catchup = false) => {
 		const { action } = data;
-		state.handle_action(action, catchup);
+		game.handle_action(action, catchup);
 	},
 	/**
 	 * @param {{tableID: number, list: Action[]}} data
@@ -177,8 +178,8 @@ export const handle = {
 		Utils.sendCmd('loaded', { tableID: data.tableID });
 
 		// If we are going first, we need to take an action now
-		if (state.ourPlayerIndex === 0 && state.turn_count === 1)
-			setTimeout(() => Utils.sendCmd('action', state.take_action(state)), 3000);
+		if (game.state.ourPlayerIndex === 0 && game.state.turn_count === 1)
+			setTimeout(() => Utils.sendCmd('action', game.take_action(game)), 3000);
 	},
 	/**
 	 * @param {{tableID: number }} data
@@ -187,7 +188,7 @@ export const handle = {
 	 */
 	joined: (data) => {
 		const { tableID } = data;
-		state.tableID = tableID;
+		game.tableID = tableID;
 		gameStarted = false;
 	},
 	/**
@@ -201,10 +202,12 @@ export const handle = {
 
 		await getShortForms(variant);
 
-		// Initialize game state using convention set
-		state = new conventions[settings.convention](tableID, playerNames, ourPlayerIndex, variant, options, true, settings.level);
+		const state = new State(playerNames, ourPlayerIndex, variant, options);
 
-		Utils.globalModify({state});
+		// Initialize game state using convention set
+		game = new conventions[/** @type {'HGroup' | 'PlayfulSieve'} */ (settings.convention)](tableID, state, true, settings.level);
+
+		Utils.globalModify({ game });
 
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });
@@ -213,7 +216,7 @@ export const handle = {
 	 * Received when leaving a table.
 	 */
 	left: () => {
-		state.tableID = undefined;
+		game.tableID = undefined;
 		gameStarted = false;
 	},
 	/**
@@ -225,7 +228,7 @@ export const handle = {
 		tables[data.id] = data;
 
 		// Only bots left in the replay
-		if (data.id === state.tableID && data.sharedReplay && data.spectators.every(({name}) => name.startsWith('will-bot')))
+		if (data.id === game.tableID && data.sharedReplay && data.spectators.every(({name}) => name.startsWith('will-bot')))
 			leaveRoom();
 	},
 	/**
@@ -280,8 +283,8 @@ export const handle = {
  * Leaves a room/shared replay.
  */
 function leaveRoom() {
-	Utils.sendCmd(gameStarted ? 'tableUnattend' : 'tableLeave', { tableID: state.tableID });
-	state.tableID = undefined;
+	Utils.sendCmd(gameStarted ? 'tableUnattend' : 'tableLeave', { tableID: game.tableID });
+	game.tableID = undefined;
 	gameStarted = false;
 }
 
@@ -293,7 +296,7 @@ function assignSettings(data, priv) {
 	const parts = data.msg.split(' ');
 
 	/** @type {(msg: string) => void} msg */
-	const reply = priv ? (msg) => Utils.sendPM(data.who, msg) : (msg) => Utils.sendChat(state.tableID, msg);
+	const reply = priv ? (msg) => Utils.sendPM(data.who, msg) : (msg) => Utils.sendChat(game.tableID, msg);
 
 	const settingsString = () => settings.convention + (settings.convention === 'HGroup' ? ` ${settings.level}` : '');
 
@@ -303,7 +306,7 @@ function assignSettings(data, priv) {
 		return;
 	}
 
-	if (state.in_progress) {
+	if (game.in_progress) {
 		reply('Settings cannot be modified in the middle of a game.');
 		return;
 	}

@@ -7,7 +7,8 @@ import * as Utils from '../tools/util.js';
 
 /**
  * @typedef {import('../basics/Card.js').Card} Card
- * @typedef {import('./h-group.js').default} State
+ * @typedef {import('./h-group.js').default} Game
+ * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../types.js').Identity} Identity
  */
 

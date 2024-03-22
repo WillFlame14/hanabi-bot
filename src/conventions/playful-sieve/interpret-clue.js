@@ -1,7 +1,7 @@
 import { CLUE } from '../../constants.js';
 import { IdentitySet } from '../../basics/IdentitySet.js';
-import { isTrash, playableAway, refer_right } from '../../basics/hanabi-util.js';
-import { checkFix, team_elim, update_hypo_stacks } from '../../basics/helper.js';
+import { isTrash, refer_right } from '../../basics/hanabi-util.js';
+import { checkFix, team_elim } from '../../basics/helper.js';
 import * as Basics from '../../basics.js';
 import * as Utils from '../../tools/util.js';
 
@@ -9,6 +9,7 @@ import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 
 /**
+ * @typedef {import('../playful-sieve.js').default} Game
  * @typedef {import('../../basics/State.js').State} State
  * @typedef {import('../../types.js').ClueAction} ClueAction
  * @typedef {import('../../types.js').Connection} Connection
@@ -18,11 +19,11 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * Interprets the given clue, as given from a locked player.
- * @param  {State} state
+ * @param  {Game} game
  * @param  {ClueAction} action
  */
-function interpret_locked_clue(state, action) {
-	const { common } = state;
+function interpret_locked_clue(game, action) {
+	const { common, state } = game;
 	const { clue, target } = action;
 
 	const hand = state.hands[target];
@@ -54,7 +55,7 @@ function interpret_locked_clue(state, action) {
 			if (locked_hand_ptd)
 				common.thoughts[locked_hand_ptd.order].called_to_discard = true;
 
-			logger.info('rank fill in', locked_hand_ptd ? '' : `while unloaded, giving lh ptd on slot ${hand.findIndex(c => c.order === locked_hand_ptd.order) + 1}`);
+			logger.info('rank fill in', locked_hand_ptd ? `while unloaded, giving lh ptd on slot ${hand.findIndex(c => c.order === locked_hand_ptd.order) + 1}` : '');
 		}
 	}
 	// Colour clue
@@ -88,24 +89,24 @@ function interpret_locked_clue(state, action) {
 
 /**
  * Interprets the given clue.
- * @param  {State} state
+ * @param  {Game} game
  * @param  {ClueAction} action
  */
-export function interpret_clue(state, action) {
-	const { common } = state;
+export function interpret_clue(game, action) {
+	const { common, state } = game;
 	const { clue, giver, list, target } = action;
 	const hand = state.hands[target];
 	const touch = Array.from(hand.filter(c => list.includes(c.order)));
 
-	const oldCommon = state.common.clone();
+	const oldCommon = common.clone();
 	const old_playables = oldCommon.thinksPlayables(state, target).map(c => c.order);
 	const old_trash = oldCommon.thinksTrash(state, target).map(c => c.order);
 
 	const no_info = touch.every(card => card.clues.some(c => Utils.objEquals(c, Utils.objPick(clue, ['type', 'value']))));
 
-	Basics.onClue(state, action);
+	Basics.onClue(game, action);
 
-	let fix = checkFix(state, oldCommon.thoughts, action);
+	let fix = checkFix(game, oldCommon.thoughts, action);
 
 	for (const { order } of hand) {
 		const card = common.thoughts[order];
@@ -114,11 +115,11 @@ export function interpret_clue(state, action) {
 		if (card.called_to_discard && card.clued)
 			card.called_to_discard = false;
 
-		const last_action = state.last_actions[giver];
+		const last_action = game.last_actions[giver];
 
 		// Revoke finesse if newly clued after a possibly matching play
 		if (oldCommon.thoughts[order].finessed && card.newly_clued && last_action.type === 'play') {
-			const identity = state.last_actions[giver].card;
+			const identity = game.last_actions[giver].card;
 
 			logger.warn('revoking finesse?', card.possible.map(logCard), logCard(identity));
 
@@ -144,13 +145,13 @@ export function interpret_clue(state, action) {
 	if (trash_push)
 		logger.highlight('cyan', 'trash push!');
 
-	if (state.common.thinksLocked(state, giver)) {
-		interpret_locked_clue(state, action);
+	if (common.thinksLocked(state, giver)) {
+		interpret_locked_clue(game, action);
 
 		common.good_touch_elim(state);
 		common.refresh_links(state);
-		update_hypo_stacks(state, common);
-		team_elim(state);
+		common.update_hypo_stacks(state);
+		team_elim(game);
 		return;
 	}
 
@@ -249,7 +250,7 @@ export function interpret_clue(state, action) {
 		else {
 			if (newly_touched.length > 0) {
 				// Directly playable rank, eliminate from focus if a link was formed
-				if (common.thoughts[hand[newly_touched[0]].order].inferred.every(inf => playableAway(state, inf) === 0)) {
+				if (common.thoughts[hand[newly_touched[0]].order].inferred.every(i => state.isPlayable(i))) {
 					common.thoughts[hand[newly_touched[0]].order].focused = true;
 				}
 				else {
@@ -276,6 +277,6 @@ export function interpret_clue(state, action) {
 
 	common.good_touch_elim(state);
 	common.refresh_links(state);
-	update_hypo_stacks(state, common);
-	team_elim(state);
+	common.update_hypo_stacks(state);
+	team_elim(game);
 }

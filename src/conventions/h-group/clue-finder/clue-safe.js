@@ -1,36 +1,39 @@
-import { isCritical, playableAway, save2 } from '../../../basics/hanabi-util.js';
+import { save2 } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 
 /**
- * @typedef {import('../../h-group.js').default} State
+ * @typedef {import('../../h-group.js').default} Game
  * @typedef {import('../../h-player.js').HGroup_Player} Player
+ * @typedef {import('../../../basics/State.js').State} State
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').Identity} Identity
  */
 
 /**
  * Determines if the clue is safe to give (i.e. doesn't put a critical on chop with nothing to do)
- * @param {State} state
+ * @param {Game} game
  * @param {Player} player
  * @param {Clue} clue
  */
-export function clue_safe(state, player, clue) {
+export function clue_safe(game, player, clue) {
+	const { state } = game;
 	const { target } = clue;
 
 	const list = state.hands[target].clueTouched(clue, state.variant).map(c => c.order);
-	const hypo_state = state.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
-	const hypo_player = hypo_state.players[player.playerIndex];
+	const hypo_game = game.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
+	const { state: hypo_state } = hypo_game;
+	const hypo_player = hypo_game.players[player.playerIndex];
 
 	/** @param {number} startIndex */
 	const getNextUnoccupied = (startIndex) => {
 		let nextIndex = (startIndex + 1) % state.numPlayers;
-		let finessed_card = hypo_state.hands[nextIndex].find(c => hypo_player.thoughts[c.order].finessed && playableAway(hypo_state, c) === 0);
+		let finessed_card = hypo_state.hands[nextIndex].find(c => hypo_player.thoughts[c.order].finessed && hypo_state.playableAway(c) === 0);
 
 		// Find the next player without a playable finessed card
 		while (finessed_card && nextIndex !== state.ourPlayerIndex) {
 			nextIndex = (nextIndex + 1) % state.numPlayers;
 			hypo_state.play_stacks[finessed_card.suitIndex]++;
-			finessed_card = hypo_state.hands[nextIndex].find(c => hypo_player.thoughts[c.order].finessed && playableAway(hypo_state, c) === 0);
+			finessed_card = hypo_state.hands[nextIndex].find(c => hypo_player.thoughts[c.order].finessed && hypo_state.playableAway(c) === 0);
 		}
 		return nextIndex;
 	};
@@ -46,7 +49,7 @@ export function clue_safe(state, player, clue) {
 		return true;
 
 	// Dangerous and not loaded, clue is not fine
-	if (!hypo_state.common.thinksLoaded(hypo_state, next_unoccupied)) {
+	if (!hypo_game.common.thinksLoaded(hypo_state, next_unoccupied)) {
 		logger.warn(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop and not loaded`);
 		return false;
 	}
@@ -73,6 +76,6 @@ export function chopUnsafe(state, player, playerIndex) {
 	// Note that chop will be undefined if the entire hand is clued
 	const chop = player.chop(state.hands[playerIndex], { afterClue: true });
 
-	return (chop && (isCritical(state, chop) || save2(state, player, chop))) ||	// Crit or unique 2 on chop
+	return (chop && (state.isCritical(chop) || save2(state, player, chop))) ||	// Crit or unique 2 on chop
 			(state.clue_tokens === 0 && chop === undefined);				// Locked with no clue tokens (TODO: See if a 5 can be played?)
 }

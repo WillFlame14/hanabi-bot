@@ -26,7 +26,7 @@ export class BasicCard {
 			return { suitIndex: this.suitIndex, rank: this.rank };
 	}
 
-	matches({suitIndex, rank}) {
+	matches({ suitIndex, rank }) {
 		return this.suitIndex === suitIndex && this.rank === rank;
 	}
 
@@ -67,6 +67,18 @@ export class ActualCard extends BasicCard {
 
 	shallowCopy() {
 		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues);
+	}
+
+	/**
+	 * Checks if the card matches the provided identity.
+	 * @param {Identity} identity
+	 * @param {{assume?: boolean}} options
+	 */
+	matches({ suitIndex, rank }, options = {}) {
+		if (this.identity() === undefined)
+			return options.assume ?? false;
+
+		return this.suitIndex === suitIndex && this.rank === rank;
 	}
 
 	/**

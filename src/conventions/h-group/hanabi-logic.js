@@ -1,12 +1,13 @@
 import { cardCount } from '../../variants.js';
 import { Hand } from '../../basics/Hand.js';
-import { baseCount, inEndgame, visibleFind } from '../../basics/hanabi-util.js';
+import { visibleFind } from '../../basics/hanabi-util.js';
 import * as Utils from '../../tools/util.js';
 
 import { logHand } from '../../tools/log.js';
 
 /**
- * @typedef {import('../h-group.js').default} State
+ * @typedef {import('../h-group.js').default} Game
+ * @typedef {import('../../basics/State.js').State} State
  * @typedef {import('../h-player.js').HGroup_Player} Player
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
@@ -58,7 +59,7 @@ export function stall_severity(state, player, giver) {
 	if (player.thinksLocked(state, giver))
 		return 3;
 
-	if (inEndgame(state))
+	if (state.inEndgame())
 		return 1.5;
 
 	if (state.early_game)
@@ -75,30 +76,31 @@ export function stall_severity(state, player, giver) {
 export function minimum_clue_value(state) {
 	// -0.5 if 2 players (allows tempo clues to be given)
 	// -10 if endgame
-	return 1 - (state.numPlayers === 2 ? 0.5 : 0) - (inEndgame(state) ? 10 : 0);
+	return 1 - (state.numPlayers === 2 ? 0.5 : 0) - (state.inEndgame() ? 10 : 0);
 }
 
 /**
- * @param {State} state
+ * @param {Game} game
  * @param {number} rank
  * @param {number} giver
  * @param {number} target
  * @param {number} order 	The order to exclude when searching for duplicates.
  */
-export function rankLooksPlayable(state, rank, giver, target, order) {
-	const resolved_hypo_stacks = state.common.hypo_stacks.slice();
+export function rankLooksPlayable(game, rank, giver, target, order) {
+	const { common, state } = game;
+	const resolved_hypo_stacks = common.hypo_stacks.slice();
 
 	// Update the hypo stacks to everything the giver thinks the target knows
-	for (const order of state.common.unknown_plays) {
+	for (const order of common.unknown_plays) {
 		// Target can't resolve unknown plays in their own hand
 		if (state.hands[target].findOrder(order))
 			continue;
 
 		// Giver can't use private info in their hand
-		if (state.hands[giver].findOrder(order) && state.common.thoughts[order].identity({ infer: true }) === undefined)
+		if (state.hands[giver].findOrder(order) && common.thoughts[order].identity({ infer: true }) === undefined)
 			continue;
 
-		const card = state.players[giver].thoughts[order];
+		const card = game.players[giver].thoughts[order];
 		if (card.identity() === undefined)
 			continue;
 
@@ -109,9 +111,9 @@ export function rankLooksPlayable(state, rank, giver, target, order) {
 		const identity = { suitIndex, rank };
 
 		const playable_identity = stack + 1 === rank;
-		const other_visibles = baseCount(state, identity) +
-			visibleFind(state, state.common, identity).filter(c => c.order !== order).length;
-		const matching_inference = state.common.thoughts[order].inferred.has(identity);
+		const other_visibles = state.baseCount(identity) +
+			visibleFind(state, common, identity).filter(c => c.order !== order).length;
+		const matching_inference = common.thoughts[order].inferred.has(identity);
 
 		return playable_identity && other_visibles < cardCount(state.variant, identity) && matching_inference;
 	});

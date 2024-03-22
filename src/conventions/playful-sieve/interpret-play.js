@@ -1,29 +1,28 @@
 import { CLUE } from '../../constants.js';
 import { IdentitySet } from '../../basics/IdentitySet.js';
 import { team_elim } from '../../basics/helper.js';
-import { playableAway } from '../../basics/hanabi-util.js';
 import * as Basics from '../../basics.js';
 
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 
 /**
- * @typedef {import('../playful-sieve.js').default} State
+ * @typedef {import('../playful-sieve.js').default} Game
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').PlayAction} PlayAction
  */
 
 /**
  * Determines the unlocked card, given a play action and the unlocked and locked hands.
- * @param  {State} state
+ * @param  {Game} game
  * @param  {PlayAction} action
  * @param  {number} unlocked_player
  * @param  {number} locked_player
  * @param  {number} locked_shifts
  * @returns {number | undefined} The unlocked card order, or undefined if the unlock is not guaranteed.
  */
-export function unlock_promise(state, action, unlocked_player, locked_player, locked_shifts = 0) {
-	const { common } = state;
+export function unlock_promise(game, action, unlocked_player, locked_player, locked_shifts = 0) {
+	const { common, state } = game;
 	const { order, suitIndex, rank } = action;
 
 	// Playing an unknown card doesn't unlock
@@ -45,7 +44,7 @@ export function unlock_promise(state, action, unlocked_player, locked_player, lo
 
 		// All other known playables get shifted
 		for (const card of playables_sorted.slice(1).filter(card => common.thoughts[card.order].identity({ infer: true }) !== undefined))
-			state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
+			game.locked_shifts[card.order] = (game.locked_shifts[card.order] ?? 0) + 1;
 
 		return;
 	}
@@ -84,11 +83,11 @@ export function unlock_promise(state, action, unlocked_player, locked_player, lo
 }
 
 /**
- * @param  {State} state
+ * @param  {Game} game
  * @param  {PlayAction} action
  */
-export function interpret_play(state, action) {
-	const { common } = state;
+export function interpret_play(game, action) {
+	const { common, state } = game;
 	const { playerIndex, order, suitIndex, rank } = action;
 	const identity = { suitIndex, rank };
 
@@ -102,17 +101,17 @@ export function interpret_play(state, action) {
 	if (playerIndex === state.ourPlayerIndex) {
 		if ((card.inferred.length !== 1 || !card.inferred.array[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
-			if (state.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
+			if (game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
 				return;
 		}
 	}
 
-	const locked_shifts = state.locked_shifts[card.order];
+	const locked_shifts = game.locked_shifts[card.order];
 	if (locked_shifts !== undefined)
-		delete state.locked_shifts[card.order];
+		delete game.locked_shifts[card.order];
 
 	const known_connecting = card.inferred.every(inf => other_hand.some(c =>
-		common.thoughts[c.order].inferred.every(i => playableAway(state, i) === 0 || (i.suitIndex === inf.suitIndex && playableAway(state, i) === 1))));
+		common.thoughts[c.order].inferred.every(i => state.isPlayable(i) || (i.suitIndex === inf.suitIndex && state.playableAway(i) === 1))));
 
 	// No safe action, chop is playable
 	if (!common.thinksLocked(state, other) &&
@@ -133,7 +132,7 @@ export function interpret_play(state, action) {
 		chop.inferred = chop.inferred.intersect(playable_possibilities);
 	}
 	else if (common.thinksLocked(state, other)) {
-		const unlocked_order = unlock_promise(state, action, playerIndex, other, locked_shifts);
+		const unlocked_order = unlock_promise(game, action, playerIndex, other, locked_shifts);
 
 		if (unlocked_order !== undefined) {
 			const connecting = { suitIndex, rank: rank + 1 };
@@ -161,7 +160,7 @@ export function interpret_play(state, action) {
 				else {
 					unlocked.inferred = unlocked.inferred.intersect(connecting);
 					logger.info(`unlocking slot ${slot} as ${logCard(connecting)}`);
-					state.locked_shifts = [];
+					game.locked_shifts = [];
 				}
 			}
 		}
@@ -173,12 +172,12 @@ export function interpret_play(state, action) {
 				if (card.order === order)
 					continue;
 
-				state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
+				game.locked_shifts[card.order] = (game.locked_shifts[card.order] ?? 0) + 1;
 			}
 		}
 	}
 	else {
-		state.locked_shifts = [];
+		game.locked_shifts = [];
 	}
 
 	Basics.onPlay(this, action);
@@ -189,5 +188,5 @@ export function interpret_play(state, action) {
 	common.refresh_links(state);
 
 	// Update hypo stacks
-	team_elim(state);
+	team_elim(game);
 }

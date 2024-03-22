@@ -1,7 +1,7 @@
 import { types } from 'node:util';
 import { ActualCard } from './basics/Card.js';
 import * as Utils from './tools/util.js';
-import { State } from './basics/State.js';
+import { Game } from './basics/Game.js';
 
 const PROXY_STATE = Symbol();
 
@@ -182,7 +182,7 @@ function finalizeObject(state) {
 	}
 
 	// At least one ActualCard changed -- we need to update players
-	if (copy instanceof State && Object.keys(changed_cards).length !== 0)
+	if (copy instanceof Game && Object.keys(changed_cards).length !== 0)
 		finalizeState(copy);
 
 	return Object.freeze(copy);
@@ -207,9 +207,9 @@ function finalizeNonProxiedObject(state) {
 	Object.freeze(state);
 }
 
-/** @param {State} state */
-function finalizeState(state) {
-	state.players = state.players.map(p => {
+/** @param {Game} game */
+function finalizeState(game) {
+	game.players = game.players.map(p => {
 		const player = p.shallowCopy();
 
 		// If any ActualCards were changed, re-link all the associated Cards

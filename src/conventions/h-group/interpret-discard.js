@@ -7,7 +7,7 @@ import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 
 /**
- * @typedef {import('../h-group.js').default} State
+ * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../h-player.js').HGroup_Player} Player
  * @typedef {import('../../basics/Hand.js').Hand} Hand
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
@@ -16,17 +16,17 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * Interprets (writes notes) for a discard of the given card.
- * @param {State} state
+ * @param {Game} game
  * @param {import('../../types.js').DiscardAction} action
  * @param {ActualCard} card
  */
-export function interpret_discard(state, action, card) {
-	const { common } = state;
+export function interpret_discard(game, action, card) {
+	const { common, state, me } = game;
 	const { order, playerIndex, suitIndex, rank,  failed } = action;
 	const identity = { suitIndex, rank };
 	const thoughts = common.thoughts[order];
 
-	Basics.onDiscard(state, action);
+	Basics.onDiscard(game, action);
 
 	const to_remove = [];
 	for (let i = 0; i < common.waiting_connections.length; i++) {
@@ -41,10 +41,10 @@ export function interpret_discard(state, action, card) {
 
 			// No other waiting connections exist for this and not sarcastic
 			if (!common.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index)) &&
-				visibleFind(state, state.me, identity).length === 0
+				visibleFind(state, me, identity).length === 0
 			) {
 				const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
-				state.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects, order });
+				game.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects, order });
 				return;
 			}
 		}
@@ -60,11 +60,11 @@ export function interpret_discard(state, action, card) {
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!thoughts.rewinded && (failed || (!thoughts.matches_inferences() && !isTrash(state, state.me, card, card.order)))) {
+	if (!thoughts.rewinded && (failed || (!thoughts.matches_inferences() && !isTrash(state, me, card, card.order)))) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;
-		state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, thoughts.finessed);
+		game.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, thoughts.finessed);
 		return;
 	}
 
@@ -77,9 +77,9 @@ export function interpret_discard(state, action, card) {
 
 		// Card was bombed
 		if (failed)
-			undo_hypo_stacks(state, identity);
+			undo_hypo_stacks(game, identity);
 		else
-			interpret_sarcastic(state, action);
+			interpret_sarcastic(game, action);
 	}
-	team_elim(state);
+	team_elim(game);
 }

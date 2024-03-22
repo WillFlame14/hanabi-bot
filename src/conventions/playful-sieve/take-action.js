@@ -1,7 +1,6 @@
 import { ACTION, CLUE } from '../../constants.js';
 import { clue_value } from './action-helper.js';
-import { inEndgame, isCritical, isTrash, playableAway } from '../../basics/hanabi-util.js';
-import { all_valid_clues } from '../../basics/helper.js';
+import { isTrash  } from '../../basics/hanabi-util.js';
 import { unlock_promise } from './interpret-play.js';
 import { find_fix_clue } from './fix-clues.js';
 import { find_sarcastic } from '../shared/sarcastic.js';
@@ -11,7 +10,8 @@ import { logCard, logClue, logHand } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
 
 /**
- * @typedef {import('../playful-sieve.js').default} State
+ * @typedef {import('../playful-sieve.js').default} Game
+ * @typedef {import('../../basics/State.js').State} State
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').PerformAction} PerformAction
@@ -19,23 +19,23 @@ import * as Utils from '../../tools/util.js';
 
 /**
  * Performs the most appropriate action given the current state.
- * @param {State} state
+ * @param {Game} game
  * @returns {PerformAction}
  */
-export function take_action(state) {
-	const { common, tableID } = state;
+export function take_action(game) {
+	const { common, me, state, tableID } = game;
 	const hand = state.hands[state.ourPlayerIndex];
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
 	const partner_hand = state.hands[partner];
 
 	// Look for playables, trash and important discards in own hand
-	let playable_cards = state.me.thinksPlayables(state, state.ourPlayerIndex).map(c => state.me.thoughts[c.order]);
-	let trash_cards = state.me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued);
+	let playable_cards = me.thinksPlayables(state, state.ourPlayerIndex).map(c => me.thoughts[c.order]);
+	let trash_cards = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued);
 
 	// Add cards called to discard
 	for (const { order } of hand) {
-		const card = state.me.thoughts[order];
-		if (!trash_cards.some(c => c.order === order) && card.called_to_discard && card.possible.some(p => !isCritical(state, p)))
+		const card = me.thoughts[order];
+		if (!trash_cards.some(c => c.order === order) && card.called_to_discard && card.possible.some(p => !state.isCritical(p)))
 			trash_cards.push(card);
 	}
 
@@ -45,7 +45,7 @@ export function take_action(state) {
 
 		return id !== undefined &&
 			trash_cards.some(c => c.order === card.order) &&
-			!playable_cards.some(c => state.me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
+			!playable_cards.some(c => me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
 	});
 
 	// Pick the leftmost of all playable trash cards
@@ -71,34 +71,34 @@ export function take_action(state) {
 	const priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 
 	const chop = partner_hand[0];
-	const chop_away = playableAway(state, chop);
+	const chop_away = state.playableAway(chop);
 
-	const fix_clue = find_fix_clue(state);
+	const fix_clue = find_fix_clue(game);
 
-	const locked_discard_action = { tableID, type: ACTION.DISCARD, target: state.me.lockedDiscard(state, state.hands[state.ourPlayerIndex]).order };
+	const locked_discard_action = { tableID, type: ACTION.DISCARD, target: me.lockedDiscard(state, state.hands[state.ourPlayerIndex]).order };
 
 	// Stalling situation
-	if (state.me.thinksLocked(state, state.ourPlayerIndex)) {
+	if (me.thinksLocked(state, state.ourPlayerIndex)) {
 		// Forced discard
 		if (state.clue_tokens === 0)
 			return locked_discard_action;
 
 		// Bad situation (for now, just treat as forced discard)
-		if (state.me.thinksLocked(state, partner))
+		if (me.thinksLocked(state, partner))
 			return locked_discard_action;
 
 		// Chop is delayed playable
-		if (!isTrash(state, state.me, chop, chop.order) && state.me.hypo_stacks[chop.suitIndex] + 1 === chop.rank)
+		if (!isTrash(state, me, chop, chop.order) && me.hypo_stacks[chop.suitIndex] + 1 === chop.rank)
 			return Utils.clueToAction({ type: CLUE.COLOUR, value: chop.suitIndex, target: partner }, tableID);
 
 		if (fix_clue !== undefined)
 			return Utils.clueToAction(fix_clue, tableID);
 
 		// Can't give colour clues touching chop
-		const valid_clues = all_valid_clues(state, partner).filter(clue =>
+		const valid_clues = state.allValidClues(partner).filter(clue =>
 			!(clue.type === CLUE.COLOUR && partner_hand.clueTouched(clue, state.variant).some(card => card.order === chop.order)));
 
-		const best_clue = Utils.maxOn(valid_clues, (clue) => clue_value(state, clue), 0);
+		const best_clue = Utils.maxOn(valid_clues, (clue) => clue_value(game, clue), 0);
 
 		if (best_clue !== undefined)
 			return Utils.clueToAction(best_clue, tableID);
@@ -133,14 +133,14 @@ export function take_action(state) {
 		if (playable_cards.length > 0)
 			return { tableID, type: ACTION.PLAY, target: playable_priorities[priority][0].order };
 
-		if (state.clue_tokens !== 8 && !inEndgame(state)) {
+		if (state.clue_tokens !== 8 && !state.inEndgame()) {
 			if (discards.length > 0)
 				return { tableID, type: ACTION.DISCARD, target: discards[0].order };
 
 			if (trash_cards.length > 0)
 				return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 
-			const { type, card } = state.last_actions[partner];
+			const { type, card } = game.last_actions[partner];
 			if (state.clue_tokens === 0 || (state.clue_tokens === 1 && (type === 'discard' || (type === 'play' && card.rank === 5))))
 				return locked_discard_action;
 
@@ -156,16 +156,16 @@ export function take_action(state) {
 			const identity = playable.identity({ infer: true });
 
 			if (identity !== undefined) {
-				const unlocked_order = unlock_promise(state, {
+				const unlocked_order = unlock_promise(game, {
 					type: 'play',
 					order: playable.order,
 					playerIndex: state.ourPlayerIndex,
 					suitIndex: identity.suitIndex,
 					rank: identity.rank
-				}, state.ourPlayerIndex, partner, state.locked_shifts[playable.order]);
+				}, state.ourPlayerIndex, partner, game.locked_shifts[playable.order]);
 
 				if (unlocked_order) {
-					if (state.me.thoughts[unlocked_order].matches({ suitIndex: identity.suitIndex, rank: identity.rank + 1 }))
+					if (me.thoughts[unlocked_order].matches({ suitIndex: identity.suitIndex, rank: identity.rank + 1 }))
 						return { tableID, type: ACTION.PLAY, target: playable.order };
 				}
 				else {
@@ -210,7 +210,7 @@ export function take_action(state) {
 	if (sarcastic_chop)
 		return { tableID, type: ACTION.DISCARD, target: sarcastic_chop.order };
 
-	const playable_sarcastic = discards.find(card => playableAway(state, card) === 0 && find_sarcastic(hand, state.me, card).length === 1);
+	const playable_sarcastic = discards.find(card => state.isPlayable(card) && find_sarcastic(hand, me, card).length === 1);
 
 	if (playable_sarcastic !== undefined && state.clue_tokens !== 8)
 		return { tableID, type: ACTION.DISCARD, target: playable_sarcastic.order };
@@ -237,8 +237,8 @@ export function take_action(state) {
 	/** @type {Clue} */
 	let lock_clue;
 
-	for (const clue of all_valid_clues(state, partner)) {
-		const value = clue_value(state, clue);
+	for (const clue of state.allValidClues(partner)) {
+		const value = clue_value(game, clue);
 
 		logger.info('clue', logClue(clue), 'value', value);
 

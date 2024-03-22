@@ -1,10 +1,12 @@
 import { CLUE } from '../src/constants.js';
+import { State } from '../src/basics/State.js';
 import { cardCount } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
+
 import { logAction, logClue } from '../src/tools/log.js';
 
 /**
- * @typedef {import ('../src/basics/State.js').State} State
+ * @typedef {import('../src/basics/Game.js').Game} Game
  * @typedef {import('../src/types.js').Action} Action
  * @typedef {import('../src/variants.js').Variant} Variant
  * 
@@ -52,17 +54,19 @@ export function expandShortCard(short) {
 }
 
 /**
- * Initializes the state according to the options provided.
- * @param {State} state
+ * Initializes the game according to the options provided.
+ * @param {Game} game
  * @param {Partial<SetupOptions>} options
  */
-function init_state(state, options) {
+function init_game(game, options) {
+	const { common, state } = game;
+
 	if (options.play_stacks) {
 		state.play_stacks = options.play_stacks;
 		for (let i = 0; i < state.numPlayers; i++)
-			state.players[i].hypo_stacks = options.play_stacks.slice();
+			game.players[i].hypo_stacks = options.play_stacks.slice();
 
-		state.common.hypo_stacks = options.play_stacks.slice();
+		common.hypo_stacks = options.play_stacks.slice();
 	}
 
 	// Initialize discard stacks
@@ -77,7 +81,7 @@ function init_state(state, options) {
 			state.max_ranks[suitIndex] = rank - 1;
 	}
 
-	for (const player of state.allPlayers)
+	for (const player of game.allPlayers)
 		player.card_elim(state);
 
 	state.currentPlayerIndex = options.starting ?? 0;
@@ -97,26 +101,27 @@ function injectFuncs(options) {
 	this.createBlankDefault = this.createBlank;
 	this.createBlank = function () {
 		// @ts-ignore
-		const new_state = this.createBlankDefault();
-		init_state(new_state, options);
-		injectFuncs.bind(new_state)(options);
-		return new_state;
+		const new_game = this.createBlankDefault();
+		init_game(new_game, options);
+		injectFuncs.bind(new_game)(options);
+		return new_game;
 	};
 }
 
 /**
- * @template {State} A
- * @param {{new(...args: any[]): A}} StateClass
+ * @template {Game} A
+ * @param {{new(...args: any[]): A}} GameClass
  * @param {string[][]} hands
  * @param {Partial<SetupOptions>} test_options
  * @returns {A}
  */
-export function setup(StateClass, hands, test_options = {}) {
+export function setup(GameClass, hands, test_options = {}) {
 	const playerNames = names.slice(0, hands.length);
 	const variant = test_options.variant ?? noVar;
 
-	const state = new StateClass(-1, playerNames, 0, variant, test_options, false, test_options.level ?? 1);
-	Utils.globalModify({state});
+	const state = new State(playerNames, 0, variant, {});
+	const game = new GameClass(-1, state, false, test_options.level ?? 1);
+	Utils.globalModify({ game });
 
 	let orderCounter = 0;
 
@@ -126,27 +131,28 @@ export function setup(StateClass, hands, test_options = {}) {
 		for (const short of hand.reverse()) {
 			const { suitIndex, rank } = expandShortCard(short);
 
-			state.handle_action({ type: 'draw', order: orderCounter, playerIndex, suitIndex, rank });
+			game.handle_action({ type: 'draw', order: orderCounter, playerIndex, suitIndex, rank });
 			orderCounter++;
 		}
 	}
 
-	init_state(state, test_options);
-	injectFuncs.bind(state)(test_options);
+	init_game(game, test_options);
+	injectFuncs.bind(game)(test_options);
 
-	for (const player of state.players)
+	for (const player of game.players)
 		player.card_elim(state);
 
-	return state;
+	return game;
 }
 
 /**
  * Helper function for taking an action.
- * @param {State} state
+ * @param {Game} game
  * @param {string} rawAction
  * @param {string} [draw] 		The card to draw after taking an action (can be omitted if we are drawing).
  */
-export function takeTurn(state, rawAction, draw = 'xx') {
+export function takeTurn(game, rawAction, draw = 'xx') {
+	const { state } = game;
 	const action = parseAction(state, rawAction);
 
 	// We only care about the turn taker of these 3 actions
@@ -159,18 +165,18 @@ export function takeTurn(state, rawAction, draw = 'xx') {
 		throw new Error(`Expected ${expectedPlayer}'s turn for action (${logAction(action)}), test written incorrectly?`);
 	}
 
-	state.handle_action(action, true);
+	game.handle_action(action, true);
 
 	if (action.type === 'play' || action.type === 'discard') {
 		if (draw === 'xx' && state.currentPlayerIndex !== state.ourPlayerIndex)
 			throw new Error(`Missing draw for ${state.playerNames[state.currentPlayerIndex]}'s action (${logAction(action)}).`);
 
 		const { suitIndex, rank } = expandShortCard(draw);
-		state.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank }, true);
+		game.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank }, true);
 	}
 
 	const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.numPlayers;
-	state.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex }, true);
+	game.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex }, true);
 }
 
 /**

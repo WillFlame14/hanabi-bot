@@ -2,20 +2,21 @@ import { CLUE } from '../../../constants.js';
 import { IdentitySet } from '../../../basics/IdentitySet.js';
 import { determine_focus } from '../hanabi-logic.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
-import { isBasicTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**
- * @typedef {import('../../h-group.js').default} State
+ * @typedef {import('../../h-group.js').default} Game
+ * @typedef {import('../../../basics/State.js').State} State
  * @typedef {import('../../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
  * @typedef {import('../../../types.js').Identity} Identity
  * @typedef {import('../../../types.js').FocusPossibility} FocusPossibility
  * @typedef {import('../../../types.js').SymFocusPossibility} SymFocusPossibility
+ * @typedef {import('../../../types.js').WaitingConnection} WaitingConnection
  */
 
 /**
@@ -41,15 +42,18 @@ export function inference_rank(state, suitIndex, connections) {
 }
 
 /**
- * Adds all symmetric connections to the list of waiting connections in the state.
+ * Generates symmetric connections from a list of symmetric focus possibilities.
  * @param {State} state
- * @param {SymFocusPossibility[]} symmetric_connections
+ * @param {SymFocusPossibility[]} sym_possibilities
  * @param {FocusPossibility[]} existing_connections
  * @param {ActualCard} focused_card
  * @param {number} giver
+ * @returns {WaitingConnection[]}
  */
-export function add_symmetric_connections(state, symmetric_connections, existing_connections, focused_card, giver) {
-	for (const sym of symmetric_connections) {
+export function generate_symmetric_connections(state, sym_possibilities, existing_connections, focused_card, giver) {
+	const symmetric_connections = [];
+
+	for (const sym of sym_possibilities) {
 		const { connections, suitIndex, rank, fake } = sym;
 
 		// No connections required
@@ -60,22 +64,35 @@ export function add_symmetric_connections(state, symmetric_connections, existing
 		if (existing_connections.some((conn) => conn.suitIndex === suitIndex && conn.rank === rank))
 			continue;
 
-		state.common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference: { suitIndex, rank }, giver, action_index: state.actionList.length - 1, fake, symmetric: true });
+		symmetric_connections.push({
+			connections,
+			conn_index: 0,
+			focused_card,
+			inference: { suitIndex, rank },
+			giver,
+			action_index: state.actionList.length - 1,
+			fake,
+			symmetric: true
+		});
 	}
+
+	return symmetric_connections;
 }
 
 /**
  * Returns all focus possibilities that the receiver could interpret from the clue.
- * @param {State} state
+ * @param {Game} game
  * @param {ClueAction} action
  * @param {boolean} looksSave
  * @param {number[]} selfRanks 		The ranks needed to play by the target (as a self-finesse).
  * @param {number} ownBlindPlays 	The number of blind plays we need to make in the actual connection.
  */
-export function find_symmetric_connections(state, action, looksSave, selfRanks, ownBlindPlays) {
+export function find_symmetric_connections(game, action, looksSave, selfRanks, ownBlindPlays) {
+	const { common, state } = game;
+
 	const { giver, list, target } = action;
-	const { order } = determine_focus(state.hands[target], state.common, list, { beforeClue: true }).focused_card;
-	const focused_card = state.common.thoughts[order];
+	const { order } = determine_focus(state.hands[target], common, list, { beforeClue: true }).focused_card;
+	const focused_card = common.thoughts[order];
 
 	/** @type {SymFocusPossibility[]} */
 	const symmetric_connections = [];
@@ -87,14 +104,14 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 	const non_self_connections = [];
 
 	for (const id of focused_card.inferred) {
-		if (isBasicTrash(state, id))
+		if (state.isBasicTrash(id))
 			continue;
 
 		const visible_dupe = state.hands.some((hand, i) => {
 			const useCommon = i === giver || i === target;
 
 			return hand.some(c => {
-				const card = (useCommon ? state.common : state.players[target]).thoughts[c.order];
+				const card = (useCommon ? common : game.players[target]).thoughts[c.order];
 				return card.matches(id, { infer: useCommon }) && c.order !== order && card.touched;
 			});
 		});
@@ -104,12 +121,12 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 
 		const looksDirect = focused_card.identity() === undefined && (		// Focus must be unknown AND
 			action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
-			state.common.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
+			common.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
 			looksSave);																		// Looks like a save
 
 		logger.collect();
 		try {
-			const connections = find_own_finesses(state, action, id, looksDirect, target, selfRanks);
+			const connections = find_own_finesses(game, action, id, looksDirect, target, selfRanks);
 			if (connections[0]?.reacting === target)
 				self_connections.push({ id, connections });
 			else
@@ -158,17 +175,18 @@ export function find_symmetric_connections(state, action, looksSave, selfRanks, 
 
 /**
  * Helper function that applies the given connections on the given suit to the state (e.g. writing finesses).
- * @param {State} state
+ * @param {Game} game
  * @param {Connection[]} connections
  * @param {{symmetric?: boolean, target?: number, fake?: boolean}} [options] 	If this is a symmetric connection, this indicates the only player we should write notes on.
  */
-export function assign_connections(state, connections, options = {}) {
-	const hypo_stacks = Utils.objClone(state.common.hypo_stacks);
+export function assign_connections(game, connections, options = {}) {
+	const { common, state } = game;
+	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
 	for (const connection of connections) {
 		const { type, reacting, hidden, card: conn_card, linked, identities } = connection;
 		// The connections can be cloned, so need to modify the card directly
-		const card = state.common.thoughts[conn_card.order];
+		const card = common.thoughts[conn_card.order];
 
 		// Do not write notes on:
 		// - fake connections (where we need to blind play more than necessary)
@@ -211,14 +229,14 @@ export function assign_connections(state, connections, options = {}) {
 			}
 			else {
 				if (type === 'playable' && linked.length > 1) {
-					const existing_link = state.common.links.find(link => {
+					const existing_link = common.links.find(link => {
 						const { promised } = link;
 						const { suitIndex, rank } = link.identities[0];
 						return promised && identities[0].suitIndex === suitIndex && identities[0].rank === rank;
 					});
 
 					if (!(existing_link?.cards.length === linked.length && existing_link.cards.every(c => linked.some(l => l.order === c.order))))
-						state.common.links.push({ promised: true, identities, cards: linked });
+						common.links.push({ promised: true, identities, cards: linked });
 				}
 				else {
 					card.inferred = IdentitySet.create(state.variant.suits.length, identities);

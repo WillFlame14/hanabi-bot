@@ -7,20 +7,21 @@ import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 
 /**
- * @typedef {import('../playful-sieve.js').default} State
+ * @typedef {import('../playful-sieve.js').default} Game
  * @typedef {import('../../basics/Player.js').Player} Player
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').Identity} Identity
+ * @typedef {import('../../types.js').DiscardAction} DiscardAction
  */
 
 /**
  * Interprets (writes notes) for a discard of the given card.
- * @param {State} state
- * @param {import('../../types.js').DiscardAction} action
+ * @param {Game} game
+ * @param {DiscardAction} action
  * @param {ActualCard} card
  */
-export function interpret_discard(state, action, card) {
-	const { common } = state;
+export function interpret_discard(game, action, card) {
+	const { common, me, state } = game;
 	const { order, playerIndex, suitIndex, rank, failed } = action;
 	const identity = { suitIndex, rank };
 	const thoughts = common.thoughts[order];
@@ -31,11 +32,11 @@ export function interpret_discard(state, action, card) {
 	Basics.onDiscard(this, action);
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!thoughts.rewinded && (failed || (!thoughts.matches_inferences() && !isTrash(state, state.me, card, card.order)))) {
+	if (!thoughts.rewinded && (failed || (!thoughts.matches_inferences() && !isTrash(state, me, card, card.order)))) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;
-		state.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, thoughts.finessed);
+		game.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, thoughts.finessed);
 		return;
 	}
 
@@ -48,9 +49,9 @@ export function interpret_discard(state, action, card) {
 
 		// Card was bombed
 		if (failed)
-			undo_hypo_stacks(state, identity);
+			undo_hypo_stacks(game, identity);
 		else
-			interpret_sarcastic(state, action);
+			interpret_sarcastic(game, action);
 	}
 
 	// Discarding while partner is locked and having a playable card
@@ -58,7 +59,7 @@ export function interpret_discard(state, action, card) {
 		const playables = common.thinksPlayables(state, playerIndex);
 
 		for (const card of playables)
-			state.locked_shifts[card.order] = (state.locked_shifts[card.order] ?? 0) + 1;
+			game.locked_shifts[card.order] = (game.locked_shifts[card.order] ?? 0) + 1;
 	}
 
 	// No safe action, chop is playable

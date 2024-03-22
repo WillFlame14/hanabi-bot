@@ -1,8 +1,9 @@
-import { team_elim, update_hypo_stacks } from '../../basics/helper.js';
+import { team_elim } from '../../basics/helper.js';
 import { logCard } from '../../tools/log.js';
 import logger from '../../tools/logger.js';
 
 /**
+ * @typedef {import('../playful-sieve.js').default} Game
  * @typedef {import('../../basics/State.js').State} State
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
@@ -12,11 +13,11 @@ import logger from '../../tools/logger.js';
 
 /**
  * Performs relevant updates after someone takes a turn.
- * @param {State} state
+ * @param {Game} game
  * @param {TurnAction} action
  */
-export function update_turn(state, action) {
-	const { common } = state;
+export function update_turn(game, action) {
+	const { common, state } = game;
 	const { currentPlayerIndex } = action;
 	const otherPlayerIndex = (currentPlayerIndex + 1) % state.numPlayers;
 
@@ -31,9 +32,9 @@ export function update_turn(state, action) {
 		// After the turn we were waiting for, the card was played and matches expectation
 		if (reacting === otherPlayerIndex &&
 			state.hands[reacting].findOrder(old_card.order) === undefined &&
-			state.last_actions[reacting].type === 'play'
+			game.last_actions[reacting].type === 'play'
 		) {
-			if (!identities.some(identity => state.last_actions[reacting].card.matches(identity))) {
+			if (!identities.some(identity => game.last_actions[reacting].card.matches(identity))) {
 				logger.info('card revealed to not be', identities.map(logCard).join(), 'removing connection as', logCard(inference));
 
 				const focus_thoughts = common.thoughts[focused_card.order];
@@ -56,7 +57,7 @@ export function update_turn(state, action) {
 	// Filter out connections that have been removed (or connections to the same card where others have been demonstrated)
 	common.waiting_connections = common.waiting_connections.filter((wc, i) => !to_remove.includes(i));
 
-	update_hypo_stacks(state, state.common);
-	state.common.good_touch_elim(state);
-	team_elim(state);
+	common.update_hypo_stacks(state);
+	common.good_touch_elim(state);
+	team_elim(game);
 }

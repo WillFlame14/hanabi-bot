@@ -4,14 +4,14 @@ import { select_play_clue, determine_playable_card, order_1s, find_clue_value } 
 import { find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { determine_focus, minimum_clue_value, stall_severity } from './hanabi-logic.js';
-import { cardValue, getPace, inEndgame, isBasicTrash, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+import { cardValue, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
 
 /**
- * @typedef {import('../h-group.js').default} State
+ * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').PerformAction} PerformAction
@@ -19,26 +19,27 @@ import * as Utils from '../../tools/util.js';
 
 /**
  * Performs the most appropriate action given the current state.
- * @param {State} state
+ * @param {Game} game
  * @returns {PerformAction}
  */
-export function take_action(state) {
-	const { tableID } = state;
+export function take_action(game) {
+	const { common, state, me, tableID } = game;
 	const hand = state.hands[state.ourPlayerIndex];
-	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(state);
+
+	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
 
 	// Look for playables, trash and important discards in own hand
-	let playable_cards = state.me.thinksPlayables(state, state.ourPlayerIndex).map(({ order }) => state.me.thoughts[order]);
-	let trash_cards = state.me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued).map(({ order }) => state.me.thoughts[order]);
+	let playable_cards = me.thinksPlayables(state, state.ourPlayerIndex).map(({ order }) => me.thoughts[order]);
+	let trash_cards = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued).map(({ order }) => me.thoughts[order]);
 
 	// Discards must be inferred, playable, trash and not duplicated in our hand
 	const discards = playable_cards.filter(card => {
 		const id = card.identity({ infer: true });
 
-		return state.level >= LEVEL.SARCASTIC &&
+		return game.level >= LEVEL.SARCASTIC &&
 			id !== undefined &&
 			trash_cards.some(c => c.order === card.order) &&
-			!playable_cards.some(c => state.me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
+			!playable_cards.some(c => me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
 	});
 
 	const playable_trash = playable_cards.filter(card => {
@@ -61,8 +62,8 @@ export function take_action(state) {
 	if (discards.length > 0)
 		logger.info('discards', logHand(discards));
 
-	const playable_priorities = determine_playable_card(state, playable_cards);
-	const urgent_actions = find_urgent_actions(state, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
+	const playable_priorities = determine_playable_card(game, playable_cards);
+	const urgent_actions = find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
 	if (urgent_actions.some(actions => actions.length > 0))
 		logger.info('all urgent actions', urgent_actions.map((actions, index) => actions.map(action => ({ [index]: logPerformAction(action) }))).flat());
@@ -77,9 +78,9 @@ export function take_action(state) {
 
 		// Best playable card is an unknown 1, so we should order correctly
 		if (best_playable_card.clues.length > 0 && best_playable_card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
-			const ordered_1s = order_1s(state, state.common, playable_cards);
+			const ordered_1s = order_1s(state, common, playable_cards);
 
-			if (ordered_1s.length > 0 && state.level >= LEVEL.BASIC_CM) {
+			if (ordered_1s.length > 0 && game.level >= LEVEL.BASIC_CM) {
 				// Try to find a non-negative value OCM (TODO: Fix double OCMs)
 				const best_ocm_index = Utils.maxOn(Utils.range(1, ordered_1s.length), i => {
 					const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
@@ -87,20 +88,20 @@ export function take_action(state) {
 					if (playerIndex === state.ourPlayerIndex)
 						return -0.1;
 
-					const old_chop = state.common.chop(state.hands[playerIndex]);
+					const old_chop = common.chop(state.hands[playerIndex]);
 					// Player is locked or has trash chop, don't OCM
-					if (old_chop === undefined || isTrash(state, state.me, old_chop, old_chop.order))
+					if (old_chop === undefined || isTrash(state, me, old_chop, old_chop.order))
 						return -0.1;
 
 					// Simulate chop move
-					const old_chop_value = cardValue(state, state.me, old_chop);
-					state.common.thoughts[old_chop.order].chop_moved = true;
+					const old_chop_value = cardValue(state, me, old_chop);
+					common.thoughts[old_chop.order].chop_moved = true;
 
-					const new_chop = state.common.chop(state.hands[playerIndex]);
-					const new_chop_value = new_chop ? cardValue(state, state.me, new_chop) : state.me.thinksLoaded(state, playerIndex) ? 0 : 4;
+					const new_chop = common.chop(state.hands[playerIndex]);
+					const new_chop_value = new_chop ? cardValue(state, me, new_chop) : me.thinksLoaded(state, playerIndex) ? 0 : 4;
 
 					// Undo chop move
-					state.common.thoughts[old_chop.order].chop_moved = false;
+					common.thoughts[old_chop.order].chop_moved = false;
 
 					return old_chop_value - new_chop_value;
 				}, -0.1) ?? 0;
@@ -112,11 +113,11 @@ export function take_action(state) {
 			}
 		}
 
-		if (state.level >= LEVEL.INTERMEDIATE_FINESSES) {
+		if (game.level >= LEVEL.INTERMEDIATE_FINESSES) {
 			while (priority === 0) {
 				const older_finesse = hand.find(({ order }) => {
-					const c = state.me.thoughts[order];
-					return c.finessed && c.finesse_index < state.me.thoughts[best_playable_card.order].finesse_index;
+					const c = me.thoughts[order];
+					return c.finessed && c.finesse_index < me.thoughts[best_playable_card.order].finesse_index;
 				});
 
 				if (older_finesse === undefined)
@@ -135,7 +136,7 @@ export function take_action(state) {
 		}
 
 		if (priority !== -1)
-			logger.info(`best playable card is order ${best_playable_card.order}, inferences ${state.me.thoughts[best_playable_card.order].inferred.map(logCard)}`);
+			logger.info(`best playable card is order ${best_playable_card.order}, inferences ${me.thoughts[best_playable_card.order].inferred.map(logCard)}`);
 	}
 
 	// Playing into finesse/bluff
@@ -166,12 +167,12 @@ export function take_action(state) {
 	}
 
 	// Sarcastic discard to someone else
-	if (state.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {
+	if (game.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {
 		const identity = discards[0].identity({ infer: true });
-		const duplicates = visibleFind(state, state.me, identity, { ignore: [state.ourPlayerIndex] }).filter(c => c.clued).map(c => state.me.thoughts[c.order]);
+		const duplicates = visibleFind(state, me, identity, { ignore: [state.ourPlayerIndex] }).filter(c => c.clued).map(c => me.thoughts[c.order]);
 
 		// If playing reveals duplicates are trash, playing is better for tempo in endgame
-		if (inEndgame(state) && duplicates.every(c => c.inferred.length === 0 || (c.inferred.every(inf => inf.matches(identity) || isBasicTrash(state, inf)))))
+		if (state.inEndgame() && duplicates.every(c => c.inferred.length === 0 || (c.inferred.every(inf => inf.matches(identity) || state.isBasicTrash(inf)))))
 			return { tableID, type: ACTION.PLAY, target: discards[0].order };
 
 		return { tableID, type: ACTION.DISCARD, target: discards[0].order };
@@ -184,34 +185,34 @@ export function take_action(state) {
 	// Forced discard if next player is locked
 	// TODO: Anxiety play
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-	if (state.clue_tokens === 0 && state.common.thinksLocked(state, nextPlayerIndex))
-		return discard_chop(state, state.ourPlayerIndex, tableID);
+	if (state.clue_tokens === 0 && common.thinksLocked(state, nextPlayerIndex))
+		return discard_chop(game, state.ourPlayerIndex, tableID);
 
 	// Playing a connecting card or playing a 5
 	if (best_playable_card !== undefined && priority <= 3)
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
 	// Discard known trash at high pace, low clues
-	if (trash_cards.length > 0 && getPace(state) > state.numPlayers * 2 && state.clue_tokens <= 2)
+	if (trash_cards.length > 0 && state.pace > state.numPlayers * 2 && state.clue_tokens <= 2)
 		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 
 	// Give TCCM on a valuable card that moves chop to trash
-	if (state.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && state.clue_tokens > 0) {
+	if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && state.clue_tokens > 0) {
 		for (const clue of stall_clues[1]) {
 			const { target } = clue;
 
-			const chop = state.common.chop(state.hands[target]);
+			const chop = common.chop(state.hands[target]);
 
 			// Chop doesn't exist or is trash, ignore
-			if (chop === undefined || cardValue(state, state.me, chop) === 0)
+			if (chop === undefined || cardValue(state, me, chop) === 0)
 				continue;
 
 			// Temporarily chop move their chop
-			state.me.thoughts[chop.order].chop_moved = true;
-			const new_chop_value = state.me.chopValue(state, target);
+			me.thoughts[chop.order].chop_moved = true;
+			const new_chop_value = me.chopValue(state, target);
 
 			// Undo chop move
-			state.me.thoughts[chop.order].chop_moved = false;
+			me.thoughts[chop.order].chop_moved = false;
 
 			if (new_chop_value === 0) {
 				logger.highlight('yellow', `performing tccm on ${logCard(chop)}`);
@@ -224,17 +225,17 @@ export function take_action(state) {
 
 	const not_selfish = (clue) => {
 		const list = state.hands[nextPlayerIndex].clueTouched(clue, state.variant).map(c => c.order);
-		const { focused_card } = determine_focus(state.hands[nextPlayerIndex], state.common, list, { beforeClue: true });
+		const { focused_card } = determine_focus(state.hands[nextPlayerIndex], common, list, { beforeClue: true });
 		const { suitIndex } = focused_card;
 
-		return state.common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
-			Utils.range(state.play_stacks[suitIndex] + 1, state.common.hypo_stacks[suitIndex] + 1).every(rank =>
-				!state.hands[state.ourPlayerIndex].some(c => state.me.thoughts[c.order].matches({ suitIndex, rank })));
+		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
+			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
+				!state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches({ suitIndex, rank })));
 	};
 
 	// Play clue in 2 players while partner is not loaded and not selfish
 	if (state.numPlayers === 2 && state.clue_tokens > 0 && play_clue_2p &&
-		!state.me.thinksLoaded(state, nextPlayerIndex) && not_selfish(play_clue_2p))
+		!me.thinksLoaded(state, nextPlayerIndex) && not_selfish(play_clue_2p))
 		return Utils.clueToAction(play_clue_2p, tableID);
 
 	// Playable card with any priority
@@ -267,15 +268,15 @@ export function take_action(state) {
 	// Either there are no clue tokens or the best play clue doesn't meet MCVP
 
 	// Discard known trash (no pace requirement)
-	if (trash_cards.length > 0 && !inEndgame(state) && state.clue_tokens < 8)
+	if (trash_cards.length > 0 && !state.inEndgame() && state.clue_tokens < 8)
 		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 
 	// Early save
 	if (state.clue_tokens > 0 && urgent_actions[actionPrioritySize * 2].length > 0)
 		return urgent_actions[actionPrioritySize * 2][0];
 
-	const severity = stall_severity(state, state.common, state.ourPlayerIndex);
-	const endgame_stall = inEndgame(state) && state.me.hypo_stacks.some((stack, index) => stack > state.play_stacks[index]);
+	const severity = stall_severity(state, common, state.ourPlayerIndex);
+	const endgame_stall = state.inEndgame() && me.hypo_stacks.some((stack, index) => stack > state.play_stacks[index]);
 
 	// Stalling situations
 	if (state.clue_tokens > 0 && (severity > 0 || endgame_stall)) {
@@ -295,18 +296,20 @@ export function take_action(state) {
 	if (trash_cards.length > 0)
 		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 
-	return discard_chop(state, state.ourPlayerIndex, tableID);
+	return discard_chop(game, state.ourPlayerIndex, tableID);
 }
 
 /**
  * Discards the card on chop for the given playerIndex.
- * @param {State} state
+ * @param {Game} game
  * @param {number} playerIndex
  * @param {number} tableID
  */
-function discard_chop(state, playerIndex, tableID) {
+function discard_chop(game, playerIndex, tableID) {
+	const { common, state } = game;
+
 	// Nothing else to do, so discard chop
-	const discard = state.common.chop(state.hands[playerIndex]) ?? state.common.lockedDiscard(state, state.hands[playerIndex]);
+	const discard = common.chop(state.hands[playerIndex]) ?? common.lockedDiscard(state, state.hands[playerIndex]);
 
 	return { tableID, type: ACTION.DISCARD, target: discard.order };
 }

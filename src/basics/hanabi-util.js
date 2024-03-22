@@ -1,8 +1,7 @@
-import { getHandSize } from './helper.js';
-import { CLUE } from '../constants.js';
-import { cardCount, cardTouched, isCluable } from '../variants.js';
+import { cardCount } from '../variants.js';
 
 /**
+ * @typedef {import('./Game.js').Game} Game
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Player.js').Player} Player
@@ -35,15 +34,6 @@ export function visibleFind(state, player, identity, options = {}) {
 }
 
 /**
- * Returns the number of cards matching an identity on either the play stacks or the discard stacks.
- * @param {State} state
- * @param {Identity} identity
- */
-export function baseCount(state, { suitIndex, rank }) {
-	return (state.play_stacks[suitIndex] >= rank ? 1 : 0) + state.discard_stacks[suitIndex][rank - 1];
-}
-
-/**
  * Returns the number of cards still unknown that could be this identity according to a player.
  * @param {State} state
  * @param {Player} player
@@ -51,26 +41,9 @@ export function baseCount(state, { suitIndex, rank }) {
  */
 export function unknownIdentities(state, player, identity) {
 	const visibleCount = state.hands.flat().filter(c => player.thoughts[c.order].matches(identity)).length;
-	return cardCount(state.variant, identity) - baseCount(state, identity) - visibleCount;
+	return cardCount(state.variant, identity) - state.baseCount(identity) - visibleCount;
 }
 
-/**
- * Returns whether the given suitIndex and rank is currently critical.
- * @param {State} state
- * @param {Identity} identity
- */
-export function isCritical(state, { suitIndex, rank }) {
-	return state.discard_stacks[suitIndex][rank - 1] === (cardCount(state.variant, { suitIndex, rank }) - 1);
-}
-
-/**
- * Returns whether the given identity is basic trash (has been played already or can never be played).
- * @param {State} state
- * @param {Identity} identity
- */
-export function isBasicTrash(state, { suitIndex, rank }) {
-	return rank <= state.play_stacks[suitIndex] || rank > state.max_ranks[suitIndex];
-}
 
 /**
  * Returns whether the given suitIndex and rank has already been 'saved' in someone's hand (i.e. won't be discarded).
@@ -99,41 +72,7 @@ export function isSaved(state, player, identity, order = -1, options = {}) {
  * @param {MatchOptions} [options]
  */
 export function isTrash(state, player, identity, order = -1, options = {}) {
-	return isBasicTrash(state, identity) || isSaved(state, player, identity, order, options);
-}
-
-/**
- * Returns how far the given identity are from playable. 0 means it is currently playable.
- * @param {State} state
- * @param {Identity} identity
- */
-export function playableAway(state, { suitIndex, rank }) {
-	return rank - (state.play_stacks[suitIndex] + 1);
-}
-
-/**
- * Returns the current pace (current score + cards left + # of players - max score).
- * @param {State} state
- */
-export function getPace(state) {
-	const maxScore = state.max_ranks.reduce((acc, curr) => acc + curr);
-	return state.score + state.cardsLeft + state.numPlayers - maxScore;
-}
-
-/**
- * Returns whether the state is in the endgame.
- * @param {State} state
- */
-export function inEndgame(state) {
-	return getPace(state) < state.numPlayers;
-}
-
-/**
- * @param {State} state
- * @param {ActualCard} card
- */
-export function inStartingHand(state, card) {
-	return card.order < state.numPlayers * getHandSize(state);
+	return state.isBasicTrash(identity) || isSaved(state, player, identity, order, options);
 }
 
 /**
@@ -172,7 +111,7 @@ export function cardValue(state, player, identity, order = -1) {
 	if (isTrash(state, player, identity, order) || visibleFind(state, player, identity).length > 1)
 		return 0;
 
-	if (isCritical(state, identity))
+	if (state.isCritical(identity))
 		return 5;
 
 	if (save2(state, player, identity))
@@ -180,37 +119,6 @@ export function cardValue(state, player, identity, order = -1) {
 
 	// Next playable rank is value 4, rank 4 with nothing on the stack is value 1
 	return 5 - (rank - player.hypo_stacks[suitIndex]);
-}
-
-/**
- * Generates a list of clues that would touch the card.
- * @param {State} state
- * @param {number} target
- * @param {Identity} card
- * @param {{ excludeColour?: boolean, excludeRank?: boolean, save?: boolean }} [options] 	Any additional options.
- */
-export function direct_clues(state, target, card, options) {
-	const direct_clues = [];
-
-	if (!options?.excludeColour) {
-		for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
-			const clue = { type: CLUE.COLOUR, value: suitIndex, target };
-
-			if (isCluable(state.variant, clue) && cardTouched(card, state.variant, clue))
-				direct_clues.push(clue);
-		}
-	}
-
-	if (!options?.excludeRank) {
-		for (let rank = 1; rank <= 5; rank++) {
-			const clue = { type: CLUE.RANK, value: rank, target };
-
-			if (isCluable(state.variant, clue) && cardTouched(card, state.variant, clue))
-				direct_clues.push(clue);
-		}
-	}
-
-	return direct_clues;
 }
 
 /**

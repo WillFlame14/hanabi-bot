@@ -1,14 +1,14 @@
 import { CLUE } from '../../../constants.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_connecting } from './connecting-cards.js';
-import { isCritical, playableAway, visibleFind } from '../../../basics/hanabi-util.js';
+import { visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 import { variantRegexes } from '../../../variants.js';
 
 /**
- * @typedef {import('../../h-group.js').default} State
+ * @typedef {import('../../h-group.js').default} Game
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
  * @typedef {import('../../../types.js').FocusPossibility} FocusPossibility
@@ -16,13 +16,14 @@ import { variantRegexes } from '../../../variants.js';
 
 /**
  * Returns all the valid focus possibilities of the focused card from a clue of the given colour.
- * @param {State} state
+ * @param {Game} game
  * @param {number} suitIndex
  * @param {ClueAction} action
  */
-function find_colour_focus(state, suitIndex, action) {
+function find_colour_focus(game, suitIndex, action) {
+	const { common, state } = game;
 	const { giver, list, target } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], state.common, list);
+	const { focused_card, chop } = determine_focus(state.hands[target], common, list);
 
 	/** @type {FocusPossibility[]} */
 	const focus_possible = [];
@@ -36,7 +37,7 @@ function find_colour_focus(state, suitIndex, action) {
 	let connections = [];
 
 	// Try looking for a connecting card (other than itself)
-	const hypo_state = state.minimalCopy();
+	const hypo_game = game.minimalCopy();
 	let already_connected = [focused_card.order];
 
 	let finesses = 0;
@@ -45,16 +46,16 @@ function find_colour_focus(state, suitIndex, action) {
 		const identity = { suitIndex, rank: next_rank };
 
 		// Note that a colour clue always looks direct
-		const ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-		const looksDirect = state.common.thoughts[focused_card.order].identity() === undefined;
-		const connecting = find_connecting(hypo_state, giver, target, identity, looksDirect, ignoreOrders);
+		const ignoreOrders = already_connected.concat(game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
+		const looksDirect = common.thoughts[focused_card.order].identity() === undefined;
+		const connecting = find_connecting(hypo_game, giver, target, identity, looksDirect, ignoreOrders);
 		if (connecting.length === 0)
 			break;
 
 		const { type, card } = connecting.at(-1);
 
-		if (type === 'known' && card.newly_clued && state.common.thoughts[card.order].possible.length > 1 &&
-			state.common.thoughts[focused_card.order].inferred.has(identity)) {
+		if (type === 'known' && card.newly_clued && common.thoughts[card.order].possible.length > 1 &&
+			common.thoughts[focused_card.order].inferred.has(identity)) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
 			// e.g. If 2 reds are clued with only r5 remaining, the focus should not connect to the other card as r6
 			logger.warn(`blocked connection - focused card could be ${logCard(identity)}`);
@@ -62,7 +63,7 @@ function find_colour_focus(state, suitIndex, action) {
 		}
 		else if (type === 'finesse') {
 			finesses++;
-			if (state.level === 1 && finesses === 2) {
+			if (game.level === 1 && finesses === 2) {
 				logger.warn('blocked double finesse at level 1');
 				break;
 			}
@@ -70,7 +71,7 @@ function find_colour_focus(state, suitIndex, action) {
 			// Even if a finesse is possible, it might not be a finesse
 			focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: Utils.objClone(connections) });
 		}
-		hypo_state.play_stacks[suitIndex]++;
+		hypo_game.state.play_stacks[suitIndex]++;
 		next_rank++;
 
 		connections = connections.concat(connecting);
@@ -89,7 +90,7 @@ function find_colour_focus(state, suitIndex, action) {
 			// OR if the clue given is not black.
 			if (rank === 5 &&
 				!(state.variant.suits[suitIndex] === 'Black' ||
-					state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish))))
+					common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish))))
 				continue;
 			// Determine if possible save on k2, k5 with colour
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
@@ -111,13 +112,13 @@ function find_colour_focus(state, suitIndex, action) {
 			}
 
 			// Check if card is critical
-			if (isCritical(state, { suitIndex, rank })) {
+			if (state.isCritical({ suitIndex, rank })) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				continue;
 			}
 
 			// Check if the card is a brownish-2
-			if (state.common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) && c.rank === 2))
+			if (common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) && c.rank === 2))
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 		}
 	}
@@ -126,14 +127,15 @@ function find_colour_focus(state, suitIndex, action) {
 
 /**
  * Returns all the valid focus possibilities of the focused card from a clue of the given rank.
- * @param {State} state
+ * @param {Game} game
  * @param {number} rank
  * @param {ClueAction} action
  */
-function find_rank_focus(state, rank, action) {
+function find_rank_focus(game, rank, action) {
+	const { common, state } = game;
 	const { giver, list, target } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], state.common, list);
-	const focus_thoughts = state.common.thoughts[focused_card.order];
+	const { focused_card, chop } = determine_focus(state.hands[target], common, list);
+	const focus_thoughts = common.thoughts[focused_card.order];
 
 	/** @type {FocusPossibility[]} */
 	const focus_possible = [];
@@ -145,7 +147,7 @@ function find_rank_focus(state, rank, action) {
 			const identity = { suitIndex, rank };
 
 			// Don't need to consider save on playable cards
-			if (playableAway(state, identity) === 0)
+			if (state.isPlayable(identity))
 				continue;
 
 			// Don't consider save on k3, k4 with rank
@@ -153,7 +155,7 @@ function find_rank_focus(state, rank, action) {
 				continue;
 
 			// Critical save or 2 save
-			if (isCritical(state, identity) || (rank === 2 && visibleFind(state, state.players[target], identity, { ignore: [giver] }).length === 0)) {
+			if (state.isCritical(identity) || (rank === 2 && visibleFind(state, game.players[target], identity, { ignore: [giver] }).length === 0)) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [] });
 				looksSave = true;
 			}
@@ -171,19 +173,19 @@ function find_rank_focus(state, rank, action) {
 		}
 		else if (rank > next_rank) {
 			// Try looking for all connecting cards
-			const hypo_state = state.minimalCopy();
+			const hypo_game = game.minimalCopy();
 			let already_connected = [focused_card.order];
 
 			let finesses = 0;
 
-			let ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-			let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(state, rank, giver, target, focused_card.order));
-			let connecting = find_connecting(hypo_state, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
+			let ignoreOrders = already_connected.concat(game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
+			let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focused_card.order));
+			let connecting = find_connecting(hypo_game, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
 
 			while (connecting.length !== 0) {
 				const { type, card } = connecting.at(-1);
 
-				if (card.newly_clued && state.common.thoughts[card.order].possible.length > 1 && focus_thoughts.inferred.has({ suitIndex, rank: next_rank })) {
+				if (card.newly_clued && common.thoughts[card.order].possible.length > 1 && focus_thoughts.inferred.has({ suitIndex, rank: next_rank })) {
 					// Trying to use a newly known/playable connecting card, but the focused card could be that
 					// e.g. If two 4s are clued (all other 4s visible), the other 4 should not connect and render this card with only one inference
 					logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_rank})}`);
@@ -191,11 +193,11 @@ function find_rank_focus(state, rank, action) {
 				}
 
 				// Saving 2s or criticals will never cause a prompt or finesse.
-				if (chop && (rank === 2 || isCritical(state, { suitIndex, rank })) && (type === 'prompt' || type === 'finesse'))
+				if (chop && (rank === 2 || state.isCritical({ suitIndex, rank })) && (type === 'prompt' || type === 'finesse'))
 					break;
 
 				finesses += connecting.filter(conn => conn.type === 'finesse').length;
-				if (state.level === 1 && finesses === 2) {
+				if (game.level === 1 && finesses === 2) {
 					logger.warn('blocked double finesse at level 1');
 					break;
 				}
@@ -214,15 +216,15 @@ function find_rank_focus(state, rank, action) {
 				already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 
 				next_rank++;
-				hypo_state.play_stacks[suitIndex]++;
+				hypo_game.state.play_stacks[suitIndex]++;
 
 				if (next_rank > rank) {
 					logger.warn(`stacked beyond clued rank ${logConnections(connections, { suitIndex, rank: next_rank})}, ignoring`);
 					break;
 				}
 
-				ignoreOrders = already_connected.concat(state.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-				connecting = find_connecting(hypo_state, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
+				ignoreOrders = already_connected.concat(game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
+				connecting = find_connecting(hypo_game, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
 			}
 
 			if (next_rank <= rank)
@@ -242,12 +244,13 @@ function find_rank_focus(state, rank, action) {
 
 /**
  * Finds all the valid focus possibilities from the given clue.
- * @param {State} state
+ * @param {Game} game
  * @param {ClueAction} action
  */
-export function find_focus_possible(state, action) {
+export function find_focus_possible(game, action) {
+	const { common, state } = game;
 	const { clue } = action;
-	logger.debug('play/hypo/max stacks in clue interpretation:', state.play_stacks, state.common.hypo_stacks, state.max_ranks);
+	logger.debug('play/hypo/max stacks in clue interpretation:', state.play_stacks, common.hypo_stacks, state.max_ranks);
 
 	/** @type {FocusPossibility[]} */
 	let focus_possible = [];
@@ -256,11 +259,11 @@ export function find_focus_possible(state, action) {
 		const colours = state.variant.suits.filter(s => s.match(variantRegexes.rainbowish)).map(s => state.variant.suits.indexOf(s));
 		colours.push(clue.value);
 		for (const colour of colours)
-			focus_possible = focus_possible.concat(find_colour_focus(state, colour, action));
+			focus_possible = focus_possible.concat(find_colour_focus(game, colour, action));
 	}
 	else {
 		// Pink promise assumed
-		focus_possible = find_rank_focus(state, clue.value, action);
+		focus_possible = find_rank_focus(game, clue.value, action);
 	}
 
 	// Remove earlier duplicates (since save overrides play)

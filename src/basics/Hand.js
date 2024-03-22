@@ -27,7 +27,7 @@ export class Hand extends Array {
 	}
 
 	/**
-	 * Removes the card with the given order from the hand.
+	 * Returns a new hand without the card with the given order.
 	 * @param {number} order
 	 */
 	removeOrder(order) {

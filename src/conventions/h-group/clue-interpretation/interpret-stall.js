@@ -6,21 +6,22 @@ import { determine_focus, minimum_clue_value, stall_severity } from '../hanabi-l
 import logger from '../../../tools/logger.js';
 
 /**
- * @typedef {import('../../h-group.js').default} State
+ * @typedef {import('../../h-group.js').default} Game
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  */
 
 /**
  * Returns whether a clue could be a stall or not, given the severity level.
- * @param {State} state
+ * @param {Game} game
  * @param {ClueAction} action
  * @param {number} giver
  * @param {number} severity
- * @param {State} prev_state
+ * @param {Game} prev_game
  */
-function isStall(state, action, giver, severity, prev_state) {
+function isStall(game, action, giver, severity, prev_game) {
+	const { common, state } = game;
 	const { clue, list, target } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], state.common, list);
+	const { focused_card, chop } = determine_focus(state.hands[target], common, list);
 	const hand = state.hands[target];
 
 	// 5 Stall given
@@ -30,7 +31,7 @@ function isStall(state, action, giver, severity, prev_state) {
 	}
 
 	const provisions = { touch: list.map(order => hand.findOrder(order)), list };
-	const clue_result = get_result(prev_state, state, Object.assign({}, action.clue, { target }), giver, provisions);
+	const clue_result = get_result(prev_game, game, Object.assign({}, action.clue, { target }), giver, provisions);
 	const { new_touched, playables, elim } = clue_result;
 
 	if (severity >= 2) {
@@ -88,13 +89,13 @@ function isStall(state, action, giver, severity, prev_state) {
 
 /**
  * Returns whether the clue was given in a valid stalling situation.
- * @param {State} state
+ * @param {Game} game
  * @param {ClueAction} action
- * @param {State} prev_state
+ * @param {Game} prev_game
  */
-export function stalling_situation(state, action, prev_state) {
+export function stalling_situation(game, action, prev_game) {
 	const { giver } = action;
-	const severity = stall_severity(prev_state, state.common, giver);
+	const severity = stall_severity(prev_game.state, prev_game.common, giver);
 
 	// Not a stalling situation
 	if (severity === 0)
@@ -104,7 +105,7 @@ export function stalling_situation(state, action, prev_state) {
 
 	// Check at the very end - only if the conditions are right for a stall, then see if a play/save could have been given
 	// TODO: Add this back in. For now, it's causing a large number of infinite loops and isn't even correct most of the time.
-	if (isStall(state, action, giver, severity, prev_state)) {
+	if (isStall(game, action, giver, severity, prev_game)) {
 		/*const { play_clues, save_clues } = find_clues(state, { ignorePlayerIndex: giver, ignoreCM: true });
 
 		// There was a play (no bad touch, not tempo) or save available
@@ -119,7 +120,7 @@ export function stalling_situation(state, action, prev_state) {
 		}*/
 
 		// Only early game 5 stall exists before level 9
-		if (state.level < LEVEL.STALLING && severity !== 1)
+		if (game.level < LEVEL.STALLING && severity !== 1)
 			logger.warn('stall found before level 9');
 
 		return true;

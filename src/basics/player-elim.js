@@ -1,5 +1,5 @@
 import { cardCount } from '../variants.js';
-import { baseCount, isBasicTrash, unknownIdentities } from './hanabi-util.js';
+import { unknownIdentities } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
@@ -42,7 +42,7 @@ export function card_elim(state) {
 		const id_hash = logCard(identity);
 
 		if (!this.all_possible.has(identity) ||
-			baseCount(state, identity) + (certain_map.get(id_hash)?.size ?? 0) !== cardCount(state.variant, identity)
+			state.baseCount(identity) + (certain_map.get(id_hash)?.size ?? 0) !== cardCount(state.variant, identity)
 		)
 			continue;
 
@@ -119,7 +119,7 @@ export function good_touch_elim(state, only_self = false) {
 		const identity = identities[i];
 		const matches = match_map.get(logCard(identity)) ?? new Set();
 
-		if (matches.size === 0 && !isBasicTrash(state, identity))
+		if (matches.size === 0 && !state.isBasicTrash(identity))
 			continue;
 
 		const hard_matches = hard_match_map.get(logCard(identity)) ?? new Set();
@@ -132,7 +132,7 @@ export function good_touch_elim(state, only_self = false) {
 				(hard_matches.size === 0 && matches.has(order)) ||			// Soft matches when there are no hard matches
 				card.inferred.length === 0 ||								// Cards with no inferences
 				!card.inferred.has(identity) ||								// Cards that don't have this inference
-				card.inferred.every(inf => isBasicTrash(state, inf)) ||		// Clued trash
+				card.inferred.every(inf => state.isBasicTrash(inf)) ||		// Clued trash
 				card.certain_finessed) {									// Certain finessed
 				continue;
 			}
@@ -157,7 +157,7 @@ export function good_touch_elim(state, only_self = false) {
 				resets.add(order);
 			}
 			// Newly eliminated
-			else if (card.inferred.length === 1 && pre_inferences > 1 && !isBasicTrash(state, card.inferred.array[0])) {
+			else if (card.inferred.length === 1 && pre_inferences > 1 && !state.isBasicTrash(card.inferred.array[0])) {
 				identities.push(card.inferred.array[0]);
 			}
 
@@ -219,7 +219,7 @@ export function find_links(state, hand = state.hands[this.playerIndex]) {
 			card.identity() !== undefined ||							// We know what this card is
 			card.inferred.length === 0 ||								// Card has no inferences
 			card.inferred.length > 3 ||									// Card has too many inferences
-			card.inferred.every(inf => isBasicTrash(state, inf))) {		// Card is trash
+			card.inferred.every(inf => state.isBasicTrash(inf))) {		// Card is trash
 			continue;
 		}
 

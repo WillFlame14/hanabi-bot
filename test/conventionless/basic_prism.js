@@ -24,7 +24,7 @@ describe('prism cluing', () => {
 	});
 
 	it('understands prism touch', () => {
-		const state = setup(HGroup, [
+		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
@@ -36,20 +36,20 @@ describe('prism cluing', () => {
 		},
 		);
 
-		takeTurn(state, 'Bob clues red to Alice (slot 1)');
+		takeTurn(game, 'Bob clues red to Alice (slot 1)');
 		[1, 5].forEach(r =>
-			assert.ok(state.common.thoughts[4].possible.has({suitIndex: 4, rank: r}))
+			assert.ok(game.common.thoughts[4].possible.has({suitIndex: 4, rank: r}))
 		);
 		[2, 3, 4].forEach(r =>
-			assert.ok(!state.common.thoughts[4].possible.has({suitIndex: 4, rank: r}))
+			assert.ok(!game.common.thoughts[4].possible.has({suitIndex: 4, rank: r}))
 		);
 
-		takeTurn(state, 'Alice clues blue to Bob');
+		takeTurn(game, 'Alice clues blue to Bob');
 
-		takeTurn(state, 'Bob clues green to Alice (slot 2)');
-		assert.ok(state.common.thoughts[3].possible.has({suitIndex: 4, rank: 3}));
+		takeTurn(game, 'Bob clues green to Alice (slot 2)');
+		assert.ok(game.common.thoughts[3].possible.has({suitIndex: 4, rank: 3}));
 		[1, 2, 4, 5].forEach(r =>
-			assert.ok(!state.common.thoughts[3].possible.has({suitIndex: 4, rank: r}))
+			assert.ok(!game.common.thoughts[3].possible.has({suitIndex: 4, rank: r}))
 		);
 	});
 });
