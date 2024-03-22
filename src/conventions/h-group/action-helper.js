@@ -24,7 +24,7 @@ export function find_clue_value(clue_result) {
 
 	// Touching 1 card is much better than touching none, but touching more cards is only marginally better
 	const new_touched_value = (new_touched >= 1) ? 0.51 + 0.1 * (new_touched - 1) : 0;
-	return 0.5*(finesses + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch - 0.2*remainder;
+	return 0.5*(finesses.length + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch - 0.2*remainder;
 }
 
 /**

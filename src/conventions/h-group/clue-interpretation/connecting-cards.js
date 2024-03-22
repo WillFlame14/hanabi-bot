@@ -134,6 +134,14 @@ function find_unknown_connecting(game, giver, target, playerIndex, identity, ign
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)}, could be duplicated in giver's hand`);
 				return;
 			}
+
+			if (state.hands.some((hand, index) => index !== giver && hand.some(c =>
+				common.thoughts[c.order].touched && c.matches(finesse)
+			))) {
+				logger.warn(`disallowed hidden finesse on ${logCard(finesse)}, playable already clued elsewhere`);
+				return;
+			}
+
 			return { type: 'finesse', reacting: playerIndex, card: finesse, hidden: true, identities: [finesse.raw()] };
 		}
 	}

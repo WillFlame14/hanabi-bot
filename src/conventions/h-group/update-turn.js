@@ -184,6 +184,11 @@ function resolve_card_played(game, waiting_connection) {
 
 		if (type === 'finesse' && connection.clued && thoughts.focused) {
 			logger.warn('connecting card was focused with a clue (stomped on), not confirming finesse');
+
+			if (connections[conn_index + 1].self) {
+				logger.warn(`connection requires that we blind play, removing due to occam's razor`);
+				return { remove: true, remove_finesse: true };
+			}
 		}
 		else if (type === 'prompt' && thoughts.possible.length === 1) {
 			logger.warn('connecting card was filled in completely, not confirming prompt');
@@ -292,7 +297,7 @@ export function update_turn(game, action) {
 				}
 				// The card was played
 				else if (game.last_actions[reacting].type === 'play') {
-					({remove, demonstration } = resolve_card_played(game, waiting_connection));
+					({ remove, remove_finesse, demonstration } = resolve_card_played(game, waiting_connection));
 				}
 				// The card was discarded and its copy is not visible
 				else if (game.last_actions[reacting].type === 'discard' && visibleFind(state, me, old_card).length === 0) {

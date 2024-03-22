@@ -172,7 +172,7 @@ export function determine_clue(game, target, target_card, options) {
 			interpret: interpret?.map(logCard),
 			elim,
 			new_touched,
-			finesses,
+			finesses: finesses.length,
 			playables: playables.map(({ playerIndex, card }) => {
 				return { player: state.playerNames[playerIndex], card: logCard(card) };
 			}),

@@ -68,7 +68,7 @@ export function bad_touch_result(game, hypo_player, target, focus_order = -1) {
  * @param  {Player} hypo_player
  */
 export function playables_result(state, player, hypo_player) {
-	let finesses = 0;
+	const finesses = [];
 	const playables = [];
 
 	/**
@@ -99,7 +99,7 @@ export function playables_result(state, player, hypo_player) {
 			const { playerIndex, old_card, hypo_card } = find_card({ suitIndex, rank });
 
 			if (hypo_card.finessed && !old_card.finessed)
-				finesses++;
+				finesses.push({ playerIndex, card: hypo_card });
 
 			// Only counts as a playable if it wasn't already playing
 			if (!player.unknown_plays.has(hypo_card.order))

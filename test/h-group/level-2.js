@@ -91,7 +91,7 @@ describe('direct clues', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g1', 'b2', 'y4', 'r3', 'r5'],
-			['r5', 'y3', 'r4', 'p2', 'r3']
+			['g5', 'y3', 'r4', 'p2', 'r3']
 		], {
 			level: 2,
 			play_stacks: [0, 2, 0, 0, 0],
@@ -104,6 +104,29 @@ describe('direct clues', () => {
 
 		// While ALice's slot 2 could be y3, it could also be g3 (reverse finesse on Bob + self-finesse).
 		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][1].order], ['y3', 'g3']);
+	});
+
+	it(`assumes direct play over a "stomped" finesse involving a self-component`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r5', 'b2', 'y4', 'r3'],
+			['g5', 'y3', 'r4', 'p2'],
+			['g1', 'r3', 'y2', 'b3']
+		], {
+			level: 2,
+			play_stacks: [0, 2, 0, 0, 0],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 3 to Alice (slot 4)');	// Could be direct play on y3 or finesse on g3
+		takeTurn(game, 'Cathy clues green to Donald');		// "stomping" on the g3 finesse
+		takeTurn(game, 'Donald plays g1', 'g4');
+
+		// Alice should assume the simpler explanation that she doesn't have to play g2.
+		const slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
+		assert.equal(slot1.finessed, false);
+		assert.ok(slot1.inferred.length > 1);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['y3']);
 	});
 });
 

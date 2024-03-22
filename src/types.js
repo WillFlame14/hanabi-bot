@@ -25,9 +25,9 @@
  * @property {number} new_touched
  * @property {number} bad_touch
  * @property {number} trash
- * @property {number} finesses
  * @property {number} remainder
- * @property {({playerIndex: number, card: Card})[]} playables
+ * @property {{playerIndex: number, card: Card}[]} playables
+ * @property {{playerIndex: number, card: Card}[]} finesses
  */
 /**
  * @typedef StatusAction

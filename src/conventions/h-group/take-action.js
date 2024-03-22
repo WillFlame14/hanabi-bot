@@ -25,8 +25,8 @@ import * as Utils from '../../tools/util.js';
 export function take_action(game) {
 	const { common, state, me, tableID } = game;
 	const hand = state.hands[state.ourPlayerIndex];
-
 	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
+	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
 
 	// Look for playables, trash and important discards in own hand
 	let playable_cards = me.thinksPlayables(state, state.ourPlayerIndex).map(({ order }) => me.thoughts[order]);
@@ -156,15 +156,25 @@ export function take_action(game) {
 		}
 	}
 
-	// Get a high value play clue
+	// Get a high value play clue involving next player (otherwise, next player can give it)
 	let best_play_clue, clue_value;
 	if (state.clue_tokens > 0) {
 		const all_play_clues = play_clues.flat();
 		({ clue: best_play_clue, clue_value } = select_play_clue(all_play_clues));
-
-		if (best_play_clue?.result.finesses > 0)
-			return Utils.clueToAction(best_play_clue, tableID);
 	}
+
+	// Endgame stall before drawing the last card
+	if (state.cardsLeft === 1 && state.clue_tokens > 0) {
+		const doubleIndex = state.hands.findIndex(hand => hand.filter(c =>
+			state.play_stacks[c.suitIndex] < c.rank && c.rank <= state.max_ranks[c.suitIndex]).length > 1);
+
+		if (doubleIndex !== -1 && doubleIndex !== state.ourPlayerIndex &&
+			state.clue_tokens >= (doubleIndex + state.numPlayers - state.ourPlayerIndex) % state.numPlayers)
+			return Utils.clueToAction(best_play_clue ?? stall_clues.find(clues => clues.length > 0)[0], tableID);
+	}
+
+	if (best_play_clue?.result.finesses.length > 0 && best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex))
+		return Utils.clueToAction(best_play_clue, tableID);
 
 	// Sarcastic discard to someone else
 	if (game.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {
@@ -184,7 +194,6 @@ export function take_action(game) {
 
 	// Forced discard if next player is locked
 	// TODO: Anxiety play
-	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
 	if (state.clue_tokens === 0 && common.thinksLocked(state, nextPlayerIndex))
 		return discard_chop(game, state.ourPlayerIndex, tableID);
 
