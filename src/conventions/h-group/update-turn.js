@@ -185,7 +185,7 @@ function resolve_card_played(game, waiting_connection) {
 		if (type === 'finesse' && connection.clued && thoughts.focused) {
 			logger.warn('connecting card was focused with a clue (stomped on), not confirming finesse');
 
-			if (connections[conn_index + 1].self) {
+			if (connections[conn_index + 1]?.self) {
 				logger.warn(`connection requires that we blind play, removing due to occam's razor`);
 				return { remove: true, remove_finesse: true };
 			}

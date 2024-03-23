@@ -318,7 +318,7 @@ export class Game {
 		new_game.state.actionList = actionList;
 		Object.assign(this, new_game);
 
-		Utils.globalModify({ state: this });
+		Utils.globalModify({ game: this });
 	}
 
 	/**

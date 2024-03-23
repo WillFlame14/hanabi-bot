@@ -27,7 +27,7 @@ export function initConsole() {
 				logger.info();
 				const parts = command.join('').split(' ');
 
-				if (parts[0] !== 'spectate' && Utils.globals.state === undefined) {
+				if (parts[0] !== 'spectate' && Utils.globals.game === undefined) {
 					logger.error('No game specified. Try loading a replay or joining a game first.');
 					command = [];
 					return;

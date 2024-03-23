@@ -99,7 +99,7 @@ async function main() {
 		if (turn !== 0)
 			game.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
 
-		game.handle_action(Utils.performToAction(state, action, currentPlayerIndex, deck), true);
+		game.handle_action(Utils.performToAction(game.state, action, currentPlayerIndex, deck), true);
 
 		if ((action.type === ACTION.PLAY || action.type === ACTION.DISCARD) && order < deck.length) {
 			const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
@@ -107,7 +107,7 @@ async function main() {
 			order++;
 		}
 
-		if (action.type === ACTION.PLAY && state.strikes === 3)
+		if (action.type === ACTION.PLAY && game.state.strikes === 3)
 			game.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.STRIKEOUT, votes: -1 });
 
 		currentPlayerIndex = (currentPlayerIndex + 1) % state.numPlayers;
