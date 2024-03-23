@@ -25,7 +25,7 @@ function isStall(game, action, giver, severity, prev_game) {
 	const hand = state.hands[target];
 
 	// 5 Stall given
-	if (severity >= 1 && clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued && !chop) {
+	if (severity >= 1 && clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued && !common.thoughts[focused_card.order].chop_moved && !chop) {
 		logger.info('5 stall!');
 		return true;
 	}

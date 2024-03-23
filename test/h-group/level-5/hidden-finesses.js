@@ -331,6 +331,22 @@ describe('layered finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['g2']);
 	});
 
+	it('understands a symmetric clandestine finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r4', 'g4', 'r5', 'r3'],
+			['r2', 'y1', 'b2', 'y3', 'p3']
+		], {
+			level: 5,
+			play_stacks: [1, 0, 0, 0, 0]
+		});
+
+		takeTurn(game, 'Alice clues 3 to Bob');		// r3 reverse finesse
+
+		// However, it could also be a y3 clandestine finesse. Bob's slot 5 should be [r3,y3].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][4].order], ['r3', 'y3']);
+	});
+
 	it(`doesn't give illegal clandestine self-finesses`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

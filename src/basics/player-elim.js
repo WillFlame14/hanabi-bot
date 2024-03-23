@@ -127,7 +127,7 @@ export function good_touch_elim(state, only_self = false) {
 		for (const { order } of state.hands.filter((_, index) => !only_self || index === this.playerIndex).flat()) {
 			const card = this.thoughts[order];
 
-			if (!card.saved ||												// Unsaved cards
+			if (!card.touched ||											// Untouched cards (do not good touch elim on cm cards)
 				hard_matches.has(order) ||									// Hard matches
 				(hard_matches.size === 0 && matches.has(order)) ||			// Soft matches when there are no hard matches
 				card.inferred.length === 0 ||								// Cards with no inferences

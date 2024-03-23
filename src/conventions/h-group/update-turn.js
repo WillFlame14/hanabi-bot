@@ -74,7 +74,7 @@ function remove_finesse(game, waiting_connection) {
  */
 function resolve_card_retained(game, waiting_connection) {
 	const { common, state, me } = game;
-	const { connections, conn_index, inference, action_index, ambiguousPassback } = waiting_connection;
+	const { connections, conn_index, focused_card, inference, action_index, ambiguousPassback } = waiting_connection;
 	const { type, reacting, ambiguous } = connections[conn_index];
 	const { order } = connections[conn_index].card;
 
@@ -93,22 +93,41 @@ function resolve_card_retained(game, waiting_connection) {
 
 	const { card: reacting_card } = game.last_actions[reacting];
 
-	const new_finesse_queued = () => {
-		const old_finesse = connections.find((conn, i) => i >= conn_index && conn.reacting === state.ourPlayerIndex && conn.type === 'finesse')?.card;
+	const old_finesse = connections.find((conn, i) => i >= conn_index && conn.reacting === state.ourPlayerIndex && conn.type === 'finesse')?.card;
 
-		return old_finesse !== undefined && state.hands[state.ourPlayerIndex].some(c => {
-			const { finessed, finesse_index } = me.thoughts[c.order];
-			return finessed && finesse_index > me.thoughts[old_finesse.order].finesse_index;
-		});
-	};
+	const new_finesse_queued = old_finesse !== undefined && state.hands[state.ourPlayerIndex].some(c => {
+		const { finessed, finesse_index } = me.thoughts[c.order];
+		return finessed && finesse_index > me.thoughts[old_finesse.order].finesse_index;
+	});
 
 	// Didn't play into finesse
-	if (type === 'finesse' || type === 'prompt' || new_finesse_queued()) {
+	if (type === 'finesse' || type === 'prompt' || new_finesse_queued) {
 		if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
 			logger.info(`${state.playerNames[reacting]} didn't play into unplayable ${type}`);
 			return { remove: false };
 		}
-		else if (game.last_actions[reacting].type === 'play') {
+
+		if (type === 'prompt' && game.last_actions[reacting].type === 'clue') {
+			logger.info(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a clue`);
+			return { remove: false };
+		}
+
+		if (passback()) {
+			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but they need to play multiple non-hidden cards, passing back`);
+			waiting_connection.ambiguousPassback = true;
+			return { remove: false };
+		}
+
+		const next_reacting = (connections.length === conn_index + 1) ?
+			state.hands.findIndex(hand => hand.some(c => c.order === focused_card.order)) :
+			connections[conn_index + 1].reacting;
+
+		if (next_reacting === reacting) {
+			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but it was a self-component, waiting`);
+			return { remove: false };
+		}
+
+		if (game.last_actions[reacting].type === 'play') {
 			if (type === 'finesse' && reacting_card && common.thoughts[reacting_card.order].finessed) {
 				logger.info(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
 				return { remove: false };
@@ -117,15 +136,6 @@ function resolve_card_retained(game, waiting_connection) {
 				logger.info(`${state.playerNames[reacting]} played into something else, continuing to wait`);
 				return { remove: false };
 			}
-		}
-		else if (type === 'prompt' && game.last_actions[reacting].type === 'clue') {
-			logger.info(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a clue`);
-			return { remove: false };
-		}
-		else if (passback()) {
-			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but they need to play multiple non-hidden cards, passing back`);
-			waiting_connection.ambiguousPassback = true;
-			return { remove: false };
 		}
 
 		// Check if the card could be superpositioned on a finesse that is not yet playable.

@@ -39,7 +39,11 @@ export function interpret_tcm(game, target) {
 		const card = state.hands[target][i];
 
 		if (!card.clued) {
-			common.thoughts[card.order].chop_moved = true;
+			const common_card = common.thoughts[card.order];
+			common_card.chop_moved = true;
+
+			// Remove all commonly trash identities
+			common_card.inferred = common_card.inferred.subtract(common_card.inferred.filter(i => isTrash(state, common, i, card.order, { infer: true })));
 			cm_cards.push(logCard(card));
 		}
 	}
@@ -83,6 +87,9 @@ export function interpret_5cm(game, target) {
 
 				logger.info(`5cm, saving ${logCard(saved_card)}`);
 				saved_card.chop_moved = true;
+
+				// Remove all commonly trash identities
+				saved_card.inferred = saved_card.inferred.subtract(saved_card.inferred.filter(i => isTrash(state, common, i, card.order, { infer: true })));
 				return true;
 			}
 			else {

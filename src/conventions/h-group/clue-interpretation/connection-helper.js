@@ -86,6 +86,7 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
  * @param {boolean} looksSave
  * @param {number[]} selfRanks 		The ranks needed to play by the target (as a self-finesse).
  * @param {number} ownBlindPlays 	The number of blind plays we need to make in the actual connection.
+ * @returns {SymFocusPossibility[]}
  */
 export function find_symmetric_connections(game, action, looksSave, selfRanks, ownBlindPlays) {
 	const { common, state } = game;
@@ -93,9 +94,6 @@ export function find_symmetric_connections(game, action, looksSave, selfRanks, o
 	const { giver, list, target } = action;
 	const { order } = determine_focus(state.hands[target], common, list, { beforeClue: true }).focused_card;
 	const focused_card = common.thoughts[order];
-
-	/** @type {SymFocusPossibility[]} */
-	const symmetric_connections = [];
 
 	/** @type {{ id: Identity, connections: Connection[] }[]} */
 	const self_connections = [];
@@ -147,21 +145,23 @@ export function find_symmetric_connections(game, action, looksSave, selfRanks, o
 
 	const possible_connections = non_self_connections.length === 0 ? self_connections : non_self_connections;
 
-	// All connections with the minimum number of target blind plays will be considered
-	const blind_plays_arr = possible_connections.map(({ connections }) => blind_plays(connections, target));
-	const min_blind_plays = blind_plays_arr.reduce((min, curr) => Math.min(min, curr), 10);
+	// Filter out focus possibilities that are strictly more complicated (i.e. connections match up until some point, but has more self-components after)
+	const simplest_connections = possible_connections.filter((conns, i) => !possible_connections.some((other_conns, j) =>
+		i !== j && other_conns.connections.every((other_conn, index) => {
+			const conn = conns.connections[index];
 
-	for (let i = 0; i < possible_connections.length; i++) {
-		if (blind_plays_arr[i] === min_blind_plays) {
-			const { id, connections } = possible_connections[i];
-			symmetric_connections.push({
-				connections,
-				suitIndex: id.suitIndex,
-				rank: inference_rank(state, id.suitIndex, connections),
-				fake: blind_plays(connections, state.ourPlayerIndex) > ownBlindPlays
-			});
-		}
-	}
+			return conn === undefined ||
+				Utils.objEquals(other_conn, conn) ||
+				(other_conn.reacting !== target && conn.reacting === target) ||
+				(other_conn.reacting === target && conn.reacting === target && other_conns.connections.length < conns.connections.length);
+		})));
+
+	const symmetric_connections = simplest_connections.map(({ id, connections }) => ({
+		connections,
+		suitIndex: id.suitIndex,
+		rank: inference_rank(state, id.suitIndex, connections),
+		fake: blind_plays(connections, state.ourPlayerIndex) > ownBlindPlays
+	}));
 
 	const sym_conn = symmetric_connections.map(conn => {
 		const nextIdentity = { suitIndex: conn.suitIndex, rank: conn.rank };
