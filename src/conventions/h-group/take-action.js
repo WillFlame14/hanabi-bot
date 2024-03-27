@@ -12,8 +12,10 @@ import * as Utils from '../../tools/util.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
+ * @typedef {import('../../basics/State.js').State} State
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
+ * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').PerformAction} PerformAction
  */
 
@@ -123,7 +125,7 @@ export function take_action(game) {
 				if (older_finesse === undefined)
 					break;
 
-				logger.warn('older finesse', logCard(older_finesse), 'could be layered, unable to play newer finesse', logCard(best_playable_card));
+				logger.warn('older finesse', logCard(older_finesse), older_finesse.order, 'could be layered, unable to play newer finesse', logCard(best_playable_card));
 
 				// Remove from playable cards
 				playable_priorities[priority].splice(playable_priorities[priority].findIndex(c => c.order === best_playable_card.order), 1);
@@ -163,14 +165,28 @@ export function take_action(game) {
 		({ clue: best_play_clue, clue_value } = select_play_clue(all_play_clues));
 	}
 
-	// Endgame stall before drawing the last card
-	if (state.cardsLeft === 1 && state.clue_tokens > 0) {
-		const doubleIndex = state.hands.findIndex(hand => hand.filter(c =>
-			state.play_stacks[c.suitIndex] < c.rank && c.rank <= state.max_ranks[c.suitIndex]).length > 1);
+	/**
+	 * A card must be played from a particular player if it is critical or no one else has a copy of it.
+	 * @type {(identity: Identity, index: number) => boolean}
+	 */
+	const mustPlay = (identity, index) =>
+		!state.isBasicTrash(identity) &&
+		(state.isCritical(identity) || visibleFind(state, game.me, identity, { infer: true, ignore: [index] }).length === 0);
 
-		if (doubleIndex !== -1 && doubleIndex !== state.ourPlayerIndex &&
-			state.clue_tokens >= (doubleIndex + state.numPlayers - state.ourPlayerIndex) % state.numPlayers)
-			return Utils.clueToAction(best_play_clue ?? stall_clues.find(clues => clues.length > 0)[0], tableID);
+	const selfMustPlay = playable_cards.filter(c => c.inferred.every(i => mustPlay(i, state.ourPlayerIndex)));
+
+	// Endgame stall before drawing the last card
+	if (state.cardsLeft === 1 && state.clue_tokens > 0 && selfMustPlay.length < 2) {
+		const mustPlays = state.hands.map((hand, i) => i === state.ourPlayerIndex ? [] : hand.filter(c => mustPlay(c, i)));
+		const doubleIndex = mustPlays.findIndex(plays => plays.length > 1);
+
+		if (doubleIndex !== -1 && state.clue_tokens >= (doubleIndex + state.numPlayers - state.ourPlayerIndex) % state.numPlayers) {
+			const stall_clue = best_play_clue ??
+				stall_clues.find(clues => clues.length > 0)?.[0] ??
+				{ type: CLUE.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank };
+
+			return Utils.clueToAction(stall_clue, tableID);
+		}
 	}
 
 	if (best_play_clue?.result.finesses.length > 0 && best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex))

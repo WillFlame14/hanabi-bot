@@ -48,9 +48,10 @@ export function inference_rank(state, suitIndex, connections) {
  * @param {FocusPossibility[]} existing_connections
  * @param {ActualCard} focused_card
  * @param {number} giver
+ * @param {number} target
  * @returns {WaitingConnection[]}
  */
-export function generate_symmetric_connections(state, sym_possibilities, existing_connections, focused_card, giver) {
+export function generate_symmetric_connections(state, sym_possibilities, existing_connections, focused_card, giver, target) {
 	const symmetric_connections = [];
 
 	for (const sym of sym_possibilities) {
@@ -70,6 +71,7 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
 			focused_card,
 			inference: { suitIndex, rank },
 			giver,
+			target,
 			action_index: state.actionList.length - 1,
 			fake,
 			symmetric: true

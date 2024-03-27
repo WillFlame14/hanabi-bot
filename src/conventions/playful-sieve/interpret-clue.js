@@ -219,6 +219,7 @@ export function interpret_clue(game, action) {
 								common.waiting_connections.push({
 									connections,
 									giver,
+									target,
 									conn_index: 0,
 									focused_card: state.hands[target][target_index],
 									inference: { suitIndex: inf.suitIndex, rank: inf.rank + 1 },

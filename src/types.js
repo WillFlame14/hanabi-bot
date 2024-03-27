@@ -103,6 +103,7 @@
  * @typedef WaitingConnection
  * @property {Connection[]} connections
  * @property {number} giver
+ * @property {number} target
  * @property {number} conn_index
  * @property {ActualCard} focused_card
  * @property {{suitIndex: number, rank: number}} inference

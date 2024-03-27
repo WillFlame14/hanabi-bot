@@ -79,7 +79,7 @@ async function main() {
 
 	ws.on('open', () => console.log('Established websocket connection!'));
 	ws.on('error', (err) => console.log('Websocket error:', err));
-	ws.on('close', () => console.log('Websocket closed from server.'));
+	ws.on('close', (msg) => console.log(`Websocket closed from server. ${msg}`));
 
 	ws.on('message', (data) => {
 		// Websocket messages are in the format: commandName {"field_name":"value"}

@@ -21,10 +21,8 @@ import { logCard, logConnection } from '../../tools/log.js';
  */
 function remove_finesse(game, waiting_connection) {
 	const { common, state } = game;
-	const { connections, focused_card, inference, fake, symmetric } = waiting_connection;
+	const { connections, focused_card, inference, target, fake, symmetric } = waiting_connection;
 	const focus_thoughts = common.thoughts[focused_card.order];
-
-	const target = state.hands.findIndex(hand => hand.findOrder(focused_card.order));
 
 	if (fake)
 		return;
@@ -74,7 +72,7 @@ function remove_finesse(game, waiting_connection) {
  */
 function resolve_card_retained(game, waiting_connection) {
 	const { common, state, me } = game;
-	const { connections, conn_index, focused_card, inference, action_index, ambiguousPassback } = waiting_connection;
+	const { connections, conn_index, target, inference, action_index, ambiguousPassback } = waiting_connection;
 	const { type, reacting, ambiguous } = connections[conn_index];
 	const { order } = connections[conn_index].card;
 
@@ -118,9 +116,7 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		const next_reacting = (connections.length === conn_index + 1) ?
-			state.hands.findIndex(hand => hand.some(c => c.order === focused_card.order)) :
-			connections[conn_index + 1].reacting;
+		const next_reacting = (connections.length === conn_index + 1) ? target : connections[conn_index + 1].reacting;
 
 		if (next_reacting === reacting) {
 			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but it was a self-component, waiting`);
@@ -178,7 +174,7 @@ function resolve_card_retained(game, waiting_connection) {
  */
 function resolve_card_played(game, waiting_connection) {
 	const { common, state } = game;
-	const { connections, conn_index, inference, focused_card } = waiting_connection;
+	const { connections, conn_index, inference, target, focused_card } = waiting_connection;
 	const { type, reacting, identities } = connections[conn_index];
 
 	logger.info(`waiting card ${identities.length === 1 ? logCard(identities[0]) : '(unknown)'} played`);
@@ -208,7 +204,12 @@ function resolve_card_played(game, waiting_connection) {
 			const demonstration = (type === 'finesse' || game.level < LEVEL.INTERMEDIATE_FINESSES) ?
 				{ card: focused_card, inferences: [inference], connections: connections.slice(conn_index + 1) } :
 				undefined;
-			return { demonstration, remove: waiting_connection.conn_index === -1 };
+
+			const only_clued_connections_left = waiting_connection.connections.every((conn, index) =>
+				index < conn_index || conn.type !== 'finesse' || conn.reacting === target);
+
+			const remove = (demonstration !== undefined && only_clued_connections_left) || waiting_connection.conn_index === -1;
+			return { demonstration, remove };
 		}
 	}
 
@@ -285,6 +286,12 @@ export function update_turn(game, action) {
 
 		const impossible_conn = connections.find((conn, index) => {
 			const { reacting, card, identities } = conn;
+			const current_card = common.thoughts[card.order];
+
+			// No intersection between connection's identities and current card's possibilities
+			if (current_card.possible.intersect(identities).value === 0)
+				return true;
+
 			const last_reacting_action = game.last_actions[reacting];
 
 			return index >= conn_index &&
@@ -294,7 +301,7 @@ export function update_turn(game, action) {
 		});
 
 		if (impossible_conn !== undefined) {
-			logger.warn(`future connection depends on played card having identities ${impossible_conn.identities.map(logCard)}, removing`);
+			logger.warn(`future connection depends on revealed card having identities ${impossible_conn.identities.map(logCard)}, removing`);
 			remove_finesse = true;
 			remove = true;
 		}

@@ -87,7 +87,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 		// Multiple possible sets, we need to wait for connections
 		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
-			common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, action_index: state.actionList.length - 1 });
+			common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, target, action_index: state.actionList.length - 1 });
 	}
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
@@ -99,9 +99,9 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		));
 		const ownBlindPlays = correct_match.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length;
 		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities.some(fp => fp.save), selfRanks, ownBlindPlays);
-		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver);
+		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver, target);
 
-		common.waiting_connections = common.waiting_connections.concat();
+		common.waiting_connections = common.waiting_connections.concat(symmetric_connections);
 		for (const { fake, connections } of symmetric_connections)
 			assign_connections(game, connections, { symmetric: true, target, fake });
 
