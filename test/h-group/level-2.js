@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
@@ -271,5 +271,26 @@ describe('asymmetric clues', () => {
 
 		// y3 should be known, since y2 played before g1 played.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2].order], ['y3']);
+	});
+});
+
+describe('continuation clues', () => {
+	it(`doesn't give continuation clues when cards are in a superposition`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r1', 'r1', 'p5', 'r2'],
+			['r3', 'g3', 'p2', 'p1'],
+			['b4', 'y2', 'r4', 'p1']
+		], {
+			level: 2,
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues red to Alice (slots 3,4)');
+		takeTurn(game, 'Donald clues 5 to Bob');
+
+		// Red to Donald is not a valid play clue.
+		const { play_clues } = find_clues(game);
+		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.RED));
 	});
 });

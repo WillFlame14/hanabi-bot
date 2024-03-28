@@ -112,7 +112,7 @@ export class Player {
 		return Array.from(state.hands[playerIndex].filter(c => {
 			const card = this.thoughts[c.order];
 			return !linked_orders.has(c.order) &&
-				card.possibilities.every(p => state.isPlayable(p)) &&
+				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.matches_inferences();
 		}));
 	}

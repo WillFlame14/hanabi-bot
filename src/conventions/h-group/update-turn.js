@@ -4,6 +4,7 @@ import { visibleFind } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logConnection } from '../../tools/log.js';
+import { older_queued_finesse } from './hanabi-logic.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -113,6 +114,13 @@ function resolve_card_retained(game, waiting_connection) {
 		if (passback()) {
 			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but they need to play multiple non-hidden cards, passing back`);
 			waiting_connection.ambiguousPassback = true;
+			return { remove: false };
+		}
+
+		const old_finesse = older_queued_finesse(state.hands[reacting], common, order);
+
+		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && old_finesse !== undefined) {
+			logger.warn(`${state.playerNames[reacting]} didn't play into ${type}, but they need to play into an older finesse that could be layered`);
 			return { remove: false };
 		}
 

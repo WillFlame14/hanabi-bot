@@ -71,6 +71,10 @@ function find_save(game, target, card) {
 		if (state.variant.suits[card.suitIndex].match(variantRegexes.brownish)) {
 			logger.highlight('red', 'unable to save', logCard(card), 'with a 2 clue due to variant.');
 			const save_clue = determine_clue(game, target, card, { save: true });
+
+			if (save_clue === undefined)
+				return;
+
 			const safe = clue_safe(game, me, save_clue);
 			return { type: save_clue.type, value: save_clue.value, target, playable: false, cm: [], safe };
 		}

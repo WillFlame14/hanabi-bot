@@ -3,7 +3,7 @@ import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
 import { select_play_clue, determine_playable_card, order_1s, find_clue_value } from './action-helper.js';
 import { find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { determine_focus, minimum_clue_value, stall_severity } from './hanabi-logic.js';
+import { determine_focus, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
 import { cardValue, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
@@ -117,10 +117,7 @@ export function take_action(game) {
 
 		if (game.level >= LEVEL.INTERMEDIATE_FINESSES) {
 			while (priority === 0) {
-				const older_finesse = hand.find(({ order }) => {
-					const c = me.thoughts[order];
-					return c.finessed && c.finesse_index < me.thoughts[best_playable_card.order].finesse_index;
-				});
+				const older_finesse = older_queued_finesse(hand, common, best_playable_card.order);
 
 				if (older_finesse === undefined)
 					break;

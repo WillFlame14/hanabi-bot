@@ -160,3 +160,21 @@ export function inBetween(numPlayers, playerIndex, giver, target) {
 
 	return Utils.range(1, gap).some(inc => ((giver + inc) % numPlayers) === playerIndex);
 }
+
+/**
+ * Returns an earlier queued finesse, if it exists.
+ * @param {Hand} hand
+ * @param {Player} player
+ * @param {number} new_finesse_order
+ */
+export function older_queued_finesse(hand, player, new_finesse_order) {
+	return hand.find((c, index) => {
+		// Can't be layered finesse if every card to the right is clued
+		if (c.clued || hand.every((c1, index1) => index1 <= index || c1.clued))
+			return false;
+
+		const { finessed, finesse_index } = player.thoughts[c.order];
+		return finessed &&
+			finesse_index < player.thoughts[new_finesse_order].finesse_index;		// The finesse must have been older
+	});
+}

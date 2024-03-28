@@ -25,6 +25,20 @@ import { logCard } from '../../../tools/log.js';
 function find_known_connecting(game, giver, identity, ignoreOrders = []) {
 	const { common, state } = game;
 
+	/** @param {number} order */
+	const possibly_fake = (order) => {
+		return common.waiting_connections.some(wc => {
+			const connIndex = wc.connections.findIndex((conn, index) => index >= wc.conn_index && conn.card.order === order);
+
+			if (connIndex === -1)
+				return false;
+
+			// Note that if we are the target, we can't verify if finesse/prompt connections are real
+			return wc.fake || (wc.target === state.ourPlayerIndex &&
+				wc.connections.some((conn, i) => i >= wc.conn_index && i <= connIndex && (conn.type === 'finesse' || conn.type === 'prompt')));
+		});
+	};
+
 	// Globally known
 	for (let i = 0; i < state.numPlayers; i++) {
 		const playerIndex = (giver + i) % state.numPlayers;
@@ -38,9 +52,7 @@ function find_known_connecting(game, giver, identity, ignoreOrders = []) {
 			// Remove inferences that will be proven false (i.e. after someone plays the card with such identity)
 			card.inferred = card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
 
-			return card.matches(identity, { infer: true }) && card.touched &&
-				!common.waiting_connections.some(wc =>
-					wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order) && wc.fake);
+			return card.matches(identity, { infer: true }) && card.touched && !possibly_fake(order);
 		});
 
 		if (globally_known)
@@ -58,7 +70,8 @@ function find_known_connecting(game, giver, identity, ignoreOrders = []) {
 			return !ignoreOrders.includes(order) &&
 				card.touched &&
 				card.inferred.has(identity) &&
-				(card.inferred.every(c => state.isPlayable(c)) || card.finessed);
+				(card.inferred.every(c => state.isPlayable(c)) || card.finessed) &&
+				!possibly_fake(order);
 		});
 		const match = playables.find(card => card.matches(identity));
 
@@ -119,6 +132,11 @@ function find_unknown_connecting(game, giver, target, playerIndex, identity, ign
 	}
 
 	if (finesse !== undefined && finesse.identity() !== undefined) {
+		if (state.hands.some((hand, index) => index !== giver && hand.some(c => common.thoughts[c.order].touched && c.matches(finesse)))) {
+			logger.warn(`disallowed finesse on ${logCard(finesse)}, playable already clued elsewhere`);
+			return;
+		}
+
 		if (finesse.matches(identity)) {
 			// At level 1, only forward finesses are allowed.
 			if (game.level === 1 && !inBetween(state.numPlayers, playerIndex, giver, target)) {
@@ -132,13 +150,6 @@ function find_unknown_connecting(game, giver, target, playerIndex, identity, ign
 			// Could be duplicated in giver's hand - disallow hidden finesse
 			if (state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)}, could be duplicated in giver's hand`);
-				return;
-			}
-
-			if (state.hands.some((hand, index) => index !== giver && hand.some(c =>
-				common.thoughts[c.order].touched && c.matches(finesse)
-			))) {
-				logger.warn(`disallowed hidden finesse on ${logCard(finesse)}, playable already clued elsewhere`);
 				return;
 			}
 
