@@ -57,6 +57,11 @@ function find_colour_focus(game, suitIndex, action) {
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
 
+		if (!cardTouched(identity, game.state.variant, action.clue)) {
+			next_rank++;
+			continue;
+		}
+
 		const { type, card } = connecting.at(-1);
 
 		if (type === 'known' && card.newly_clued && common.thoughts[card.order].possible.length > 1 &&
