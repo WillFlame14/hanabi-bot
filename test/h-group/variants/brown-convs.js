@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { ACTION } from '../../../src/constants.js';
-import { COLOUR, PLAYER, VARIANTS, setup, takeTurn } from '../../test-utils.js';
+import { COLOUR, PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
 import { take_action } from '../../../src/conventions/h-group/take-action.js';
@@ -24,15 +24,15 @@ describe('save clue interpretation', () => {
 
 		takeTurn(state, 'Bob clues brown to Alice (slot 5)');
 
-		assert.ok(state.common.thoughts[0].inferred.some(c => c.matches({suitIndex: 4, rank: 2})));
-		assert.ok(state.common.thoughts[0].inferred.some(c => c.matches({suitIndex: 4, rank: 5})));
+		assert.ok(state.common.thoughts[0].inferred.has(expandShortCard('n2')));
+		assert.ok(state.common.thoughts[0].inferred.has(expandShortCard('n5')));
 	});
 
 	it('will save n5 with brown', () => {
 		// TODO: When expandShortForms and others works with variants, switch these to not fake brown as purple.
 		const state = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['g2', 'b2', 'r2', 'r3', 'p5'],
+			['g2', 'b2', 'r2', 'r3', 'n5'],
 		], {
 			level: 1,
 			clue_tokens: 5,

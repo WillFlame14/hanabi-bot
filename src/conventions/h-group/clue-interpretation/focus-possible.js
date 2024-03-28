@@ -5,7 +5,7 @@ import { visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
-import { variantRegexes } from '../../../variants.js';
+import { cardTouched, variantRegexes } from '../../../variants.js';
 import { CLUE_INTERP } from '../h-constants.js';
 
 /**
@@ -93,14 +93,19 @@ function find_colour_focus(game, suitIndex, action) {
 	// Restore play stacks
 	state.play_stacks = old_play_stacks;
 
-	logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
+	if (cardTouched({suitIndex: suitIndex, rank: next_rank}, game.state.variant, action.clue)) {
+		logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
 
-	// Our card could be the final rank that we can't find
-	focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
+		// Our card could be the final rank that we can't find
+		focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
+	}
 
 	// Save clue on chop (5 save cannot be done with colour)
 	if (chop) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
+			// Skip if the card cannot be touched.
+			if (!cardTouched({suitIndex: suitIndex, rank: rank}, game.state.variant, action.clue))
+				continue;
 			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
 			// OR if the clue given is not black.
 			if (rank === 5 &&
@@ -299,7 +304,7 @@ export function find_focus_possible(game, action) {
 	let focus_possible = [];
 
 	if (clue.type === CLUE.COLOUR) {
-		const colours = state.variant.suits.filter(s => s.match(variantRegexes.rainbowish)).map(s => state.variant.suits.indexOf(s));
+		const colours = state.variant.suits.filter(s => s.match(Utils.combineRegex(variantRegexes.rainbowish, variantRegexes.prism))).map(s => state.variant.suits.indexOf(s));
 		colours.push(clue.value);
 		for (const colour of colours)
 			focus_possible = focus_possible.concat(find_colour_focus(game, colour, action));
