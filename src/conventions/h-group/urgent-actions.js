@@ -58,7 +58,7 @@ function find_unlock(game, target) {
  * @returns {PerformAction | undefined}	The play clue to give if it exists, otherwise undefined.
  */
 function find_play_over_save(game, target, all_play_clues, locked, remainder_boost) {
-	const { common, me, state, tableID } = game;
+	const { me, state, tableID } = game;
 
 	/** @type {{clue: Clue, playables: Card[]}[]} */
 	const play_clues = [];
@@ -109,9 +109,10 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 			}
 		}
 
-		const touches_chop = state.hands[target].clueTouched(clue, state.variant).some(c => c.order === common.chop(state.hands[target])?.order);
-		if (!locked && touches_chop && clue_safe(game, me, clue))
-			play_clues.push({ clue, playables: [] });
+		// Unsure what this does?
+		// const touches_chop = state.hands[target].clueTouched(clue, state.variant).some(c => c.order === common.chop(state.hands[target])?.order);
+		// if (!locked && touches_chop && clue_safe(game, me, clue))
+		// 	play_clues.push({ clue, playables: [] });
 	}
 
 	if (play_clues.length === 0)

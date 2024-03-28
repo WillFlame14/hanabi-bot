@@ -208,7 +208,7 @@ export function take_action(game) {
 	// Forced discard if next player is locked
 	// TODO: Anxiety play
 	if (state.clue_tokens === 0 && common.thinksLocked(state, nextPlayerIndex))
-		return discard_chop(game, state.ourPlayerIndex, tableID);
+		return trash_cards.length > 0 ? { tableID, type: ACTION.DISCARD, target: trash_cards[0].order } : discard_chop(game, state.ourPlayerIndex, tableID);
 
 	// Playing a connecting card or playing a 5
 	if (best_playable_card !== undefined && priority <= 3)
