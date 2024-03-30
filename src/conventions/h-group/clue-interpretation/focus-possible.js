@@ -57,7 +57,7 @@ function find_colour_focus(game, suitIndex, action) {
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
 
-		if (!cardTouched(identity, game.state.variant, action.clue)) {
+		if (!cardTouched(identity, game.state.variant, action.clue) || !common.thoughts[focused_card.order].possible.has(identity)) {
 			next_rank++;
 			continue;
 		}
@@ -98,7 +98,7 @@ function find_colour_focus(game, suitIndex, action) {
 	// Restore play stacks
 	state.play_stacks = old_play_stacks;
 
-	if (cardTouched({suitIndex: suitIndex, rank: next_rank}, game.state.variant, action.clue)) {
+	if (cardTouched({suitIndex: suitIndex, rank: next_rank}, game.state.variant, action.clue) && common.thoughts[focused_card.order].possible.has({ suitIndex, rank: next_rank })) {
 		logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
 
 		// Our card could be the final rank that we can't find

@@ -159,7 +159,7 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 
 	const focus_thoughts = common.thoughts[focused_card.order];
 	const not_promptable = focus_thoughts.inferred.every(i => {
-		const prompt = oldCommon.find_prompt(state.hands[target], i, state.variant.suits);
+		const prompt = oldCommon.find_prompt(state.hands[target], i, state.variant);
 		return prompt && prompt.order !== focused_card.order;
 	});
 	const identity = focus_thoughts.identity({ infer: true });
