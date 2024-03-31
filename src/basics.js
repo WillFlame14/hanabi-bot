@@ -41,10 +41,12 @@ export function onClue(game, action) {
 				card.reasoning.push(state.actionList.length - 1);
 				card.reasoning_turn.push(state.turn_count);
 			}
-
-			player.card_elim(state);
-			player.refresh_links(state);
 		}
+	}
+
+	for (const player of game.allPlayers) {
+		player.card_elim(state);
+		player.refresh_links(state);
 	}
 
 	state.clue_tokens--;

@@ -221,6 +221,24 @@ describe('giving order chop move', () => {
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
+
+	it('will not ocm a playable card', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r4', 'g3', 'g3', 'r1'],
+			['g5', 'r1', 'y3', 'y3', 'r2']
+		], {
+			level: 4,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 2 to Cathy');		// 2 Save, r2
+		takeTurn(game, 'Cathy clues 1 to Alice (slots 3,4)');
+
+		// Alice should not OCM r1.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
+	});
 });
 
 describe('interpreting order chop move', () => {

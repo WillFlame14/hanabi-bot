@@ -91,8 +91,8 @@ export function take_action(game) {
 						return -0.1;
 
 					const old_chop = common.chop(state.hands[playerIndex]);
-					// Player is locked or has trash chop, don't OCM
-					if (old_chop === undefined || isTrash(state, me, old_chop, old_chop.order))
+					// Player is locked or has playable/trash chop, don't OCM
+					if (old_chop === undefined || isTrash(state, me, old_chop, old_chop.order) || (state.isPlayable(old_chop) && state.clue_tokens !== 0))
 						return -0.1;
 
 					// Simulate chop move
@@ -225,8 +225,8 @@ export function take_action(game) {
 
 			const chop = common.chop(state.hands[target]);
 
-			// Chop doesn't exist or is trash, ignore
-			if (chop === undefined || cardValue(state, me, chop) === 0)
+			// Chop doesn't exist or is playable/trash, ignore
+			if (chop === undefined || cardValue(state, me, chop) === 0 || (state.isPlayable(chop) && state.clue_tokens !== 0))
 				continue;
 
 			// Temporarily chop move their chop

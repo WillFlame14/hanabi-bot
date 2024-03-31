@@ -210,14 +210,12 @@ export function assign_connections(game, connections, options = {}) {
 		}
 
 		if (hidden) {
-			const playable_identities = hypo_stacks.map((stack_rank, index) => {
-				return { suitIndex: index, rank: stack_rank + 1 };
-			});
+			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }));
 			card.inferred = card.inferred.intersect(playable_identities);
 
 			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
-			if (card.identity() !== undefined) {
-				const { suitIndex, rank } = card.identity();
+			if (state.deck[card.order].identity() !== undefined) {
+				const { suitIndex, rank } = state.deck[card.order].identity();
 				if (hypo_stacks[reacting][suitIndex] + 1 !== rank)
 					logger.warn('trying to connect', logCard(card), 'but hypo stacks at', hypo_stacks[suitIndex]);
 

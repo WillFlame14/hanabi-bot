@@ -91,11 +91,11 @@ export class HGroup_Player extends Player {
 			const { clued, newly_clued, order, clues } = card;
 			const { inferred, possible } = this.thoughts[card.order];
 
-			return !ignoreOrders.includes(order) &&								// not ignored
-				clued && !newly_clued && 										// previously clued
-				possible.length > 1 && possible.has(identity) &&					// not known, but could match
-				(inferred.length > 1 || !inferred.array[0]?.matches(identity)) &&		// not inferred, or at least the inference doesn't match
-				clues.some(clue =>												// at least one clue matches
+			return !ignoreOrders.includes(order) &&			// not ignored
+				clued && !newly_clued && 					// previously clued
+				possible.has(identity) &&					// must be a possibility
+				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 	// must not be information-locked on a different identity
+				clues.some(clue =>													// at least one clue matches
 					(clue.type === CLUE.COLOUR && (clue.value === suitIndex || ['Rainbow', 'Omni'].includes(suits[suitIndex]))) ||
 					(clue.type === CLUE.RANK && clue.value === rank));
 		});

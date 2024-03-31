@@ -146,10 +146,6 @@ function find_rank_focus(game, rank, action) {
 		for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 			const identity = { suitIndex, rank };
 
-			// Don't need to consider save on playable cards
-			if (state.isPlayable(identity))
-				continue;
-
 			// Don't consider save on k3, k4 with rank
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
 				continue;
@@ -266,8 +262,8 @@ export function find_focus_possible(game, action) {
 		focus_possible = find_rank_focus(game, clue.value, action);
 	}
 
-	// Remove earlier duplicates (since save overrides play)
+	// Remove play duplicates (since save overrides play)
 	return focus_possible.filter((p1, index1) => {
-		return !focus_possible.some((p2, index2) => p1.suitIndex === p2.suitIndex && p1.rank === p2.rank && index1 < index2);
+		return !focus_possible.some((p2, index2) => index2 !== index1 && p1.suitIndex === p2.suitIndex && p1.rank === p2.rank && p2.save);
 	});
 }

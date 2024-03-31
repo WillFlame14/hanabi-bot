@@ -144,6 +144,22 @@ describe('layered finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['y2']);
 	});
 
+	it('writes correct notes for a layered finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r4', 'g4', 'r5', 'b4'],
+			['g1', 'g2', 'y1', 'y2', 'p3']
+		], {
+			level: 5,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues yellow to Alice (slot 3)');
+
+		// Cathy's hand should be marked correctly.
+		assert.ok(game.state.hands[PLAYER.CATHY].every(c => game.common.thoughts[c.order].inferred.some(i => c.matches(i))));
+	});
+
 	it('understands playing into a layered finesse', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

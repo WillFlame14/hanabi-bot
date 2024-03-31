@@ -79,10 +79,12 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 	focus_thoughts.inferred = focus_thoughts.inferred.intersect(inf_possibilities);
 
 	for (const { connections, suitIndex, rank, save } of inf_possibilities) {
-		if (save)
+		const inference = { suitIndex, rank };
+
+		// Don't assign save connections or known false connections
+		if (save || !focused_card.matches(inference, { assume: true }))
 			continue;
 
-		const inference = { suitIndex, rank };
 		assign_connections(game, connections);
 
 		// Multiple possible sets, we need to wait for connections
