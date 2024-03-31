@@ -122,7 +122,7 @@ function find_unknown_connecting(game, giver, target, playerIndex, identity, ign
 		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank) {
 			// Could be duplicated in giver's hand - disallow hidden prompt
 			if (state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
-				logger.warn(`disallowed hidden prompt on ${logCard(prompt)}, could be duplicated in giver's hand`);
+				logger.warn(`disallowed hidden prompt on ${logCard(prompt)} ${prompt.order}, true ${logCard(identity)}  could be duplicated in giver's hand`);
 				return;
 			}
 			return { type: 'prompt', reacting: playerIndex, card: prompt, hidden: true, identities: [prompt.raw()] };
@@ -149,7 +149,7 @@ function find_unknown_connecting(game, giver, target, playerIndex, identity, ign
 		else if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
 			// Could be duplicated in giver's hand - disallow hidden finesse
 			if (state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
-				logger.warn(`disallowed hidden finesse on ${logCard(finesse)}, could be duplicated in giver's hand`);
+				logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
 				return;
 			}
 

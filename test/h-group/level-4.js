@@ -298,11 +298,11 @@ describe('interpreting chop moves', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b1', 'g1', 'r5', 'r2'],
-			['y2', 'b2', 'r3', 'y1', 'r4']
+			['y2', 'b2', 'p3', 'y1', 'r4']
 		], {
 			level: 4,
 			play_stacks: [1, 5, 5, 5, 5],
-			discarded: ['r4'],
+			discarded: ['r3', 'r4'],
 			clue_tokens: 4
 		});
 
@@ -310,13 +310,23 @@ describe('interpreting chop moves', () => {
 		takeTurn(game, 'Bob clues 4 to Cathy');				// r4 save
 		takeTurn(game, 'Cathy clues 1 to Alice (slot 4)');	// Trash Chop Move, saving r3 in slot 5
 		takeTurn(game, 'Alice discards b1 (slot 4)');		// Alice draws r2 in slot 1 
-		takeTurn(game, 'Bob clues red to Cathy');			// Reverse finesse on r3
+		takeTurn(game, 'Bob clues red to Cathy');			// Reverse finesse on r4
 
 		// Slot 1 should be red 2.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r2']);
 
-		// There should not be a link between slot 1 and slot 5 (since slot 5 should still be r2,r3)
-		assert.ok(game.common.links.length === 0);
-		assert.ok(game.players[PLAYER.ALICE].links.length === 0);
+		takeTurn(game, 'Cathy discards y1', 'r1');
+
+		// Alice should play r2.
+		const action1 = take_action(game);
+		assert.ok(action1.type === ACTION.PLAY && action1.target === game.state.hands[PLAYER.ALICE][0].order);
+
+		takeTurn(game, 'Alice plays r2 (slot 1)');
+		takeTurn(game, 'Bob discards r2', 'p2');
+		takeTurn(game, 'Cathy discards p3', 'y4');
+
+		// Alice should play r3.
+		const action2 = take_action(game);
+		assert.ok(action2.type === ACTION.PLAY && action2.target === game.state.hands[PLAYER.ALICE][1].order);
 	});
 });

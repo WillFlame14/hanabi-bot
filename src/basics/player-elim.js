@@ -96,7 +96,9 @@ export function good_touch_elim(state, only_self = false) {
 
 		if (!card.touched || id === undefined ||
 			(!card.matches(id) && card.newly_clued && !card.focused) ||			// Unknown newly clued cards off focus?
-			this.waiting_connections.some(wc => wc.connections.some(conn => conn.card.order === order)))	// Unconfirmed connections
+			this.waiting_connections.some(wc =>									// Unconfirmed connections
+				wc.connections.some(conn => conn.card.order === order) &&		// but if this player is next, assume the connection is true
+				wc.connections[wc.conn_index].reacting !== this.playerIndex))
 			return;
 
 		const id_hash = logCard(id);
@@ -127,7 +129,10 @@ export function good_touch_elim(state, only_self = false) {
 		for (const { order } of state.hands.filter((_, index) => !only_self || index === this.playerIndex).flat()) {
 			const card = this.thoughts[order];
 
-			if (!card.touched ||											// Untouched cards (do not good touch elim on cm cards)
+			const can_elim = card.touched ||					// Touched cards always elim
+				(this.playerIndex !== -1 && card.chop_moved);	// Chop moved cards can asymmetric elim
+
+			if (!can_elim ||
 				hard_matches.has(order) ||									// Hard matches
 				(hard_matches.size === 0 && matches.has(order)) ||			// Soft matches when there are no hard matches
 				card.inferred.length === 0 ||								// Cards with no inferences

@@ -113,6 +113,7 @@ export class Player {
 			const card = this.thoughts[c.order];
 			return !linked_orders.has(c.order) &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
+				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
 				card.matches_inferences();
 		}));
 	}
@@ -282,7 +283,7 @@ export class Player {
 
 					if (rank !== hypo_stacks[suitIndex] + 1) {
 						// e.g. a duplicated 1 before any 1s have played will have all bad possibilities eliminated by good touch
-						logger.warn(`tried to add new playable card ${logCard(card)} but was duplicated`);
+						logger.warn(`tried to add new playable card ${logCard(card)} ${card.order}, hypo stacks at ${hypo_stacks[suitIndex]}`);
 						continue;
 					}
 
