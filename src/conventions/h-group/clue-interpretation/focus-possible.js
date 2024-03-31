@@ -105,7 +105,7 @@ function find_colour_focus(game, suitIndex, action) {
 		focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
 	}
 
-	// Save clue on chop (5 save cannot be done with colour)
+	// Save clue on chop (5 save cannot be done with colour usually)
 	if (chop) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
 			// Skip if the card cannot be touched.
