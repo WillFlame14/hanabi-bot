@@ -18,7 +18,10 @@ function connect(bot_index = '') {
 		throw new Error(`Missing ${u_field} and ${p_field} environment variables.`);
 	}
 
-	const data = `username=${process.env[u_field]}&password=${process.env[p_field]}&version=bot`;
+	const username = encodeURIComponent(process.env[u_field]);
+	const password = encodeURIComponent(process.env[p_field]);
+	const data = `username=${username}&password=${password}&version=bot`;
+
 	const options = {
 		hostname: 'hanab.live',
 		port: 443,
