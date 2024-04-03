@@ -107,6 +107,10 @@ export function objClone(obj, depth = 0) {
 	if (depth > 15)
 		throw new Error('Maximum recursion depth reached.');
 
+	// typeof null is 'object', so we need a special case for this
+	if (obj === null)
+		return null;
+
 	if (typeof obj !== 'object' || obj instanceof BasicCard)
 		return obj;
 

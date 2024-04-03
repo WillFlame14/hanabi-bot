@@ -285,6 +285,7 @@ export const handle = {
 function leaveRoom() {
 	Utils.sendCmd(gameStarted ? 'tableUnattend' : 'tableLeave', { tableID: game.tableID });
 	game.tableID = undefined;
+	game.in_progress = false;
 	gameStarted = false;
 }
 

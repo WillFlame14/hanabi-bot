@@ -27,7 +27,7 @@ export function initConsole() {
 				logger.info();
 				const parts = command.join('').split(' ');
 
-				if (parts[0] !== 'spectate' && Utils.globals.game === undefined) {
+				if (parts[0] !== 'spectate' && Utils.globals.game?.state === undefined) {
 					logger.error('No game specified. Try loading a replay or joining a game first.');
 					command = [];
 					return;
@@ -36,8 +36,8 @@ export function initConsole() {
 				/** @type {import('../basics/Game.js').Game} */
 				const game = Utils.globals.game;
 
-				/** @type {import('../basics/Game.js').Game} */
-				const { state } = game;
+				/** @type {import('../basics/State.js').State} */
+				const state = game?.state;
 
 				switch(parts[0]) {
 					case 'hand': {

@@ -120,6 +120,21 @@ describe('tempo clue chop moves', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][3].order].chop_moved, false);
 	});
 
+	it(`doesn't tccm if the card was already playing`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b2', 'r3', 'r1', 'y1'],
+			['p1', 'y5', 'g3', 'y3'],
+			['b4', 'p4', 'g1', 'g1']
+		], { level: 6 });
+
+		takeTurn(game, 'Alice clues purple to Cathy');
+		takeTurn(game, 'Bob clues purple to Cathy');
+
+		// Cathy's slot 4 should not be chop moved.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][3].order].chop_moved, false);
+	});
+
 	it(`prefers tccm to cm a useful card`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

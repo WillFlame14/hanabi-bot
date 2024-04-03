@@ -50,7 +50,9 @@ function find_known_connecting(game, giver, identity, ignoreOrders = []) {
 			const card = common.thoughts[order].clone();
 
 			// Remove inferences that will be proven false (i.e. after someone plays the card with such identity)
-			card.inferred = card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
+			// Unless we are giving the clue, then we can't eliminate from our own hand
+			if (!(giver === state.ourPlayerIndex && playerIndex === state.ourPlayerIndex))
+				card.inferred = card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
 
 			return card.matches(identity, { infer: true }) && card.touched && !possibly_fake(order);
 		});
@@ -132,7 +134,16 @@ function find_unknown_connecting(game, giver, target, playerIndex, identity, ign
 	}
 
 	if (finesse !== undefined && finesse.identity() !== undefined) {
-		if (state.hands.some((hand, index) => index !== giver && hand.some(c => common.thoughts[c.order].touched && c.matches(finesse)))) {
+		/** @param {number} order */
+		const order_touched = (order) => {
+			const card = common.thoughts[order];
+			const containing_wcs = common.waiting_connections.filter(wc =>
+				wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order));
+
+			return card.touched && containing_wcs.every(wc => !wc.symmetric && wc.focused_card.matches(wc.inference, { assume: true }));
+		};
+
+		if (state.hands.some((hand, index) => index !== giver && hand.some(c => order_touched(c.order) && c.matches(finesse)))) {
 			logger.warn(`disallowed finesse on ${logCard(finesse)}, playable already clued elsewhere`);
 			return;
 		}
@@ -197,13 +208,12 @@ export function find_connecting(game, giver, target, identity, looksDirect, igno
 		logger.warn(`connecting ${logCard(identity)} gotten in target's hand, might look confusing`);
 
 	// Only consider prompts/finesses if no connecting cards found
-	for (let i = 1; i < state.numPlayers; i++) {
-		const playerIndex = (giver + i) % state.numPlayers;
+	for (let i = 0; i < state.numPlayers; i++) {
+		const playerIndex = (state.numPlayers + target - i - 1) % state.numPlayers;
 
-		if (options.knownOnly?.includes(playerIndex) || (playerIndex === target && looksDirect)) {
-			// Clue receiver won't find known prompts/finesses in their hand unless it doesn't look direct
+		// Clue receiver won't find known prompts/finesses in their hand unless it doesn't look direct
+		if (playerIndex === giver || options.knownOnly?.includes(playerIndex) || (playerIndex === target && looksDirect))
 			continue;
-		}
 
 		const connections = [];
 		const hypo_game = game.minimalCopy();

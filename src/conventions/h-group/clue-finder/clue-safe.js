@@ -26,14 +26,21 @@ export function clue_safe(game, player, clue) {
 
 	/** @param {number} startIndex */
 	const getNextUnoccupied = (startIndex) => {
+		/** @param {number} index */
+		const get_finessed_card = (index) => hypo_state.hands[index].find(c => {
+			const card = hypo_player.thoughts[c.order];
+			// We can't use hidden cards, because the player will wait until their real connection is playable
+			return !card.hidden && card.finessed && hypo_state.isPlayable(c);
+		});
+
 		let nextIndex = (startIndex + 1) % state.numPlayers;
-		let finessed_card = hypo_state.hands[nextIndex].find(c => hypo_player.thoughts[c.order].finessed && hypo_state.playableAway(c) === 0);
+		let finessed_card = get_finessed_card(nextIndex);
 
 		// Find the next player without a playable finessed card
 		while (finessed_card && nextIndex !== state.ourPlayerIndex) {
 			nextIndex = (nextIndex + 1) % state.numPlayers;
 			hypo_state.play_stacks[finessed_card.suitIndex]++;
-			finessed_card = hypo_state.hands[nextIndex].find(c => hypo_player.thoughts[c.order].finessed && hypo_state.playableAway(c) === 0);
+			finessed_card = get_finessed_card(nextIndex);
 		}
 		return nextIndex;
 	};
@@ -48,8 +55,14 @@ export function clue_safe(game, player, clue) {
 	if (!chopUnsafe(hypo_state, hypo_player, next_unoccupied))
 		return true;
 
+	const safely_loaded = hypo_game.common.thinksTrash(hypo_state, next_unoccupied).length > 0 ||
+		hypo_game.common.thinksPlayables(hypo_state, next_unoccupied).some(p => {
+			const card = hypo_game.common.thoughts[p.order];
+			return (!card.finessed || !card.hidden) && state.isPlayable(card);
+		});
+
 	// Dangerous and not loaded, clue is not fine
-	if (!hypo_game.common.thinksLoaded(hypo_state, next_unoccupied)) {
+	if (!safely_loaded) {
 		logger.warn(`next unoccupied ${state.playerNames[next_unoccupied]} has unsafe chop and not loaded`);
 		return false;
 	}
