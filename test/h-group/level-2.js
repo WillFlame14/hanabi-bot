@@ -64,6 +64,31 @@ describe('self-finesse', () => {
 		assert.equal(common.thoughts[state.hands[PLAYER.CATHY][0].order].finessed, true);
 		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
 	});
+
+	it('interprets self-finesses correctly when other possibilities are impossible', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'b4', 'g4', 'p1'],
+			['b2', 'b3', 'p1', 'g3'],
+			['b5', 'b2', 'r4', 'p5']
+		], {
+			level: 2,
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues purple to Alice (slot 2)');	// p1 play
+		takeTurn(game, 'Alice plays p1 (slot 2)');
+		takeTurn(game, 'Bob clues blue to Cathy');					// b2 reverse finesse on us
+		takeTurn(game, 'Cathy clues 5 to Donald');
+
+		takeTurn(game, 'Donald clues 4 to Bob');					// connect b4
+		takeTurn(game, 'Alice plays b1 (slot 1)');
+		takeTurn(game, 'Bob clues 2 to Alice (slot 3)');			// 2 is neg purple, b2 is clued in Cathy's hand
+
+		// Alice's slot 1 should be finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r2']);
+	});
 });
 
 describe('direct clues', () => {

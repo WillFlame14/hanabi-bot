@@ -162,7 +162,7 @@ function resolve_card_retained(game, waiting_connection) {
 			const updated_inferences = common.thoughts[focused_card.order].inferred.filter(i =>
 				!common.waiting_connections.some(wc =>
 					wc.focused_card.order === focused_card.order &&
-					wc.connections[conn_index].reacting === reacting &&
+					wc.connections[wc.conn_index].reacting === reacting &&
 					i.matches(wc.inference)));
 
 			// None of the inferences match anymore, rewind
@@ -206,8 +206,8 @@ function resolve_card_played(game, waiting_connection) {
 		const connection = game.last_actions[reacting].card;
 		const thoughts = common.thoughts[connection.order];
 
-		if (type === 'finesse' && connection.clued && thoughts.focused) {
-			logger.warn('connecting card was focused with a clue (stomped on), not confirming finesse');
+		if (type === 'finesse' && connection.clued && (thoughts.focused || thoughts.inferred.every(i => state.isPlayable(i) || connection.matches(i)))) {
+			logger.warn('connecting card was focused/known playable with a clue (stomped on), not confirming finesse');
 
 			if (connections[conn_index + 1]?.self) {
 				logger.warn(`connection requires that we blind play, removing due to occam's razor`);

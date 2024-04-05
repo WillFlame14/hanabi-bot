@@ -209,16 +209,18 @@ export function interpret_clue(game, action) {
 		/** @type {FocusPossibility[]} */
 		const all_connections = [];
 
-		if (target === state.ourPlayerIndex)
-			matched_inferences.forEach(fp => all_connections.push(fp));
-
 		const looksDirect = focus_thoughts.identity() === undefined && (	// Focused card must be unknown AND
 			action.clue.type === CLUE.COLOUR ||											// Colour clue always looks direct
 			rankLooksPlayable(game, action.clue.value, giver, target, focused_card.order) ||			// Looks like a play
 			focus_possible.some(fp => fp.save));										// Looks like a save
 
+		// We are the clue target, so we need to consider all the (sensible) possibilities of the card
 		if (target === state.ourPlayerIndex) {
-			// We are the clue target, so we need to consider all the possibilities of the card
+			for (const fp of matched_inferences) {
+				if (!isTrash(state, game.players[giver], fp, focused_card.order))
+					all_connections.push(fp);
+			}
+
 			let conn_save;
 			let min_blind_plays = Math.min(...all_connections.map(fp => fp.connections.filter(conn => conn.type === 'finesse').length),
 				state.hands[state.ourPlayerIndex].length + 1);

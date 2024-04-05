@@ -95,6 +95,7 @@ export function good_touch_elim(state, only_self = false) {
 		const id = card.identity({ infer: true });
 
 		if (!card.touched || id === undefined ||
+			(state.deck[order].identity() !== undefined && !state.deck[order].matches(id)) ||		// Card is visible and doesn't match
 			(!card.matches(id) && card.newly_clued && !card.focused) ||			// Unknown newly clued cards off focus?
 			this.waiting_connections.some(wc =>									// Unconfirmed connections
 				wc.connections.some(conn => conn.card.order === order) &&		// but if this player is next, assume the connection is true

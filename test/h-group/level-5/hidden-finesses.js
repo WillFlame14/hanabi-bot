@@ -62,6 +62,34 @@ describe('hidden finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3']);
 	});
 
+	it('understands a complicated fake hidden finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p1', 'p4', 'r3', 'y3', 'r5'],
+			['y2', 'g2', 'b1', 'g3', 'r1']
+		], {
+			level: 1,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Cathy');
+		takeTurn(game, 'Cathy plays r1', 'g1');
+		takeTurn(game, 'Alice clues purple to Bob');
+
+		takeTurn(game, 'Bob clues 2 to Alice (slot 1)');	// could be r2, g2 (finesse), b2 or p2 (selfish)
+		takeTurn(game, 'Cathy plays b1', 'y5');
+		takeTurn(game, 'Alice clues 5 to Bob');
+
+		takeTurn(game, 'Bob clues 2 to Cathy');		// focusing y2 as a reverse finesse on us
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y1']);
+
+		takeTurn(game, 'Cathy discards g3', 'p3');
+
+		// Cathy didn't play into the green finesse, so we have r2,b2,p2 in slot 1
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r2', 'b2', 'p2']);
+	});
+
 	it('plays into a hidden finesse', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

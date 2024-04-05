@@ -58,7 +58,7 @@ export function clue_safe(game, player, clue) {
 	const safely_loaded = hypo_game.common.thinksTrash(hypo_state, next_unoccupied).length > 0 ||
 		hypo_game.common.thinksPlayables(hypo_state, next_unoccupied).some(p => {
 			const card = hypo_game.common.thoughts[p.order];
-			return (!card.finessed || !card.hidden) && state.isPlayable(card);
+			return (!card.finessed || !card.hidden) && state.isPlayable(state.deck[p.order]);
 		});
 
 	// Dangerous and not loaded, clue is not fine
