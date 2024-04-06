@@ -82,16 +82,17 @@ export class HGroup_Player extends Player {
 	 * @param {Hand} hand
 	 * @param {Identity} identity
 	 * @param {string[]} suits 			All suits in the current game.
+	 * @param {number[]} connected 		Orders of cards that have previously connected
 	 * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
 	 */
-	find_prompt(hand, identity, suits, ignoreOrders = []) {
+	find_prompt(hand, identity, suits, connected = [], ignoreOrders = []) {
 		const { suitIndex, rank } = identity;
 
-		return hand.find(card => {
+		const card = hand.find(card => {
 			const { clued, newly_clued, order, clues } = card;
 			const { inferred, possible } = this.thoughts[card.order];
 
-			return !ignoreOrders.includes(order) &&			// not ignored
+			return !connected.includes(order) &&			// not already connected
 				clued && !newly_clued && 					// previously clued
 				possible.has(identity) &&					// must be a possibility
 				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 	// must not be information-locked on a different identity
@@ -99,14 +100,19 @@ export class HGroup_Player extends Player {
 					(clue.type === CLUE.COLOUR && (clue.value === suitIndex || ['Rainbow', 'Omni'].includes(suits[suitIndex]))) ||
 					(clue.type === CLUE.RANK && clue.value === rank));
 		});
+
+		return (card && !ignoreOrders.includes(card.order)) ? card : undefined;
 	}
 
 	/**
 	 * Finds a finesse for the given suitIndex and rank, or undefined if there is none.
 	 * @param {Hand} hand
+	 * @param {number[]} connected 		Orders of cards that have previously connected
 	 * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
 	 */
-	find_finesse(hand, ignoreOrders = []) {
-		return hand.find(card => !card.clued && !this.thoughts[card.order].finessed && !ignoreOrders.includes(card.order));
+	find_finesse(hand, connected = [], ignoreOrders = []) {
+		const card = hand.find(card => !card.clued && !this.thoughts[card.order].finessed && !connected.includes(card.order));
+
+		return (card && !ignoreOrders.includes(card.order)) ? card : undefined;
 	}
 }

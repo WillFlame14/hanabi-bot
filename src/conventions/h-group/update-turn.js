@@ -158,19 +158,9 @@ function resolve_card_retained(game, waiting_connection) {
 		logger.info(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);
 
 		if (reacting !== state.ourPlayerIndex) {
-			// Filter out all inferences that will be cancelled
-			const updated_inferences = common.thoughts[focused_card.order].inferred.filter(i =>
-				!common.waiting_connections.some(wc =>
-					wc.focused_card.order === focused_card.order &&
-					wc.connections[wc.conn_index].reacting === reacting &&
-					i.matches(wc.inference)));
-
-			// None of the inferences match anymore, rewind
-			if (!updated_inferences.some(i => me.thoughts[focused_card.order].matches(i, { assume: true }))) {
-				const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
-				game.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects, order });
-				return { quit: true };
-			}
+			const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
+			game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order });
+			return { quit: true };
 		}
 
 		// Can't remove finesses if we allow ourselves to "defer" an ambiguous finesse the first time around.

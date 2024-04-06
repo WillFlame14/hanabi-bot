@@ -297,6 +297,25 @@ describe('asymmetric clues', () => {
 		// y3 should be known, since y2 played before g1 played.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2].order], ['y3']);
 	});
+
+	it('connects to a finesse after a fake finesse was just disproven', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b2', 'y4', 'r1', 'b3', 'y1'],
+			['g1', 'y3', 'p4', 'y1', 'b5']
+		], {
+			level: 2,
+			play_stacks: [2, 1, 1, 1, 2],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 3 to Alice (slots 2,5)'); 	// Could be b3 reverse finesse or r3, p3 
+		takeTurn(game, 'Alice clues 5 to Cathy');
+		takeTurn(game, 'Bob clues purple to Cathy');
+
+		// Alice's slot 2 can be any 3 (not prompted to be p3).
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'y3', 'g3', 'b3']);
+	});
 });
 
 describe('continuation clues', () => {

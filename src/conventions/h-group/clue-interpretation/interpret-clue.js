@@ -53,7 +53,7 @@ function apply_good_touch(game, action) {
 				catch (error) {
 					// Rewinding the layered finesse doesn't work, just ignore us then.
 					logger.warn(error.message);
-					if (game.rewind(action_index, { type: 'ignore', playerIndex: target, order, conn_index: 0 }))
+					if (game.rewind(action_index, { type: 'ignore', order, conn_index: 0 }))
 						return { layered_reveal: true };
 				}
 			}

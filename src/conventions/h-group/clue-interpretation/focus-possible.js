@@ -46,9 +46,9 @@ function find_colour_focus(game, suitIndex, action) {
 		const identity = { suitIndex, rank: next_rank };
 
 		// Note that a colour clue always looks direct
-		const ignoreOrders = already_connected.concat(game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
+		const ignoreOrders = game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1];
 		const looksDirect = common.thoughts[focused_card.order].identity() === undefined;
-		const connecting = find_connecting(hypo_game, giver, target, identity, looksDirect, ignoreOrders);
+		const connecting = find_connecting(hypo_game, giver, target, identity, looksDirect, already_connected, ignoreOrders);
 		if (connecting.length === 0)
 			break;
 
@@ -174,9 +174,9 @@ function find_rank_focus(game, rank, action) {
 
 			let finesses = 0;
 
-			let ignoreOrders = already_connected.concat(game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
+			let ignoreOrders = game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1];
 			let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focused_card.order));
-			let connecting = find_connecting(hypo_game, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
+			let connecting = find_connecting(hypo_game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
 
 			while (connecting.length !== 0) {
 				const { type, card } = connecting.at(-1);
@@ -219,8 +219,8 @@ function find_rank_focus(game, rank, action) {
 					break;
 				}
 
-				ignoreOrders = already_connected.concat(game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1] ?? []);
-				connecting = find_connecting(hypo_game, giver, target, { suitIndex, rank: next_rank }, looksDirect, ignoreOrders);
+				ignoreOrders = game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1];
+				connecting = find_connecting(hypo_game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
 			}
 
 			if (next_rank <= rank)

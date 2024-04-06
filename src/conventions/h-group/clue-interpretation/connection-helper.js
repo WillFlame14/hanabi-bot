@@ -216,7 +216,7 @@ export function assign_connections(game, connections, options = {}) {
 			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
 			if (state.deck[card.order].identity() !== undefined) {
 				const { suitIndex, rank } = state.deck[card.order].identity();
-				if (hypo_stacks[reacting][suitIndex] + 1 !== rank)
+				if (hypo_stacks[suitIndex] + 1 !== rank)
 					logger.warn('trying to connect', logCard(card), 'but hypo stacks at', hypo_stacks[suitIndex]);
 
 				hypo_stacks[suitIndex] = rank;

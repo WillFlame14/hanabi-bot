@@ -105,15 +105,16 @@ function find_known_connecting(game, giver, identity, ignoreOrders = []) {
  * @param {number} target 			The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {number} playerIndex
  * @param {Identity} identity
+ * @param {number[]} [connected] 	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @returns {Connection | undefined}
  */
-function find_unknown_connecting(game, giver, target, playerIndex, identity, ignoreOrders = []) {
+function find_unknown_connecting(game, giver, target, playerIndex, identity, connected = [], ignoreOrders = []) {
 	const { common, state } = game;
 
 	const hand = state.hands[playerIndex];
-	const prompt = common.find_prompt(hand, identity, state.variant.suits, ignoreOrders);
-	const finesse = common.find_finesse(hand, ignoreOrders);
+	const prompt = common.find_prompt(hand, identity, state.variant.suits, connected, ignoreOrders);
+	const finesse = common.find_finesse(hand, connected, ignoreOrders);
 
 	// Prompt takes priority over finesse
 	if (prompt !== undefined && prompt.identity() !== undefined) {
@@ -176,11 +177,12 @@ function find_unknown_connecting(game, giver, target, playerIndex, identity, ign
  * @param {number} target 			The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {Identity} identity
  * @param {boolean} looksDirect 	Whether the clue could be interpreted as direct play (i.e. never as self-prompt/finesse).
+ * @param {number[]} [connected]	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @param {{knownOnly?: number[]}} options
  * @returns {Connection[]}
  */
-export function find_connecting(game, giver, target, identity, looksDirect, ignoreOrders = [], options = {}) {
+export function find_connecting(game, giver, target, identity, looksDirect, connected = [], ignoreOrders = [], options = {}) {
 	const { common, state, me } = game;
 	const { suitIndex, rank } = identity;
 
@@ -189,7 +191,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, igno
 		return [];
 	}
 
-	const connecting = find_known_connecting(game, giver, identity, ignoreOrders);
+	const connecting = find_known_connecting(game, giver, identity, connected.concat(ignoreOrders));
 	if (connecting) {
 		if (connecting.type === 'terminate')
 			return [];
@@ -201,7 +203,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, igno
 	// TODO: Maybe some version of this if it's found in non-prompt position in anyone else's hand?
 	const target_copy = state.hands[target].find(c => {
 		const { finessed } = common.thoughts[c.order];
-		return c.matches(identity) && ((c.clued && !c.newly_clued) || finessed) && !ignoreOrders.includes(c.order);
+		return c.matches(identity) && ((c.clued && !c.newly_clued) || finessed) && !connected.includes(c.order) && !ignoreOrders.includes(c.order);
 	});
 
 	if (target_copy !== undefined)
@@ -217,18 +219,18 @@ export function find_connecting(game, giver, target, identity, looksDirect, igno
 
 		const connections = [];
 		const hypo_game = game.minimalCopy();
-		const newIgnoreOrders = ignoreOrders.slice();
+		const already_connected = connected.slice();
 
-		let connecting = find_unknown_connecting(hypo_game, giver, target, playerIndex, identity, newIgnoreOrders);
+		let connecting = find_unknown_connecting(hypo_game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
 
 		// If the connection is hidden, that player must have the actual card playable in order for the layer to work.
 		// Thus, we keep searching for unknown connections in their hand until we find a non-hidden connection.
 		while (connecting?.hidden) {
 			connections.push(connecting);
-			newIgnoreOrders.push(connecting.card.order);
+			already_connected.push(connecting.card.order);
 			hypo_game.state.play_stacks[connecting.card.suitIndex]++;
 
-			connecting = find_unknown_connecting(hypo_game, giver, target, playerIndex, identity, newIgnoreOrders);
+			connecting = find_unknown_connecting(hypo_game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
 		}
 
 		if (connecting)
@@ -245,6 +247,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, igno
 			const card = me.thoughts[order];
 
 			return !ignoreOrders.includes(order) &&
+				!connected.includes(order) &&
 				card.inferred.has(identity) &&							// At least one inference must match
 				card.matches(identity, { assume: true }) &&				// If we know the card (from a rewind), it must match
 				((card.inferred.every(i => state.isPlayable(i)) && card.clued) || card.finessed);	// Must be playable

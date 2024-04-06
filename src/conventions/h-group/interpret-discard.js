@@ -34,7 +34,7 @@ export function interpret_discard(game, action, card) {
 
 		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.card.order === order);
 		if (dc_conn_index !== -1) {
-			const { card, reacting } = connections[dc_conn_index];
+			const { card } = connections[dc_conn_index];
 			logger.info(`discarded connecting card ${logCard(card)}, cancelling waiting connection for inference ${logCard(inference)}`);
 
 			to_remove.push(i);
@@ -44,7 +44,7 @@ export function interpret_discard(game, action, card) {
 				visibleFind(state, me, identity).length === 0
 			) {
 				const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
-				game.rewind(action_index, { type: 'ignore', playerIndex: reacting, conn_index: real_connects, order });
+				game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order });
 				return;
 			}
 		}
