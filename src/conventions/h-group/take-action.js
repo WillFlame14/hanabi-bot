@@ -225,7 +225,7 @@ export function take_action(game) {
 			const chop = common.chop(state.hands[target]);
 
 			// Chop doesn't exist or is playable/trash, ignore
-			if (chop === undefined || cardValue(state, me, chop) === 0 || (state.isPlayable(chop) && state.clue_tokens !== 0))
+			if (chop === undefined || cardValue(state, me, chop) === 0 || (state.isPlayable(chop) && state.clue_tokens > 1))
 				continue;
 
 			// Temporarily chop move their chop

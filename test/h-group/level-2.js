@@ -89,6 +89,27 @@ describe('self-finesse', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r2']);
 	});
+
+	it(`doesn't give self-finesses that look like prompts`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'b4', 'g4', 'p1'],
+			['b2', 'b3', 'p1', 'g3'],
+			['y2', 'b2', 'r5', 'r1']
+		], {
+			level: 2,
+			play_stacks: [0, 1, 0, 0, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues red to Donald');
+		takeTurn(game, 'Donald plays r1', 'y3');
+
+		const { play_clues } = find_clues(game);
+
+		// 3 to Donald is not a valid clue (r5 will prompt as r2).
+		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.RANK && clue.value === 3));
+	});
 });
 
 describe('direct clues', () => {

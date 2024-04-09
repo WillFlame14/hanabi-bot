@@ -120,25 +120,36 @@ export function rankLooksPlayable(game, rank, giver, target, order) {
 }
 
 /**
- * @param {State} state
- * @param {Player} player
+ * @param {Game} game
  * @param {Clue} clue
  * @param {{playerIndex: number, card: Card}[]} playables
  * @param {ActualCard} focused_card
  * 
  * Returns whether a clue is a tempo clue, and if so, whether it's valuable.
  */
-export function valuable_tempo_clue(state, player, clue, playables, focused_card) {
+export function valuable_tempo_clue(game, clue, playables, focused_card) {
+	const { state, common } = game;
 	const { target } = clue;
+
 	const touch = state.hands[target].clueTouched(clue, state.variant);
 
 	if (touch.some(card => !card.clued))
 		return { tempo: false, valuable: false };
 
-	const prompt = player.find_prompt(state.hands[target], focused_card, state.variant.suits);
+	const prompt = common.find_prompt(state.hands[target], focused_card, state.variant.suits);
 
 	// No prompt exists for this card (i.e. it is a hard burn)
 	if (prompt === undefined)
+		return { tempo: false, valuable: false };
+
+	const previously_playables = game.players[target].thinksPlayables(game.state, target);
+
+	const previously_playing = playables.every(p =>
+		previously_playables.some(c => c.order === p.card.order) ||
+		game.players[target].thoughts[p.card.order].identity({ infer: true })?.matches(state.deck[p.card.order]));
+
+	// Target was already going to play these cards; not a tempo clue
+	if (previously_playing)
 		return { tempo: false, valuable: false };
 
 	const valuable = playables.length > 1 ||

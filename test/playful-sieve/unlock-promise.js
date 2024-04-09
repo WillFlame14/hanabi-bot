@@ -207,7 +207,7 @@ describe('unlock promise', () => {
 
 		for (const card of game.state.hands[PLAYER.BOB]) {
 			card.clued = true;
-			card.clues.push({ type: CLUE.RANK, value: card.rank });
+			card.clues.push({ type: CLUE.RANK, value: card.rank, giver: PLAYER.ALICE });
 			for (const poss of /** @type {const} */ (['inferred', 'possible'])) {
 				const c = game.common.thoughts[card.order];
 				c[poss] = c[poss].intersect(game.state.variant.suits.map((_, suitIndex) => ({ suitIndex, rank: card.rank })));

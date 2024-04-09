@@ -283,7 +283,7 @@ export function find_clues(game, options = {}) {
 				const { playables, elim, new_touched } = clue.result;
 
 				if (playables.length > 0) {
-					const { tempo, valuable } = valuable_tempo_clue(state, common, clue, playables, hand[cardIndex]);
+					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, hand[cardIndex]);
 					if (tempo && !valuable)
 						stall_clues[1].push(clue);
 					else

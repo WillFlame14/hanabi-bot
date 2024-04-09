@@ -135,6 +135,27 @@ describe('tempo clue chop moves', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][3].order].chop_moved, false);
 	});
 
+	it(`doesn't tccm if the card was already playing (asymmetrically)`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b2', 'r5', 'p4', 'p3'],
+			['p5', 'y5', 'g3', 'y3'],
+			['b4', 'p4', 'g1', 'g1']
+		], {
+			level: 6,
+			play_stacks: [0, 0, 0, 0, 2],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues purple to Bob');
+		takeTurn(game, 'Donald clues 5 to Alice (slot 4)');
+
+		const { stall_clues } = find_clues(game);
+
+		// 4 to Bob is not a valid TCCM (p4 will play naturally).
+		assert.ok(!stall_clues[1].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 4));
+	});
+
 	it(`prefers tccm to cm a useful card`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

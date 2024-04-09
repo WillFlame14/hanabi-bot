@@ -1,5 +1,6 @@
 import { cardCount } from '../variants.js';
 import { unknownIdentities } from './hanabi-util.js';
+import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
@@ -120,12 +121,13 @@ export function good_touch_elim(state, only_self = false) {
 
 	for (let i = 0; i < identities.length; i++) {
 		const identity = identities[i];
-		const matches = match_map.get(logCard(identity)) ?? new Set();
+		const soft_matches = match_map.get(logCard(identity)) ?? new Set();
 
-		if (matches.size === 0 && !state.isBasicTrash(identity))
+		if (soft_matches.size === 0 && !state.isBasicTrash(identity))
 			continue;
 
-		const hard_matches = hard_match_map.get(logCard(identity)) ?? new Set();
+		const hard_matches = hard_match_map.get(logCard(identity));
+		const matches = hard_matches ?? soft_matches;
 
 		for (const { order } of state.hands.filter((_, index) => !only_self || index === this.playerIndex).flat()) {
 			const card = this.thoughts[order];
@@ -134,18 +136,29 @@ export function good_touch_elim(state, only_self = false) {
 				(this.playerIndex !== -1 && card.chop_moved);	// Chop moved cards can asymmetric elim
 
 			if (!can_elim ||
-				hard_matches.has(order) ||									// Hard matches
-				(hard_matches.size === 0 && matches.has(order)) ||			// Soft matches when there are no hard matches
+				matches.has(order) ||										// Matched card
 				card.inferred.length === 0 ||								// Cards with no inferences
 				!card.inferred.has(identity) ||								// Cards that don't have this inference
 				card.inferred.every(inf => state.isBasicTrash(inf)) ||		// Clued trash
-				card.certain_finessed) {									// Certain finessed
+				card.certain_finessed										// Certain finessed
+			)
 				continue;
-			}
+
+			// Check if every match was from the clue giver
+			const asymmetric_gt = Utils.range(0, state.numPlayers).some(index =>
+				card.clues.every(c => c.giver === index) &&
+				matches.size > 0 &&
+				Array.from(matches).every(o =>
+					state.hands[index].some(c => c.order === o) &&
+					this.thoughts[o].possibilities.length > 1
+				));
+
+			if (asymmetric_gt)
+				continue;
 
 			// TODO: Temporary stop-gap so that Bob still plays into it. Bob should actually clue instead.
 			if (card.finessed && [0, 1].some(i => card.finesse_index === state.actionList.length - i)) {
-				logger.warn(`OOO play clue detected (player ${this.playerIndex}, order ${card.order}) when eliminating ${logCard(identity)}!`);
+				logger.warn(`OOO play clue detected (player ${this.playerIndex}, order ${order}) when eliminating ${logCard(identity)}!`);
 				card.certain_finessed = true;
 				continue;
 			}

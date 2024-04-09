@@ -3,7 +3,7 @@ import { clue_value } from './action-helper.js';
 import { isTrash  } from '../../basics/hanabi-util.js';
 import { unlock_promise } from './interpret-play.js';
 import { find_fix_clue } from './fix-clues.js';
-import { find_sarcastic } from '../shared/sarcastic.js';
+import { find_sarcastics } from '../shared/sarcastic.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand } from '../../tools/log.js';
@@ -210,7 +210,7 @@ export function take_action(game) {
 	if (sarcastic_chop)
 		return { tableID, type: ACTION.DISCARD, target: sarcastic_chop.order };
 
-	const playable_sarcastic = discards.find(card => state.isPlayable(card) && find_sarcastic(hand, me, card).length === 1);
+	const playable_sarcastic = discards.find(card => state.isPlayable(card) && find_sarcastics(hand, me, card).length === 1);
 
 	if (playable_sarcastic !== undefined && state.clue_tokens !== 8)
 		return { tableID, type: ACTION.DISCARD, target: playable_sarcastic.order };

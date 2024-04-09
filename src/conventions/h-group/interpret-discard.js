@@ -1,4 +1,4 @@
-import { isTrash, visibleFind } from '../../basics/hanabi-util.js';
+import { isTrash } from '../../basics/hanabi-util.js';
 import { team_elim, undo_hypo_stacks } from '../../basics/helper.js';
 import { interpret_sarcastic } from '../shared/sarcastic.js';
 import * as Basics from '../../basics.js';
@@ -39,10 +39,23 @@ export function interpret_discard(game, action, card) {
 
 			to_remove.push(i);
 
-			// No other waiting connections exist for this and not sarcastic
-			if (!common.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index)) &&
-				visibleFind(state, me, identity).length === 0
-			) {
+			// No other waiting connections exist for this
+			if (!common.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index))) {
+				// Check if sarcastic
+				if (card.clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !failed) {
+					const sarcastics = interpret_sarcastic(game, action);
+
+					// Sarcastic, rewrite connection onto this person
+					if (sarcastics.length === 1) {
+						logger.info('rewriting connection to use sarcastic on order', sarcastics[0].order);
+						Object.assign(connections[dc_conn_index], {
+							reacting: state.hands.findIndex(hand => hand.findOrder(sarcastics[0].order)),
+							card: sarcastics[0]
+						});
+						return;
+					}
+				}
+
 				const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
 				game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order });
 				return;

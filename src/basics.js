@@ -15,7 +15,7 @@ import { cardCount, find_possibilities } from './variants.js';
  */
 export function onClue(game, action) {
 	const { state } = game;
-	const { target, clue, list } = action;
+	const { target, clue, list, giver } = action;
 	const new_possible = find_possibilities(clue, state.variant);
 
 	for (const { order } of state.hands[target]) {
@@ -26,7 +26,7 @@ export function onClue(game, action) {
 				c.newly_clued = true;
 				c.clued = true;
 			}
-			c.clues.push(clue);
+			c.clues.push(Object.assign({}, clue, { giver }));
 		}
 
 		for (const player of game.allPlayers) {

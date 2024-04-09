@@ -73,7 +73,7 @@ function remove_finesse(game, waiting_connection) {
  */
 function resolve_card_retained(game, waiting_connection) {
 	const { common, state, me } = game;
-	const { connections, conn_index, focused_card, target, inference, action_index, ambiguousPassback } = waiting_connection;
+	const { connections, conn_index, target, inference, action_index, ambiguousPassback } = waiting_connection;
 	const { type, reacting, ambiguous } = connections[conn_index];
 	const { order } = connections[conn_index].card;
 

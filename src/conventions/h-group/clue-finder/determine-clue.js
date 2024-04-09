@@ -146,8 +146,10 @@ export function determine_clue(game, target, target_card, options) {
 		}
 
 		// All play clues should be safe, but save clues may not be (e.g. crit 4, 5 of different colour needs to identify that 5 is a valid clue)
-		if (!options.save && !clue_safe(game, game.me, clue))
+		if (!options.save && !clue_safe(game, game.me, clue)) {
+			logger.info(`${logClue(clue)} is an unsafe play clue, ignoring`);
 			continue;
+		}
 
 		const bad_touch_cards = touch.filter(c => !c.clued && isTrash(state, game.me, game.me.thoughts[c.order].identity({ infer: true }), c.order));		// Ignore cards that were already clued
 

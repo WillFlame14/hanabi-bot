@@ -21,7 +21,7 @@ import { logCard } from '../../tools/log.js';
  * @param {Player} player
  * @param {Identity} identity
  */
-export function find_sarcastic(hand, player, identity) {
+export function find_sarcastics(hand, player, identity) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
 	const known_sarcastic = hand.filter(c => player.thoughts[c.order].matches(identity, { infer: true }));
 	if (known_sarcastic.length > 0)
@@ -78,6 +78,7 @@ function apply_locked_discard(game, playerIndex) {
 /**
  * @param {Game} game
  * @param {DiscardAction} discardAction
+ * @returns {ActualCard[]} 					The targets for the sarcastic discard
  */
 export function interpret_sarcastic(game, discardAction) {
 	const { common, me, state } = game;
@@ -89,39 +90,41 @@ export function interpret_sarcastic(game, discardAction) {
 
 	// Unknown sarcastic discard to us
 	if (duplicates.length === 0) {
-		const sarcastic = find_sarcastic(state.hands[state.ourPlayerIndex], me, identity);
+		const sarcastics = find_sarcastics(state.hands[state.ourPlayerIndex], me, identity);
 
-		if (sarcastic.length === 1) {
-			logger.info('writing sarcastic on slot', state.hands[state.ourPlayerIndex].findIndex(c => c.order === sarcastic[0].order) + 1);
-			const common_sarcastic = common.thoughts[sarcastic[0].order];
+		if (sarcastics.length === 1) {
+			logger.info('writing sarcastic on slot', state.hands[state.ourPlayerIndex].findIndex(c => c.order === sarcastics[0].order) + 1);
+			const common_sarcastic = common.thoughts[sarcastics[0].order];
 			common_sarcastic.inferred = common_sarcastic.inferred.intersect(identity);
 		}
 		else {
-			apply_unknown_sarcastic(game, sarcastic, identity);
+			apply_unknown_sarcastic(game, sarcastics, identity);
 			if (locked_discard)
 				apply_locked_discard(game, playerIndex);
 		}
+		return sarcastics;
 	}
-	// Sarcastic discard to other (or known sarcastic discard to us)
-	else {
-		for (let i = 0; i < state.numPlayers; i++) {
-			const receiver = (state.ourPlayerIndex + i) % state.numPlayers;
-			const sarcastic = find_sarcastic(state.hands[receiver], me, identity);
 
-			if (sarcastic.some(c => me.thoughts[c.order].matches(identity, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
-				// The matching card must be the only possible option in the hand to be known sarcastic
-				if (sarcastic.length === 1) {
-					common.thoughts[sarcastic[0].order].inferred = IdentitySet.create(state.variant.suits.length, identity);
-					logger.info(`writing ${logCard(identity)} from sarcastic discard`);
-				}
-				else {
-					apply_unknown_sarcastic(game, sarcastic, identity);
-					if (locked_discard)
-						apply_locked_discard(game, playerIndex);
-				}
-				return;
+	// Sarcastic discard to other (or known sarcastic discard to us)
+	for (let i = 0; i < state.numPlayers; i++) {
+		const receiver = (state.ourPlayerIndex + i) % state.numPlayers;
+		const sarcastics = find_sarcastics(state.hands[receiver], me, identity);
+
+		if (sarcastics.some(c => me.thoughts[c.order].matches(identity, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
+			// The matching card must be the only possible option in the hand to be known sarcastic
+			if (sarcastics.length === 1) {
+				common.thoughts[sarcastics[0].order].inferred = IdentitySet.create(state.variant.suits.length, identity);
+				logger.info(`writing ${logCard(identity)} from sarcastic discard`);
 			}
+			else {
+				apply_unknown_sarcastic(game, sarcastics, identity);
+				if (locked_discard)
+					apply_locked_discard(game, playerIndex);
+			}
+			return sarcastics;
 		}
-		logger.warn(`couldn't find a valid target for sarcastic discard`);
 	}
+
+	logger.warn(`couldn't find a valid target for sarcastic discard`);
+	return [];
 }

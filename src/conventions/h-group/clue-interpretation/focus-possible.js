@@ -49,7 +49,7 @@ function find_colour_focus(game, suitIndex, action) {
 		const ignoreOrders = game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1];
 		const looksDirect = common.thoughts[focused_card.order].identity() === undefined;
 		const connecting = find_connecting(hypo_game, giver, target, identity, looksDirect, already_connected, ignoreOrders);
-		if (connecting.length === 0)
+		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
 
 		const { type, card } = connecting.at(-1);
@@ -157,6 +157,8 @@ function find_rank_focus(game, rank, action) {
 			}
 		}
 	}
+	const wrong_prompts = new Set();
+
 	// Play clue
 	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 		let next_rank = state.play_stacks[suitIndex] + 1;
@@ -180,6 +182,13 @@ function find_rank_focus(game, rank, action) {
 
 			while (connecting.length !== 0) {
 				const { type, card } = connecting.at(-1);
+
+				if (type === 'terminate') {
+					for (const { reacting } of connecting)
+						wrong_prompts.add(reacting);
+
+					break;
+				}
 
 				if (card.newly_clued && common.thoughts[card.order].possible.length > 1 && focus_thoughts.inferred.has({ suitIndex, rank: next_rank })) {
 					// Trying to use a newly known/playable connecting card, but the focused card could be that
@@ -230,6 +239,10 @@ function find_rank_focus(game, rank, action) {
 			if (rank === next_rank) {
 				if (connections.some(conn => conn.reacting === target && conn.hidden && conn.identities[0].rank + 1 === rank))
 					logger.warn('illegal clandestine self-finesse!');
+
+				else if (connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target)))
+					logger.warn('illegal self-finesse that will cause a wrong prompt!');
+
 				else
 					focus_possible.push({ suitIndex, rank, save: false, connections });
 			}
