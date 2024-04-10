@@ -37,18 +37,19 @@ function find_colour_focus(game, suitIndex, action) {
 	let connections = [];
 
 	// Try looking for a connecting card (other than itself)
-	const hypo_game = game.minimalCopy();
+	const old_play_stacks = state.play_stacks;
 	let already_connected = [focused_card.order];
 
 	let finesses = 0;
 
 	while (next_rank < state.max_ranks[suitIndex]) {
 		const identity = { suitIndex, rank: next_rank };
+		state.play_stacks = old_play_stacks.slice();
 
 		// Note that a colour clue always looks direct
-		const ignoreOrders = game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1];
+		const ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1];
 		const looksDirect = common.thoughts[focused_card.order].identity() === undefined;
-		const connecting = find_connecting(hypo_game, giver, target, identity, looksDirect, already_connected, ignoreOrders);
+		const connecting = find_connecting(game, giver, target, identity, looksDirect, already_connected, ignoreOrders);
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
 
@@ -71,12 +72,15 @@ function find_colour_focus(game, suitIndex, action) {
 			// Even if a finesse is possible, it might not be a finesse
 			focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: Utils.objClone(connections) });
 		}
-		hypo_game.state.play_stacks[suitIndex]++;
+		state.play_stacks[suitIndex]++;
 		next_rank++;
 
 		connections = connections.concat(connecting);
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
+
+	// Restore play stacks
+	state.play_stacks = old_play_stacks;
 
 	logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
 
@@ -158,96 +162,102 @@ function find_rank_focus(game, rank, action) {
 		}
 	}
 	const wrong_prompts = new Set();
+	const old_play_stacks = state.play_stacks;
 
 	// Play clue
 	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 		let next_rank = state.play_stacks[suitIndex] + 1;
 
-		/** @type {Connection[]} */
-		let connections = [];
+		if (rank < next_rank)
+			continue;
 
 		if (rank === next_rank) {
-			focus_possible.push({ suitIndex, rank, save: false, connections });
+			focus_possible.push({ suitIndex, rank, save: false, connections: [] });
+			continue;
 		}
-		else if (rank > next_rank) {
-			// Try looking for all connecting cards
-			const hypo_game = game.minimalCopy();
-			let already_connected = [focused_card.order];
 
-			let finesses = 0;
+		/** @type {Connection[]} */
+		let connections = [];
+		let finesses = 0;
+		let already_connected = [focused_card.order];
 
-			let ignoreOrders = game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1];
-			let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focused_card.order));
-			let connecting = find_connecting(hypo_game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
+		// Try looking for all connecting cards
+		state.play_stacks = old_play_stacks.slice();
 
-			while (connecting.length !== 0) {
-				const { type, card } = connecting.at(-1);
+		let ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1];
+		let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focused_card.order));
+		let connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
 
-				if (type === 'terminate') {
-					for (const { reacting } of connecting)
-						wrong_prompts.add(reacting);
+		while (connecting.length !== 0) {
+			const { type, card } = connecting.at(-1);
 
-					break;
-				}
+			if (type === 'terminate') {
+				for (const { reacting } of connecting)
+					wrong_prompts.add(reacting);
 
-				if (card.newly_clued && common.thoughts[card.order].possible.length > 1 && focus_thoughts.inferred.has({ suitIndex, rank: next_rank })) {
-					// Trying to use a newly known/playable connecting card, but the focused card could be that
-					// e.g. If two 4s are clued (all other 4s visible), the other 4 should not connect and render this card with only one inference
-					logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_rank})}`);
-					break;
-				}
-
-				// Saving 2s or criticals will never cause a prompt or finesse.
-				if (chop && (rank === 2 || state.isCritical({ suitIndex, rank })) && (type === 'prompt' || type === 'finesse'))
-					break;
-
-				finesses += connecting.filter(conn => conn.type === 'finesse').length;
-				if (game.level === 1 && finesses === 2) {
-					logger.warn('blocked double finesse at level 1');
-					break;
-				}
-
-				if (type === 'finesse') {
-					// A finesse proves that this is not direct
-					looksDirect = focus_thoughts.identity() === undefined && looksSave;
-
-					if (rank === next_rank) {
-						// Even if a finesse is possible, it might not be a finesse
-						focus_possible.push({ suitIndex, rank, save: false, connections: Utils.objClone(connections) });
-					}
-				}
-
-				connections = connections.concat(connecting);
-				already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
-
-				next_rank++;
-				hypo_game.state.play_stacks[suitIndex]++;
-
-				if (next_rank > rank) {
-					logger.warn(`stacked beyond clued rank ${logConnections(connections, { suitIndex, rank: next_rank})}, ignoring`);
-					break;
-				}
-
-				ignoreOrders = game.next_ignore[next_rank - state.play_stacks[suitIndex] - 1];
-				connecting = find_connecting(hypo_game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
+				break;
 			}
 
-			if (next_rank <= rank)
-				logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
-
-			// Connected cards can stack up to this rank
-			if (rank === next_rank) {
-				if (connections.some(conn => conn.reacting === target && conn.hidden && conn.identities[0].rank + 1 === rank))
-					logger.warn('illegal clandestine self-finesse!');
-
-				else if (connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target)))
-					logger.warn('illegal self-finesse that will cause a wrong prompt!');
-
-				else
-					focus_possible.push({ suitIndex, rank, save: false, connections });
+			if (card.newly_clued && common.thoughts[card.order].possible.length > 1 && focus_thoughts.inferred.has({ suitIndex, rank: next_rank })) {
+				// Trying to use a newly known/playable connecting card, but the focused card could be that
+				// e.g. If two 4s are clued (all other 4s visible), the other 4 should not connect and render this card with only one inference
+				logger.warn(`blocked connection - focused card could be ${logCard({suitIndex, rank: next_rank})}`);
+				break;
 			}
+
+			// Saving 2s or criticals will never cause a prompt or finesse.
+			if (chop && (rank === 2 || state.isCritical({ suitIndex, rank })) && (type === 'prompt' || type === 'finesse'))
+				break;
+
+			finesses += connecting.filter(conn => conn.type === 'finesse').length;
+			if (game.level === 1 && finesses === 2) {
+				logger.warn('blocked double finesse at level 1');
+				break;
+			}
+
+			if (type === 'finesse') {
+				// A finesse proves that this is not direct
+				looksDirect = focus_thoughts.identity() === undefined && looksSave;
+
+				if (rank === next_rank) {
+					// Even if a finesse is possible, it might not be a finesse
+					focus_possible.push({ suitIndex, rank, save: false, connections: Utils.objClone(connections) });
+				}
+			}
+
+			connections = connections.concat(connecting);
+			already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
+
+			next_rank++;
+			state.play_stacks[suitIndex]++;
+
+			if (next_rank > rank) {
+				logger.warn(`stacked beyond clued rank ${logConnections(connections, { suitIndex, rank: next_rank})}, ignoring`);
+				break;
+			}
+
+			ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1];
+			connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
+		}
+
+		if (next_rank <= rank)
+			logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
+
+		// Connected cards can stack up to this rank
+		if (rank === next_rank) {
+			if (connections.some(conn => conn.reacting === target && conn.hidden && conn.identities[0].rank + 1 === rank))
+				logger.warn('illegal clandestine self-finesse!');
+
+			else if (connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target)))
+				logger.warn('illegal self-finesse that will cause a wrong prompt!');
+
+			else
+				focus_possible.push({ suitIndex, rank, save: false, connections });
 		}
 	}
+
+	// Restore play stacks
+	state.play_stacks = old_play_stacks;
 	return focus_possible;
 }
 

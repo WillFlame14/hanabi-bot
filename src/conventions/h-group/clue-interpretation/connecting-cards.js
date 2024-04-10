@@ -210,6 +210,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 		logger.warn(`connecting ${logCard(identity)} gotten in target's hand, might look confusing`);
 
 	const wrong_prompts = [];
+	const old_play_stacks = state.play_stacks;
 
 	// Only consider prompts/finesses if no connecting cards found
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -220,10 +221,10 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 			continue;
 
 		const connections = [];
-		const hypo_game = game.minimalCopy();
 		const already_connected = connected.slice();
+		state.play_stacks = old_play_stacks.slice();
 
-		let connecting = find_unknown_connecting(hypo_game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
+		let connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
 
 		if (connecting?.type === 'terminate') {
 			wrong_prompts.push(connecting);
@@ -235,9 +236,9 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 		while (connecting?.hidden) {
 			connections.push(connecting);
 			already_connected.push(connecting.card.order);
-			hypo_game.state.play_stacks[connecting.card.suitIndex]++;
+			state.play_stacks[connecting.card.suitIndex]++;
 
-			connecting = find_unknown_connecting(hypo_game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
+			connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
 		}
 
 		if (connecting) {
@@ -250,9 +251,14 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 		}
 
 		// The final card must not be hidden
-		if (connections.length > 0 && !connections.at(-1).hidden)
+		if (connections.length > 0 && !connections.at(-1).hidden) {
+			state.play_stacks = old_play_stacks.slice();
 			return connections;
+		}
 	}
+
+	// Restore play stacks
+	state.play_stacks = old_play_stacks;
 
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
 	if (giver !== state.ourPlayerIndex) {

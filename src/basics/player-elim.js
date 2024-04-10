@@ -48,7 +48,7 @@ export function card_elim(state) {
 			continue;
 
 		if (!this.all_inferred.has(identity))
-			throw new Error(`Failing to eliminate identity ${logCard(identity)} from inferred`);
+			throw new Error(`Failing to eliminate identity ${id_hash} from inferred`);
 
 		// Remove it from the list of future possibilities
 		this.all_possible = this.all_possible.subtract(identity);
@@ -72,7 +72,7 @@ export function card_elim(state) {
 
 			addToMap(order);
 		}
-		logger.debug(`removing ${logCard(identity)} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
+		logger.debug(`removing ${id_hash} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
 	}
 }
 
@@ -84,8 +84,17 @@ export function card_elim(state) {
  * @param {boolean} only_self 	Whether to only use cards in own hand for elim (e.g. in 2-player games, where GTP is less strong.)
  */
 export function good_touch_elim(state, only_self = false) {
-	const identities = this.all_possible.array.slice();
-	const resets = /** @type {Set<number>} */ (new Set());
+	/** @type {Set<number>} Orders of cards that are in unconfirmed connections */
+	const unconfirmed = new Set();
+
+	for (const { connections, conn_index } of this.waiting_connections) {
+		// If this player is next, assume the connection is true
+		if (connections[conn_index].reacting === this.playerIndex)
+			continue;
+
+		for (let i = conn_index; i < connections.length; i++)
+			unconfirmed.add(connections[i].card.order);
+	}
 
 	const match_map = /** @type {Map<string, Set<number>>} */ (new Map());
 	const hard_match_map = /** @type {Map<string, Set<number>>} */ (new Map());
@@ -98,9 +107,8 @@ export function good_touch_elim(state, only_self = false) {
 		if (!card.touched || id === undefined ||
 			(state.deck[order].identity() !== undefined && !state.deck[order].matches(id)) ||		// Card is visible and doesn't match
 			(!card.matches(id) && card.newly_clued && !card.focused) ||			// Unknown newly clued cards off focus?
-			this.waiting_connections.some(wc =>									// Unconfirmed connections
-				wc.connections.some(conn => conn.card.order === order) &&		// but if this player is next, assume the connection is true
-				wc.connections[wc.conn_index].reacting !== this.playerIndex))
+			unconfirmed.has(order)
+		)
 			return;
 
 		const id_hash = logCard(id);
@@ -111,37 +119,43 @@ export function good_touch_elim(state, only_self = false) {
 		match_map.set(id_hash, (match_map.get(id_hash) ?? new Set()).add(order));
 	};
 
-	for (let i = 0; i < state.hands.length; i++) {
+	/** @type {number[]} */
+	const elim_candidates = [];
+
+	for (let i = 0; i < state.numPlayers; i++) {
 		if (only_self && i !== this.playerIndex)
 			continue;
 
-		for (const { order } of state.hands[i])
+		for (const { order } of state.hands[i]) {
 			addToMaps(order);
-	}
 
-	for (let i = 0; i < identities.length; i++) {
-		const identity = identities[i];
-		const soft_matches = match_map.get(logCard(identity)) ?? new Set();
-
-		if (soft_matches.size === 0 && !state.isBasicTrash(identity))
-			continue;
-
-		const hard_matches = hard_match_map.get(logCard(identity));
-		const matches = hard_matches ?? soft_matches;
-
-		for (const { order } of state.hands.filter((_, index) => !only_self || index === this.playerIndex).flat()) {
 			const card = this.thoughts[order];
-
 			const can_elim = card.touched ||					// Touched cards always elim
 				(this.playerIndex !== -1 && card.chop_moved);	// Chop moved cards can asymmetric elim
 
-			if (!can_elim ||
-				matches.has(order) ||										// Matched card
-				card.inferred.length === 0 ||								// Cards with no inferences
-				!card.inferred.has(identity) ||								// Cards that don't have this inference
-				card.inferred.every(inf => state.isBasicTrash(inf)) ||		// Clued trash
-				card.certain_finessed										// Certain finessed
-			)
+			if (can_elim && card.inferred.length > 0 && card.inferred.some(inf => !state.isBasicTrash(inf)) && !card.certain_finessed)
+				elim_candidates.push(order);
+		}
+	}
+
+	const identities = this.all_possible.array.slice();
+	const resets = /** @type {Set<number>} */ (new Set());
+
+	for (let i = 0; i < identities.length; i++) {
+		const identity = identities[i];
+		const id_hash = logCard(identity);
+		const soft_matches = match_map.get(id_hash);
+
+		if (soft_matches === undefined && !state.isBasicTrash(identity))
+			continue;
+
+		const hard_matches = hard_match_map.get(logCard(identity));
+		const matches = hard_matches ?? soft_matches ?? new Set();
+
+		for (const order of elim_candidates) {
+			const card = this.thoughts[order];
+
+			if (matches.has(order) || card.inferred.length === 0 || !card.inferred.has(identity))
 				continue;
 
 			// Check if every match was from the clue giver
@@ -158,8 +172,9 @@ export function good_touch_elim(state, only_self = false) {
 
 			// TODO: Temporary stop-gap so that Bob still plays into it. Bob should actually clue instead.
 			if (card.finessed && [0, 1].some(i => card.finesse_index === state.actionList.length - i)) {
-				logger.warn(`OOO play clue detected (player ${this.playerIndex}, order ${order}) when eliminating ${logCard(identity)}!`);
+				logger.warn(`Tried to gt eliminate ${id_hash} from recently finessed card (player ${this.playerIndex}, order ${order})!`);
 				card.certain_finessed = true;
+				elim_candidates.splice(elim_candidates.indexOf(order), 1);
 				continue;
 			}
 
@@ -167,8 +182,8 @@ export function good_touch_elim(state, only_self = false) {
 			card.inferred = card.inferred.subtract(identity);
 
 			if (this.playerIndex === -1) {
-				this.elims[logCard(identity)] ??= [];
-				this.elims[logCard(identity)].push(order);
+				this.elims[id_hash] ??= [];
+				this.elims[id_hash].push(order);
 			}
 
 			if (card.inferred.length === 0 && !card.reset) {

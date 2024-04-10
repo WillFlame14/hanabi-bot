@@ -1,4 +1,5 @@
 import { BasicCard, ActualCard, Card } from '../basics/Card.js';
+import { Game } from '../basics/Game.js';
 import { Hand } from '../basics/Hand.js';
 import { Player } from '../basics/Player.js';
 import { State } from '../basics/State.js';
@@ -142,7 +143,7 @@ export function shallowCopy (obj) {
 	if (Array.isArray(obj))
 		return /** @type {T} */ (obj.slice());
 
-	if (obj instanceof ActualCard || obj instanceof Card || obj instanceof Hand || obj instanceof Player || obj instanceof State)
+	if ([ActualCard, Card, Hand, Player, State, Game].some(class_type => obj instanceof class_type))
 		return /** @type {T} */ (obj.shallowCopy());
 
 	if (types.isProxy(obj) || typeof obj !== 'object' || obj instanceof BasicCard)
