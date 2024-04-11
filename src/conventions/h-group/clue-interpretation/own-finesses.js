@@ -1,9 +1,9 @@
 import { LEVEL } from '../h-constants.js';
-import { find_connecting } from './connecting-cards.js';
+import { find_connecting, find_known_connecting } from './connecting-cards.js';
 import { cardTouched, find_possibilities } from '../../../variants.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard } from '../../../tools/log.js';
+import { logCard, logConnection } from '../../../tools/log.js';
 import { CLUE } from '../../../constants.js';
 
 export class IllegalInterpretation extends Error {
@@ -163,9 +163,15 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 	const { state } = game;
 	const { giver, target, clue } = action;
 
-	// We cannot finesse ourselves
 	if (giver === state.ourPlayerIndex && ignorePlayer === -1)
 		throw new IllegalInterpretation('cannot finesse ourselves.');
+
+	if (target === (ignorePlayer === -1 ? state.ourPlayerIndex : ignorePlayer)) {
+		const connected = find_known_connecting(game, giver, { suitIndex, rank }, game.next_ignore[0] ?? []);
+
+		if (connected !== undefined && connected.type !== 'terminate')
+			throw new IllegalInterpretation(`won't find own finesses for ${logCard({ suitIndex, rank })} when someone already has [${logConnection(connected)}]`);
+	}
 
 	// Create hypothetical state where we have the missing cards (and others can elim from them)
 	const hypo_game = game.minimalCopy();

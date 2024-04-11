@@ -11,7 +11,6 @@ import { initConsole } from './tools/console.js';
 import * as Utils from './tools/util.js';
 import { State } from './basics/State.js';
 
-
 const conventions = {
 	HGroup,
 	PlayfulSieve

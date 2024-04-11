@@ -33,14 +33,17 @@ export function take_action(game) {
 	let playable_cards = me.thinksPlayables(state, state.ourPlayerIndex).map(({ order }) => me.thoughts[order]);
 	let trash_cards = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued).map(({ order }) => me.thoughts[order]);
 
-	// Discards must be inferred, playable, trash and not duplicated in our hand
+	// Discards must be inferred, playable, trash, not duplicated in our hand and not part of a connection
 	const discards = playable_cards.filter(card => {
 		const id = card.identity({ infer: true });
 
 		return game.level >= LEVEL.SARCASTIC &&
 			id !== undefined &&
 			trash_cards.some(c => c.order === card.order) &&
-			!playable_cards.some(c => me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order);
+			!playable_cards.some(c => me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order) &&
+			!common.waiting_connections.some(wc =>
+				!wc.symmetric &&
+				wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === card.order));
 	});
 
 	const playable_trash = playable_cards.filter(card => {
@@ -194,7 +197,7 @@ export function take_action(game) {
 		const duplicates = visibleFind(state, me, identity, { ignore: [state.ourPlayerIndex] }).filter(c => c.clued).map(c => me.thoughts[c.order]);
 
 		// If playing reveals duplicates are trash, playing is better for tempo in endgame
-		if (state.inEndgame() && duplicates.every(c => c.inferred.length === 0 || (c.inferred.every(inf => inf.matches(identity) || state.isBasicTrash(inf)))))
+		if (duplicates.every(c => c.inferred.length === 0 || (c.inferred.every(inf => inf.matches(identity) || state.isBasicTrash(inf)))))
 			return { tableID, type: ACTION.PLAY, target: discards[0].order };
 
 		return { tableID, type: ACTION.DISCARD, target: discards[0].order };

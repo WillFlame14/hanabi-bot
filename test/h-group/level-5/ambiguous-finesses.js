@@ -69,25 +69,24 @@ describe('ambiguous finesse', () => {
 		assert.ok([1,2].every(index => game.common.thoughts[game.state.hands[PLAYER.DONALD][index].order].finessed));
 	});
 
-	it('understands an ambigous finesse pass-back', () => {
+	it('understands an ambiguous finesse pass-back', () => {
 		const game = setup(HGroup, [
-			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['r1', 'b5', 'r3', 'y5', 'p4'],
-			['r4', 'g2', 'g4', 'r5', 'b4']
+			['xx', 'xx', 'xx', 'xx'],
+			['b1', 'b5', 'r3', 'y5'],
+			['r4', 'g2', 'g4', 'r5'],
+			['p4', 'b4', 'y1', 'p2']
 		], {
 			level: 5,
 			starting: PLAYER.CATHY
 		});
 
-		takeTurn(game, 'Cathy clues 3 to Bob');		// Ambiguous finesse on us and Bob
-		takeTurn(game, 'Alice discards p3 (slot 5)');
-		takeTurn(game, 'Bob discards p4', 'b2');		// Bob passes back
+		takeTurn(game, 'Cathy clues blue to Donald');	// Ambiguous finesse on us and Bob
+		takeTurn(game, 'Donald clues 5 to Cathy');
+		takeTurn(game, 'Alice clues 5 to Bob');			// we pass finesse to Bob
+		takeTurn(game, 'Bob discards r3', 'b2');		// Bob passes back
 
-		takeTurn(game, 'Cathy clues 5 to Bob');		// 5 Save
-
-		// Alice's slot 1 has now moved to slot 2.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
 	});
 
 	it('prefers hidden prompt over ambiguous', () => {

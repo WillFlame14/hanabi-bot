@@ -74,7 +74,7 @@ function remove_finesse(game, waiting_connection) {
 function resolve_card_retained(game, waiting_connection) {
 	const { common, state, me } = game;
 	const { connections, conn_index, target, inference, action_index, ambiguousPassback } = waiting_connection;
-	const { type, reacting, ambiguous } = connections[conn_index];
+	const { type, reacting, hidden, ambiguous } = connections[conn_index];
 	const { order } = connections[conn_index].card;
 
 	// Card may have been updated, so need to find it again
@@ -124,7 +124,14 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		const next_reacting = (connections.length === conn_index + 1) ? target : connections[conn_index + 1].reacting;
+		let next_reacting_index  = connections.findIndex((conn, i) => i > conn_index && !conn.hidden);
+
+		// If the current connection is hidden, then we need to find the next-next non-hidden connection.
+		if (hidden)
+			next_reacting_index = connections.findIndex((conn, i) => i > next_reacting_index && !conn.hidden);
+
+		// If we've reached the end of the connections, then the target of the clue is the final reacting player
+		const next_reacting = (next_reacting_index === -1) ? target : connections[next_reacting_index].reacting;
 
 		if (next_reacting === reacting) {
 			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but it was a self-component, waiting`);

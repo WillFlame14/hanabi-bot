@@ -144,6 +144,7 @@ export function shallowCopy (obj) {
 		return /** @type {T} */ (obj.slice());
 
 	if ([ActualCard, Card, Hand, Player, State, Game].some(class_type => obj instanceof class_type))
+		// @ts-ignore
 		return /** @type {T} */ (obj.shallowCopy());
 
 	if (types.isProxy(obj) || typeof obj !== 'object' || obj instanceof BasicCard)

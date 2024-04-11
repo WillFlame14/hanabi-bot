@@ -177,7 +177,7 @@ describe('direct clues', () => {
 });
 
 describe('asymmetric clues', () => {
-	it('understands delayed play clues through asymetrically known cards', () => {
+	it('understands delayed play clues through asymmetrically known cards', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b2', 'b4', 'r4', 'r5'],
@@ -336,6 +336,28 @@ describe('asymmetric clues', () => {
 
 		// Alice's slot 2 can be any 3 (not prompted to be p3).
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'y3', 'g3', 'b3']);
+	});
+
+	it(`doesn't consider already-finessed possibilities`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r2', 'y4', 'r1', 'b5'],
+			['r3', 'y3', 'p4', 'y1'],
+			['y1', 'b3', 'b2', 'r4'],
+			['p4', 'p1', 'r1', 'y2']
+		], {
+			level: 2,
+			play_stacks: [0, 1, 1, 0, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues red to Emily');	// known r1
+		takeTurn(game, 'Emily clues red to Donald'); 	// r4 double finesse
+		takeTurn(game, 'Alice clues 5 to Bob');
+		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
+
+		// Alice's slot 2 should be [y2,g2] (not r2).
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y2', 'g2']);
 	});
 });
 

@@ -22,7 +22,7 @@ import { logCard } from '../../../tools/log.js';
  * @param {number[]} [ignoreOrders]		The orders of cards to ignore when searching.
  * @returns {Connection | undefined}
  */
-function find_known_connecting(game, giver, identity, ignoreOrders = []) {
+export function find_known_connecting(game, giver, identity, ignoreOrders = []) {
 	const { common, state } = game;
 
 	/** @param {number} order */
