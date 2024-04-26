@@ -8,7 +8,6 @@ import { find_clue_value, order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
-import { logClue } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game

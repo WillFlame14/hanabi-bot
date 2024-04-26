@@ -14,9 +14,11 @@ import * as Utils from './tools/util.js';
 function connect(bot_index = '') {
 	const u_field = `HANABI_USERNAME${bot_index}`, p_field = `HANABI_PASSWORD${bot_index}`;
 
-	if (process.env[u_field] === undefined || process.env[p_field] === undefined) {
+	if (process.env[u_field] === undefined || process.env[p_field] === undefined)
 		throw new Error(`Missing ${u_field} and ${p_field} environment variables.`);
-	}
+
+	if (Number(process.versions.node.split('.')[0]) < 20)
+		throw new Error(`This program requires Node v20 or above! Currently using Node v${process.versions.node}.`);
 
 	const username = encodeURIComponent(process.env[u_field]);
 	const password = encodeURIComponent(process.env[p_field]);
