@@ -77,10 +77,10 @@ async function main() {
 		const players = playerNames.slice(0, numPlayers);
 		const shuffled = shuffle(deck, seed);
 
-		const { score, result, actions } =
+		const { score, result, actions, notes } =
 			simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
 
-		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions }));
+		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions, notes }));
 		console.log(`seed ${seed}, score: ${score}/${variant.suits.length * 5}, ${result}`);
 	}
 	else {
@@ -90,10 +90,10 @@ async function main() {
 		for (let i = seedNum; i < seedNum + games; i++) {
 			const players = playerNames.slice(0, numPlayers);
 			const shuffled = shuffle(deck, `${i}`);
-			const { score, result, actions } =
+			const { score, result, actions, notes } =
 				simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level);
 
-			fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions }));
+			fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions, notes }));
 
 			results[result] ||= [];
 			results[result].push({ score, i });
@@ -175,7 +175,7 @@ function simulate_game(playerNames, deck, convention, level) {
 
 				logger.debug('Action for', state.playerNames[gameIndex]);
 
-				// logger.setLevel(stateIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
+				// logger.setLevel(currentPlayerIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
 
 				Utils.globalModify({ game });
 				game.handle_action(action, true);
@@ -218,7 +218,7 @@ function simulate_game(playerNames, deck, convention, level) {
 		max_ranks.some(max => max !== 5) ? 'discarded critical, out of pace' :
 		'out of pace';
 
-	return { score: games[0].game.state.score, result, actions };
+	return { score: games[0].game.state.score, result, actions, notes: games.map(({ game }) => Array.from(game.notes).map(note => note?.full || "")) };
 }
 
 main();

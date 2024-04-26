@@ -328,8 +328,6 @@ export function refresh_links(state) {
 
 	// Clear links that we're removing
 	this.links = this.links.filter((_, index) => !remove_indices.includes(index));
-
-	this.card_elim(state);
 	this.find_links(state);
 }
 

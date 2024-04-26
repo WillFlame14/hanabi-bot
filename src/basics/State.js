@@ -24,6 +24,7 @@ export class State {
 	clue_tokens = 8;
 	strikes = 0;
 	early_game = true;
+	screamed_at = false;
 
 	hands = /** @type {Hand[]} */ ([]);
 	deck = /** @type {ActualCard[]} */ ([]);
@@ -117,7 +118,7 @@ export class State {
 		const newState = new State(this.playerNames, this.ourPlayerIndex, this.variant, this.options);
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'turn_count', 'clue_tokens',
-			'strikes', 'early_game', 'cardsLeft', 'actionList', 'deck'];
+			'strikes', 'early_game', 'cardsLeft', 'actionList', 'deck', 'screamed_at'];
 
 		for (const property of minimalProps)
 			newState[property] = Utils.objClone(this[property]);

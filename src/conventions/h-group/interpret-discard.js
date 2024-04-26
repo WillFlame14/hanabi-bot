@@ -1,10 +1,11 @@
-import { isTrash } from '../../basics/hanabi-util.js';
+import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 import { team_elim, undo_hypo_stacks } from '../../basics/helper.js';
 import { interpret_sarcastic } from '../shared/sarcastic.js';
 import * as Basics from '../../basics.js';
 
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
+import { LEVEL } from './h-constants.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -12,12 +13,13 @@ import { logCard } from '../../tools/log.js';
  * @typedef {import('../../basics/Hand.js').Hand} Hand
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').Identity} Identity
+ * @typedef {import('../../types.js').DiscardAction} DiscardAction
  */
 
 /**
  * Interprets (writes notes) for a discard of the given card.
  * @param {Game} game
- * @param {import('../../types.js').DiscardAction} action
+ * @param {DiscardAction} action
  * @param {ActualCard} card
  */
 export function interpret_discard(game, action, card) {
@@ -25,6 +27,7 @@ export function interpret_discard(game, action, card) {
 	const { order, playerIndex, suitIndex, rank,  failed } = action;
 	const identity = { suitIndex, rank };
 	const thoughts = common.thoughts[order];
+	const before_trash = common.thinksTrash(state, playerIndex);
 
 	Basics.onDiscard(game, action);
 
@@ -94,5 +97,69 @@ export function interpret_discard(game, action, card) {
 		else
 			interpret_sarcastic(game, action);
 	}
+
+	if (game.level >= LEVEL.LAST_RESORTS && !action.failed) {
+		const result = check_sdcm(game, action, before_trash);
+
+		if (result !== undefined) {
+			state.screamed_at = true;
+
+			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
+			const chop = common.chop(state.hands[nextPlayerIndex]);
+
+			if (result === 'scream' || result === 'shout')
+				common.thoughts[chop.order].chop_moved = true;
+		}
+	}
+
 	team_elim(game);
+}
+
+/**
+ * @param {Game} game
+ * @param {DiscardAction} action
+ * @param {ActualCard[]} before_trash
+ * @returns {'scream' | 'shout' | 'generation' | undefined}
+ */
+function check_sdcm(game, action, before_trash) {
+	const { common, state } = game;
+	const { order, playerIndex } = action;
+	const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
+	const nextPlayerIndex2 = (nextPlayerIndex + 1) % state.numPlayers;
+
+	// Forced discard for locked hand
+	if (common.thinksLocked(state, nextPlayerIndex) && state.clue_tokens === 1)
+		return;
+
+	const scream = state.clue_tokens === 1 &&
+		(common.thinksPlayables(state, playerIndex).length > 0 || (before_trash.length > 0 && !before_trash.some(c => c.order === order)));
+
+	const shout = common.thinksPlayables(state, playerIndex).length > 0;
+
+	if (!scream && !shout)
+		return;
+
+	if (state.numPlayers === 2)
+		return scream ? 'scream' : 'shout';
+
+	if (common.thinksLoaded(state, nextPlayerIndex)) {
+		logger.warn(`${state.playerNames[playerIndex]} discarded with a playable/kt at 0 clues but next players was safe! (echo?)`);
+		return 'generation';
+	}
+
+	const next2Chop = common.chop(state.hands[nextPlayerIndex2]);
+
+	if (next2Chop === undefined)
+		return 'scream';
+
+	// We can see that a scream is impossible
+	if (nextPlayerIndex2 === state.ourPlayerIndex && common.chopValue(state, nextPlayerIndex) < 4)
+		return 'generation';
+
+	const next2ChopValue = cardValue(state, game.players[playerIndex], state.deck[next2Chop.order], next2Chop.order);
+
+	if (next2ChopValue < 4)
+		return scream ? 'scream' : 'shout';
+
+	return 'generation';
 }

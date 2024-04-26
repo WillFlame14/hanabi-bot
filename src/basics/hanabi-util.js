@@ -25,6 +25,9 @@ import { cardCount } from '../variants.js';
  * @returns {ActualCard[]}
  */
 export function visibleFind(state, player, identity, options = {}) {
+	if (player.playerIndex === state.ourPlayerIndex)
+		options.infer = options.infer ?? true;
+
 	return Array.from(state.hands.reduce((cards, hand, index) => {
 		if (options.ignore?.includes(index))
 			return cards;
@@ -69,7 +72,7 @@ export function isSaved(state, player, identity, order = -1, options = {}) {
  * @param {Player} player
  * @param {Identity} identity
  * @param {number} [order]                The order of the card to ignore (usually itself)
- * @param {MatchOptions} [options]
+ * @param {MatchOptions & {ignoreCM?: boolean}} [options]
  */
 export function isTrash(state, player, identity, order = -1, options = {}) {
 	return state.isBasicTrash(identity) || isSaved(state, player, identity, order, options);

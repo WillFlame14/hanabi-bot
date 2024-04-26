@@ -217,7 +217,7 @@ export function interpret_clue(game, action) {
 		// We are the clue target, so we need to consider all the (sensible) possibilities of the card
 		if (target === state.ourPlayerIndex) {
 			for (const fp of matched_inferences) {
-				if (!isTrash(state, game.players[giver], fp, focused_card.order))
+				if (!isTrash(state, game.players[giver], fp, focused_card.order, { ignoreCM: true }))
 					all_connections.push(fp);
 			}
 
@@ -227,7 +227,7 @@ export function interpret_clue(game, action) {
 			let self = all_connections.every(fp => fp.connections[0]?.self);
 
 			for (const id of focus_thoughts.inferred) {
-				if (isTrash(state, game.players[giver], id, focused_card.order))
+				if (isTrash(state, game.players[giver], id, focused_card.order, { ignoreCM: true }))
 					continue;
 
 				// Focus possibility, skip

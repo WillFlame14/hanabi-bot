@@ -59,6 +59,9 @@ export function stall_severity(state, player, giver) {
 	if (player.thinksLocked(state, giver))
 		return 3;
 
+	if (state.screamed_at)
+		return 2;
+
 	if (state.inEndgame())
 		return 1.5;
 

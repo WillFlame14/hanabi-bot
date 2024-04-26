@@ -34,6 +34,8 @@ export function handle_action(action, catchup = false) {
 			this.interpret_clue(this, action);
 			this.last_actions[giver] = action;
 
+			state.screamed_at = false;
+
 			// Remove the newly_clued flag
 			for (const order of list) {
 				const card = state.hands[target].findOrder(order);
@@ -55,6 +57,9 @@ export function handle_action(action, catchup = false) {
 			Object.assign(this.players[playerIndex].thoughts[order], {suitIndex, rank});
 
 			logger.highlight('yellowb', `Turn ${state.turn_count}: ${logAction(action)}`);
+
+			// Assume one cannot SDCM after being screamed at
+			state.screamed_at = false;
 
 			this.interpret_discard(this, action, card);
 			this.last_actions[playerIndex] = Object.assign(action, { card });
@@ -129,6 +134,7 @@ export function handle_action(action, catchup = false) {
 
 			this.interpret_play(this, action);
 			this.last_actions[playerIndex] = Object.assign(action, { card });
+			state.screamed_at = false;
 			break;
 		}
 		case 'identify': {

@@ -8,7 +8,7 @@ import { find_clue_value, order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
-import { logHand } from '../../tools/log.js';
+import { logClue } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -58,9 +58,9 @@ function find_unlock(game, target) {
  * @returns {PerformAction | undefined}	The play clue to give if it exists, otherwise undefined.
  */
 function find_play_over_save(game, target, all_play_clues, locked, remainder_boost) {
-	const { me, state, tableID } = game;
+	const { common, state, tableID } = game;
 
-	/** @type {{clue: Clue, playables: Card[]}[]} */
+	/** @type {Clue[]} */
 	const play_clues = [];
 
 	for (const clue of all_play_clues) {
@@ -75,37 +75,38 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 		const { playables } = clue.result;
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target).map(p => p.card);
 		const immediately_playable = target_cards.filter(card =>
-			state.isPlayable(me.thoughts[card.order]) && card.inferred.every(i => state.isPlayable(i)));
+			state.isPlayable(state.deck[card.order]) && card.inferred.every(i => state.isPlayable(i)));
 
 		// The card can be played without any additional help
 		if (immediately_playable.length > 0) {
-			play_clues.push({ clue, playables: immediately_playable });
+			play_clues.push(clue);
 			continue;
 		}
 
 		// Try to see if any target card can be made playable by players between us and them, including themselves
-		for (const target_card of target_cards) {
-			const { suitIndex } = target_card;
+		for (const { order } of target_cards) {
+			const { suitIndex, rank } = state.deck[order];
 			let stackRank = state.play_stacks[suitIndex];
 
 			for (let i = 1; i <= state.numPlayers; i++) {
 				const nextPlayer = (state.ourPlayerIndex + i) % state.numPlayers;
-				const current_playables = playables.filter(({ playerIndex, card }) => playerIndex === nextPlayer && card.matches({ suitIndex, rank: stackRank + 1 }));
 
-				if (current_playables.length > 0) {
-					if (nextPlayer === target) {
-						play_clues.push({ clue, playables: current_playables.map(p => p.card) });
-						break;
-					}
-					else {
-						stackRank++;
-						continue;
-					}
+				if (nextPlayer === target) {
+					if (stackRank + 1 === rank)
+						play_clues.push(clue);
+
+					break;
 				}
 
-				// We've reached the target's turn and weren't able to find a playable
-				if (nextPlayer === target)
-					break;
+				const common_playables = common.thinksPlayables(state, nextPlayer);
+				const connecting_playable =
+					playables.some(p => p.playerIndex === nextPlayer && p.card.matches({ suitIndex, rank: stackRank + 1 })) ||
+					common_playables.some(p => p.matches({ suitIndex, rank: stackRank + 1 }));
+
+				if (connecting_playable) {
+					logger.info('found connecting playable', stackRank + 1);
+					stackRank++;
+				}
 			}
 		}
 
@@ -115,7 +116,9 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 		// 	play_clues.push({ clue, playables: [] });
 	}
 
-	if (play_clues.length === 0)
+	const safe_play_clues = play_clues.filter(clue => clue.result.trash > 0 || state.clue_tokens >= (state.numPlayers > 2 ? 1 : 2));
+
+	if (safe_play_clues.length === 0)
 		return;
 
 	// If there are clues that make the save target playable, we should prioritize those
@@ -123,7 +126,7 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 	// const save_target = state.hands[target].chop();
 	// const playable_saves = play_clues.filter(({ playables }) => playables.some(c => c.matches(save_target.suitIndex, save_target.rank)));
 
-	const { clue } = Utils.maxOn(play_clues, ({ clue }) => find_clue_value(clue.result));
+	const clue = Utils.maxOn(safe_play_clues, (clue) => find_clue_value(clue.result));
 
 	// Convert CLUE to ACTION
 	return Utils.clueToAction(clue, tableID);
@@ -247,6 +250,16 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				}
 			}
 
+			// Check if Shout Discard is available
+			if (game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0)) {
+				const trash = me.thinksTrash(state, state.ourPlayerIndex);
+
+				if (trash.length > 0) {
+					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push({ tableID, type: ACTION.DISCARD, target: trash[0].order });
+					continue;
+				}
+			}
+
 			// Check if TCCM is available
 			if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && (!save.playable || state.clue_tokens === 1)) {
 				let tccm = false;
@@ -258,7 +271,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focused_card);
 
 					if (tempo && !valuable && clue_safe(game, me, clue)) {
-						urgent_actions[PRIORITY.ONLY_SAVE + nextPriority].push(Utils.clueToAction(clue, tableID));
+						urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(Utils.clueToAction(clue, tableID));
 						tccm = true;
 						break;
 					}
@@ -270,24 +283,19 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			const hypo_game = game.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, list, clue: save, target });
 			const { common: hypo_common, me: hypo_me, state: hypo_state } = hypo_game;
-			const hand_after_save = hypo_state.hands[target];
 
-			// Try to give a play clue involving them (if 2 players, too risky to try play over save at 1 clue)
-			if (state.clue_tokens >= (state.numPlayers > 2 ? 1 : 2)) {
-				const all_play_clues = play_clues.flat();
+			const all_play_clues = play_clues.flat();
 
-				// Save clue reveals a play
-				if (hypo_common.thinksPlayables(hypo_state, target).length > 0)
-					all_play_clues.push(Object.assign({}, save, { result: get_result(game, hypo_game, save, state.ourPlayerIndex )}));
+			// Save clue reveals a play
+			if (hypo_common.thinksPlayables(hypo_state, target).length > 0)
+				all_play_clues.push(Object.assign({}, save, { result: get_result(game, hypo_game, save, state.ourPlayerIndex )}));
 
-				logger.debug('hand after save', logHand(hand_after_save));
-
-				// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
-				const play_over_save = find_play_over_save(game, target, all_play_clues, false, hypo_me.chopValue(hypo_state, target, { afterClue: true }));
-				if (play_over_save !== undefined) {
-					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
-					continue;
-				}
+			// Try to give a play clue involving them
+			// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
+			const play_over_save = find_play_over_save(game, target, all_play_clues, false, hypo_me.chopValue(hypo_state, target, { afterClue: true }));
+			if (play_over_save !== undefined) {
+				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
+				continue;
 			}
 
 			const bad_save = hypo_me.thinksLocked(hypo_state, target) ?

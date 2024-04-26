@@ -9,6 +9,7 @@ import logger from '../../src/tools/logger.js';
 
 import { order_1s } from '../../src/conventions/h-group/action-helper.js';
 import { logHand } from '../../src/tools/log.js';
+import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -168,5 +169,29 @@ describe('sarcastic discard', () => {
 		// Alice should play slot 4 instead of discarding for tempo.
 		const action = game.take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
+	});
+});
+
+describe('fix clues', () => {
+	it(`doesn't try to fix symmetric self-finesses connecting through self`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y2', 'g1', 'r2', 'p3'],
+			['y3', 'p3', 'y4', 'r2'],
+			['p4', 'r3', 'y4', 'r5']
+		], {
+			level: 3,
+			play_stacks: [1, 1, 1, 0, 0],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues blue to Alice (slot 2)');		// b1
+		takeTurn(game, 'Cathy clues 5 to Donald');				// 5 save
+		takeTurn(game, 'Donald clues 3 to Cathy');				// y3 finesse
+
+		const { fix_clues } = find_clues(game);
+
+		// Alice does not need to fix y4.
+		assert.equal(fix_clues[PLAYER.CATHY].length, 0);
 	});
 });

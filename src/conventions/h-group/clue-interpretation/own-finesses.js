@@ -5,6 +5,7 @@ import { cardTouched, find_possibilities } from '../../../variants.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection } from '../../../tools/log.js';
 import { CLUE } from '../../../constants.js';
+import { determine_focus } from '../hanabi-logic.js';
 
 export class IllegalInterpretation extends Error {
 	/** @param {string} message */
@@ -160,8 +161,9 @@ function connect(game, giver, target, identity, looksDirect, connected, ignoreOr
  * @returns {Connection[]}
  */
 export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect, ignorePlayer = -1, selfRanks = []) {
-	const { state } = game;
-	const { giver, target, clue } = action;
+	const { common, state } = game;
+	const { giver, target, clue, list } = action;
+	const { focused_card } = determine_focus(state.hands[target], common, list, { beforeClue: true });
 
 	if (giver === state.ourPlayerIndex && ignorePlayer === -1)
 		throw new IllegalInterpretation('cannot finesse ourselves.');
@@ -169,7 +171,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 	if (target === (ignorePlayer === -1 ? state.ourPlayerIndex : ignorePlayer)) {
 		const connected = find_known_connecting(game, giver, { suitIndex, rank }, game.next_ignore[0] ?? []);
 
-		if (connected !== undefined && connected.type !== 'terminate')
+		if (connected !== undefined && connected.type !== 'terminate' && connected.card.order !== focused_card.order)
 			throw new IllegalInterpretation(`won't find own finesses for ${logCard({ suitIndex, rank })} when someone already has [${logConnection(connected)}]`);
 	}
 

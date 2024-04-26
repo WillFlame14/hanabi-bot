@@ -50,6 +50,10 @@ export function find_fix_clues(game, play_clues, save_clues, options = {}) {
 			if (card.chop_moved && !clued)
 				continue;
 
+			// Part of a symmetric waiting connection
+			if (common.waiting_connections.some(wc => wc.symmetric && wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order)))
+				continue;
+
 			if (card.inferred.length === 0) {
 				// TODO
 				logger.debug(`card ${logCard(card)} order ${order} need fix??`);

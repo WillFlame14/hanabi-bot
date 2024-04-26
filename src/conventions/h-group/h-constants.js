@@ -4,6 +4,7 @@ export const LEVEL = /** @type {const} */ ({
 	BASIC_CM: 4,
 	INTERMEDIATE_FINESSES: 5,
 	TEMPO_CLUES: 6,
+	LAST_RESORTS: 7,
 	STALLING: 9
 });
 

@@ -113,14 +113,14 @@ function find_tcm(game, target, saved_cards, trash_card, play_clues) {
 		logger.info('prefer play clue to save');
 		return;
 	}
-	else if (isTrash(state, me, chop, chop.order) || saved_cards.some(c => c.duplicateOf(chop))) {
+	else if (isTrash(state, me, chop, chop.order, { infer: true }) || saved_cards.some(c => c.duplicateOf(chop))) {
 		logger.info('chop is trash, can give tcm later');
 		return;
 	}
 
 	// TODO: Should visible (but not saved, possibly on chop?) cards be included as trash?
 	const saved_trash = saved_cards.filter(card =>
-		isTrash(state, me, card, card.order) ||						// Saving a trash card
+		isTrash(state, me, card, card.order, { infer: true }) ||			// Saving a trash card
 		saved_cards.some(c => card.matches(c) && card.order > c.order)		// Saving 2 of the same card
 	).map(logCard);
 
