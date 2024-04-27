@@ -144,7 +144,7 @@ export function take_action(game) {
 		logger.info('all urgent actions', urgent_actions.flatMap((actions, index) => actions.map(action => ({ [index]: logPerformAction(action) }))));
 
 	const actionPrioritySize = Object.keys(ACTION_PRIORITY).length;
-	const { priority, best_playable_card } = playable_cards.length > 0 ?
+	const { priority, best_playable_card } = playable_priorities.some(playables => playables.length > 0) ?
 		find_best_playable(game, playable_cards, playable_priorities) :
 		{ priority: -1, best_playable_card: undefined };
 
@@ -357,7 +357,7 @@ export function take_action(game) {
 
 	// Stalling situations
 	if (state.clue_tokens > 0 && (severity > 0 || endgame_stall)) {
-		const validStall = stall_clues.find((clues, index) => (index <= severity && clues.length > 0))?.[0];
+		const validStall = stall_clues.find((clues, index) => (index < severity && clues.length > 0))?.[0];
 
 		// 8 clues, must stall
 		if (state.clue_tokens === 8) {
