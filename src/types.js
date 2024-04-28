@@ -109,6 +109,7 @@
  * @property {{suitIndex: number, rank: number}} inference
  * @property {number} action_index
  * @property {boolean} [ambiguousPassback]
+ * @property {boolean} [selfPassback]
  * @property {boolean} [fake]
  * @property {boolean} [symmetric]
  */

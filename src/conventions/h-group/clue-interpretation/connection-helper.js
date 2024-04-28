@@ -103,6 +103,9 @@ export function find_symmetric_connections(game, action, looksSave, selfRanks, o
 	/** @type {{ id: Identity, connections: Connection[] }[]} */
 	const non_self_connections = [];
 
+	/** @type {(conns: Connection[], playerIndex: number) => number} */
+	const blind_plays = (conns, playerIndex) => conns.filter(conn => conn.type === 'finesse' && conn.reacting === playerIndex).length;
+
 	for (const id of focused_card.inferred) {
 		if (state.isBasicTrash(id))
 			continue;
@@ -127,7 +130,13 @@ export function find_symmetric_connections(game, action, looksSave, selfRanks, o
 		logger.collect();
 		try {
 			const connections = find_own_finesses(game, action, id, looksDirect, target, selfRanks);
-			if (connections[0]?.reacting === target)
+			// Fake connection - we need to blind play too many times
+			if (blind_plays(connections, state.ourPlayerIndex) > ownBlindPlays) {
+				logger.flush(false);
+				continue;
+			}
+
+			if (connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.reacting === target)
 				self_connections.push({ id, connections });
 			else
 				non_self_connections.push({ id, connections });
@@ -141,9 +150,6 @@ export function find_symmetric_connections(game, action, looksSave, selfRanks, o
 		}
 		logger.flush(false);
 	}
-
-	/** @type {(conns: Connection[], playerIndex: number) => number} */
-	const blind_plays = (conns, playerIndex) => conns.filter(conn => conn.type === 'finesse' && conn.reacting === playerIndex).length;
 
 	const possible_connections = non_self_connections.length === 0 ? self_connections : non_self_connections;
 

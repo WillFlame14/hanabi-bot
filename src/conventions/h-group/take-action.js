@@ -187,7 +187,7 @@ export function take_action(game) {
 
 				// Next player can't SDCM
 				if (me.thinksPlayables(state, nextPlayerIndex).length === 0 || nextChop === undefined || cardValue(state, me, nextChop, nextChop.order) >= 4) {
-					logger.highlight('yellow', `performing generation discard for ${state.playerNames[nextNextPlayerIndex]} ${logCard(me.chop(state.hands[nextNextPlayerIndex]))}`);
+					logger.highlight('yellow', `performing generation discard for ${state.playerNames[nextNextPlayerIndex]}`);
 					return { tableID, type: ACTION.DISCARD, target: discardable.order };
 				}
 			}

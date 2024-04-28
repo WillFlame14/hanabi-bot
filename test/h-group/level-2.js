@@ -270,6 +270,30 @@ describe('asymmetric clues', () => {
 		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
 	});
 
+	it('prefers not starting with self (symmetrically), even if there are known playables before', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g2', 'y2', 'r4', 'p2'],
+			['g5', 'p4', 'y5', 'y3'],
+			['b2', 'b2', 'y4', 'r3']
+		], {
+			level: 2,
+			play_stacks: [0, 2, 1, 0, 0],
+			discarded: ['r3', 'y3'],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 3 to Cathy');
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 4)');
+		takeTurn(game, 'Donald clues green to Bob');
+		takeTurn(game, 'Alice clues 4 to Donald');
+
+		const { common, state } = game;
+
+		// g4 (g2 known -> g3 finesse, self) requires a self-component, compared to y3 (prompt) which does not.
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.DONALD][2].order], ['y4']);
+	});
+
 	it('includes the correct interpretation, even if it requires more blind plays', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
@@ -295,8 +319,8 @@ describe('asymmetric clues', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['p5', 'y4', 'r1', 'b3'],
-			['p1', 'p2', 'y3', 'y1'],
-			['g1', 'g5', 'y1', 'b5']
+			['p1', 'g5', 'y3', 'y1'],
+			['g1', 'p2', 'y1', 'b5']
 		], {
 			level: 2,
 			starting: PLAYER.DONALD
