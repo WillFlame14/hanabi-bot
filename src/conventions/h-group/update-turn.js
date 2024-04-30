@@ -102,12 +102,12 @@ function resolve_card_retained(game, waiting_connection) {
 	// Didn't play into finesse
 	if (type === 'finesse' || type === 'prompt' || new_finesse_queued) {
 		if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
-			logger.info(`${state.playerNames[reacting]} didn't play into unplayable ${type}`);
+			logger.warn(`${state.playerNames[reacting]} didn't play into unplayable ${type}`);
 			return { remove: false };
 		}
 
 		if (type === 'prompt' && game.last_actions[reacting].type === 'clue') {
-			logger.info(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a clue`);
+			logger.warn(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a clue`);
 			return { remove: false };
 		}
 
@@ -141,11 +141,11 @@ function resolve_card_retained(game, waiting_connection) {
 
 		if (game.last_actions[reacting].type === 'play') {
 			if (type === 'finesse' && reacting_card && common.thoughts[reacting_card.order].finessed) {
-				logger.info(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
+				logger.warn(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
 				return { remove: false };
 			}
 			else if (type === 'prompt') {
-				logger.info(`${state.playerNames[reacting]} played into something else, continuing to wait`);
+				logger.warn(`${state.playerNames[reacting]} played into something else, continuing to wait`);
 				return { remove: false };
 			}
 		}
@@ -163,7 +163,7 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		logger.info(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);
+		logger.warn(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);
 
 		if (reacting !== state.ourPlayerIndex) {
 			const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
@@ -178,7 +178,7 @@ function resolve_card_retained(game, waiting_connection) {
 		return { remove: true, remove_finesse: !ambiguous };
 	}
 	else if (game.last_actions[reacting].type === 'discard') {
-		logger.info(`${state.playerNames[reacting]} discarded with a waiting connection, removing inference ${logCard(inference)}`);
+		logger.warn(`${state.playerNames[reacting]} discarded with a waiting connection, removing inference ${logCard(inference)}`);
 		return { remove: true, remove_finesse: true };
 	}
 	return { remove: false };

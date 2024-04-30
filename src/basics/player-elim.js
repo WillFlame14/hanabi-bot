@@ -102,7 +102,7 @@ export function good_touch_elim(state, only_self = false) {
 	/** @type {(order: number) => void} */
 	const addToMaps = (order) => {
 		const card = this.thoughts[order];
-		const id = card.identity({ infer: true });
+		const id = card.identity({ infer: true, symmetric: this.playerIndex === -1 });
 
 		if (!card.touched || id === undefined ||
 			(state.deck[order].identity() !== undefined && !state.deck[order].matches(id)) ||		// Card is visible and doesn't match

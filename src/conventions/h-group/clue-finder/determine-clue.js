@@ -41,43 +41,61 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 
 	logger.highlight('green', '------- EXITING HYPO --------');
 
-	const incorrect_card = state.hands[target].find(c => {
-		const card = hypo_game.common.thoughts[c.order];
-		const visible_card = hypo_game.me.thoughts[c.order];
+	/** @type {string} */
+	let reason;
+
+	for (const { order, clued } of state.hands[target]) {
+		const card = hypo_game.common.thoughts[order];
+		const visible_card = state.deck[order];
 
 		// The focused card must not have been reset and must match inferences
-		if (c.order === target_card.order)
-			return card.reset || !card.matches_inferences();
+		if (order === target_card.order) {
+			if (card.reset) {
+				reason = `card ${logCard(card)} ${card.order} lost all inferences and was reset`;
+				break;
+			}
 
-		const old_card = game.common.thoughts[c.order];
+			if (!card.inferred.has(visible_card)) {
+				reason = `card ${logCard(visible_card)} has inferences [${card.inferred.map(logCard).join(',')}]`;
+				break;
+			}
+			continue;
+		}
+
+		const old_card = game.common.thoughts[order];
+
+		const allowable_trash = card.chop_moved ||													// Chop moved (might have become trash)
+			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||	// Didn't match inference even before clue
+			(clued && isTrash(state, game.me, visible_card, order)) ||								// Previously-clued duplicate or recently became basic trash
+			bad_touch_cards.some(b => b.order === order) ||											// Bad touched
+			card.possible.every(id => isTrash(hypo_game.state, hypo_game.common, id, order));		// Known trash
+
+		if (allowable_trash || card.possible.length === 1)
+			continue;
+
+		const id = card.identity({ infer: true });
 
 		// For non-focused cards:
-		return !((!card.reset && (card.identity() === undefined || card.possible.length === 1 || card.matches(visible_card))) || 											// Matches inferences
-			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||		// Didn't match inference even before clue
-			card.chop_moved ||																			// Chop moved (might have become trash)
-			(c.clued && isTrash(state, game.me, visible_card)) ||		// Previously-clued duplicate or recently became basic trash
-			bad_touch_cards.some(b => b.order === c.order) ||										// Bad touched
-			card.possible.every(id => isTrash(hypo_game.state, hypo_game.common, id, c.order)));	// Known trash
-	});
-
-	// Print out logs if the result is correct
-	logger.flush(incorrect_card === undefined);
-
-	if (incorrect_card) {
-		let reason = '';
-
-		const card = hypo_game.common.thoughts[incorrect_card.order];
 		if (card.reset) {
 			reason = `card ${logCard(card)} ${card.order} lost all inferences and was reset`;
+			break;
 		}
-		else if (!card.matches_inferences()) {
-			reason = `card ${logCard(card)} has inferences [${card.inferred.map(logCard).join(',')}], doesn't match`;
+
+		if (id !== undefined && !visible_card.matches(id)) {
+			reason = `card ${logCard(visible_card)} incorrectly inferred to be ${logCard(id)}`;
+			break;
 		}
-		else {
-			const not_trash_possibility = card.possible.find(c => !isTrash(hypo_game.state, hypo_game.common, c, card.order));
-			if (not_trash_possibility !== undefined)
-				reason = `card ${logCard(card)} has ${not_trash_possibility} possibility not trash`;
+
+		if (hypo_game.common.thinksPlayables(state, target).some(c => c.order === order) && !card.inferred.has(visible_card)) {
+			reason = `card ${logCard(visible_card)} looks incorrectly playable with inferences [${card.inferred.map(logCard).join(',')}]`;
+			break;
 		}
+	}
+
+	// Print out logs if the result is correct
+	logger.flush(reason === undefined);
+
+	if (reason) {
 		logger.info(`${logClue(clue)} has incorrect interpretation, (${reason})`);
 		return undefined;
 	}
@@ -175,9 +193,7 @@ export function determine_clue(game, target, target_card, options) {
 			elim,
 			new_touched,
 			finesses: finesses.length,
-			playables: playables.map(({ playerIndex, card }) => {
-				return { player: state.playerNames[playerIndex], card: logCard(card) };
-			}),
+			playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
 			remainder	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
 		};
 		logger.info('result,', JSON.stringify(result_log), find_clue_value(Object.assign(result, { remainder })));

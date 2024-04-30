@@ -50,7 +50,7 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Bob clues yellow to Alice (slot 3)');
 
 		// Cathy's hand should be marked correctly.
-		assert.ok(game.state.hands[PLAYER.CATHY].every(c => game.common.thoughts[c.order].inferred.some(i => c.matches(i))));
+		assert.ok(game.state.hands[PLAYER.CATHY].every(c => game.common.thoughts[c.order].inferred.has(c)));
 	});
 
 	it('understands playing into a layered finesse', () => {

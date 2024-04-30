@@ -225,7 +225,7 @@ export class Player {
 			for (const { order } of state.hands.flat()) {
 				const card = this.thoughts[order];
 
-				if (!card.saved || good_touch_elim.some(e => card.matches(e)) || linked_orders.has(order))
+				if (!card.saved || good_touch_elim.some(e => card.matches(e)) || linked_orders.has(order) || unknown_plays.has(order))
 					continue;
 
 				const fake_wcs = this.waiting_connections.filter(wc => {
@@ -245,8 +245,9 @@ export class Player {
 
 					// Do not allow false updating of hypo stacks
 					if (this.playerIndex === -1 && (
-						(id && actual_id && !id.matches(actual_id)) ||		// Identity doesn't match
-						(actual_id && state.hands.flat().some(c => unknown_plays.has(c.order) && c.matches(actual_id)))	||	// Duping playable
+						(actual_id &&
+							(!card.inferred.has(actual_id) ||		// None of the inferences match
+							state.hands.flat().some(c => unknown_plays.has(c.order) && c.matches(actual_id))))	||	// Duping playable
 						(this.waiting_connections.some(wc =>				// Only part of a fake ambiguous connection
 							!state.deck[wc.focused_card.order].matches(wc.inference, { assume: true }) &&
 							wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order))

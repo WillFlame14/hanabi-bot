@@ -1,7 +1,7 @@
 import { logCard } from '../tools/log.js';
 
 /**
- * @typedef {{infer?: boolean, assume?: boolean}} MatchOptions
+ * @typedef {{infer?: boolean, symmetric?: boolean, assume?: boolean}} MatchOptions
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('./IdentitySet.js').IdentitySet} IdentitySet
@@ -206,7 +206,7 @@ export class Card extends BasicCard {
 		if (this.possible.length === 1)
 			return this.possible.array[0];
 
-		else if (this.suitIndex !== -1 && this.rank !== -1)
+		else if (this.suitIndex !== -1 && this.rank !== -1 && !options.symmetric)
 			return Object.freeze(new BasicCard(this.suitIndex, this.rank));
 
 		else if (options.infer && this.inferred.length === 1)

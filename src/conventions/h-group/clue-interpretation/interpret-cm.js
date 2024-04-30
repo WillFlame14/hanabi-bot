@@ -122,10 +122,23 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 	const touched_cards = state.hands[target].filter(card => list.includes(card.order));
 	const prompt = oldCommon.find_prompt(state.hands[target], focused_card, state.variant.suits);
 
-	if (chop === undefined ||										// Target was locked
-		touched_cards.some(card => card.newly_clued) ||				// At least one card touched was newly clued
-		common.hypo_score !== oldCommon.hypo_score + 1 ||			// The new state does not have exactly 1 extra play
-		(prompt && prompt.rank !== 5 && prompt.order !== focused_card.order)) {		// The card was not a 5 and not promptable
+	if (chop === undefined) {
+		logger.info('target was locked, not tccm');
+		return false;
+	}
+
+	if (touched_cards.some(card => card.newly_clued)) {
+		logger.info('touched at least 1 new card, not tccm');
+		return false;
+	}
+
+	if (common.hypo_score !== oldCommon.hypo_score + 1) {
+		logger.info('old score', oldCommon.hypo_stacks, oldCommon.unknown_plays, 'new score', common.hypo_stacks, common.unknown_plays, 'not tccm');
+		return false;
+	}
+
+	if (prompt && prompt.rank !== 5 && prompt.order !== focused_card.order) {
+		logger.info('tempo on non-promptable non-5, not tccm');
 		return false;
 	}
 
@@ -154,6 +167,6 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 
 	// Valid tempo clue chop move
 	common.thoughts[chop.order].chop_moved = true;
-	logger.info('tccm, chop moving', target === state.ourPlayerIndex ? `slot ${common.chopIndex(state.hands[target], { afterClue: true })}` : logCard(chop));
+	logger.info('tccm, chop moving', target === state.ourPlayerIndex ? `slot ${state.hands[target].findIndex(c => c.order === chop.order) + 1}` : logCard(chop));
 	return true;
 }
