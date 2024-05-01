@@ -222,4 +222,27 @@ describe('multiple tempo clues', () => {
 		// The tempo clue gets r2, r3 and r4 to play.
 		assert.equal(tempo_clue.result.playables.length, 3);
 	});
+
+	it(`doesn't give invalid multiple tempo clues`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p1', 'b2', 'g4', 'y2', 'r2'],
+			['g4', 'r2', 'b1', 'r3', 'p1']
+		], {
+			level: 6,
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 2 to Bob');		// 2 Save
+		takeTurn(game, 'Alice clues 1 to Cathy');	// getting b1, p1
+		takeTurn(game, 'Bob clues 5 to Alice (slot 5)');
+
+		takeTurn(game, 'Cathy plays p1 (slot 5)', 'r5');
+
+		const { play_clues } = find_clues(game);
+
+		// 2 to Bob is not a valid tempo clue, since y1 is nowhere to be found.
+		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 2));
+	});
 });

@@ -108,7 +108,7 @@ export function interpret_sarcastic(game, discardAction) {
 	// Sarcastic discard to other (or known sarcastic discard to us)
 	for (let i = 0; i < state.numPlayers; i++) {
 		const receiver = (state.ourPlayerIndex + i) % state.numPlayers;
-		const sarcastics = find_sarcastics(state.hands[receiver], me, identity);
+		const sarcastics = find_sarcastics(state.hands[receiver], common, identity);
 
 		if (sarcastics.some(c => me.thoughts[c.order].matches(identity, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
 			// The matching card must be the only possible option in the hand to be known sarcastic

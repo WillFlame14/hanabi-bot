@@ -48,7 +48,7 @@ export function card_elim(state) {
 			continue;
 
 		if (!this.all_inferred.has(identity))
-			throw new Error(`Failing to eliminate identity ${id_hash} from inferred`);
+			throw new Error(`failing to eliminate identity ${id_hash} from inferred`);
 
 		// Remove it from the list of future possibilities
 		this.all_possible = this.all_possible.subtract(identity);
@@ -172,7 +172,7 @@ export function good_touch_elim(state, only_self = false) {
 
 			// TODO: Temporary stop-gap so that Bob still plays into it. Bob should actually clue instead.
 			if (card.finessed && [0, 1].some(i => card.finesse_index === state.actionList.length - i)) {
-				logger.warn(`Tried to gt eliminate ${id_hash} from recently finessed card (player ${this.playerIndex}, order ${order})!`);
+				logger.warn(`tried to gt eliminate ${id_hash} from recently finessed card (player ${this.playerIndex}, order ${order})!`);
 				card.certain_finessed = true;
 				elim_candidates.splice(elim_candidates.indexOf(order), 1);
 				continue;

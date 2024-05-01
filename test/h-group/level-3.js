@@ -170,6 +170,25 @@ describe('sarcastic discard', () => {
 		const action = game.take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
+
+	it('sarcastic discards without assuming position', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p4', 'g2', 'b2', 'r4', 'p2'],
+		], {
+			level: 7,
+			play_stacks: [1, 1, 0, 1, 0],
+			clue_tokens: 6
+		});
+
+		takeTurn(game, "Alice clues 2 to Bob");
+		takeTurn(game, "Bob clues blue to Alice (slot 1)");
+		takeTurn(game, "Alice discards b2 (slot 1)");
+
+		// Every 2 can still be inferred b2.
+		assert.ok([1, 2, 4].every(index =>
+			game.allPlayers[PLAYER.BOB].thoughts[game.state.hands[PLAYER.BOB][index].order].inferred.has({ suitIndex: 3, rank:2 })));
+	});
 });
 
 describe('fix clues', () => {

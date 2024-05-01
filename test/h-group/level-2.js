@@ -82,12 +82,12 @@ describe('self-finesse', () => {
 		takeTurn(game, 'Cathy clues 5 to Donald');
 
 		takeTurn(game, 'Donald clues 4 to Bob');					// connect b4
-		takeTurn(game, 'Alice plays b1 (slot 1)');
+		takeTurn(game, 'Alice plays b1 (slot 1)');					// b1, p1 on stacks
 		takeTurn(game, 'Bob clues 2 to Alice (slot 3)');			// 2 is neg purple, b2 is clued in Cathy's hand
 
 		// Alice's slot 1 should be finessed.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r2','y2','g2']);
 	});
 
 	it(`doesn't give self-finesses that look like prompts`, () => {

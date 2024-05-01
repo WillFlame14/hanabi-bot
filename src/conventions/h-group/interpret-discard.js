@@ -107,8 +107,12 @@ export function interpret_discard(game, action, card) {
 			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
 			const chop = common.chop(state.hands[nextPlayerIndex]);
 
-			if (result === 'scream' || result === 'shout')
-				common.thoughts[chop.order].chop_moved = true;
+			if (result === 'scream' || result === 'shout') {
+				if (chop === undefined)
+					logger.warn(`interpreted ${result} when ${state.playerNames[nextPlayerIndex]} has no chop!`);
+				else
+					common.thoughts[chop.order].chop_moved = true;
+			}
 		}
 	}
 
@@ -134,7 +138,7 @@ function check_sdcm(game, action, before_trash) {
 	const scream = state.clue_tokens === 1 &&
 		(common.thinksPlayables(state, playerIndex).length > 0 || (before_trash.length > 0 && !before_trash.some(c => c.order === order)));
 
-	const shout = common.thinksPlayables(state, playerIndex).length > 0;
+	const shout = common.thinksPlayables(state, playerIndex).length > 0 && before_trash.some(c => c.order === order);
 
 	if (!scream && !shout)
 		return;

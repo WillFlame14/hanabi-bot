@@ -86,7 +86,11 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 			break;
 		}
 
-		if (hypo_game.common.thinksPlayables(state, target).some(c => c.order === order) && !card.inferred.has(visible_card)) {
+		const looks_playable = hypo_game.common.unknown_plays.has(order) ||
+			hypo_game.common.hypo_stacks[visible_card.suitIndex] >= visible_card.rank ||
+			card.inferred.every(i => i.rank <= hypo_game.common.hypo_stacks[i.suitIndex] + 1);
+
+		if (looks_playable && !card.inferred.has(visible_card)) {
 			reason = `card ${logCard(visible_card)} looks incorrectly playable with inferences [${card.inferred.map(logCard).join(',')}]`;
 			break;
 		}

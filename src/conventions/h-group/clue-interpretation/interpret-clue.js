@@ -221,7 +221,8 @@ export function interpret_clue(game, action) {
 					all_connections.push(fp);
 			}
 
-			let conn_save;
+			/** @type {FocusPossibility[]} */
+			let self_connections = [];
 			let min_blind_plays = Math.min(...all_connections.map(fp => fp.connections.filter(conn => conn.type === 'finesse').length),
 				state.hands[state.ourPlayerIndex].length + 1);
 			let self = all_connections.every(fp => fp.connections[0]?.self);
@@ -239,19 +240,25 @@ export function interpret_clue(game, action) {
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('found connections:', logConnections(connections, id));
 
+					const focus_poss = { connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections) };
+
 					// Skipping knowns/playables, starts with self-finesse or self-prompt
 					if (connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.self) {
-						// TODO: This interpretation should always exist, but must wait for all players to ignore first
-						if (self && blind_plays < min_blind_plays) {
-							conn_save = { connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections) };
+						// If a connection with no self-component exists, don't consider any connection with a self-component
+						if (!self)
+							continue;
+
+						if (blind_plays < min_blind_plays) {
+							self_connections = [];
 							min_blind_plays = blind_plays;
 						}
+
+						self_connections.push(focus_poss);
 					}
 					// Doesn't start with self
 					else {
-						// Temp: if a connection with no self-component exists, don't consider any connection with a self-component
 						self = false;
-						all_connections.push({ connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections) });
+						all_connections.push(focus_poss);
 					}
 				}
 				catch (error) {
@@ -262,9 +269,10 @@ export function interpret_clue(game, action) {
 				}
 			}
 
-			if (self && conn_save !== undefined)
-				all_connections.push(conn_save);
-
+			if (self && self_connections.length > 0) {
+				for (const connection of self_connections)
+					all_connections.push(connection);
+			}
 		}
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!state.isBasicTrash(focused_card)) {
