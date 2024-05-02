@@ -1,20 +1,22 @@
 import { ACTION, CLUE } from '../../constants.js';
 import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
 import { select_play_clue, determine_playable_card, order_1s, find_clue_value } from './action-helper.js';
+import { UnsolvedGame, solve_game } from '../shared/endgame.js';
 import { find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { determine_focus, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
-import { cardValue, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
-import { solve_game } from '../shared/endgame.js';
+
 /**
  * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../../basics/State.js').State} State
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
+ * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').PerformAction} PerformAction
  */
@@ -89,6 +91,32 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 		logger.info(`best playable card is order ${best_playable_card.order}, inferences ${me.thoughts[best_playable_card.order].inferred.map(logCard)}`);
 
 	return { priority, best_playable_card };
+}
+
+/**
+ * @param {Clue[][]} stall_clues
+ * @param {number} severity
+ * @returns {Clue | undefined}
+ */
+function best_stall_clue(stall_clues, severity) {
+	// 5 Stall
+	if (severity === 1 || stall_clues[0].length > 0)
+		return stall_clues[0][0];
+
+	// Tempo clue stall
+	if (stall_clues[1].length > 0)
+		return stall_clues[1][0];
+
+	const precedence4_levels = [null, null, null, [2], [2, 3], [2, 3, 4]];
+	const allowed_stalls = precedence4_levels[severity].reduce((acc, i) => acc.concat(stall_clues[i]), []);
+
+	const precedence4_stall = Utils.maxOn(allowed_stalls, clue => find_clue_value(clue.result));
+
+	if (precedence4_stall !== undefined)
+		return precedence4_stall;
+
+	// Hard burn
+	return stall_clues[5][0];
 }
 
 /**
@@ -203,13 +231,12 @@ export function take_action(game) {
 	}
 
 	// Attempt to solve endgame
-	if (state.inEndgame) {
+	if (state.inEndgame && state.cardsLeft > 0) {
 		try {
 			const action = solve_game(game, state.ourPlayerIndex);
 
 			if (action.type === ACTION.COLOUR || action.type === ACTION.RANK) {
-				const stall_clue = best_play_clue ??
-					stall_clues.find(clues => clues.length > 0)?.[0] ??
+				const stall_clue = best_play_clue ?? best_stall_clue(stall_clues, 5) ??
 					{ type: CLUE.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank };
 
 				return Utils.clueToAction(stall_clue, tableID);
@@ -222,7 +249,10 @@ export function take_action(game) {
 				return take_discard(game, state.ourPlayerIndex, trash_cards);
 		}
 		catch (err) {
-			logger.warn(`couldn't solve endgame yet: ${err.message}`);
+			if (err instanceof UnsolvedGame)
+				logger.warn(`couldn't solve endgame yet: ${err.message}`);
+			else
+				throw err;
 		}
 	}
 
@@ -232,7 +262,13 @@ export function take_action(game) {
 	// Sarcastic discard to someone else
 	if (game.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {
 		const identity = discards[0].identity({ infer: true });
-		const duplicates = visibleFind(state, me, identity, { ignore: [state.ourPlayerIndex] }).filter(c => c.clued).map(c => me.thoughts[c.order]);
+
+		/** @type {Card[]} */
+		const duplicates = state.hands.reduce((cards, hand, index) => {
+			if (index === state.ourPlayerIndex)
+				return cards;
+			return cards.concat(hand.filter(c => me.thoughts[c.order].matches(identity)).map(c => game.players[index].thoughts[c.order]));
+		}, []);
 
 		// If playing reveals duplicates are trash, playing is better for tempo in endgame
 		if (duplicates.every(c => c.inferred.length === 0 || (c.inferred.every(inf => inf.matches(identity) || state.isBasicTrash(inf)))))
@@ -247,7 +283,7 @@ export function take_action(game) {
 
 	// Forced discard if next player is locked
 	// TODO: Anxiety play
-	if (state.clue_tokens <= 1 && common.thinksLocked(state, nextPlayerIndex))
+	if ((state.clue_tokens === 0 || (state.clue_tokens === 1 && playable_cards.length === 0)) && common.thinksLocked(state, nextPlayerIndex))
 		return take_discard(game, state.ourPlayerIndex, trash_cards);
 
 	// Playing a connecting card or playing a 5
@@ -357,7 +393,7 @@ export function take_action(game) {
 
 	// Stalling situations
 	if (state.clue_tokens > 0 && severity > 0) {
-		const validStall = stall_clues.find((clues, index) => (index < severity && clues.length > 0))?.[0];
+		const validStall = best_stall_clue(stall_clues, severity);
 
 		// 8 clues, must stall
 		if (state.clue_tokens === 8) {
@@ -367,6 +403,8 @@ export function take_action(game) {
 
 		if (validStall)
 			return Utils.clueToAction(validStall, tableID);
+
+		logger.info('no valid stall! severity', severity);
 	}
 
 	return take_discard(game, state.ourPlayerIndex, trash_cards);

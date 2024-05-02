@@ -10,7 +10,7 @@ import { cardCount } from '../../variants.js';
  * @typedef {import('../../types.js').PerformAction} PerformAction
  */
 
-class UnsolvedGame extends Error {
+export class UnsolvedGame extends Error {
 	/** @param {string} message */
 	constructor(message) {
 		super(message);
@@ -56,6 +56,13 @@ export function solve_game(game, playerTurn) {
 		}
 	}
 
+	const fullyKnown = state.hands.every((hand, index) => {
+		if (index === state.ourPlayerIndex)
+			return true;
+
+		return hand.every(c => state.isBasicTrash(c) || game.players[index].thoughts[c.order].identity({ infer: true })?.matches(c));
+	});
+
 	const known_state = state.minimalCopy();
 
 	for (const { order } of state.hands[state.ourPlayerIndex]) {
@@ -68,7 +75,7 @@ export function solve_game(game, playerTurn) {
 		}
 	}
 
-	const { actions, winrate } = winnable(known_state, playerTurn);
+	const { actions, winrate } = winnable(known_state, playerTurn, fullyKnown);
 
 	if (winrate === 0)
 		throw new UnsolvedGame(`couldn't find a winning strategy`);
@@ -81,10 +88,11 @@ export function solve_game(game, playerTurn) {
 /**
  * @param {State} state
  * @param {number} playerTurn
+ * @param {boolean} fullyKnown 		Whether all useful cards are known by their owners.
  * @param {number} endgameTurns
  * @returns {{actions: (PerformAction & {playerIndex: number})[] | undefined, winrate: number}}
  */
-export function winnable(state, playerTurn, endgameTurns = -1) {
+export function winnable(state, playerTurn, fullyKnown, endgameTurns = -1) {
 	if (state.score === state.maxScore)
 		return { actions: [], winrate: 1 };
 
@@ -100,7 +108,21 @@ export function winnable(state, playerTurn, endgameTurns = -1) {
 
 	let best_actions = [], best_winrate = 0;
 
-	if (playables.length > 0) {
+	if (state.clue_tokens > 0) {
+		const clue_state = state.minimalCopy();
+		clue_state.clue_tokens--;
+
+		logger.debug(state.playerNames[playerTurn], 'trying to clue', endgameTurns);
+		const { actions, winrate } = winnable(clue_state, nextPlayerIndex, fullyKnown, endgameTurns === -1 ? -1 : endgameTurns - 1);
+
+		if (winrate > best_winrate) {
+			best_actions = actions.toSpliced(0, 0, { tableID: -1, type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn });
+			best_winrate = winrate;
+		}
+	}
+
+	// If cards are fully known, we prefer playing if possible
+	if ((fullyKnown || best_winrate < 1) && playables.length > 0) {
 		for (const { suitIndex, rank, order } of playables) {
 			const play_state = state.minimalCopy();
 			play_state.play_stacks[suitIndex] = rank;
@@ -108,28 +130,15 @@ export function winnable(state, playerTurn, endgameTurns = -1) {
 
 			const nextEndgameTurns = endgameTurns !== -1 ? endgameTurns - 1 : (play_state.cardsLeft === 0 ? state.numPlayers : -1);
 			logger.debug(state.playerNames[playerTurn], 'trying to play', logCard({ suitIndex, rank }), endgameTurns);
-			const { actions, winrate } = winnable(play_state, nextPlayerIndex, nextEndgameTurns);
+			const { actions, winrate } = winnable(play_state, nextPlayerIndex, fullyKnown, nextEndgameTurns);
 
-			if (winrate > best_winrate) {
+			if (winrate >= best_winrate) {
 				best_actions = actions.toSpliced(0, 0, { tableID: -1, type: ACTION.PLAY, target: order, playerIndex: playerTurn });
 				best_winrate = winrate;
 			}
 
 			if (best_winrate === 1)
 				break;
-		}
-	}
-
-	if (best_winrate < 1 && state.clue_tokens > 0) {
-		const clue_state = state.minimalCopy();
-		clue_state.clue_tokens--;
-
-		logger.debug(state.playerNames[playerTurn], 'trying to clue', endgameTurns);
-		const { actions, winrate } = winnable(clue_state, nextPlayerIndex, endgameTurns === -1 ? -1 : endgameTurns - 1);
-
-		if (winrate > best_winrate) {
-			best_actions = actions.toSpliced(0, 0, { tableID: -1, type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn });
-			best_winrate = winrate;
 		}
 	}
 
@@ -140,7 +149,7 @@ export function winnable(state, playerTurn, endgameTurns = -1) {
 
 		logger.debug(state.playerNames[playerTurn], 'trying to discard', endgameTurns);
 		const nextEndgameTurns = endgameTurns !== -1 ? endgameTurns - 1 : (discard_state.cardsLeft === 0 ? state.numPlayers : -1);
-		const { actions, winrate } = winnable(discard_state, nextPlayerIndex, nextEndgameTurns);
+		const { actions, winrate } = winnable(discard_state, nextPlayerIndex, fullyKnown, nextEndgameTurns);
 
 		if (winrate > best_winrate) {
 			best_actions = actions.toSpliced(0, 0, { tableID: -1, type: ACTION.DISCARD, target: -1, playerIndex: playerTurn });

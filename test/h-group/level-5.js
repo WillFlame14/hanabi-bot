@@ -105,7 +105,7 @@ describe('ambiguous clues', () => {
 			['g2', 'p4', 'r2', 'r3', 'g4'],
 			['p2', 'p1', 'b3', 'y3', 'b4']
 		], {
-			level: 6,
+			level: 5,
 			clue_tokens: 4,
 			starting: PLAYER.BOB
 		});
@@ -116,6 +116,32 @@ describe('ambiguous clues', () => {
 		// Alice can deduce that she has a playable card on finesse position, but shouldn't play it.
 		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed === false);
 		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].inferred.length > 1);
+	});
+
+	it(`still finesses if cards in the finesse are clued, as long as they weren't the original finesse target`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r1', 'b1', 'g3', 'r1'],
+			['p5', 'g3', 'p1', 'b3'],
+			['p1', 'b1', 'r3', 'g1']
+		], {
+			level: 5,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues blue to Cathy');			// r1, b1 layer -> b2 on us
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 4)');
+		takeTurn(game, 'Donald plays p1', 'b4');
+		takeTurn(game, 'Alice clues 1 to Donald');			// getting g1, but touches b1
+
+		takeTurn(game, 'Bob clues blue to Donald');			// focusing b4, but filling in b1
+		takeTurn(game, 'Cathy discards p1', 'g4');
+		takeTurn(game, 'Donald plays b1', 'b5');
+
+		// Alice's b2 in slot 1 should still be finessed.
+		const slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
+		assert.equal(slot1.finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[slot1.order], ['b2']);
 	});
 });
 

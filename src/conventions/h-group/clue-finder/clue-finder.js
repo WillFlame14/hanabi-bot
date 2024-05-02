@@ -181,7 +181,7 @@ export function find_clues(game, options = {}) {
 
 	const play_clues = /** @type Clue[][] */ 	([]);
 	const save_clues = /** @type SaveClue[] */ 	([]);
-	const stall_clues = /** @type Clue[][] */ 	([[], [], [], []]);
+	const stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], []]);
 
 	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, me.hypo_stacks, state.max_ranks);
 
@@ -297,7 +297,7 @@ export function find_clues(game, options = {}) {
 					}
 					else if (cardIndex === chopIndex && chopIndex !== 0) {
 						logger.info('locked hand save', logClue(clue));
-						stall_clues[2].push(clue);
+						stall_clues[3].push(clue);
 					}
 					else if (new_touched === 0) {
 						if (elim > 0) {
@@ -306,7 +306,7 @@ export function find_clues(game, options = {}) {
 						}
 						else {
 							logger.info('hard burn', logClue(clue));
-							stall_clues[3].push(clue);
+							stall_clues[5].push(clue);
 						}
 					}
 					else {

@@ -133,7 +133,7 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 
 	const new_chop = hypo_game.common.chop(hand, { afterClue: true });
 	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, hypo_game.me, game.me.thoughts[new_chop.order], new_chop.order) :
-						hypo_common.thinksTrash(hypo_state, target).length > 0 ? 0 : 4;
+						hypo_common.thinksLoaded(hypo_state, target) ? 0 : 4;
 
 	return { elim: fill, new_touched, bad_touch, trash, finesses, playables, remainder };
 }

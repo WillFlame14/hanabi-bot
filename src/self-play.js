@@ -146,13 +146,12 @@ function simulate_game(playerNames, deck, convention, level) {
 	}
 
 	let currentPlayerIndex = 0, turn = 0, endgameTurns = -1;
-	const _state = games[0].game.state;
 
 	/** @type {Pick<PerformAction, 'type' | 'target' | 'value'>[]} */
 	const actions = [];
 
 	try {
-		while (endgameTurns !== 0 && _state.strikes !== 3 && _state.score !== _state.variant.suits.length * 5) {
+		while (endgameTurns !== 0 && games[0].game.state.strikes !== 3 && games[0].game.state.score !== games[0].game.state.variant.suits.length * 5) {
 			if (turn !== 0) {
 				games.forEach(({ game }, index) => {
 					logger.debug('Turn for', game.state.playerNames[index]);
@@ -179,6 +178,9 @@ function simulate_game(playerNames, deck, convention, level) {
 
 				Utils.globalModify({ game });
 				game.handle_action(action, true);
+
+				if (game.state.strikes === 3 || game.state.score === game.state.variant.suits.length * 5)
+					continue;
 
 				if ((action.type === 'play' || action.type === 'discard') && order < deck.length) {
 					const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };

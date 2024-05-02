@@ -204,7 +204,7 @@ function resolve_card_played(game, waiting_connection) {
 		const connection = game.last_actions[reacting].card;
 		const thoughts = common.thoughts[connection.order];
 
-		if (type === 'finesse' && connection.clued && (thoughts.focused || thoughts.inferred.every(i => state.isPlayable(i) || connection.matches(i)))) {
+		if (type === 'finesse' && target === state.ourPlayerIndex && connection.clued && (thoughts.focused || thoughts.inferred.every(i => state.isPlayable(i) || connection.matches(i)))) {
 			logger.warn('connecting card was focused/known playable with a clue (stomped on), not confirming finesse');
 
 			if (connections[conn_index + 1]?.self) {
