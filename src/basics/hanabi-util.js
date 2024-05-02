@@ -32,8 +32,10 @@ export function visibleFind(state, player, identity, options = {}) {
 		if (options.ignore?.includes(index))
 			return cards;
 
+		const symmetric = options.symmetric ?? index === player.playerIndex;
+
 		return cards.concat(hand.filter(c =>
-			player.thoughts[c.order].matches(identity, index !== player.playerIndex ? options : Object.assign({}, options, { symmetric: true } ))));
+			player.thoughts[c.order].matches(identity, Object.assign({}, options, { symmetric } ))));
 	}, []));
 }
 

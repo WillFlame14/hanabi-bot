@@ -95,8 +95,8 @@ export function onDraw(game, action) {
 		const player = game.players[i];
 
 		player.thoughts[order] = new Card(card, {
-			suitIndex: (i !== playerIndex) ? suitIndex : -1,
-			rank: (i !== playerIndex) ? rank : -1,
+			suitIndex: (i !== playerIndex || i === state.ourPlayerIndex) ? suitIndex : -1,
+			rank: (i !== playerIndex || i === state.ourPlayerIndex) ? rank : -1,
 			order,
 			possible: player.all_possible,
 			inferred: player.all_possible,

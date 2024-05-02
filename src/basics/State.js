@@ -83,12 +83,23 @@ export class State {
 		return this.play_stacks.reduce((sum, stack) => sum + stack);
 	}
 
+	get maxScore() {
+		return this.max_ranks.reduce((acc, curr) => acc + curr);
+	}
+
 	/**
 	 * Returns the current pace (current score + cards left + # of players - max score).
 	 */
 	get pace() {
-		const maxScore = this.max_ranks.reduce((acc, curr) => acc + curr);
-		return this.score + this.cardsLeft + this.numPlayers - maxScore;
+		return this.score + this.cardsLeft + this.numPlayers - this.maxScore;
+	}
+
+	/**
+	 * Returns the player index of the next player, in turn order.
+	 * @param {number} playerIndex
+	 */
+	nextPlayerIndex(playerIndex) {
+		return (playerIndex + 1) % this.numPlayers;
 	}
 
 	/**

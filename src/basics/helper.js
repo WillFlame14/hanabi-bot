@@ -28,8 +28,12 @@ export function team_elim(game) {
 			const card = player.thoughts[i];
 			const ccard = game.common.thoughts[i];
 
-			card.possible = card.possible.intersect(ccard.possible);
+			card.possible = ccard.possible.intersect(card.possible);
 			card.inferred = ccard.inferred.intersect(card.possible);
+
+			// Reset to GTP if common interpretation doesn't make sense
+			if (card.inferred.length === 0)
+				card.inferred = card.possible;
 
 			card.old_inferred = ccard.old_inferred;
 

@@ -9,6 +9,7 @@ import { cardValue, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
+import { solve_game } from '../shared/endgame.js';
 /**
  * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../../basics/State.js').State} State
@@ -201,27 +202,27 @@ export function take_action(game) {
 		({ clue: best_play_clue, clue_value } = select_play_clue(all_play_clues));
 	}
 
-	/**
-	 * A card must be played from a particular player if it is critical or no one else has a copy of it.
-	 * @type {(identity: Identity, index: number) => boolean}
-	 */
-	const mustPlay = (identity, index) =>
-		!state.isBasicTrash(identity) &&
-		(state.isCritical(identity) || visibleFind(state, game.me, identity, { infer: true, ignore: [index] }).length === 0);
+	// Attempt to solve endgame
+	if (state.inEndgame) {
+		try {
+			const action = solve_game(game, state.ourPlayerIndex);
 
-	const selfMustPlay = playable_cards.filter(c => c.inferred.every(i => mustPlay(i, state.ourPlayerIndex)));
+			if (action.type === ACTION.COLOUR || action.type === ACTION.RANK) {
+				const stall_clue = best_play_clue ??
+					stall_clues.find(clues => clues.length > 0)?.[0] ??
+					{ type: CLUE.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank };
 
-	// Endgame stall before drawing the last card
-	if (state.cardsLeft === 1 && state.clue_tokens > 0 && selfMustPlay.length < 2) {
-		const mustPlays = state.hands.map((hand, i) => i === state.ourPlayerIndex ? [] : hand.filter(c => mustPlay(c, i)));
-		const doubleIndex = mustPlays.findIndex(plays => plays.length > 1);
+				return Utils.clueToAction(stall_clue, tableID);
+			}
 
-		if (doubleIndex !== -1 && state.clue_tokens >= (doubleIndex + state.numPlayers - state.ourPlayerIndex) % state.numPlayers) {
-			const stall_clue = best_play_clue ??
-				stall_clues.find(clues => clues.length > 0)?.[0] ??
-				{ type: CLUE.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank };
+			if (action.type === ACTION.PLAY)
+				return { tableID, type: ACTION.PLAY, target: action.target };
 
-			return Utils.clueToAction(stall_clue, tableID);
+			if (action.type === ACTION.DISCARD)
+				return take_discard(game, state.ourPlayerIndex, trash_cards);
+		}
+		catch (err) {
+			logger.warn(`couldn't solve endgame yet: ${err.message}`);
 		}
 	}
 
@@ -247,7 +248,7 @@ export function take_action(game) {
 	// Forced discard if next player is locked
 	// TODO: Anxiety play
 	if (state.clue_tokens <= 1 && common.thinksLocked(state, nextPlayerIndex))
-		return trash_cards.length > 0 ? { tableID, type: ACTION.DISCARD, target: trash_cards[0].order } : discard_chop(game, state.ourPlayerIndex, tableID);
+		return take_discard(game, state.ourPlayerIndex, trash_cards);
 
 	// Playing a connecting card or playing a 5
 	if (best_playable_card !== undefined && priority <= 3)
@@ -353,10 +354,9 @@ export function take_action(game) {
 		return urgent_actions[actionPrioritySize * 2][0];
 
 	const severity = stall_severity(state, common, state.ourPlayerIndex);
-	const endgame_stall = state.inEndgame() && me.hypo_stacks.some((stack, index) => stack > state.play_stacks[index]);
 
 	// Stalling situations
-	if (state.clue_tokens > 0 && (severity > 0 || endgame_stall)) {
+	if (state.clue_tokens > 0 && severity > 0) {
 		const validStall = stall_clues.find((clues, index) => (index < severity && clues.length > 0))?.[0];
 
 		// 8 clues, must stall
@@ -369,21 +369,32 @@ export function take_action(game) {
 			return Utils.clueToAction(validStall, tableID);
 	}
 
-	// Discarding known trash is still preferable to chop
+	return take_discard(game, state.ourPlayerIndex, trash_cards);
+}
+
+/**
+ * Takes the best discard in hand for the given playerIndex.
+ * @param {Game} game
+ * @param {number} playerIndex
+ * @param {ActualCard[]} trash_cards
+ */
+function take_discard(game, playerIndex, trash_cards) {
+	const { tableID } = game;
+
+	// Discarding known trash is preferable to chop
 	if (trash_cards.length > 0)
 		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
 
-	return discard_chop(game, state.ourPlayerIndex, tableID);
+	return discard_chop(game, playerIndex);
 }
 
 /**
  * Discards the card on chop for the given playerIndex.
  * @param {Game} game
  * @param {number} playerIndex
- * @param {number} tableID
  */
-function discard_chop(game, playerIndex, tableID) {
-	const { common, state } = game;
+function discard_chop(game, playerIndex) {
+	const { common, state, tableID } = game;
 
 	// Nothing else to do, so discard chop
 	const discard = common.chop(state.hands[playerIndex]) ?? common.lockedDiscard(state, state.hands[playerIndex]);

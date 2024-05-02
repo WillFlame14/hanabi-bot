@@ -66,12 +66,15 @@ const sampleColours = /** @type {const} */ ({
 
 const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
 
+/** @type {string[]} */
+let testShortForms;
+
 /**
  * @param {string} short
  */
 export function expandShortCard(short) {
 	return {
-		suitIndex: shortForms.indexOf(short[0]) - 1,
+		suitIndex: testShortForms.indexOf(short[0]) - 1,
 		rank: Number(short[1]) || -1
 	};
 }
@@ -144,7 +147,6 @@ export function setup(GameClass, hands, test_options = {}) {
 
 	// Overwrite the global short forms
 	shortForms.length = 0;
-	shortForms.push('x');
 
 	for (const suitName of variant.suits) {
 		if (['Black', 'Pink', 'Brown'].includes(suitName)) {
@@ -158,6 +160,8 @@ export function setup(GameClass, hands, test_options = {}) {
 				shortForms.push(abbreviation);
 		}
 	}
+
+	testShortForms = shortForms.toSpliced(0, 0, 'x');
 
 	const state = new State(playerNames, 0, variant, {});
 	const game = new GameClass(-1, state, false, test_options.level ?? 1);

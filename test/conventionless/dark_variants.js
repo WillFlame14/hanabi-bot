@@ -12,19 +12,19 @@ logger.setLevel(logger.LEVELS.ERROR);
 
 describe('dark variants', () => {
 	it('sees dark variants as critical', () => {
-		const dark_variants = [
+		const darkVariants = [
 			'Dark Null', 'Dark Brown', 'Cocoa Rainbow',
 			'Gray', 'Black', 'Dark Rainbow',
 			'Gray Pink', 'Dark Pink', 'Dark Omni',
 			'Dark Prism'
 		];
 
-		for (const variant of dark_variants) {
+		for (const variantName of darkVariants) {
 			const game = setup(HGroup, [
 				['xx', 'xx', 'xx', 'xx', 'xx'],
 				['g2', 'b1', 'r2', 'r3', 'g5'],
 			], {
-				variant: {'id': -1, 'name': '...', 'suits': ['Red', 'Yellow', 'Green', 'Blue', variant]}
+				variant: { 'id': -1, 'name': '...', 'suits': ['Red', 'Yellow', 'Green', 'Blue', variantName] }
 			});
 
 			assert.ok(game.state.isCritical({suitIndex: 4, rank: 1}));
