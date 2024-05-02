@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
+import * as ExAsserts from '../extra-asserts.js';
 
-import { PLAYER, setup, takeTurn } from '../test-utils.js';
+import { PLAYER, VARIANTS, setup, takeTurn } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { isCluable } from '../../src/variants.js';
 
@@ -14,13 +15,7 @@ logger.setLevel(logger.LEVELS.ERROR);
 
 describe('prism cluing', () => {
 	it('cannot clue prism', () => {
-		assert.ok(!isCluable(
-			{'id': 1465, 'name': 'Prism (5 Suits)', 'suits': ['Red', 'Yellow', 'Green', 'Blue', 'Prism']},
-			{
-				type: CLUE.COLOUR,
-				value: 4,
-			}
-		));
+		assert.ok(!isCluable(VARIANTS.PRISM, { type: CLUE.COLOUR, value: 4 }));
 	});
 
 	it('understands prism touch', () => {
@@ -28,28 +23,15 @@ describe('prism cluing', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
-			level: 1,
-			play_stacks: [0, 0, 0, 0, 0],
-			clue_tokens: 8,
 			starting: PLAYER.BOB,
-			variant: {'id': 1465, 'name': 'Prism (5 Suits)', 'suits': ['Red', 'Yellow', 'Green', 'Blue', 'Prism']}
-		},
-		);
+			variant: VARIANTS.PRISM
+		});
 
 		takeTurn(game, 'Bob clues red to Alice (slot 1)');
-		[1, 5].forEach(r =>
-			assert.ok(game.common.thoughts[4].possible.has({suitIndex: 4, rank: r}))
-		);
-		[2, 3, 4].forEach(r =>
-			assert.ok(!game.common.thoughts[4].possible.has({suitIndex: 4, rank: r}))
-		);
+		ExAsserts.cardHasPossibilities(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r1', 'r2', 'r3', 'r4', 'r5', 'i1', 'i5']);
 
 		takeTurn(game, 'Alice clues blue to Bob');
-
 		takeTurn(game, 'Bob clues green to Alice (slot 2)');
-		assert.ok(game.common.thoughts[3].possible.has({suitIndex: 4, rank: 3}));
-		[1, 2, 4, 5].forEach(r =>
-			assert.ok(!game.common.thoughts[3].possible.has({suitIndex: 4, rank: r}))
-		);
+		ExAsserts.cardHasPossibilities(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g1', 'g2', 'g3', 'g4', 'g5', 'i3']);
 	});
 });

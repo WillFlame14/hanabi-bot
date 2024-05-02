@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, setup, takeTurn } from '../../test-utils.js';
+import { PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../../test-utils.js';
 import HGroup from '../../../src/conventions/h-group.js';
 
 import logger from '../../../src/tools/logger.js';
@@ -14,17 +14,14 @@ describe('save clue interpretation', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
-			level: 1,
-			play_stacks: [0, 0, 0, 0, 0],
-			clue_tokens: 8,
 			starting: PLAYER.BOB,
-			variant: {'id': 21, 'name': 'Black (5 Suits)', 'suits': ['Red', 'Yellow', 'Green', 'Blue', 'Black']}
+			variant: VARIANTS.BLACK
 		});
 
 		takeTurn(game, 'Bob clues black to Alice (slots 4,5)');
 
-		assert.ok(game.common.thoughts[0].inferred.has({suitIndex: 4, rank: 2}));
-		assert.ok(game.common.thoughts[0].inferred.has({suitIndex: 4, rank: 5}));
+		assert.ok(['k2', 'k5'].every(id =>
+			game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands k2/5 save with black for filling in', () => {
@@ -32,18 +29,16 @@ describe('save clue interpretation', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
-			level: 1,
-			play_stacks: [0, 0, 0, 0, 0],
-			clue_tokens: 8,
+			play_stacks: [2, 0, 0, 0, 0],
 			starting: PLAYER.BOB,
-			variant: {'id': 21, 'name': 'Black (5 Suits)', 'suits': ['Red', 'Yellow', 'Green', 'Blue', 'Black']}
+			variant: VARIANTS.BLACK
 		});
 
-		[1].forEach(index => game.state.hands[PLAYER.ALICE][index].clued = true);
+		takeTurn(game, 'Bob clues 3 to Alice (slots 1,3)');
+		takeTurn(game, 'Alice plays r3 (slot 1)');
+		takeTurn(game, 'Bob clues black to Alice (slots 3,5)');
 
-		takeTurn(game, 'Bob clues black to Alice (slot 1,5)');
-
-		assert.ok(game.common.thoughts[0].inferred.has({suitIndex: 4, rank: 2}));
-		assert.ok(game.common.thoughts[0].inferred.has({suitIndex: 4, rank: 5}));
+		assert.ok(['k2', 'k5'].every(id =>
+			game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
 	});
 });
