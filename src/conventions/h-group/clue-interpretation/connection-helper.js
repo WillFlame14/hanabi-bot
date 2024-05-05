@@ -215,7 +215,7 @@ export function assign_connections(game, connections, options = {}) {
 				card.certain_finessed = true;
 		}
 
-		if (hidden) {
+		if (connection.bluff || hidden) {
 			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }));
 			card.inferred = card.inferred.intersect(playable_identities);
 

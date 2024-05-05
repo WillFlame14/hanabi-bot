@@ -87,6 +87,7 @@
  * @property {Identity[]} identities
  * @property {boolean} [self]
  * @property {boolean} [hidden]
+ * @property {boolean} [bluff]
  * @property {ActualCard[]} [linked]
  * @property {boolean} [certain]
  * @property {boolean} [ambiguous]

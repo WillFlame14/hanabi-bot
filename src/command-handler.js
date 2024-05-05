@@ -19,7 +19,7 @@ import { State } from './basics/State.js';
 const conventions = { HGroup, PlayfulSieve };
 const settings = {
 	convention: 'HGroup',
-	level: 1
+	level: 11
 };
 
 /** @type {Record<number, Table>} */

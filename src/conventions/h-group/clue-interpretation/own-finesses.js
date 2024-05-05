@@ -150,7 +150,7 @@ function connect(game, giver, target, identity, looksDirect, connected, ignoreOr
 }
 
 /**
- * Looks for a connecting card, resorting to a prompt/finesse through own hand if necessary.
+ * Looks for a connecting card, resorting to a prompt/finesse/bluff through own hand if necessary.
  * @param {Game} game
  * @param {ClueAction} action
  * @param {Identity} identity
@@ -164,6 +164,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 	const { common, state } = game;
 	const { giver, target, clue, list } = action;
 	const { focused_card } = determine_focus(state.hands[target], common, list, { beforeClue: true });
+	const bluff_seat = (giver + 1) % state.numPlayers;
 
 	if (giver === state.ourPlayerIndex && ignorePlayer === -1)
 		throw new IllegalInterpretation('cannot finesse ourselves.');
@@ -219,7 +220,6 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 			else {
 				allHidden = false;
 
-				// Assume this is actually the card
 				const conn_card = hypo_common.thoughts[card.order];
 				conn_card.inferred = conn_card.inferred.intersect(next_identity);
 				hypo_common.good_touch_elim(hypo_state);
@@ -301,6 +301,7 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
 function find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses) {
 	const { common, state, me } = game;
 	const { suitIndex, rank } = identity;
+	const bluff_seat = (giver + 1) % state.numPlayers;
 	const our_hand = state.hands[state.ourPlayerIndex];
 
 	const finesse = common.find_finesse(our_hand, connected, ignoreOrders);
@@ -339,7 +340,7 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 
 			return state.hands.flat().find(c => c.order === ignored_order).matches(identity);
 		});
-		return [{ type: 'finesse', reacting, card: finesse, self: true, identities: [identity], certain, ambiguous }];
+		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff: state.ourPlayerIndex == bluff_seat, identities: [identity], certain, ambiguous }];
 	}
 
 	throw new IllegalInterpretation('self-finesse not found');

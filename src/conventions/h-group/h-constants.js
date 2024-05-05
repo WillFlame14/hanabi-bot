@@ -5,7 +5,8 @@ export const LEVEL = /** @type {const} */ ({
 	INTERMEDIATE_FINESSES: 5,
 	TEMPO_CLUES: 6,
 	LAST_RESORTS: 7,
-	STALLING: 9
+	STALLING: 9,
+	BLUFFS: 11
 });
 
 export const ACTION_PRIORITY = /** @type {const} */ ({

@@ -191,6 +191,7 @@ export function interpret_clue(game, action) {
 	const focus_possible = find_focus_possible(game, action);
 	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) => logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
 
+	 // TODO: Allow bluffs on impossible cards.
 	const matched_inferences = focus_possible.filter(p => focus_thoughts.inferred.has(p));
 	const old_game = game.minimalCopy();
 

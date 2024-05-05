@@ -99,7 +99,7 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
 }
 
 /**
- * Finds a (possibly layered) prompt or finesse as a connecting card (or unknown playable).
+ * Finds a (possibly layered) prompt, finesse or bluff as a connecting card (or unknown playable).
  * @param {Game} game
  * @param {number} giver 			The player index that gave the clue. They cannot deduce unknown information about their own hand.
  * @param {number} target 			The player index receiving the clue. They will not find self-prompts or self-finesses.
@@ -211,6 +211,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 
 	const wrong_prompts = [];
 	const old_play_stacks = state.play_stacks;
+	const bluff_seat = (giver + 1) % state.numPlayers;
 
 	// Only consider prompts/finesses if no connecting cards found
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -251,9 +252,21 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 		}
 
 		// The final card must not be hidden
-		if (connections.length > 0 && !connections.at(-1).hidden) {
-			state.play_stacks = old_play_stacks.slice();
-			return connections;
+		if (connections.length > 0) {
+			if (game.level >= LEVEL.BLUFFS && playerIndex == bluff_seat) {
+				// Only a single card can be bluffed.
+				// TODO: Only if we're missing a single card to get the target playable.
+				connections.splice(1, connections.length - 1);
+				// Treat it as not hidden.
+				connections[0].hidden = false;
+				connections[0].bluff = true;
+				state.play_stacks = old_play_stacks.slice();
+				return connections;
+			}
+			if (!connections.at(-1).hidden) {
+				state.play_stacks = old_play_stacks.slice();
+				return connections;
+			}
 		}
 	}
 
