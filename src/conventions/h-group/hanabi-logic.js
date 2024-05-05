@@ -62,9 +62,6 @@ export function stall_severity(state, player, giver) {
 	if (state.screamed_at)
 		return 2;
 
-	if (state.inEndgame())
-		return 1.5;
-
 	if (state.early_game)
 		return 1;
 

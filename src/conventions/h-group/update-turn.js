@@ -204,7 +204,7 @@ function resolve_card_played(game, waiting_connection) {
 		const connection = game.last_actions[reacting].card;
 		const thoughts = common.thoughts[connection.order];
 
-		if (type === 'finesse' && connection.clued && (thoughts.focused || thoughts.inferred.every(i => state.isPlayable(i) || connection.matches(i)))) {
+		if (type === 'finesse' && target === state.ourPlayerIndex && connection.clued && (thoughts.focused || thoughts.inferred.every(i => state.isPlayable(i) || connection.matches(i)))) {
 			logger.warn('connecting card was focused/known playable with a clue (stomped on), not confirming finesse');
 
 			if (connections[conn_index + 1]?.self) {
@@ -318,6 +318,11 @@ export function update_turn(game, action) {
 
 		if (impossible_conn !== undefined) {
 			logger.warn(`future connection depends on revealed card having identities ${impossible_conn.identities.map(logCard)}, removing`);
+			remove_finesse = true;
+			remove = true;
+		}
+		else if (!common.thoughts[focused_card.order].possible.has(inference)) {
+			logger.warn(`connection depends on focused card having identity ${logCard(inference)}, removing`);
 			remove_finesse = true;
 			remove = true;
 		}

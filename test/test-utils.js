@@ -1,6 +1,6 @@
 import { CLUE } from '../src/constants.js';
 import { State } from '../src/basics/State.js';
-import { cardCount } from '../src/variants.js';
+import { cardCount, shortForms } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
 
 import { logAction, logClue } from '../src/tools/log.js';
@@ -36,19 +36,45 @@ export const PLAYER = /** @type {const} */ ({
 	EMILY: 4
 });
 
-const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
-const noVar = /** @type {Variant} */ ({
-	"id": 0,
-	"name": "No Variant",
-	"suits": ["Red", "Yellow", "Green", "Blue", "Purple"]
+export const VARIANTS = /** @type {Record<string, Variant>} */ ({
+	NO_VARIANT: { id: 0, name: 'No Variant', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Purple'] },
+	RAINBOW: { id: 16,  name: 'Rainbow (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Rainbow'] },
+	BLACK: { id: 21,  name: 'Black (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Black'] },
+	WHITE: { id: 22,  name: 'White (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'White'] },
+	PINK: { id: 107, name: 'Pink (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Pink'] },
+	PRISM: { id: 1465, name: 'Prism (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Prism'] }
 });
+
+const sampleColours = /** @type {const} */ ({
+	'Rainbow': 'm',
+	'Muddy Rainbow': 'm',
+	'Light Pink': 'i',
+	'Prism': 'i',
+	'Dark Rainbow': 'm',
+	'Dark Pink': 'i',
+	'Gray': 'a',
+	'Dark Brown': 'n',
+	'Dark Omni': 'o',
+	'Dark Null': 'u',
+	'Cocoa Rainbow': 'm',
+	'Gray Pink': 'i',
+	'Dark Prism': 'i',
+	'Forest': 'r',
+	'Sapphire EA': 'a',
+	'Forest AD': 'r'
+});
+
+const names = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily'];
+
+/** @type {string[]} */
+let testShortForms;
 
 /**
  * @param {string} short
  */
 export function expandShortCard(short) {
 	return {
-		suitIndex: ['x', 'r', 'y', 'g', 'b', 'p'].indexOf(short[0]) - 1,
+		suitIndex: testShortForms.indexOf(short[0]) - 1,
 		rank: Number(short[1]) || -1
 	};
 }
@@ -117,7 +143,25 @@ function injectFuncs(options) {
  */
 export function setup(GameClass, hands, test_options = {}) {
 	const playerNames = names.slice(0, hands.length);
-	const variant = test_options.variant ?? noVar;
+	const variant = test_options.variant ?? VARIANTS.NO_VARIANT;
+
+	// Overwrite the global short forms
+	shortForms.length = 0;
+
+	for (const suitName of variant.suits) {
+		if (['Black', 'Pink', 'Brown'].includes(suitName)) {
+			shortForms.push(['k', 'i', 'n'][['Black', 'Pink', 'Brown'].indexOf(suitName)]);
+		}
+		else {
+			const abbreviation = sampleColours[suitName] ?? suitName.charAt(0).toLowerCase();
+			if (shortForms.includes(abbreviation))
+				shortForms.push(suitName.toLowerCase().split('').find(char => !shortForms.includes(char)));
+			else
+				shortForms.push(abbreviation);
+		}
+	}
+
+	testShortForms = shortForms.toSpliced(0, 0, 'x');
 
 	const state = new State(playerNames, 0, variant, {});
 	const game = new GameClass(-1, state, false, test_options.level ?? 1);

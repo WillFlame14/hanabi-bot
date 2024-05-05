@@ -99,8 +99,8 @@ function find_tcm(game, target, saved_cards, trash_card, play_clues) {
 	logger.info(`attempting tcm with trash card ${logCard(trash_card)}, saved cards ${saved_cards.map(logCard).join(',')}`);
 	const chop = saved_cards.at(-1);
 
-	// Critical cards and unique 2s can be saved directly if touching all cards
-	if ((state.isCritical(chop) ||
+	// Critical cards, playable cards and unique 2s can be saved directly if touching all cards
+	if ((state.isCritical(chop) || me.hypo_stacks[chop.suitIndex] + 1 === chop.rank ||
 			(save2(state, me, chop) &&
 				!state.variant.suits[chop.suitIndex].match(variantRegexes.brownish) &&
 				clue_safe(game, me, { type: CLUE.RANK, value: 2, target }))) &&
@@ -181,7 +181,7 @@ export function find_clues(game, options = {}) {
 
 	const play_clues = /** @type Clue[][] */ 	([]);
 	const save_clues = /** @type SaveClue[] */ 	([]);
-	const stall_clues = /** @type Clue[][] */ 	([[], [], [], []]);
+	const stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], []]);
 
 	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, me.hypo_stacks, state.max_ranks);
 
@@ -297,7 +297,7 @@ export function find_clues(game, options = {}) {
 					}
 					else if (cardIndex === chopIndex && chopIndex !== 0) {
 						logger.info('locked hand save', logClue(clue));
-						stall_clues[2].push(clue);
+						stall_clues[3].push(clue);
 					}
 					else if (new_touched === 0) {
 						if (elim > 0) {
@@ -306,7 +306,7 @@ export function find_clues(game, options = {}) {
 						}
 						else {
 							logger.info('hard burn', logClue(clue));
-							stall_clues[3].push(clue);
+							stall_clues[5].push(clue);
 						}
 					}
 					else {

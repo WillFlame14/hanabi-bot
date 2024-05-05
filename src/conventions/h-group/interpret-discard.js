@@ -28,6 +28,7 @@ export function interpret_discard(game, action, card) {
 	const identity = { suitIndex, rank };
 	const thoughts = common.thoughts[order];
 	const before_trash = common.thinksTrash(state, playerIndex);
+	const old_chop = common.chop(state.hands[playerIndex]);
 
 	Basics.onDiscard(game, action);
 
@@ -76,7 +77,7 @@ export function interpret_discard(game, action, card) {
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!thoughts.rewinded && (failed || (!thoughts.matches_inferences() && !isTrash(state, me, card, card.order)))) {
+	if (!thoughts.rewinded && playerIndex === state.ourPlayerIndex && (failed || (!thoughts.matches_inferences() && !isTrash(state, me, card, card.order)))) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;
@@ -99,7 +100,7 @@ export function interpret_discard(game, action, card) {
 	}
 
 	if (game.level >= LEVEL.LAST_RESORTS && !action.failed) {
-		const result = check_sdcm(game, action, before_trash);
+		const result = check_sdcm(game, action, before_trash, old_chop);
 
 		if (result !== undefined) {
 			state.screamed_at = true;
@@ -123,9 +124,10 @@ export function interpret_discard(game, action, card) {
  * @param {Game} game
  * @param {DiscardAction} action
  * @param {ActualCard[]} before_trash
+ * @param {ActualCard} old_chop
  * @returns {'scream' | 'shout' | 'generation' | undefined}
  */
-function check_sdcm(game, action, before_trash) {
+function check_sdcm(game, action, before_trash, old_chop) {
 	const { common, state } = game;
 	const { order, playerIndex } = action;
 	const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
@@ -135,8 +137,8 @@ function check_sdcm(game, action, before_trash) {
 	if (common.thinksLocked(state, nextPlayerIndex) && state.clue_tokens === 1)
 		return;
 
-	const scream = state.clue_tokens === 1 &&
-		(common.thinksPlayables(state, playerIndex).length > 0 || (before_trash.length > 0 && !before_trash.some(c => c.order === order)));
+	const scream = state.clue_tokens === 1 && old_chop &&
+		(common.thinksPlayables(state, playerIndex).length > 0 || before_trash.length > 0) && order === old_chop.order;
 
 	const shout = common.thinksPlayables(state, playerIndex).length > 0 && before_trash.some(c => c.order === order);
 

@@ -147,4 +147,24 @@ describe('play clue', () => {
 		// g2 should be counted as newly playable.
 		assert.equal(playables.length, 1);
 	});
+
+	it('correctly maintains the number of playables when a linked card is played', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p1', 'g1', 'r1', 'r2'],
+			['g4', 'g3', 'p2', 'b3'],
+			['y2', 'b4', 'r5', 'r1']
+		], {
+			level: 1,
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 1 to Bob');
+		takeTurn(game, 'Alice clues purple to Cathy');		// Link between p1, g1 and r1 for p1
+		takeTurn(game, 'Bob plays r1', 'y4');
+
+		// The hypo stacks should not change except for r1 becoming known.
+		assert.ok([1, 0, 0, 0, 2].every((stack_rank, suitIndex) => game.common.hypo_stacks[suitIndex] === stack_rank),
+			`Expected hypo stacks ${[1, 0, 0, 0, 2]}, got ${game.common.hypo_stacks}`);
+	});
 });

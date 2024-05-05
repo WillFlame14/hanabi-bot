@@ -105,7 +105,7 @@ function find_colour_focus(game, suitIndex, action) {
 						continue;
 
 					if (card.newly_clued ||
-						card.clues.some((clue, index) => index !== card.clues.length - 1 && Utils.objEquals(clue, card.clues.at(-1)))
+						card.clues.some((clue, index) => index !== card.clues.length - 1 && !Utils.objEquals(clue, card.clues.at(-1)))
 					)
 						fill_ins++;
 				}

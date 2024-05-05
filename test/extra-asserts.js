@@ -20,6 +20,18 @@ export function cardHasInferences(card, inferences, message) {
 }
 
 /**
+ * Asserts that a card's possibilities are exactly the set provided.
+ * @param  {Card} card 					The card to check possibilities of.
+ * @param  {string[]} possibilities 	The set of possibilities to compare to.
+ * @param  {string | Error} 		 [message]		The error message if the assertion fails.
+ */
+export function cardHasPossibilities(card, possibilities, message) {
+	const defaultMessage = `Differing possibilities. Expected ${possibilities}, got ${card.possible.map(logCard)} (missing ${possibilities.find(p => !card.possible.has(expandShortCard(p)))}`;
+
+	assert.ok(card.possible.length === possibilities.length && possibilities.every(p => card.possible.has(expandShortCard(p))), message ?? defaultMessage);
+}
+
+/**
  * Asserts that the object as the provided properties (and possibly more).
  * @param  {Record<string, unknown>} obj 			The object to check properties of.
  * @param  {Record<string, unknown>} properties 	The properties to check.

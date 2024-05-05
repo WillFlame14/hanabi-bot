@@ -89,6 +89,10 @@ export function chopUnsafe(state, player, playerIndex) {
 	// Note that chop will be undefined if the entire hand is clued
 	const chop = player.chop(state.hands[playerIndex], { afterClue: true });
 
-	return (chop && (state.isCritical(chop) || save2(state, player, chop))) ||	// Crit or unique 2 on chop
-			(state.clue_tokens === 0 && chop === undefined);				// Locked with no clue tokens (TODO: See if a 5 can be played?)
+	// Crit or unique 2 on chop
+	if (chop)
+		return state.isCritical(chop) || save2(state, player, chop);
+
+	// Locked with no clue tokens
+	return state.clue_tokens === 0 && !player.thinksLoaded(state, playerIndex);
 }

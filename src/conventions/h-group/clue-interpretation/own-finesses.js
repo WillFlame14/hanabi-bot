@@ -258,6 +258,10 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
 
 		for (let i = start_index; matching !== list.includes(our_hand[i].order); i++) {
 			const card = our_hand[i];
+
+			if (ignoreOrders.includes(card.order))
+				throw new IllegalInterpretation(`impossible layered finesse, ignoring card order ${card.order}`);
+
 			let identities = common.hypo_stacks.map((stack_rank, suitIndex) => ({ suitIndex, rank: stack_rank + 1 }));
 
 			// Touching a non-matching card - we know exactly what playbable identities it should be
