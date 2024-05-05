@@ -253,7 +253,9 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 
 		// The final card must not be hidden
 		if (connections.length > 0) {
-			if (game.level >= LEVEL.BLUFFS && playerIndex == bluff_seat) {
+			// A bluff requires that we are targeting the bluff seat and there are no already connected cards,
+			// otherwise the bluff could not be revealed immediately.
+			if (game.level >= LEVEL.BLUFFS && playerIndex == bluff_seat && connected.length == 1) {
 				// Only a single card can be bluffed.
 				// TODO: Only if we're missing a single card to get the target playable.
 				connections.splice(1, connections.length - 1);

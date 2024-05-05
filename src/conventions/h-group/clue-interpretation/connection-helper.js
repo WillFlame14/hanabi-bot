@@ -218,6 +218,10 @@ export function assign_connections(game, connections, options = {}) {
 		if (connection.bluff || hidden) {
 			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }));
 			card.inferred = card.inferred.intersect(playable_identities);
+			if (connection.bluff) {
+				const currently_playable_identities = state.play_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }));
+				card.inferred = card.inferred.intersect(currently_playable_identities);
+			}
 
 			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
 			if (state.deck[card.order].identity() !== undefined) {
