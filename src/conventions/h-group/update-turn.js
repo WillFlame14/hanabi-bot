@@ -321,6 +321,11 @@ export function update_turn(game, action) {
 			remove_finesse = true;
 			remove = true;
 		}
+		else if (!common.thoughts[focused_card.order].possible.has(inference)) {
+			logger.warn(`connection depends on focused card having identity ${logCard(inference)}, removing`);
+			remove_finesse = true;
+			remove = true;
+		}
 		else {
 			// After the turn we were waiting for
 			if (lastPlayerIndex === reacting) {

@@ -99,8 +99,8 @@ function find_tcm(game, target, saved_cards, trash_card, play_clues) {
 	logger.info(`attempting tcm with trash card ${logCard(trash_card)}, saved cards ${saved_cards.map(logCard).join(',')}`);
 	const chop = saved_cards.at(-1);
 
-	// Critical cards and unique 2s can be saved directly if touching all cards
-	if ((state.isCritical(chop) ||
+	// Critical cards, playable cards and unique 2s can be saved directly if touching all cards
+	if ((state.isCritical(chop) || me.hypo_stacks[chop.suitIndex] + 1 === chop.rank ||
 			(save2(state, me, chop) &&
 				!state.variant.suits[chop.suitIndex].match(variantRegexes.brownish) &&
 				clue_safe(game, me, { type: CLUE.RANK, value: 2, target }))) &&

@@ -311,6 +311,9 @@ export function refresh_links(state) {
 					}
 					remove_indices.push(i);
 				}
+				else {
+					this.links[i].cards = viable_cards;
+				}
 			}
 		}
 		else {

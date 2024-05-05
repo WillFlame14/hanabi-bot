@@ -59,12 +59,18 @@ export function onClue(game, action) {
 export function onDiscard(game, action) {
 	const { state } = game;
 	const { failed, order, playerIndex, rank, suitIndex } = action;
+	const identity = { suitIndex, rank };
 
 	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
 	state.discard_stacks[suitIndex][rank - 1]++;
-	Object.assign(state.deck[order], { suitIndex, rank });
+	Object.assign(state.deck[order], identity);
 
 	for (const player of game.allPlayers) {
+		const card = player.thoughts[order];
+		card.possible = card.possible.intersect(identity);
+		card.inferred = card.inferred.intersect(identity);
+		Object.assign(card, identity);
+
 		player.card_elim(state);
 		player.refresh_links(state);
 	}
@@ -129,12 +135,18 @@ export function onDraw(game, action) {
 export function onPlay(game, action) {
 	const { state } = game;
 	const { order, playerIndex, rank, suitIndex } = action;
+	const identity = { suitIndex, rank };
 
 	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
 	state.play_stacks[suitIndex] = rank;
-	Object.assign(state.deck[order], { suitIndex, rank });
+	Object.assign(state.deck[order], identity);
 
 	for (const player of game.allPlayers) {
+		const card = player.thoughts[order];
+		card.possible = card.possible.intersect(identity);
+		card.inferred = card.inferred.intersect(identity);
+		Object.assign(card, identity);
+
 		player.card_elim(state);
 		player.refresh_links(state);
 	}

@@ -231,12 +231,12 @@ export function take_action(game) {
 	}
 
 	// Attempt to solve endgame
-	if (state.inEndgame && state.cardsLeft > 0) {
+	if (state.inEndgame() && state.cardsLeft > 0) {
 		try {
 			const action = solve_game(game, state.ourPlayerIndex);
 
 			if (action.type === ACTION.COLOUR || action.type === ACTION.RANK) {
-				const stall_clue = best_play_clue ?? best_stall_clue(stall_clues, 5) ??
+				const stall_clue = best_play_clue ?? best_stall_clue(stall_clues, 4) ??
 					{ type: CLUE.RANK, target: nextPlayerIndex, value: state.hands[nextPlayerIndex].at(-1).rank };
 
 				return Utils.clueToAction(stall_clue, tableID);

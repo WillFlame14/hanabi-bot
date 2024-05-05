@@ -137,7 +137,7 @@ export function interpret_clue(game, action) {
 	if (chop)
 		focus_thoughts.chop_when_first_clued = true;
 
-	if (focus_thoughts.inferred.length === 0) {
+	if (focus_thoughts.inferred.length === 0 && oldCommon.thoughts[focused_card.order].possible.length > 1) {
 		focus_thoughts.inferred = focus_thoughts.possible;
 		logger.warn(`focus had no inferences after applying good touch (previously ${oldCommon.thoughts[focused_card.order].inferred.map(logCard).join()})`);
 

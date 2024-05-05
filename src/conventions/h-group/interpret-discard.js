@@ -77,7 +77,7 @@ export function interpret_discard(game, action, card) {
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!thoughts.rewinded && (failed || (!thoughts.matches_inferences() && !isTrash(state, me, card, card.order)))) {
+	if (!thoughts.rewinded && playerIndex === state.ourPlayerIndex && (failed || (!thoughts.matches_inferences() && !isTrash(state, me, card, card.order)))) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;

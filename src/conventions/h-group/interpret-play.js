@@ -77,11 +77,6 @@ export function interpret_play(game, action) {
 	Basics.onPlay(this, action);
 
 	common.good_touch_elim(state);
-	team_elim(game);
-
-	for (const player of game.allPlayers)
-		player.refresh_links(state);
-
-	// Update hypo stacks
 	common.update_hypo_stacks(state);
+	team_elim(game);
 }
