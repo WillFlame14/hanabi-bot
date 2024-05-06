@@ -159,13 +159,21 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
 		}
 		// Finessed card is delayed playable
 		else if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
-			// Could be duplicated in giver's hand - disallow hidden finesse
-			if (state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
+			let bluff = false;
+			if (game.level >= LEVEL.BLUFFS) {
+				// TODO: Bluffs must be recognizable. We should rule out a bluff if it doesn't
+				// look like it could lead to the other cards.
+				bluff =
+					connected.length == 1 &&
+					((giver + 1) % state.numPlayers) == reacting;
+			}
+			// Could be duplicated in giver's hand - disallow hidden finesse unless it could be a bluff.
+			if (!bluff && state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
 				return;
 			}
 
-			return { type: 'finesse', reacting, card: finesse, hidden: true, identities: [finesse.raw()] };
+			return { type: 'finesse', reacting, card: finesse, hidden: !bluff, bluff, identities: [finesse.raw()] };
 		}
 	}
 }
@@ -211,7 +219,6 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 
 	const wrong_prompts = [];
 	const old_play_stacks = state.play_stacks;
-	const bluff_seat = (giver + 1) % state.numPlayers;
 
 	// Only consider prompts/finesses if no connecting cards found
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -252,23 +259,9 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 		}
 
 		// The final card must not be hidden
-		if (connections.length > 0) {
-			// A bluff requires that we are targeting the bluff seat and there are no already connected cards,
-			// otherwise the bluff could not be revealed immediately.
-			if (game.level >= LEVEL.BLUFFS && playerIndex == bluff_seat && connected.length == 1) {
-				// Only a single card can be bluffed.
-				// TODO: Only if we're missing a single card to get the target playable.
-				connections.splice(1, connections.length - 1);
-				// Treat it as not hidden.
-				connections[0].hidden = false;
-				connections[0].bluff = true;
-				state.play_stacks = old_play_stacks.slice();
-				return connections;
-			}
-			if (!connections.at(-1).hidden) {
-				state.play_stacks = old_play_stacks.slice();
-				return connections;
-			}
+		if (connections.length > 0 && !connections.at(-1).hidden) {
+			state.play_stacks = old_play_stacks.slice();
+			return connections;
 		}
 	}
 

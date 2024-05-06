@@ -191,7 +191,6 @@ export function interpret_clue(game, action) {
 	const focus_possible = find_focus_possible(game, action);
 	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) => logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
 
-	 // TODO: Allow bluffs on impossible cards.
 	const matched_inferences = focus_possible.filter(p => focus_thoughts.inferred.has(p));
 	const old_game = game.minimalCopy();
 
@@ -271,6 +270,7 @@ export function interpret_clue(game, action) {
 			}
 
 			if (self && self_connections.length > 0) {
+				// If there's a valid connection that doesn't require a bluff, a bluff is not a valid interpretation.
 				const no_bluff_connections = self_connections.filter(connection => connection.connections.filter(c => c.bluff == true).length == 0);
 				if (no_bluff_connections.length > 0) {
 					self_connections = no_bluff_connections;

@@ -220,6 +220,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 			else {
 				allHidden = false;
 
+				// Assume this is actually the card
 				const conn_card = hypo_common.thoughts[card.order];
 				conn_card.inferred = conn_card.inferred.intersect(next_identity);
 				hypo_common.good_touch_elim(hypo_state);

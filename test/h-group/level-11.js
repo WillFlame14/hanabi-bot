@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, setup, takeTurn } from '../test-utils.js';
+import { PLAYER, VARIANTS, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
@@ -12,7 +12,54 @@ import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finde
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('bluff clues', () => {
-	it('understands a bluff', () => {
+	it('understands a direct play if the bluff isn\'t played into', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p1', 'y5', 'b1', 'g5', 'p2'],
+			['b3', 'r1', 'b5', 'b2', 'y4']
+		], {
+			level: 11,
+			play_stacks: [2, 2, 2, 2, 2],
+			starting: PLAYER.BOB
+		});
+		takeTurn(game, 'Bob clues red to Alice (slot 2)');
+
+		// Cathy's slot 1 could be any of the playable 3's.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3', 'g3', 'b3', 'p3']);
+		// Alice's slot 2 could be r3 or r4.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'r4']);
+
+		takeTurn(game, 'Cathy discards y4 (slot 5)', 'y1');
+
+		// After Cathy doesn't play into it, assume we have a play. 
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3']);
+	});
+
+	it('understands giving a direct play through a bluff opportunity', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b3', 'r1', 'b1', 'g5', 'p2'],
+			['p1', 'r3', 'b5', 'b2', 'y4']
+		], {
+			level: 11,
+			play_stacks: [2, 2, 2, 2, 2],
+			starting: PLAYER.ALICE
+		});
+		takeTurn(game, 'Alice clues red to Cathy (slot 2)');
+
+		// Bob's slot 1 could be any of the playable 3's.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, false);
+		// Cathy's slot 2 will be assumed to be r3 or r4 until Bob reacts.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r3', 'r4']);
+
+		takeTurn(game, 'Bob discards p2 (slot 5)', 'y5');
+
+		// After Bob doesn't play into the bluff, Cathy knows it is an r3 
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r3']);
+	});
+
+	it('understands giving a bluff', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b3', 'r1', 'b1', 'g5', 'p2'],
@@ -34,6 +81,49 @@ describe('bluff clues', () => {
 
 		// After Bob plays into the bluff, Cathy knows it is an r4 
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r4']);
+	});
+
+	it('understands a given bluff', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g3', 'p2', 'k4', 'b2'],
+			['y3', 'r4', 'p4', 'r4'],
+			['k2', 'g1', 'p3', 'g3'],
+		], {
+			level: 11,
+			play_stacks: [0, 0, 0, 0, 0, 0],
+			starting: PLAYER.ALICE,
+			variant: VARIANTS.BLACK6
+		});
+		takeTurn(game, 'Alice clues 2 to Bob (slot 2, 4)');
+		takeTurn(game, 'Bob clues 1 to Alice (slot 1, 3, 4)');
+		takeTurn(game, 'Cathy clues 1 to Donald (slot 2)');
+		takeTurn(game, 'Donald clues black to Bob (slot 3)');
+		takeTurn(game, 'Alice plays k1 (slot 4)', 'y1');
+		takeTurn(game, 'Bob clues black to Donald (slot 1)');
+		takeTurn(game, 'Cathy discards r4 (slot 4)', 'p1');
+		takeTurn(game, 'Donald plays g1 (slot 2)', 'r1');
+		takeTurn(game, 'Alice plays b1 (slot 4)', 'r3');
+		takeTurn(game, 'Bob clues green to Donald (slot 4)');
+
+		// Cathy's slot 1 could be any playable.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r1', 'y1', 'g2', 'b2', 'p1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+
+		// Donald's slot 4 must be g2,g3.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][3].order], ['g2', 'g3']);
+
+		takeTurn(game, 'Cathy plays p1 (slot 1)', 'p5');
+
+		// After Cathy plays into the bluff, Donald knows it is a g3.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][3].order], ['g3']);
+
+		// And no-one is finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.DONALD][0].order].finessed, false);
 	});
 
 	it('understands receiving a bluff', () => {

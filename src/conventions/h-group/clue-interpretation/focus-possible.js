@@ -41,8 +41,9 @@ function find_colour_focus(game, suitIndex, action) {
 	let already_connected = [focused_card.order];
 
 	let finesses = 0;
+	let bluffed = false;
 
-	while (next_rank < state.max_ranks[suitIndex]) {
+	while (!bluffed && next_rank < state.max_ranks[suitIndex]) {
 		const identity = { suitIndex, rank: next_rank };
 		state.play_stacks = old_play_stacks.slice();
 
@@ -53,7 +54,7 @@ function find_colour_focus(game, suitIndex, action) {
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
 
-		const { type, card } = connecting.at(-1);
+		const { type, card, bluff } = connecting.at(-1);
 
 		if (type === 'known' && card.newly_clued && common.thoughts[card.order].possible.length > 1 &&
 			common.thoughts[focused_card.order].inferred.has(identity)) {
@@ -63,6 +64,7 @@ function find_colour_focus(game, suitIndex, action) {
 			break;
 		}
 		else if (type === 'finesse') {
+			bluffed = bluff;
 			finesses++;
 			if (game.level === 1 && finesses === 2) {
 				logger.warn('blocked double finesse at level 1');

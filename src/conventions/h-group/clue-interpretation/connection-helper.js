@@ -231,7 +231,8 @@ export function assign_connections(game, connections, options = {}) {
 
 				hypo_stacks[suitIndex] = rank;
 			}
-		} else {
+		}
+		else {
 			// There are multiple possible connections on this card
 			if (card.superposition) {
 				card.inferred = card.inferred.union(identities);
