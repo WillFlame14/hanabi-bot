@@ -130,4 +130,24 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
+	it('assumes a finesse over self bluff when connecting cards exist', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g4', 'g2', 'p1', 'b2'],
+			['b4', 'g4', 'y4', 'r4'],
+			['y3', 'r1', 'g3', 'p3']
+		], {
+			level: 11,
+			play_stacks: [0, 1, 0, 0, 1],
+			starting: PLAYER.CATHY
+		});
+		takeTurn(game, 'Cathy clues red to Donald (slot 2)');
+		takeTurn(game, 'Donald clues 3 to Alice (slot 1)');
+
+		// The bluff is not allowed as it can't be resolved immediately.
+		// Alice must have r3, r2
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2']);
+	});
+
 });

@@ -344,7 +344,11 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 
 			return state.hands.flat().find(c => c.order === ignored_order).matches(identity);
 		});
-		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff: state.ourPlayerIndex == bluff_seat, identities: [identity], certain, ambiguous }];
+		let bluff = false;
+		if (game.level >= LEVEL.BLUFFS) {
+			bluff = connected.length == 0 && state.ourPlayerIndex == bluff_seat;
+		}
+		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff, identities: [identity], certain, ambiguous }];
 	}
 
 	throw new IllegalInterpretation('self-finesse not found');

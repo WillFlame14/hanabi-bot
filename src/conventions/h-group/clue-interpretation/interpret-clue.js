@@ -271,6 +271,10 @@ export function interpret_clue(game, action) {
 			}
 
 			if (self && self_connections.length > 0) {
+				const no_bluff_connections = self_connections.filter(connection => connection.connections.filter(c => c.bluff == true).length == 0);
+				if (no_bluff_connections.length > 0) {
+					self_connections = no_bluff_connections;
+				}
 				for (const connection of self_connections)
 					all_connections.push(connection);
 			}
