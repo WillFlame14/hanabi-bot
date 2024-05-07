@@ -84,7 +84,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		// Don't assign save connections or known false connections
 		if (save || !focused_card.matches(inference, { assume: true })) {
 			// If this is a fake bluff, resolve the inference now, as we won't save the connection.
-			if (connections.length > 0 && connections[0].bluff) {
+			if (!save && connections.length > 0 && connections[0].bluff) {
 				focus_thoughts.inferred = focus_thoughts.inferred.subtract(inference);
 			}
 			continue;
