@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, VARIANTS, setup, takeTurn } from '../test-utils.js';
+import { PLAYER, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
@@ -12,7 +12,7 @@ import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finde
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('bluff clues', () => {
-	it('understands a direct play if the bluff isn\'t played into', () => {
+	it(`understands a direct play if the bluff isn't played into`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p1', 'y5', 'b1', 'g5', 'p2'],
@@ -186,7 +186,7 @@ describe('bluff clues', () => {
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
 	});
 
-	it('doesn\'t bluff a card that isn\'t immediately playable', () => {
+	it(`doesn't bluff a card that isn't immediately playable`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['y1', 'b5', 'r1', 'r1'],
@@ -228,7 +228,7 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2']);
 	});
 
-	it('doesn\'t bluff through self finesses', () => {
+	it(`doesn't bluff through self finesses`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y1', 'b5', 'y1', 'r4', 'y4'],
@@ -244,7 +244,7 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
-	it('doesn\'t bluff when bluff can\'t be known by next player to play', () => {
+	it(`doesn't bluff when bluff can't be known by next player to play`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y1', 'b5', 'y1', 'r4', 'y4'],
@@ -337,7 +337,7 @@ describe('bluff clues', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
 
 		takeTurn(game, 'Cathy discards b2', 'y5');    // 5 save
-	
+
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
 	});
