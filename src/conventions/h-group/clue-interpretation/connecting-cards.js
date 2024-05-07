@@ -166,7 +166,8 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
 				// look like it could lead to the following plays.
 				bluff =
 					connected.length == 1 &&
-					((giver + 1) % state.numPlayers) == reacting;
+					((giver + 1) % state.numPlayers) == reacting &&
+					!common.thinksLoaded(state, reacting);
 			}
 			// Could be duplicated in giver's hand - disallow hidden finesse unless it could be a bluff.
 			if (!bluff && state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {

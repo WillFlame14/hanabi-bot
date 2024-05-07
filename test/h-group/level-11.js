@@ -276,4 +276,24 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
+	it('doesn\'t bluff on top of queued cards', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g1', 'r2', 'y1', 'y1', 'r4'],
+			['p2', 'b2', 'r3', 'y5', 'y4'],
+			['g1', 'g2', 'g3', 'g5', 'p4'],
+		], {
+			level: 11,
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.DONALD
+		});
+		takeTurn(game, 'Donald clues red to Cathy (slot 3)');
+		// With g1, r2 already queued, we cannot bluff the y1.
+		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
+		const bluff_clues = play_clues[2].filter(clue => {
+			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2 ||
+				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == 3 || clue.value == 4);
+		});
+		assert.equal(bluff_clues.length, 0);
+	});
 });
