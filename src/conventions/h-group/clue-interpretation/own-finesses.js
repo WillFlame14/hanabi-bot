@@ -164,7 +164,6 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 	const { common, state } = game;
 	const { giver, target, clue, list } = action;
 	const { focused_card } = determine_focus(state.hands[target], common, list, { beforeClue: true });
-	const bluff_seat = (giver + 1) % state.numPlayers;
 
 	if (giver === state.ourPlayerIndex && ignorePlayer === -1)
 		throw new IllegalInterpretation('cannot finesse ourselves.');
@@ -346,9 +345,9 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 			return state.hands.flat().find(c => c.order === ignored_order).matches(identity);
 		});
 		let bluff = false;
-		if (game.level >= LEVEL.BLUFFS) {
+		if (game.level >= LEVEL.BLUFFS)
 			bluff = connected.length == 0 && state.ourPlayerIndex == bluff_seat;
-		}
+
 		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff, identities: [identity], certain, ambiguous }];
 	}
 

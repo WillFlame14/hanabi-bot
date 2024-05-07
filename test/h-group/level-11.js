@@ -212,7 +212,7 @@ describe('bluff clues', () => {
 		takeTurn(game, 'Cathy clues 1 to Donald (slot 2, 4)');
 		takeTurn(game, 'Donald plays r1 (slot 4)', 'p1');
 
-		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
+		const { play_clues } = find_clues(game);
 		const bluff_clues = play_clues[3].filter(clue => {
 			return clue.type == CLUE.RANK && clue.target == 3 && clue.value == 3 ||
 				clue.type == CLUE.COLOUR && clue.target == 3 && clue.value == 2;
@@ -251,7 +251,7 @@ describe('bluff clues', () => {
 			starting: PLAYER.ALICE
 		});
 
-		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
+		const { play_clues } = find_clues(game);
 		const bluff_clues = play_clues[2].filter(clue => {
 			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 3;
 		});
@@ -269,7 +269,7 @@ describe('bluff clues', () => {
 			starting: PLAYER.ALICE
 		});
 
-		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
+		const { play_clues } = find_clues(game);
 		const bluff_clues = play_clues[2].filter(clue => {
 			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2;
 		});
@@ -289,7 +289,7 @@ describe('bluff clues', () => {
 		});
 		takeTurn(game, 'Donald clues red to Cathy (slot 3)');
 		// With g1, r2 already queued, we cannot bluff the y1.
-		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
+		const { play_clues } = find_clues(game);
 		const bluff_clues = play_clues[2].filter(clue => {
 			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2 ||
 				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == 3 || clue.value == 4);
