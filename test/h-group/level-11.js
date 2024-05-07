@@ -296,4 +296,27 @@ describe('bluff clues', () => {
 		});
 		assert.equal(bluff_clues.length, 0);
 	});
+
+	it(`understands a complex play if the bluff isn't played into`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b3', 'g3', 'r3', 'g5'],
+			['p1', 'r4', 'b5', 'b2'],
+			['r2', 'b3', 'g1', 'y3']
+		], {
+			level: 11,
+			starting: PLAYER.DONALD
+		});
+		takeTurn(game, 'Donald clues 2 to Cathy');    // 2 save
+		takeTurn(game, 'Alice clues 5 to Bob');       // 5 save
+		takeTurn(game, 'Bob clues blue to Donald');   // finesse for b1 on us
+
+		// We expect that Cathy is bluffed
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
+
+		takeTurn(game, 'Cathy discards b2', 'y5');    // 5 save
+	
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
+	});
 });

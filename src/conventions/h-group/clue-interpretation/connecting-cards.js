@@ -209,13 +209,30 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 		}
 	}
 
-	// A bluff must be recognizable. As such, there should be no connection
-	// between the bluffed card and the following play.
-	const next_player = state.hands.findIndex(hand => hand.indexOf(promised[1]) != -1);
-	const thoughts = game.players[next_player].thoughts[promised[1].order];
-	const expected = { suitIndex: bluffCard.suitIndex , rank: bluffCard.rank + 1 };
-	if (thoughts.inferred.has(expected))
-		bluff_possible = false;
+	if (bluff_possible) {
+		// A bluff must be recognizable. As such, there should be no connection
+		// between the bluffed card and at least one of the following plays
+		// as known by the player who would play next after the bluff play.
+		let known_bluff = false;
+		const next_player = state.hands.findIndex(hand => hand.indexOf(promised[1]) != -1);
+		for (let i = 1; i < promised.length; ++i) {
+			const expected = { suitIndex: bluffCard.suitIndex , rank: bluffCard.rank + i };
+			if (state.hands[next_player].includes(promised[i])) {
+				const thoughts = game.players[next_player].thoughts[promised[i].order];
+				if (!thoughts.inferred.has(expected)) {
+					known_bluff = true;
+					break;
+				}
+			} else {
+				if (!promised[i].matches(expected)) {
+					known_bluff = true;
+					break;
+				}
+			}
+		}
+		bluff_possible = bluff_possible && known_bluff;
+	}
+
 
 	if (bluff_possible) {
 		// Remove plays which followed the bluffed card targeting the bluff identity.
