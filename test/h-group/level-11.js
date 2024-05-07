@@ -30,7 +30,7 @@ describe('bluff clues', () => {
 		// Alice's slot 2 could be r3 or r4.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'r4']);
 
-		takeTurn(game, 'Cathy discards y4 (slot 5)', 'y1');
+		takeTurn(game, 'Cathy discards y4', 'y1');
 
 		// After Cathy doesn't play into it, assume we have a play. 
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3']);
@@ -43,17 +43,16 @@ describe('bluff clues', () => {
 			['p1', 'r3', 'b5', 'b2', 'y4']
 		], {
 			level: 11,
-			play_stacks: [2, 2, 2, 2, 2],
-			starting: PLAYER.ALICE
+			play_stacks: [2, 2, 2, 2, 2]
 		});
-		takeTurn(game, 'Alice clues red to Cathy (slot 2)');
+		takeTurn(game, 'Alice clues red to Cathy');
 
 		// Bob's slot 1 could be any of the playable 3's.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, false);
 		// Cathy's slot 2 will be known to be r3 by Cathy after Bob doesn't play.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r3']);
 
-		takeTurn(game, 'Bob discards p2 (slot 5)', 'y5');
+		takeTurn(game, 'Bob discards p2', 'y5');
 
 		// After Bob doesn't play into the bluff, Cathy knows it is an r3 
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r3']);
@@ -66,10 +65,9 @@ describe('bluff clues', () => {
 			['p1', 'r4', 'b5', 'b2', 'y4']
 		], {
 			level: 11,
-			play_stacks: [2, 2, 2, 2, 2],
-			starting: PLAYER.ALICE
+			play_stacks: [2, 2, 2, 2, 2]
 		});
-		takeTurn(game, 'Alice clues red to Cathy (slot 2)');
+		takeTurn(game, 'Alice clues red to Cathy');
 
 		// Bob's slot 1 could be any of the playable 3's.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, true);
@@ -77,7 +75,7 @@ describe('bluff clues', () => {
 		// Cathy's slot 2 could be r3 or r4.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r3', 'r4']);
 
-		takeTurn(game, 'Bob plays b3 (slot 1)', 'y5');
+		takeTurn(game, 'Bob plays b3', 'y5');
 
 		// After Bob plays into the bluff, Cathy knows it is an r4 
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r4']);
@@ -91,8 +89,7 @@ describe('bluff clues', () => {
 			['b2', 'g1', 'p3', 'r3'],
 		], {
 			level: 11,
-			play_stacks: [1, 0, 0, 0, 0],
-			starting: PLAYER.ALICE
+			play_stacks: [1, 0, 0, 0, 0]
 		});
 		takeTurn(game, 'Alice clues 2 to Bob');
 		takeTurn(game, 'Bob clues red to Donald');
@@ -127,7 +124,7 @@ describe('bluff clues', () => {
 			play_stacks: [2, 2, 2, 2, 2],
 			starting: PLAYER.CATHY
 		});
-		takeTurn(game, 'Cathy clues blue to Bob (slot 1)');
+		takeTurn(game, 'Cathy clues blue to Bob');
 
 		// Alice's slot 1 could be any of the playable 3's.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
@@ -152,7 +149,7 @@ describe('bluff clues', () => {
 			play_stacks: [2, 2, 2, 2, 2],
 			starting: PLAYER.DONALD
 		});
-		takeTurn(game, 'Donald clues blue to Bob (slot 1)');
+		takeTurn(game, 'Donald clues blue to Bob');
 
 		// Alice's slot 1 should is not assumed
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
@@ -172,8 +169,8 @@ describe('bluff clues', () => {
 			play_stacks: [0, 1, 0, 0, 1],
 			starting: PLAYER.BOB
 		});
-		takeTurn(game, 'Bob clues yellow to Cathy (slot 1, 2, 3)');
-		takeTurn(game, 'Cathy clues blue to Bob (slot 4)');
+		takeTurn(game, 'Bob clues yellow to Cathy');
+		takeTurn(game, 'Cathy clues blue to Bob');
 
 		// Alice's slot 1 could be any of the immediately playable cards.
 		// Notably, it can't be yellow as that's not immediately playable.
@@ -200,8 +197,8 @@ describe('bluff clues', () => {
 			play_stacks: [1, 0, 0, 1, 2],
 			starting: PLAYER.CATHY
 		});
-		takeTurn(game, 'Cathy clues 1 to Donald (slot 2, 4)');
-		takeTurn(game, 'Donald plays r1 (slot 4)', 'p1');
+		takeTurn(game, 'Cathy clues 1 to Donald');
+		takeTurn(game, 'Donald plays r1', 'p1');
 
 		const { play_clues } = find_clues(game);
 		const bluff_clues = play_clues[3].filter(clue => {
@@ -222,7 +219,7 @@ describe('bluff clues', () => {
 			play_stacks: [0, 1, 0, 0, 1],
 			starting: PLAYER.CATHY
 		});
-		takeTurn(game, 'Cathy clues red to Donald (slot 2)');
+		takeTurn(game, 'Cathy clues red to Donald');
 		takeTurn(game, 'Donald clues 3 to Alice (slot 1)');
 
 		// The bluff is not allowed as it can't be resolved immediately.
@@ -237,9 +234,7 @@ describe('bluff clues', () => {
 			['y1', 'b5', 'y1', 'r4', 'y4'],
 			['p2', 'p3', 'g3', 'g4', 'y5'],
 		], {
-			level: 11,
-			play_stacks: [0, 0, 0, 0, 0],
-			starting: PLAYER.ALICE
+			level: 11
 		});
 
 		const { play_clues } = find_clues(game);
@@ -255,9 +250,7 @@ describe('bluff clues', () => {
 			['y1', 'b5', 'y1', 'r4', 'y4'],
 			['p2', 'r2', 'b2', 'g4', 'y5'],
 		], {
-			level: 11,
-			play_stacks: [0, 0, 0, 0, 0],
-			starting: PLAYER.ALICE
+			level: 11
 		});
 
 		const { play_clues } = find_clues(game);
@@ -278,7 +271,7 @@ describe('bluff clues', () => {
 			play_stacks: [1, 0, 0, 0, 0],
 			starting: PLAYER.DONALD
 		});
-		takeTurn(game, 'Donald clues red to Cathy (slot 3)');
+		takeTurn(game, 'Donald clues red to Cathy');
 		// With g1, r2 already queued, we cannot bluff the y1.
 		const { play_clues } = find_clues(game);
 		const bluff_clues = play_clues[2].filter(clue => {
