@@ -4,7 +4,7 @@
 	"editor.detectIndentation": false,
 	"eslint.format.enable": true,
 	"editor.codeActionsOnSave": {
-		"source.fixAll.eslint": "explicit"
+		"source.fixAll.eslint": true
 	},
 	// Never trim trailing whitespace in js files, because we allow trailing
 	// whitespace in comments
