@@ -160,15 +160,13 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
 		}
 		// Finessed card is delayed playable
 		else if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
-			let bluff = false;
-			if (game.level >= LEVEL.BLUFFS) {
-				// This may be a bluff. resolve_bluff will rule out a bluff if it doesn't
-				// look like it could lead to the following plays.
-				bluff =
-					connected.length == 1 &&
-					((giver + 1) % state.numPlayers) == reacting &&
-					state.hands[reacting].filter(c => game.players[reacting].unknown_plays.has(c.order)).length == 0;
-			}
+			// This may be a bluff. resolve_bluff will rule out a bluff if it doesn't
+			// look like it could lead to the following plays.
+			const bluff = game.level >= LEVEL.BLUFFS &&
+				connected.length == 1 &&
+				((giver + 1) % state.numPlayers) == reacting &&
+				state.hands[reacting].filter(c => game.players[reacting].unknown_plays.has(c.order)).length == 0;
+
 			// Could be duplicated in giver's hand - disallow hidden finesse unless it could be a bluff.
 			if (!bluff && state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
