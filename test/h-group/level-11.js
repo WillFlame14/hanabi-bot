@@ -276,7 +276,7 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
-	it('doesn\'t bluff on top of queued cards', () => {
+	it(`doesn't bluff on top of unknown queued cards`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g1', 'r2', 'y1', 'y1', 'r4'],
@@ -295,6 +295,24 @@ describe('bluff clues', () => {
 				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == 3 || clue.value == 4);
 		});
 		assert.equal(bluff_clues.length, 0);
+	});
+
+	it(`understands a bluff on top of known queued plays`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'r2', 'y1', 'y1', 'r4'],
+			['g5', 'b2', 'r3', 'y5', 'y4'],
+			['g1', 'g2', 'g3', 'g5', 'p4'],
+		], {
+			level: 11,
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.DONALD
+		});
+		takeTurn(game, 'Donald clues red to Bob');
+		// Since Bob has known plays a bluff should be possible on blue.
+		takeTurn(game, 'Alice clues blue to Cathy');
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][2].order].finessed, true);
 	});
 
 	it(`understands a complex play if the bluff isn't played into`, () => {
@@ -319,4 +337,5 @@ describe('bluff clues', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
 	});
+
 });
