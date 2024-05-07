@@ -50,8 +50,8 @@ describe('bluff clues', () => {
 
 		// Bob's slot 1 could be any of the playable 3's.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, false);
-		// Cathy's slot 2 will be assumed to be r3 or r4 until Bob reacts.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r3', 'r4']);
+		// Cathy's slot 2 will be known to be r3 or r4 until Bob reacts.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r3']);
 
 		takeTurn(game, 'Bob discards p2 (slot 5)', 'y5');
 
@@ -165,7 +165,7 @@ describe('bluff clues', () => {
 
 		// Alice's slot 1 should is not assumed
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
-		// Bob's slot 1 could be b3,b4.
+		// Bob will know this isb4.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['b3', 'b4']);
 		// Cathy's slot 1 must be b4.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['b3']);
