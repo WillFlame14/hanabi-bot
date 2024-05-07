@@ -305,7 +305,7 @@ describe('bluff clues', () => {
 			['g1', 'g2', 'g3', 'g5', 'p4'],
 		], {
 			level: 11,
-			play_stacks: [1, 0, 0, 0, 0],
+			play_stacks: [0, 0, 0, 0, 0],
 			starting: PLAYER.DONALD
 		});
 		takeTurn(game, 'Donald clues red to Bob');
@@ -313,6 +313,26 @@ describe('bluff clues', () => {
 		takeTurn(game, 'Alice clues blue to Cathy');
 
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][2].order].finessed, true);
+	});
+
+	it(`doesn't bluff on top of known cards which might match bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'g1', 'y1', 'y1', 'y5'],
+			['p4', 'b2', 'r3', 'y5', 'y4'],
+			['g1', 'g2', 'g3', 'g5', 'p4'],
+		], {
+			level: 11,
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.DONALD
+		});
+		takeTurn(game, 'Donald clues red to Bob');
+		// r2 is known to be queued, and would be played over finesse slot.
+		const { play_clues } = find_clues(game);
+		const bluff_clues = play_clues[2].filter(clue => {
+			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2;
+		});
+		assert.equal(bluff_clues.length, 0);
 	});
 
 	it(`understands a complex play if the bluff isn't played into`, () => {
