@@ -240,4 +240,40 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2']);
 	});
 
+	it('doesn\'t bluff through self finesses', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y1', 'b5', 'y1', 'r4', 'y4'],
+			['p2', 'p3', 'g3', 'g4', 'y5'],
+		], {
+			level: 11,
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.ALICE
+		});
+
+		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
+		const bluff_clues = play_clues[2].filter(clue => {
+			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 3;
+		});
+		assert.equal(bluff_clues.length, 0);
+	});
+
+	it('doesn\'t bluff when bluff can\'t be known by next player to play', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y1', 'b5', 'y1', 'r4', 'y4'],
+			['p2', 'r2', 'b2', 'g4', 'y5'],
+		], {
+			level: 11,
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.ALICE
+		});
+
+		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
+		const bluff_clues = play_clues[2].filter(clue => {
+			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2;
+		});
+		assert.equal(bluff_clues.length, 0);
+	});
+
 });

@@ -6,6 +6,7 @@ import { inBetween } from '../hanabi-logic.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
+import { ActualCard } from '../../../basics/Card.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -161,8 +162,8 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
 		else if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
 			let bluff = false;
 			if (game.level >= LEVEL.BLUFFS) {
-				// TODO: Bluffs must be recognizable. We should rule out a bluff if it doesn't
-				// look like it could lead to the other cards.
+				// This may be a bluff. resolve_bluff will rule out a bluff if it doesn't
+				// look like it could lead to the following plays.
 				bluff =
 					connected.length == 1 &&
 					((giver + 1) % state.numPlayers) == reacting;
@@ -176,6 +177,60 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
 			return { type: 'finesse', reacting, card: finesse, hidden: !bluff, bluff, identities: [finesse.raw()] };
 		}
 	}
+}
+
+/**
+ * Determines whether a bluff connection is a valid bluff, and updates the connection accordingly.
+ * @param {Game} game
+ * @param {number} giver 				The player index that gave the clue. They cannot deduce unknown information about their own hand.
+ * @param {number} target 				The player index receiving the clue. They will not find self-prompts or self-finesses.
+ * @param {Connection[]} connections	The complete connections leading to the play of a card.
+ * @param {ActualCard[]} promised		The non-hidden play(s) which are promised.
+ * @returns {Connection[]}
+ */
+export function resolve_bluff(game, giver, target, connections, promised) {
+	if (connections.length == 0 || !connections[0].bluff)
+		return connections;
+	const { common, state, me } = game;
+	let bluff_possible = true;
+	const bluffCard = connections[0].card;
+	const bluffed = (giver + 1) % state.numPlayers;
+	// Determine the next play if this is a bluff.
+	let next_play = connections.findIndex(connection => connection.card == promised[0]) + 1;
+	if (next_play == 0) {
+		next_play++;
+	}
+
+	// A bluff must be followed by prompts.
+	for (let i = next_play; i < connections.length; ++i) {
+		const conn = connections[i];
+		if (conn.hidden || conn.type == 'finesse') {
+			bluff_possible = false;
+			break;
+		}
+	}
+
+	// A bluff must be recognizable. As such, there should be no connection
+	// between the bluffed card and the following play.
+	const next_player = state.hands.findIndex(hand => hand.indexOf(promised[1]) != -1);
+	const thoughts = game.players[next_player].thoughts[promised[1].order];
+	const expected = { suitIndex: bluffCard.suitIndex , rank: bluffCard.rank + 1 };
+	if (thoughts.inferred.has(expected)) {
+		bluff_possible = false;
+	}
+
+	if (bluff_possible) {
+		// Remove plays which followed the bluffed card targeting the bluff identity.
+		connections.splice(1, next_play - 1);
+	} else {
+		// If a bluff is not possible, we only have a valid connection if the real card was found.
+		// If the promised card is the bluff card, then we haven't found a real connection.
+		if (connections[0].card == promised[0])
+			return [];
+		connections[0].bluff = false;
+	}
+
+	return connections;
 }
 
 /**
@@ -241,7 +296,9 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 
 		// If the connection is hidden, that player must have the actual card playable in order for the layer to work.
 		// Thus, we keep searching for unknown connections in their hand until we find a non-hidden connection.
-		while (connecting?.hidden) {
+		// If the connection could be a bluff, we will search for the actual playable card in case it turns out
+		// not to be a valid bluff target.
+		while (connecting?.bluff || connecting?.hidden) {
 			connections.push(connecting);
 			already_connected.push(connecting.card.order);
 			state.play_stacks[connecting.card.suitIndex]++;
@@ -256,6 +313,12 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 			}
 
 			connections.push(connecting);
+		}
+
+		// If we don't find the actual card, a bluff of the first card is still a valid interpretation.
+		if (connections.length > 0 && connections.at(0).bluff && connections.at(-1).hidden) {
+			// Remove all of the hidden plays after the bluff.
+			connections.splice(1, connections.length - 1);
 		}
 
 		// The final card must not be hidden

@@ -1,6 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
-import { find_connecting } from './connecting-cards.js';
+import { find_connecting, resolve_bluff } from './connecting-cards.js';
 import { visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
@@ -42,8 +42,9 @@ function find_colour_focus(game, suitIndex, action) {
 
 	let finesses = 0;
 	let bluffed = false;
+	let promised = [];
 
-	while (!bluffed && next_rank < state.max_ranks[suitIndex]) {
+	while (next_rank < state.max_ranks[suitIndex]) {
 		const identity = { suitIndex, rank: next_rank };
 		state.play_stacks = old_play_stacks.slice();
 
@@ -77,9 +78,12 @@ function find_colour_focus(game, suitIndex, action) {
 		state.play_stacks[suitIndex]++;
 		next_rank++;
 
+		promised.push(connecting.at(-1).card);
 		connections = connections.concat(connecting);
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
+	promised.push(focused_card);
+	connections = resolve_bluff(game, giver, target, connections, promised);
 
 	// Restore play stacks
 	state.play_stacks = old_play_stacks;
@@ -178,6 +182,7 @@ function find_rank_focus(game, rank, action) {
 			continue;
 		}
 
+		let promised = [];
 		/** @type {Connection[]} */
 		let connections = [];
 		let finesses = 0;
@@ -227,6 +232,7 @@ function find_rank_focus(game, rank, action) {
 				}
 			}
 
+			promised.push(connecting.at(-1).card);
 			connections = connections.concat(connecting);
 			already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 
@@ -241,6 +247,8 @@ function find_rank_focus(game, rank, action) {
 			ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1];
 			connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
 		}
+		promised.push(focused_card);
+		connections = resolve_bluff(game, giver, target, connections, promised);
 
 		if (next_rank <= rank)
 			logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
