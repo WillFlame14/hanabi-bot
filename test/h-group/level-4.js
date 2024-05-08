@@ -12,6 +12,7 @@ import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finde
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 import { determine_playable_card } from '../../src/conventions/h-group/action-helper.js';
 import { find_urgent_actions } from '../../src/conventions/h-group/urgent-actions.js';
+import { logPerformAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -45,7 +46,7 @@ describe('trash chop move', () => {
 	it('will not give a tcm if chop is trash', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['r4', 'r4', 'b1', 'b4', 'g1']
+			['r4', 'r4', 'b1', 'b4', 'g2']
 		], {
 			level: 4,
 			play_stacks: [2, 2, 2, 2, 2]
@@ -159,7 +160,7 @@ describe('giving order chop move', () => {
 	it('will not give an ocm putting a critical on chop', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['r4', 'r4', 'g4', 'r5', 'r5']
+			['r4', 'r4', 'g4', 'p5', 'r5']
 		], {
 			level: 4,
 			starting: PLAYER.BOB
@@ -237,7 +238,7 @@ describe('giving order chop move', () => {
 
 		// Alice should not OCM r1.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 }, `Expected (play slot 4), suggested ${logPerformAction(action)}`);
 	});
 });
 

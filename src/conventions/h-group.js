@@ -12,6 +12,10 @@ import * as Utils from '../tools/util.js';
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../variants.js').Variant} Variant
  * @typedef {import('../types-live.js').TableOptions} TableOptions
+ * @typedef {typeof import('./h-group/h-constants.js').CLUE_INTERP} CLUE_INTERP
+ * @typedef {typeof import('./h-group/h-constants.js').PLAY_INTERP} PLAY_INTERP
+ * @typedef {typeof import('./h-group/h-constants.js').DISCARD_INTERP} DISCARD_INTERP
+ * @typedef {CLUE_INTERP[keyof CLUE_INTERP] | PLAY_INTERP[keyof PLAY_INTERP] | DISCARD_INTERP[keyof DISCARD_INTERP]} INTERP
  */
 
 export default class HGroup extends Game {
@@ -21,6 +25,9 @@ export default class HGroup extends Game {
 	take_action = take_action;
 	update_turn = update_turn;
 	interpret_play = interpret_play;
+
+	/** @type {{turn: number, move: INTERP}[]} */
+	moveHistory;
 
 	/**
 	 * @param {number} tableID
@@ -38,6 +45,7 @@ export default class HGroup extends Game {
 		this.common = new HGroup_Player(c.playerIndex, c.all_possible, c.all_inferred, c.hypo_stacks, c.thoughts, c.links, c.unknown_plays, c.waiting_connections, c.elims);
 
 		this.level = level;
+		this.moveHistory = [];
 	}
 
 	get me() {
@@ -63,7 +71,7 @@ export default class HGroup extends Game {
 		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');
 
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory', 'screamed_at'];
+		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory', 'screamed_at', 'moveHistory'];
 
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);
@@ -75,5 +83,10 @@ export default class HGroup extends Game {
 
 		newGame.copyDepth = this.copyDepth + 1;
 		return newGame;
+	}
+
+	/** @param {INTERP} interp */
+	interpretMove(interp) {
+		this.moveHistory.push({ turn: this.state.turn_count, move: interp });
 	}
 }

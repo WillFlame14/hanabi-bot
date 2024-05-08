@@ -131,7 +131,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
 			return { type: 'prompt', reacting, card: prompt, hidden: true, identities: [prompt.raw()] };
 		}
 		logger.warn(`wrong prompt on ${logCard(prompt)} ${prompt.order} when searching for ${logCard(identity)}, play stacks at ${state.play_stacks[prompt.suitIndex]}`);
-		return { type: 'terminate', reacting, card: null, identities: [] };
+		return { type: 'terminate', reacting, card: prompt, identities: [identity] };
 	}
 
 	if (finesse !== undefined && finesse.identity() !== undefined) {

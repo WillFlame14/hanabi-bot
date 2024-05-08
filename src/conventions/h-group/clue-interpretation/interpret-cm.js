@@ -4,21 +4,32 @@ import { isTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
+import { CLUE_INTERP } from '../h-constants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
  * @typedef {import('../../h-player.js').HGroup_Player} Player
  * @typedef {import('../../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../../basics/Card.js').Card} Card
+ * @typedef {import('../../../types.js').BaseClue} BaseClue
  */
 
 /**
- * Executes a Trash Chop Move on the target (i.e. writing notes). The clue must have already been registered.
+ * Executes a Trash Chop Move on the target (i.e. writing notes), if valid. The clue must have already been registered.
  * @param {Game} game
  * @param {number} target
+ * @param {number} focus_order
  */
-export function interpret_tcm(game, target) {
+export function interpret_tcm(game, target, focus_order) {
 	const { common, state } = game;
+	const focused_card = state.hands[target].findOrder(focus_order);
+	const focus_thoughts = common.thoughts[focus_order];
+
+	if (!focused_card.newly_clued ||
+		focus_thoughts.possible.some(c => !isTrash(state, common, c, focus_order)) ||
+		focus_thoughts.inferred.every(i => state.isPlayable(i)))
+		return false;
+
 	let oldest_trash_index;
 	// Find the oldest newly clued trash
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
@@ -48,16 +59,24 @@ export function interpret_tcm(game, target) {
 		}
 	}
 	logger.warn(cm_cards.length === 0 ? 'no cards to tcm' : `trash chop move on ${cm_cards.join(',')}`);
+	return true;
 }
 
 /**
  * Executes a 5's Chop Move on the target (i.e. writing notes), if valid. The clue must have already been registered.
  * @param {Game} game
  * @param {number} target
+ * @param {number} focus_order
+ * @param {BaseClue} clue
  * @returns Whether a 5cm was performed or not.
  */
-export function interpret_5cm(game, target) {
+export function interpret_5cm(game, target, focus_order, clue) {
 	const { common, state } = game;
+	const focused_card = state.hands[target].findOrder(focus_order);
+
+	// 5cm can't be done in early game for now
+	if (clue.type !== CLUE.RANK || clue.value !== 5 || !focused_card.newly_clued || state.early_game)
+		return false;
 
 	logger.info('interpreting potential 5cm');
 	const hand = state.hands[target];
@@ -168,5 +187,6 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 	// Valid tempo clue chop move
 	common.thoughts[chop.order].chop_moved = true;
 	logger.info('tccm, chop moving', target === state.ourPlayerIndex ? `slot ${state.hands[target].findIndex(c => c.order === chop.order) + 1}` : logCard(chop));
+	game.interpretMove(CLUE_INTERP.CM_TEMPO);
 	return true;
 }
