@@ -1,5 +1,5 @@
 import { LEVEL } from '../h-constants.js';
-import { find_connecting, find_known_connecting } from './connecting-cards.js';
+import { find_connecting, find_known_connecting, resolve_bluff } from './connecting-cards.js';
 import { cardTouched, find_possibilities } from '../../../variants.js';
 
 import logger from '../../../tools/logger.js';
@@ -183,6 +183,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 	const already_connected = /** @type {number[]} */ ([]);
 	let finesses = 0;
 	let direct = looksDirect;
+	let promised = [];
 
 	for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
 		const next_identity = { suitIndex, rank: next_rank };
@@ -193,6 +194,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		if (curr_connections.length === 0)
 			throw new IllegalInterpretation(`no connecting cards found for identity ${logCard(next_identity)}`);
 
+		promised.push(curr_connections.at(-1).card);
 		let allHidden = true;
 		for (const connection of curr_connections) {
 			connections.push(connection);
@@ -231,7 +233,8 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		if (allHidden)
 			next_rank--;
 	}
-	return connections;
+	promised.push(focused_card);
+	return resolve_bluff(game, giver, target, connections, promised);
 }
 
 /**

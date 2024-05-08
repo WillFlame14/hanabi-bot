@@ -237,8 +237,8 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 		connections.splice(1, next_play - 1);
 	} else {
 		// If a bluff is not possible, we only have a valid connection if the real card was found.
-		// If the promised card is the bluff card, then we haven't found a real connection.
-		if (connections[0].card == promised[0])
+		// If it is in our hand, we have to assume it is the promised card.
+		if (connections[0].card == promised[0] && connections[0].identities.filter(i => connections[0].card.matches(i, {assume: true})).length == 0)
 			return [];
 		connections[0].bluff = false;
 	}
