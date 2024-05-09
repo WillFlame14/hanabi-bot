@@ -1,6 +1,6 @@
 import { ACTION, CLUE } from '../../constants.js';
 import { clue_value } from './action-helper.js';
-import { isTrash  } from '../../basics/hanabi-util.js';
+import { isTrash } from '../../basics/hanabi-util.js';
 import { unlock_promise } from './interpret-play.js';
 import { find_fix_clue } from './fix-clues.js';
 import { find_sarcastics } from '../shared/sarcastic.js';

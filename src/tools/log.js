@@ -67,7 +67,7 @@ export function logHand(hand, player = globals.game.common) {
 
 /**
  * Returns a log-friendly representation of a clue.
- * @param {Clue | PerformAction} clue
+ * @param {Clue | Omit<PerformAction, 'tableID'>} clue
  */
 export function logClue(clue) {
 	if (clue === undefined)
@@ -80,7 +80,7 @@ export function logClue(clue) {
 
 /**
  * Returns a log-friendly representation of a PerformAction.
- * @param  {PerformAction} action
+ * @param  {Omit<PerformAction, 'tableID'>} action
  */
 export function logPerformAction(action) {
 	if (action === undefined)

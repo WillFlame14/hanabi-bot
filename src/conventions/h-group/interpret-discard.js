@@ -24,7 +24,7 @@ import { LEVEL } from './h-constants.js';
  */
 export function interpret_discard(game, action, card) {
 	const { common, state, me } = game;
-	const { order, playerIndex, suitIndex, rank,  failed } = action;
+	const { order, playerIndex, suitIndex, rank, failed } = action;
 	const identity = { suitIndex, rank };
 	const thoughts = common.thoughts[order];
 	const before_trash = common.thinksTrash(state, playerIndex);
@@ -38,6 +38,12 @@ export function interpret_discard(game, action, card) {
 
 		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.card.order === order);
 		if (dc_conn_index !== -1) {
+			if (failed && game.finesses_while_finessed[playerIndex].some(c => c.matches({ suitIndex, rank }))) {
+				logger.info('bombed duplicated card from finessing while finessed');
+				action.intentional = true;
+				continue;
+			}
+
 			const { card } = connections[dc_conn_index];
 			logger.info(`discarded connecting card ${logCard(card)}, cancelling waiting connection for inference ${logCard(inference)}`);
 
@@ -60,9 +66,14 @@ export function interpret_discard(game, action, card) {
 					}
 				}
 
-				const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
-				game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order });
-				return;
+				try {
+					const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
+					game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
+					return;
+				}
+				catch(err) {
+					logger.warn(err.message);
+				}
 			}
 		}
 	}

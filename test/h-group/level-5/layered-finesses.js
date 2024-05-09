@@ -90,14 +90,40 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Donald plays g2 (slot 1)', 'r5');
 		takeTurn(game, 'Alice plays p1 (slot 1)');
 
-		const slot3 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order];
-		ExAsserts.cardHasInferences(slot3, ['g3']);
-		assert.equal(slot3.finessed, true);
+		const slot2 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order];
+		ExAsserts.cardHasInferences(slot2, ['g3']);
+		assert.equal(slot2.finessed, true);
 
-		// Double-check that Alice also thinks slot 3 is g3 and finessed
-		const alice_slot3 = game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][1].order];
-		ExAsserts.cardHasInferences(alice_slot3, ['g3']);
-		assert.equal(alice_slot3.finessed, true);
+		// Double-check that Alice also thinks slot 2 is g3 and finessed
+		const alice_slot2 = game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][1].order];
+		ExAsserts.cardHasInferences(alice_slot2, ['g3']);
+		assert.equal(alice_slot2.finessed, true);
+	});
+
+	it('understands when it dupes a card in its own layered finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r2', 'b4', 'g2', 'r5'],
+			['g1', 'b2', 'y3', 'r4'],
+			['p1', 'r3', 'r1', 'g3']
+		], {
+			level: 5,
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 4 to Cathy');		// r2 on Cathy, r3 on us
+		takeTurn(game, 'Alice clues green to Bob');		// reverse finesse for g1
+		takeTurn(game, 'Bob plays r2', 'b4');
+		takeTurn(game, 'Cathy plays g1', 'g4');
+
+		takeTurn(game, 'Donald clues 5 to Alice (slot 4)');
+		takeTurn(game, 'Alice bombs g1 (slot 1)');		// We try to play r3, but end up bombing a copy of g1 that was layered.
+
+		// Slot 2 should still be finessed as r3.
+		const slot2 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order];
+		ExAsserts.cardHasInferences(slot2, ['r3']);
+		assert.equal(slot2.finessed, true);
 	});
 
 	it('does not try giving layered finesses on the same card', () => {

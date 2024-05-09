@@ -1,5 +1,5 @@
 import { CLUE } from '../../../constants.js';
-import { LEVEL } from '../h-constants.js';
+import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { interpret_tcm, interpret_5cm, interpret_tccm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
@@ -78,8 +78,10 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 	focus_thoughts.inferred = focus_thoughts.inferred.intersect(inf_possibilities);
 
-	for (const { connections, suitIndex, rank, save } of inf_possibilities) {
+	for (const { connections, suitIndex, rank, save, interp } of inf_possibilities) {
 		const inference = { suitIndex, rank };
+
+		game.interpretMove(interp);
 
 		// Don't assign save connections or known false connections
 		if (save || !focused_card.matches(inference, { assume: true })) {
@@ -90,7 +92,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			continue;
 		}
 
-		assign_connections(game, connections);
+		assign_connections(game, connections, giver);
 
 		// Multiple possible sets, we need to wait for connections
 		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
@@ -110,7 +112,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 		common.waiting_connections = common.waiting_connections.concat(symmetric_connections);
 		for (const { fake, connections } of symmetric_connections)
-			assign_connections(game, connections, { symmetric: true, target, fake });
+			assign_connections(game, connections, giver, { symmetric: true, target, fake });
 
 		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(c => !c.fake && inf.matches(c))));
 	}
@@ -166,30 +168,35 @@ export function interpret_clue(game, action) {
 
 		// Focus doesn't matter for a fix clue
 		focus_thoughts.focused = oldCommon.thoughts[focused_card.order].focused;
+		game.moveHistory.push({ turn: state.turn_count, move: CLUE_INTERP.FIX });
 		return;
 	}
 
 	// Check if the giver was in a stalling situation
-	if (!ignoreStall && stalling_situation(game, action, prev_game)) {
-		logger.info('stalling situation');
-		common.update_hypo_stacks(state);
-		return;
+	if (!ignoreStall) {
+		const stall = stalling_situation(game, action, prev_game);
+
+		if (stall !== undefined) {
+			logger.info('stalling situation', stall);
+
+			common.update_hypo_stacks(state);
+			game.moveHistory.push({ turn: state.turn_count, move: stall });
+			return;
+		}
 	}
 
 	// Check for chop moves at level 4+
 	if (game.level >= LEVEL.BASIC_CM) {
 		// Trash chop move
-		if (focused_card.newly_clued &&
-			focus_thoughts.possible.every(c => isTrash(state, common, c, focused_card.order)) &&
-			!focus_thoughts.inferred.every(i => state.isPlayable(i))
-		) {
-			interpret_tcm(game, target);
+		if (interpret_tcm(game, target, focused_card.order)) {
+			game.interpretMove(CLUE_INTERP.CM_TRASH);
 			return;
 		}
-		// 5's chop move - for now, 5cm cannot be done in early game.
-		else if (clue.type === CLUE.RANK && clue.value === 5 && focused_card.newly_clued && !state.early_game) {
-			if (interpret_5cm(game, target))
-				return;
+
+		// 5's chop move
+		if (interpret_5cm(game, target, focused_card.order, clue)) {
+			game.interpretMove(CLUE_INTERP.CM_5);
+			return;
 		}
 	}
 
@@ -245,7 +252,7 @@ export function interpret_clue(game, action) {
 					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('found connections:', logConnections(connections, id));
 
-					const focus_poss = { connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections) };
+					const focus_poss = { connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections), interp: CLUE_INTERP.PLAY };
 
 					// Skipping knowns/playables, starts with self-finesse or self-prompt
 					if (connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.self) {
@@ -285,7 +292,7 @@ export function interpret_clue(game, action) {
 			try {
 				const connections = find_own_finesses(game, action, focused_card, looksDirect);
 				logger.info('found connections:', logConnections(connections, focused_card));
-				all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections) });
+				all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections), interp: CLUE_INTERP.PLAY });
 			}
 			catch (error) {
 				if (error instanceof IllegalInterpretation)
@@ -320,6 +327,7 @@ export function interpret_clue(game, action) {
 
 				logger.info('no inference on card (other), looks like', focus_thoughts.inferred.map(logCard).join(','));
 			}
+			game.interpretMove(CLUE_INTERP.NONE);
 		}
 		else {
 			focus_thoughts.inferred = focus_thoughts.possible;
@@ -336,6 +344,11 @@ export function interpret_clue(game, action) {
 	if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2)
 		interpret_tccm(game, oldCommon, target, list, focused_card);
 
-	logger.debug('hand state after clue', logHand(state.hands[target]));
+	try {
+		logger.debug('hand state after clue', logHand(state.hands[target]));
+	}
+	catch (err) {
+		logger.info('Failed to debug hand state', state.hands[target].map(c => c.order), game.common.thoughts.map(c => c.order));
+	}
 	team_elim(game);
 }

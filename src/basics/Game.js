@@ -43,7 +43,7 @@ export class Game {
 
 	/**
 	 * The orders of cards to ignore in the next play clue.
-	 * @type {number[][]}
+	 * @type {{order: number, inference?: Identity}[][]}
 	 */
 	next_ignore = [];
 	/**

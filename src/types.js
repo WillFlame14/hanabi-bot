@@ -3,6 +3,10 @@
  * @typedef {import('./basics/Card.js').ActualCard} ActualCard
  * @typedef {typeof import('./constants.js').CLUE} CLUE
  * @typedef {typeof import('./constants.js').ACTION} ACTION
+ * @typedef {typeof import('./conventions/h-group/h-constants.js').CLUE_INTERP} CLUE_INTERP
+ * @typedef {typeof import('./conventions/h-group/h-constants.js').PLAY_INTERP} PLAY_INTERP
+ * @typedef {typeof import('./conventions/h-group/h-constants.js').DISCARD_INTERP} DISCARD_INTERP
+ * @typedef {CLUE_INTERP[keyof CLUE_INTERP] | PLAY_INTERP[keyof PLAY_INTERP] | DISCARD_INTERP[keyof DISCARD_INTERP]} INTERP
  */
 
 /**
@@ -22,12 +26,13 @@
 /**
  * @typedef ClueResult
  * @property {number} elim
- * @property {number} new_touched
+ * @property {Card[]} new_touched
  * @property {number} bad_touch
  * @property {number} trash
  * @property {number} remainder
  * @property {{playerIndex: number, card: Card}[]} playables
  * @property {{playerIndex: number, card: Card}[]} finesses
+ * @property {ActualCard[]} chop_moved
  */
 /**
  * @typedef StatusAction
@@ -60,9 +65,9 @@
  * @typedef {CardAction & {type: 'draw'}} DrawAction
  * @typedef {CardAction & {type: 'play'}} PlayAction
  * @typedef {CardAction & {type: 'identify', infer?: boolean}} IdentifyAction
- * @typedef {{type: 'ignore', conn_index: number, order: number}} IgnoreAction
+ * @typedef {{type: 'ignore', conn_index: number, order: number, inference?: Identity}} IgnoreAction
  * @typedef {{type: 'finesse', list: number[], clue: BaseClue}} FinesseAction
- * @typedef {CardAction & {type: 'discard', failed: boolean}} DiscardAction
+ * @typedef {CardAction & {type: 'discard', failed: boolean, intentional?: boolean}} DiscardAction
  * 
  * @typedef GameOverAction
  * @property {'gameOver'}   type
@@ -97,8 +102,9 @@
  * @property {number} rank
  * @property {Connection[]} connections
  * @property {boolean} [save]
+ * @property {INTERP} interp
  *
- * @typedef {FocusPossibility & {fake: boolean}} SymFocusPossibility
+ * @typedef {Omit<FocusPossibility & {fake: boolean}, 'interp'>} SymFocusPossibility
  */
 /**
  * @typedef WaitingConnection

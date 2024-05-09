@@ -1,11 +1,10 @@
 import { CLUE } from '../../../constants.js';
-import { LEVEL } from '../h-constants.js';
-import { cardTouched, direct_clues, find_possibilities, variantRegexes } from '../../../variants.js';
+import { cardTouched, isCluable } from '../../../variants.js';
 import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
-import { determine_clue, get_result } from './determine-clue.js';
-import { stall_severity, valuable_tempo_clue } from '../hanabi-logic.js';
-import { cardValue, isTrash, save2, visibleFind } from '../../../basics/hanabi-util.js';
+import { evaluate_clue, get_result } from './determine-clue.js';
+import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
+import { cardValue, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 
 import logger from '../../../tools/logger.js';
@@ -14,155 +13,52 @@ import * as Utils from '../../../tools/util.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
- * @typedef {import('../../../basics/Card.js').Card} Card
- * @typedef {import('../../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').SaveClue} SaveClue
- * @typedef {import('../../../types.js').ClueResult} ClueResult
- * @typedef {import('../../../types.js').PerformAction} PerformAction
  */
 
 /**
- * Finds a save clue (if necessary) for the given card in the target's hand.
+ * Returns the value of a save clue, or -10 if it is not worth giving at all.
  * @param {Game} game
- * @param {number} target
- * @param {ActualCard} card
- * @returns {SaveClue | undefined} The save clue if necessary, otherwise undefined.
+ * @param {Game} hypo_game
+ * @param {SaveClue} save_clue
+ * @param {Clue[]} all_clues
  */
-function find_save(game, target, card) {
-	const { me, state } = game;
-	const { suitIndex, rank } = card;
+function save_clue_value(game, hypo_game, save_clue, all_clues) {
+	const { common, me, state } = game;
+	const { target, result } = save_clue;
+	const { chop_moved } = result;
 
-	if (state.isBasicTrash(card))
-		return;
-
-	if (state.isCritical(card)) {
-		logger.highlight('yellow', 'saving critical card', logCard(card));
-		if (rank === 5) {
-			const defaultClue = { type: CLUE.RANK, value: 5, target, playable: false, cm: [], safe: true };
-			if (cardTouched(card, state.variant, defaultClue))
-				return defaultClue;
-			logger.highlight('red', 'unable to save', logCard(card), 'with a 5 clue due to the variant.');
-		}
-		// The card is on chop, so it can always be focused
-		const save_clue = determine_clue(game, target, card, { save: true });
-
-		if (save_clue === undefined) {
-			logger.error(`unable to find critical save clue for ${logCard(card)}!`);
-			return;
-		}
-		return Object.assign(save_clue, { playable: false, cm: [], safe: true });
-	}
-	// Save a non-critical delayed playable card that isn't visible somewhere else
-	else if (game.me.hypo_stacks[suitIndex] + 1 === rank && visibleFind(state, me, card).length === 1) {
-		logger.highlight('yellow', 'saving playable card', logCard(card));
-		const save_clue = determine_clue(game, target, card, { save: true });
-
-		if (save_clue === undefined) {
-			logger.error(`unable to find playable save clue for ${logCard(card)}!`);
-			return;
-		}
-
-		return Object.assign(save_clue, { playable: true, cm: [], safe: clue_safe(game, me, save_clue) });
-	}
-	else if (save2(state, me, card)) {
-		logger.highlight('yellow', 'saving unique 2', logCard(card));
-
-		if (state.variant.suits[card.suitIndex].match(variantRegexes.brownish)) {
-			logger.highlight('red', 'unable to save', logCard(card), 'with a 2 clue due to variant.');
-			const save_clue = determine_clue(game, target, card, { save: true });
-
-			if (save_clue === undefined)
-				return;
-
-			const safe = clue_safe(game, me, save_clue);
-			return { type: save_clue.type, value: save_clue.value, target, playable: false, cm: [], safe };
-		}
-
-		const safe = clue_safe(game, me, { type: CLUE.RANK, value: 2 , target });
-		return { type: CLUE.RANK, value: 2, target, playable: false, cm: [], safe };
-	}
-}
-
-/**
- * Finds a Trash Chop Move (if valid) using the given trash card in the target's hand.
- * @param {Game} game
- * @param {number} target
- * @param {ActualCard[]} saved_cards
- * @param {Card} trash_card
- * @param {Clue[]} play_clues
- * @returns {SaveClue | undefined} The TCM if valid, otherwise undefined.
- */
-function find_tcm(game, target, saved_cards, trash_card, play_clues) {
-	const { me, state } = game;
-
-	logger.info(`attempting tcm with trash card ${logCard(trash_card)}, saved cards ${saved_cards.map(logCard).join(',')}`);
-	const chop = saved_cards.at(-1);
-
-	// Critical cards, playable cards and unique 2s can be saved directly if touching all cards
-	if ((state.isCritical(chop) || me.hypo_stacks[chop.suitIndex] + 1 === chop.rank ||
-			(save2(state, me, chop) &&
-				!state.variant.suits[chop.suitIndex].match(variantRegexes.brownish) &&
-				clue_safe(game, me, { type: CLUE.RANK, value: 2, target }))) &&
-		(direct_clues(state.variant, target, chop).some(clue => saved_cards.every(c => cardTouched(c, state.variant, clue))))
-	) {
-		logger.info('prefer direct save');
-		return;
-	}
-	else if (play_clues.some(clue => saved_cards.every(c => cardTouched(c, state.variant, clue)))) {
-		logger.info('prefer play clue to save');
-		return;
-	}
-	else if (isTrash(state, me, chop, chop.order, { infer: true }) || saved_cards.some(c => c.duplicateOf(chop))) {
-		logger.info('chop is trash, can give tcm later');
-		return;
-	}
+	if (chop_moved.length === 0)
+		return find_clue_value(result);
 
 	// TODO: Should visible (but not saved, possibly on chop?) cards be included as trash?
-	const saved_trash = saved_cards.filter(card =>
+	const saved_trash = chop_moved.filter(card =>
 		isTrash(state, me, card, card.order, { infer: true }) ||			// Saving a trash card
-		saved_cards.some(c => card.matches(c) && card.order > c.order)		// Saving 2 of the same card
-	).map(logCard);
+		chop_moved.some(c => card.matches(c) && card.order > c.order)		// Saving 2 of the same card
+	);
 
-	logger.info(`would save ${saved_trash.length === 0 ? 'no' : saved_trash.join()} trash`);
+	// Direct clue is possible
+	if (all_clues.some(clue => chop_moved.every(cm => saved_trash.some(c => c.order === cm.order) || cardTouched(cm, state.variant, clue))))
+		return -10;
 
-	// There has to be more useful cards saved than trash cards
-	if (saved_trash.length <= 1 && (saved_cards.length - saved_trash.length) > saved_trash.length) {
-		const possible_clues = direct_clues(state.variant, target, trash_card);
+	const old_chop = common.chop(state.hands[target]);
 
-		// Ensure that the card will become known trash
-		const tcm = possible_clues.find(clue => find_possibilities(clue, state.variant).every(c => state.isBasicTrash(c)));
+	// Chop is trash, can give clue later
+	if (isTrash(state, me, old_chop, old_chop.order, { infer: true }) || chop_moved.some(c => c.duplicateOf(old_chop)))
+		return -10;
 
-		if (tcm !== undefined)
-			return Object.assign(tcm, { playable: false, cm: saved_cards, safe: true });
-	}
-}
+	// More trash cards saved than useful cards
+	if (saved_trash.length > Math.min(1, chop_moved.length - saved_trash.length))
+		return -10;
 
-/**
- * Finds a 5's Chop Move (if valid) with the given chop moved card in the target's hand.
- * @param {Game} 		game
- * @param {number} 		target
- * @param {ActualCard} 	chop
- * @param {number} 		cardIndex
- * @returns {SaveClue | undefined} The 5CM if valid, otherwise undefined.
- */
-function find_5cm(game, target, chop, cardIndex) {
-	const { common, me, state } = game;
+	const new_chop = hypo_game.common.chop(hypo_game.state.hands[target], { afterClue: true });
 
-	if (common.hypo_stacks.every((stack, index) => stack >= (state.max_ranks[index] - 1))) {
-		logger.info(`looks like stall or direct play`);
-		return;
-	}
+	// Target is not loaded and their new chop is more valuable than their old one
+	if (!hypo_game.players[target].thinksLoaded(hypo_game.state, target) && (new_chop ? cardValue(state, me, new_chop) : 4) > cardValue(state, me, old_chop))
+		return -10;
 
-	// Card to be chop moved is basic trash or already saved
-	if (isTrash(state, me, chop, chop.order))
-		return;
-
-	const new_chop = state.hands[target].slice(0, cardIndex).toReversed().find(c => !c.clued);
-
-	// 5cm if new chop is less valuable than old chop (or lock for unique 2/critical)
-	if (cardValue(state, me, chop) >= (new_chop ? cardValue(state, me, new_chop) : 4))
-		return { type: CLUE.RANK, value: 5, target, playable: false, cm: [chop], safe: true };
+	return find_clue_value(result);
 }
 
 /**
@@ -179,6 +75,8 @@ function find_5cm(game, target, chop, cardIndex) {
 export function find_clues(game, options = {}) {
 	const { common, me, state } = game;
 
+	logger.highlight('whiteb', '------- FINDING CLUES -------');
+
 	const play_clues = /** @type Clue[][] */ 	([]);
 	const save_clues = /** @type SaveClue[] */ 	([]);
 	const stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], []]);
@@ -188,6 +86,8 @@ export function find_clues(game, options = {}) {
 	// Find all valid clues
 	for (let target = 0; target < state.numPlayers; target++) {
 		play_clues[target] = [];
+
+		/** @type {(SaveClue & {game: Game})[]} */
 		const saves = [];
 
 		// Ignore our own hand
@@ -195,136 +95,111 @@ export function find_clues(game, options = {}) {
 			continue;
 
 		const hand = state.hands[target];
-		const chopIndex = me.chopIndex(hand);
 
-		let found_tcm = false, tried_5cm = false;
-		const severity = stall_severity(state, me, state.ourPlayerIndex);
+		for (const clue of state.allValidClues(target)) {
+			const touch = state.hands[target].clueTouched(clue, state.variant);
 
-		for (let cardIndex = hand.length - 1; cardIndex >= 0; cardIndex--) {
-			const { rank, order } = hand[cardIndex];
-			const card = me.thoughts[order];
+			if (!isCluable(state.variant, clue) || touch.length === 0)
+				continue;
 
-			const duplicated = visibleFind(state, me, card).some(c => me.thoughts[c.order].touched && c.order !== order);
+			const list = touch.map(c => c.order);
+			const { focused_card, chop } = determine_focus(hand, common, list);
 
 			const in_finesse = common.waiting_connections.some(w_conn => {
-				const { fake, focused_card, inference } = w_conn;
-				const matches = me.thoughts[focused_card.order].matches(inference, { assume: true });
+				const { fake, focused_card: wc_focus, inference } = w_conn;
+				const matches = me.thoughts[wc_focus.order].matches(inference, { assume: true });
 
-				return !fake && matches && card.playedBefore(inference, { equal: true });
+				return !fake && matches && focused_card.playedBefore(inference, { equal: true });
 			});
 
-			// Ignore finessed cards (do not ignore cm'd cards), cards visible elsewhere, or cards possibly part of a finesse (that we either know for certain or in our hand)
-			if (card.finessed || duplicated || in_finesse)
+			// Do not focus cards that are part of a finesse
+			if (me.thoughts[focused_card.order].finessed || in_finesse)
 				continue;
 
-			// Save clue
-			if (cardIndex === chopIndex)
-				saves.push(find_save(game, target, hand[cardIndex]));
+			const bad_touch_cards = touch.filter(c => !c.clued && isTrash(state, game.me, game.me.thoughts[c.order].identity({ infer: true }), c.order));		// Ignore cards that were already clued
 
-			let interpreted_5cm = false;
+			// Simulate clue from receiver's POV to see if they have the right interpretation
+			const action =  /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
+			const hypo_game = evaluate_clue(game, action, clue, target, focused_card, bad_touch_cards);
 
-			if (game.level >= LEVEL.BASIC_CM && !options.ignoreCM) {
-				// Trash card (not conventionally play)
-				if (state.isBasicTrash(card)) {
-					// Trash chop move (we only want to find the rightmost tcm)
-					if (!card.saved && cardIndex !== chopIndex && !found_tcm) {
-						const saved_cards = hand.slice(cardIndex + 1).filter(c => !me.thoughts[c.order].saved);
+			// Clue had incorrect interpretation
+			if (hypo_game === undefined)
+				continue;
 
-						saves.push(find_tcm(game, target, saved_cards, card, play_clues[target]));
+			const interpret = hypo_game.common.thoughts[focused_card.order].inferred;
+			const result = get_result(game, hypo_game, clue, state.ourPlayerIndex);
+			Object.assign(clue, { result });
 
-						found_tcm = true;
-						logger.info('--------');
-					}
-					// TODO: Eventually, trash bluff/finesse/push?
-					continue;
-				}
+			const safe = clue_safe(game, me, clue);
 
-				// 5's chop move (only search once, on the rightmost unclued 5 that's not on chop)
-				if (!tried_5cm && !state.variant.suits[card.suitIndex].match(variantRegexes.brownish) && rank === 5 && !card.saved && severity === 0) {
-					logger.info('trying 5cm with 5 at index', cardIndex);
-					tried_5cm = true;
+			const { elim, new_touched, bad_touch, trash, finesses, playables, chop_moved } = result;
+			const remainder = (chop && (!safe || state.clue_tokens <= 2)) ? result.remainder: 0;
 
-					// Find where chop is, relative to the rightmost clued 5
-					let distance_from_chop = 0;
-					for (let j = cardIndex; j < chopIndex; j++) {
-						// Skip clued cards
-						if (hand[j].clued)
-							continue;
+			const result_log = {
+				clue: logClue(clue),
+				bad_touch,
+				trash,
+				interpret: interpret?.map(logCard),
+				elim,
+				new_touched: new_touched.length,
+				finesses: finesses.length,
+				playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
+				chop_moved: chop_moved.map(c => `${logCard(state.deck[c.order])} ${c.order}`),
+				remainder	// We only need to check remainder if this clue focuses chop, because we are changing chop to something else
+			};
+			logger.info('result,', JSON.stringify(result_log), find_clue_value(Object.assign(result, { remainder })));
 
-						distance_from_chop++;
-					}
+			if ((chop && !state.isBasicTrash(focused_card) && visibleFind(state, me, focused_card).length === 1) || chop_moved.length > 0)
+				saves.push(Object.assign(clue, { game: hypo_game, playable: playables.length > 0, cm: chop_moved, safe }));
 
-					if (distance_from_chop === 1) {
-						if (common.thoughts[hand[chopIndex].order].possible.some(p =>
-							p.rank !== 5 && !isTrash(state, common, p, hand[chopIndex].order, { infer: true }))
-						) {
-							saves.push(find_5cm(game, target, hand[chopIndex], cardIndex));
-
-							logger.info('found 5cm');
-							interpreted_5cm = true;
-						}
-						else {
-							logger.info('no cards left to 5cm');
-						}
-					}
-					else {
-						logger.info(`rightmost 5 is ${distance_from_chop} from chop, cannot 5cm`);
-					}
-				}
+			// Clues where the focus isn't playable or that cause chop moves aren't plays/stalls
+			if ((playables.length > 0 && !playables.some(({ card }) => card.order === focused_card.order)) ||
+				chop_moved.length > 0 ||
+				isTrash(state, me, focused_card, focused_card.order)) {
+				logger.highlight('yellow', 'invalid play clue');
+				continue;
 			}
 
-			// Ignore trash cards
-			if (isTrash(state, me, card, order))
-				continue;
-
-			// Play clue
-			const clue = determine_clue(game, target, hand[cardIndex], { excludeRank: interpreted_5cm });
-			if (clue !== undefined) {
-				const { playables, elim, new_touched } = clue.result;
-
-				if (playables.length > 0) {
-					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, hand[cardIndex]);
+			if (playables.length > 0) {
+				if (safe) {
+					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focused_card);
 					if (tempo && !valuable)
 						stall_clues[1].push(clue);
 					else
 						play_clues[target].push(clue);
 				}
-				// Stall clues
-				else if (severity > 0) {
-					if (clue.type === CLUE.RANK && clue.value === 5 && !hand[cardIndex].clued) {
-						logger.info('5 stall', logClue(clue));
-						stall_clues[0].push(clue);
-					}
-					else if (cardIndex === chopIndex && chopIndex !== 0) {
-						logger.info('locked hand save', logClue(clue));
-						stall_clues[3].push(clue);
-					}
-					else if (new_touched === 0) {
-						if (elim > 0) {
-							logger.info('fill in', logClue(clue));
-							stall_clues[2].push(clue);
-						}
-						else {
-							logger.info('hard burn', logClue(clue));
-							stall_clues[5].push(clue);
-						}
-					}
-					else {
-						logger.info('unknown valid clue??', logClue(clue));
-					}
+				else {
+					logger.highlight('yellow', `${logClue(clue)} is an unsafe play clue`);
 				}
 			}
-			logger.info('--------');
+			// Stall clues
+			else {
+				if (clue.type === CLUE.RANK && clue.value === 5 && !focused_card.clued) {
+					logger.info('5 stall', logClue(clue));
+					stall_clues[0].push(clue);
+				}
+				else if (chop) {
+					logger.info('locked hand save', logClue(clue));
+					stall_clues[3].push(clue);
+				}
+				else if (new_touched.length === 0) {
+					if (elim > 0) {
+						logger.info('fill in', logClue(clue));
+						stall_clues[2].push(clue);
+					}
+					else {
+						logger.info('hard burn', logClue(clue));
+						stall_clues[5].push(clue);
+					}
+				}
+				else {
+					logger.info('unknown valid clue??', logClue(clue));
+				}
+			}
 		}
 
-		save_clues[target] = Utils.maxOn(saves.filter(c => c !== undefined), (save_clue) => {
-			const { type, value, target } = save_clue;
-			const list = hand.clueTouched(save_clue, state.variant).map(c => c.order);
-			const hypo_state = game.simulate_clue({ type: 'clue', clue: { type, value }, giver: state.ourPlayerIndex, target, list });
-			const result = get_result(game, hypo_state, save_clue, state.ourPlayerIndex);
-
-			return find_clue_value(result);
-		});
+		const all_clues = [...saves, ...play_clues[target]];
+		save_clues[target] = Utils.maxOn(saves, (save_clue) => save_clue_value(game, save_clue.game, save_clue, all_clues), 0);
 	}
 
 	const fix_clues = find_fix_clues(game, play_clues, save_clues, options);

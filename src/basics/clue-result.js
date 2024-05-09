@@ -18,7 +18,8 @@ import { isTrash } from './hanabi-util.js';
  * @param  {number[]} list
  */
 export function elim_result(player, hypo_player, hand, list) {
-	let new_touched = 0, fill = 0, elim = 0;
+	const new_touched = [];
+	let fill = 0, elim = 0;
 
 	for (const { order } of hand) {
 		const old_card = player.thoughts[order];
@@ -26,7 +27,7 @@ export function elim_result(player, hypo_player, hand, list) {
 
 		if (hypo_card.clued && !hypo_card.called_to_discard && hypo_card.possible.length < old_card.possible.length && hypo_card.matches_inferences()) {
 			if (hypo_card.newly_clued && !hypo_card.finessed)
-				new_touched++;
+				new_touched.push(hypo_card);
 			else if (list.includes(order))
 				fill++;
 			else
@@ -119,4 +120,13 @@ export function playables_result(state, player, hypo_player) {
 	}
 
 	return { finesses, playables };
+}
+
+/**
+ * @param  {Player} player
+ * @param  {Player} hypo_player
+ * @param  {Hand} hand
+ */
+export function cm_result(player, hypo_player, hand) {
+	return hand.filter(c => hypo_player.thoughts[c.order].chop_moved && !player.thoughts[c.order].chop_moved);
 }

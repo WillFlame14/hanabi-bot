@@ -55,7 +55,7 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
 			if (!(giver === state.ourPlayerIndex && playerIndex === state.ourPlayerIndex))
 				card.inferred = card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
 
-			return card.matches(identity, { infer: true }) && card.touched && !possibly_fake(order);
+			return card.matches(identity, { infer: true, symmetric: true }) && card.touched && !possibly_fake(order);
 		});
 
 		if (globally_known)
@@ -132,7 +132,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
 			return { type: 'prompt', reacting, card: prompt, hidden: true, identities: [prompt.raw()] };
 		}
 		logger.warn(`wrong prompt on ${logCard(prompt)} ${prompt.order} when searching for ${logCard(identity)}, play stacks at ${state.play_stacks[prompt.suitIndex]}`);
-		return { type: 'terminate', reacting, card: null, identities: [] };
+		return { type: 'terminate', reacting, card: prompt, identities: [identity] };
 	}
 
 	if (finesse !== undefined && finesse.identity() !== undefined) {

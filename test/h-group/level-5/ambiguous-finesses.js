@@ -104,8 +104,9 @@ describe('ambiguous finesse', () => {
 		takeTurn(game, 'Bob clues 2 to Donald');
 		takeTurn(game, 'Cathy clues 4 to Bob');	// connecting on g2 (Donald, prompt) and g3 (Bob, finesse)
 
-		// Bob's slot 1 can be either g3 or y3, since he doesn't know which 1 is connecting.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['y3', 'g3']);
+		// There should be y3 -> y4 and g3 -> g4 waiting connections.
+		assert.ok(game.common.waiting_connections.some(wc => wc.inference.suitIndex === COLOUR.GREEN && wc.inference.rank === 4));
+		assert.ok(game.common.waiting_connections.some(wc => wc.inference.suitIndex === COLOUR.YELLOW && wc.inference.rank === 4));
 	});
 
 	it('correctly counts playables for ambiguous finesses', () => {

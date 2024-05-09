@@ -110,6 +110,53 @@ describe('self-finesse', () => {
 		// 3 to Donald is not a valid clue (r5 will prompt as r2).
 		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.RANK && clue.value === 3));
 	});
+
+	it('gives self-finesses that cannot look like prompts', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'b3', 'g1', 'p1', 'y2'],
+			['g2', 'b3', 'p1', 'g3', 'b2']
+		], {
+			level: 2,
+			play_stacks: [2, 0, 0, 0, 0]
+		});
+
+		takeTurn(game, 'Alice clues 3 to Bob');
+		takeTurn(game, 'Bob plays r3', 'g3');
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
+
+		const { play_clues } = find_clues(game);
+
+		// 3 to Bob is a valid play clue (connecting through g1 self-finesse on Bob, g2 finesse on Cathy).
+		const expected_clue = play_clues[PLAYER.BOB].find(clue => clue.type === CLUE.RANK && clue.value === 3);
+		assert.ok(expected_clue !== undefined);
+		assert.ok(expected_clue.result.playables.length === 3);
+	});
+
+	it('maintains a self-finesse even as inferences are reduced', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y1', 'b4', 'b5', 'g1'],
+			['r1', 'r3', 'r1', 'b4'],
+			['y1', 'r4', 'p3', 'g1']
+		], { level: 2 });
+
+		takeTurn(game, 'Alice clues 1 to Bob');
+		takeTurn(game, 'Bob plays y1', 'p4');
+		takeTurn(game, 'Cathy clues 3 to Alice (slot 2)');
+
+		const slot1_order = game.state.hands[PLAYER.ALICE][0].order;
+
+		// All of these are valid self-finesse possibilities.
+		ExAsserts.cardHasInferences(game.common.thoughts[slot1_order], ['y2', 'g2', 'b1', 'p1']);
+		assert.equal(game.common.thoughts[slot1_order].finessed, true);
+
+		takeTurn(game, 'Donald clues purple to Alice (slot 4)');
+
+		// After knowing we have p1 in slot 4, the finesse should still be on.
+		ExAsserts.cardHasInferences(game.common.thoughts[slot1_order], ['y2', 'g2', 'b1']);
+		assert.equal(game.common.thoughts[slot1_order].finessed, true);
+	});
 });
 
 describe('direct clues', () => {
@@ -221,10 +268,9 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Bob clues 1 to Donald');
 		takeTurn(game, 'Cathy clues 3 to Bob');	// connecting on g1 (Donald, playable) and g2 (Bob, finesse)
 
-		const { common, state } = game;
-
-		// Bob's slot 1 can be either g2 or y2, since he doesn't know which 1 is connecting.
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.BOB][0].order], ['y2', 'g2']);
+		// There should be y2 -> y3 and g2 -> g3 waiting connections.
+		assert.ok(game.common.waiting_connections.some(wc => wc.inference.suitIndex === COLOUR.GREEN && wc.inference.rank === 3));
+		assert.ok(game.common.waiting_connections.some(wc => wc.inference.suitIndex === COLOUR.YELLOW && wc.inference.rank === 3));
 	});
 
 	it('prefers the least number of blind plays on target', () => {
@@ -309,10 +355,9 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Bob clues 1 to Donald');
 		takeTurn(game, 'Cathy clues 4 to Bob');			// connecting on g2 (Bob, finesse) and g3 (Bob, finesse)
 
-		const { common, state } = game;
-
-		// Although y3 should still be preferred, the correct inference is g2 -> g3 double self-finesse.
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.BOB][0].order], ['g2','y3']);
+		// There should be y3 -> y4 and g2 -> g3 -> g4 waiting connections.
+		assert.ok(game.common.waiting_connections.some(wc => wc.inference.suitIndex === COLOUR.GREEN && wc.inference.rank === 4));
+		assert.ok(game.common.waiting_connections.some(wc => wc.inference.suitIndex === COLOUR.YELLOW && wc.inference.rank === 4));
 	});
 
 	it('connects when a card plays early', () => {

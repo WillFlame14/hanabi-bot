@@ -90,6 +90,9 @@ export function interpret_sarcastic(game, discardAction) {
 
 	// Unknown sarcastic discard to us
 	if (duplicates.length === 0) {
+		if (playerIndex === state.ourPlayerIndex)
+			return [];
+
 		const sarcastics = find_sarcastics(state.hands[state.ourPlayerIndex], me, identity);
 
 		if (sarcastics.length === 1) {
