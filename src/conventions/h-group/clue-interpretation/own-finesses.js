@@ -183,7 +183,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 	const already_connected = /** @type {number[]} */ ([]);
 	let finesses = 0;
 	let direct = looksDirect;
-	let promised = [];
+	const promised = [];
 
 	for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
 		const next_identity = { suitIndex, rank: next_rank };

@@ -213,19 +213,22 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 		// as known by the player who would play next after the bluff play.
 		let known_bluff = false;
 		const next_player = state.hands.findIndex(hand => hand.indexOf(promised[1]) != -1);
+		const bluff_identies = (giver + 1) % state.numPlayers == state.ourPlayerIndex ?
+			game.players[state.ourPlayerIndex].thoughts[bluffCard.order].inferred.filter(c => state.isPlayable(c)) :
+			[bluffCard];
 		for (let i = 1; i < promised.length; ++i) {
-			const expected = { suitIndex: bluffCard.suitIndex , rank: bluffCard.rank + i };
-			if (state.hands[next_player].includes(promised[i])) {
-				const thoughts = game.players[next_player].thoughts[promised[i].order];
-				if (!thoughts.inferred.has(expected)) {
-					known_bluff = true;
-					break;
+			const known_bluff_cards = bluff_identies.filter(identity => {
+				const expected = { suitIndex: identity.suitIndex , rank: identity.rank + i };
+				if (state.hands[next_player].includes(promised[i])) {
+					const thoughts = game.players[next_player].thoughts[promised[i].order];
+					return !thoughts.inferred.has(expected);
+				} else {
+					return !promised[i].matches(expected);
 				}
-			} else {
-				if (!promised[i].matches(expected)) {
-					known_bluff = true;
-					break;
-				}
+			});
+			if (known_bluff_cards.length > 0) {
+				known_bluff = true;
+				break;
 			}
 		}
 		bluff_possible = bluff_possible && known_bluff;
@@ -234,6 +237,9 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 
 	if (bluff_possible) {
 		// Remove plays which followed the bluffed card targeting the bluff identity.
+		// TODO: We shouldn't remove the connections until we know that there are no
+		// interpretations that couldn't have a bluff. If there are, then we can
+		// assume that due to the ambiguity this cannot be a bluff.
 		connections.splice(1, next_play - 1);
 	} else {
 		// If a bluff is not possible, we only have a valid connection if the real card was found.

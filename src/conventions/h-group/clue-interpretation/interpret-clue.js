@@ -212,7 +212,7 @@ export function interpret_clue(game, action) {
 			logger.info(`card ${logCard(focused_card)} order ${focused_card.order} doesn't match any inferences! currently ${focus_thoughts.inferred.map(logCard).join(',')}`);
 
 		/** @type {FocusPossibility[]} */
-		const all_connections = [];
+		let all_connections = [];
 
 		const looksDirect = focus_thoughts.identity() === undefined && (	// Focused card must be unknown AND
 			action.clue.type === CLUE.COLOUR ||											// Colour clue always looks direct
@@ -275,11 +275,6 @@ export function interpret_clue(game, action) {
 			}
 
 			if (self && self_connections.length > 0) {
-				// If there's a valid connection that doesn't require a bluff, a bluff is not a valid interpretation.
-				const no_bluff_connections = self_connections.filter(connection => connection.connections.filter(c => c.bluff == true).length == 0);
-				if (no_bluff_connections.length > 0)
-					self_connections = no_bluff_connections;
-
 				for (const connection of self_connections)
 					all_connections.push(connection);
 			}
@@ -298,6 +293,13 @@ export function interpret_clue(game, action) {
 				else
 					throw error;
 			}
+		}
+
+		// If there's a valid connection that doesn't require a bluff, a bluff is not a valid interpretation.
+		const no_bluff_connections = all_connections.filter(connection => connection.connections.filter(c => c.bluff == true).length == 0);
+		if (no_bluff_connections.length > 0) {
+			// TODO: Convert possible bluff connections to non-bluff connections.
+			all_connections = no_bluff_connections;
 		}
 
 		// No inference, but a finesse isn't possible
