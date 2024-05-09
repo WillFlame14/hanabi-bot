@@ -160,12 +160,12 @@ export function handle_action(action, catchup = false) {
 			break;
 		}
 		case 'ignore': {
-			const { conn_index, order } = action;
+			const { conn_index, order, inference } = action;
 
 			this.next_ignore[conn_index] ??= [];
 
 			// Ignore the card
-			this.next_ignore[conn_index].push(order);
+			this.next_ignore[conn_index].push({ order, inference });
 			break;
 		}
 		case 'finesse':  {

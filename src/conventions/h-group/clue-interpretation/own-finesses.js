@@ -169,7 +169,8 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		throw new IllegalInterpretation('cannot finesse ourselves.');
 
 	if (target === (ignorePlayer === -1 ? state.ourPlayerIndex : ignorePlayer)) {
-		const connected = find_known_connecting(game, giver, { suitIndex, rank }, game.next_ignore[0] ?? []);
+		const connected = find_known_connecting(game, giver, { suitIndex, rank }, game.next_ignore[0]?.filter(i =>
+			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order) ?? []);
 
 		if (connected !== undefined && connected.type !== 'terminate' && connected.card.order !== focused_card.order)
 			throw new IllegalInterpretation(`won't find own finesses for ${logCard({ suitIndex, rank })} when someone already has [${logConnection(connected)}]`);
@@ -186,7 +187,8 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 
 	for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
 		const next_identity = { suitIndex, rank: next_rank };
-		const ignoreOrders = game.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1] ?? [];
+		const ignoreOrders = game.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1]?.filter(i =>
+			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order) ?? [];
 
 		const curr_connections = connect(hypo_game, giver, target, next_identity, direct, already_connected, ignoreOrders, ignorePlayer, selfRanks, finesses);
 
@@ -337,7 +339,8 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 			if (finesse === undefined)
 				return false;
 
-			const ignored_order = (game.next_ignore[rank - state.play_stacks[suitIndex] - 1] ?? []).find(order => order === finesse.order);
+			const ignored_order = (game.next_ignore[rank - state.play_stacks[suitIndex] - 1]?.filter(i =>
+				i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order) ?? []).find(order => order === finesse.order);
 			if (ignored_order === undefined)
 				return false;
 

@@ -12,6 +12,7 @@ import * as Utils from '../tools/util.js';
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../variants.js').Variant} Variant
  * @typedef {import('../types-live.js').TableOptions} TableOptions
+ * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {typeof import('./h-group/h-constants.js').CLUE_INTERP} CLUE_INTERP
  * @typedef {typeof import('./h-group/h-constants.js').PLAY_INTERP} PLAY_INTERP
  * @typedef {typeof import('./h-group/h-constants.js').DISCARD_INTERP} DISCARD_INTERP
@@ -30,6 +31,12 @@ export default class HGroup extends Game {
 	moveHistory;
 
 	/**
+	 * Identities of cards we are finessing while we are waiting to play into a finesse/
+	 * @type {ActualCard[][]}
+	 */
+	finesses_while_finessed;
+
+	/**
 	 * @param {number} tableID
 	 * @param {State} state
 	 * @param {boolean} in_progress
@@ -43,6 +50,8 @@ export default class HGroup extends Game {
 
 		const c = this.common;
 		this.common = new HGroup_Player(c.playerIndex, c.all_possible, c.all_inferred, c.hypo_stacks, c.thoughts, c.links, c.unknown_plays, c.waiting_connections, c.elims);
+
+		this.finesses_while_finessed = Array.from({ length: state.numPlayers }, _ => []);
 
 		this.level = level;
 		this.moveHistory = [];
@@ -71,7 +80,8 @@ export default class HGroup extends Game {
 		if (this.copyDepth > 3)
 			throw new Error('Maximum recursive depth reached.');
 
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory', 'screamed_at', 'moveHistory'];
+		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory',
+			'screamed_at', 'moveHistory', 'finesses_while_finessed'];
 
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);

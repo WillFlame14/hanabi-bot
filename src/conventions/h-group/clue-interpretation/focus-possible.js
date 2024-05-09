@@ -48,7 +48,8 @@ function find_colour_focus(game, suitIndex, action) {
 		state.play_stacks = old_play_stacks.slice();
 
 		// Note that a colour clue always looks direct
-		const ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1];
+		const ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
+			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
 		const looksDirect = common.thoughts[focused_card.order].identity() === undefined;
 		const connecting = find_connecting(game, giver, target, identity, looksDirect, already_connected, ignoreOrders);
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
@@ -185,7 +186,8 @@ function find_rank_focus(game, rank, action) {
 		// Try looking for all connecting cards
 		state.play_stacks = old_play_stacks.slice();
 
-		let ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1];
+		let ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
+			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
 		let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focused_card.order));
 		let connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
 
@@ -194,10 +196,10 @@ function find_rank_focus(game, rank, action) {
 
 			if (type === 'terminate') {
 				// Trying to look for the same identity as the focused card and being "wrong prompted"
-				// if (!focus_thoughts.inferred.has({ suitIndex, rank: next_rank })) {
-				for (const { reacting } of connecting)
-					wrong_prompts.add(reacting);
-				// }
+				if (!focus_thoughts.inferred.has({ suitIndex, rank: next_rank })) {
+					for (const { reacting } of connecting)
+						wrong_prompts.add(reacting);
+				}
 				break;
 			}
 
@@ -239,7 +241,8 @@ function find_rank_focus(game, rank, action) {
 				break;
 			}
 
-			ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1];
+			ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
+				i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
 			connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
 		}
 

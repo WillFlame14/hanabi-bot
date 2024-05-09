@@ -65,9 +65,9 @@
  * @typedef {CardAction & {type: 'draw'}} DrawAction
  * @typedef {CardAction & {type: 'play'}} PlayAction
  * @typedef {CardAction & {type: 'identify', infer?: boolean}} IdentifyAction
- * @typedef {{type: 'ignore', conn_index: number, order: number}} IgnoreAction
+ * @typedef {{type: 'ignore', conn_index: number, order: number, inference?: Identity}} IgnoreAction
  * @typedef {{type: 'finesse', list: number[], clue: BaseClue}} FinesseAction
- * @typedef {CardAction & {type: 'discard', failed: boolean}} DiscardAction
+ * @typedef {CardAction & {type: 'discard', failed: boolean, intentional?: boolean}} DiscardAction
  * 
  * @typedef GameOverAction
  * @property {'gameOver'}   type

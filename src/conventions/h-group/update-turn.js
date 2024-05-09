@@ -22,7 +22,7 @@ import { older_queued_finesse } from './hanabi-logic.js';
  */
 function remove_finesse(game, waiting_connection) {
 	const { common, state } = game;
-	const { connections, focused_card, inference, target, fake, symmetric } = waiting_connection;
+	const { connections, focused_card, inference, fake, symmetric } = waiting_connection;
 	const focus_thoughts = common.thoughts[focused_card.order];
 
 	if (fake)
@@ -37,17 +37,21 @@ function remove_finesse(game, waiting_connection) {
 			continue;
 		}
 
-		// Notes are not written on symmetric connections except for the target, since other players actually know their card(s).
-		// Thus, no need to remove finesses
-		if (symmetric && connection.reacting !== target)
+		// Notes are not written on symmetric connections. Thus, no need to remove finesses
+		if (symmetric)
 			continue;
 
-		if (connection.type === 'finesse' && !card.superposition) {
-			card.finessed = false;
-			card.hidden = false;
+		if (connection.type === 'finesse') {
+			if (card.hidden)
+				card.inferred.value = 0;
+			else
+				card.inferred = card.inferred.subtract(connection.identities);
 		}
 
-		if (!card.superposition) {
+		if (!card.superposition && card.inferred.length === 0) {
+			card.finessed = false;
+			card.hidden = false;
+
 			if (card.old_inferred !== undefined) {
 				// Restore old inferences
 				card.inferred = card.old_inferred;
@@ -167,7 +171,7 @@ function resolve_card_retained(game, waiting_connection) {
 
 		if (reacting !== state.ourPlayerIndex) {
 			const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
-			game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order });
+			game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
 			return { quit: true };
 		}
 
@@ -327,6 +331,8 @@ export function update_turn(game, action) {
 			remove = true;
 		}
 		else {
+			const last_reacting_action = game.last_actions[reacting];
+
 			// After the turn we were waiting for
 			if (lastPlayerIndex === reacting) {
 				// They still have the card
@@ -334,14 +340,16 @@ export function update_turn(game, action) {
 					({ remove, remove_finesse, quit } = resolve_card_retained(game, waiting_connection));
 				}
 				// The card was played
-				else if (game.last_actions[reacting].type === 'play') {
+				else if (last_reacting_action.type === 'play') {
 					({ remove, remove_finesse, demonstration } = resolve_card_played(game, waiting_connection));
 				}
 				// The card was discarded and its copy is not visible
-				else if (game.last_actions[reacting].type === 'discard' && visibleFind(state, me, old_card).length === 0) {
-					logger.info(`waiting card ${logCard(old_card)} discarded?? removing finesse`);
-					remove = true;
-					remove_finesse = true;
+				else if (last_reacting_action.type === 'discard' && visibleFind(state, me, old_card).length === 0) {
+					if (!last_reacting_action.intentional) {
+						logger.info(`waiting card ${logCard(old_card)} discarded?? removing finesse`);
+						remove = true;
+						remove_finesse = true;
+					}
 				}
 			}
 			// Check if giver played card that matches next connection

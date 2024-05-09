@@ -48,8 +48,6 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	if (isTrash(state, me, old_chop, old_chop.order, { infer: true }) || chop_moved.some(c => c.duplicateOf(old_chop)))
 		return -10;
 
-	logger.info(`would save ${saved_trash.length === 0 ? 'no' : saved_trash.map(logCard).join()} trash`);
-
 	// More trash cards saved than useful cards
 	if (saved_trash.length > Math.min(1, chop_moved.length - saved_trash.length))
 		return -10;
@@ -76,6 +74,8 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
  */
 export function find_clues(game, options = {}) {
 	const { common, me, state } = game;
+
+	logger.highlight('whiteb', '------- FINDING CLUES -------');
 
 	const play_clues = /** @type Clue[][] */ 	([]);
 	const save_clues = /** @type SaveClue[] */ 	([]);

@@ -140,7 +140,7 @@ export function interpret_clue(game, action) {
 
 	const newly_touched = Utils.findIndices(hand, (card) => card.newly_clued);
 	const trash_push = !fix && touch.every(card => !card.newly_clued ||
-		common.thoughts[card.order].inferred.every(inf => isTrash(state, common, inf, card.order))) && touch.some(card => card.newly_clued);
+		common.thoughts[card.order].inferred.every(inf => isTrash(state, common, inf, card.order, { infer: true }))) && touch.some(card => card.newly_clued);
 
 	if (trash_push)
 		logger.highlight('cyan', 'trash push!');

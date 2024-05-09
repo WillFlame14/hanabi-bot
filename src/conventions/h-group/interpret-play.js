@@ -71,6 +71,9 @@ export function interpret_play(game, action) {
 		}
 	}
 
+	if (common.thoughts[order].finessed)
+		game.finesses_while_finessed[playerIndex] = [];
+
 	if (game.level >= LEVEL.BASIC_CM && rank === 1)
 		check_ocm(game, action);
 

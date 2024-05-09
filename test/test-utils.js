@@ -88,7 +88,7 @@ function init_game(game, options) {
 	const { common, state } = game;
 
 	if (options.play_stacks) {
-		state.play_stacks = options.play_stacks;
+		state.play_stacks = options.play_stacks.slice();
 		for (let i = 0; i < state.numPlayers; i++)
 			game.players[i].hypo_stacks = options.play_stacks.slice();
 

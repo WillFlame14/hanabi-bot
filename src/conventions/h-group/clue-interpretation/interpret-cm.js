@@ -26,7 +26,7 @@ export function interpret_tcm(game, target, focus_order) {
 	const focus_thoughts = common.thoughts[focus_order];
 
 	if (!focused_card.newly_clued ||
-		focus_thoughts.possible.some(c => !isTrash(state, common, c, focus_order)) ||
+		focus_thoughts.possible.some(c => !isTrash(state, common, c, focus_order, { infer: true })) ||
 		focus_thoughts.inferred.every(i => state.isPlayable(i)))
 		return false;
 
@@ -35,7 +35,7 @@ export function interpret_tcm(game, target, focus_order) {
 	for (let i = state.hands[target].length - 1; i >= 0; i--) {
 		const card = state.hands[target][i];
 
-		if (card.newly_clued && common.thoughts[card.order].possible.every(c => isTrash(state, common, c, card.order))) {
+		if (card.newly_clued && common.thoughts[card.order].possible.every(c => isTrash(state, common, c, card.order, { infer: true }))) {
 			oldest_trash_index = i;
 			break;
 		}
@@ -48,9 +48,9 @@ export function interpret_tcm(game, target, focus_order) {
 	// Chop move every unclued card to the right of this
 	for (let i = oldest_trash_index + 1; i < state.hands[target].length; i++) {
 		const card = state.hands[target][i];
+		const common_card = common.thoughts[card.order];
 
-		if (!card.clued) {
-			const common_card = common.thoughts[card.order];
+		if (!card.clued && !common_card.chop_moved) {
 			common_card.chop_moved = true;
 
 			// Remove all commonly trash identities

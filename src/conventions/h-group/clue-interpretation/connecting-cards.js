@@ -54,7 +54,7 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
 			if (!(giver === state.ourPlayerIndex && playerIndex === state.ourPlayerIndex))
 				card.inferred = card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
 
-			return card.matches(identity, { infer: true }) && card.touched && !possibly_fake(order);
+			return card.matches(identity, { infer: true, symmetric: true }) && card.touched && !possibly_fake(order);
 		});
 
 		if (globally_known)

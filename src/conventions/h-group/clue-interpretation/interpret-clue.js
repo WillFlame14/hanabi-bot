@@ -87,7 +87,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		if (save || !focused_card.matches(inference, { assume: true }))
 			continue;
 
-		assign_connections(game, connections);
+		assign_connections(game, connections, giver);
 
 		// Multiple possible sets, we need to wait for connections
 		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
@@ -107,7 +107,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 		common.waiting_connections = common.waiting_connections.concat(symmetric_connections);
 		for (const { fake, connections } of symmetric_connections)
-			assign_connections(game, connections, { symmetric: true, target, fake });
+			assign_connections(game, connections, giver, { symmetric: true, target, fake });
 
 		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(c => !c.fake && inf.matches(c))));
 	}
