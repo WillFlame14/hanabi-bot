@@ -191,21 +191,11 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
 	const { state } = game;
-	let bluff_possible = true;
 	const bluffCard = connections[0].card;
 	// Determine the next play if this is a bluff.
-	let next_play = connections.findIndex(connection => connection.card == promised[0]) + 1;
-	if (next_play == 0)
-		next_play++;
-
-	// A bluff must be followed by prompts.
-	for (let i = next_play; i < connections.length; ++i) {
-		const conn = connections[i];
-		if (conn.hidden || conn.type == 'finesse') {
-			bluff_possible = false;
-			break;
-		}
-	}
+	const next_play = connections.findIndex(connection => connection.card == promised[0]) + 1;
+	// A bluff must be followed only by prompts.
+	let bluff_possible = connections.every((conn, index) => index < next_play || (!conn.hidden && conn.type !== 'finesse'));
 
 	if (bluff_possible) {
 		// A bluff must be recognizable. As such, there should be no connection
