@@ -383,4 +383,43 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['b3']);
 	});
 
+	it('understands a bluff on top of unknown plays that cannot match', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r1', 'p3', 'y1', 'y1'],
+			['g5', 'b2', 'r3', 'y5'],
+			['b4', 'p2', 'g3', 'r5'],
+		], {
+			level: 11,
+			play_stacks: [0, 0, 1, 0, 2],
+			starting: PLAYER.DONALD
+		});
+		takeTurn(game, 'Donald clues 1 to Bob');
+		// Since Bob is only queued on 1s, Alice should be able to bluff Bob's p3 using g3.
+		takeTurn(game, 'Alice clues 3 to Donald');
+	
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order].finessed, true);
+	});
+
+	it(`doesn't bluff on top of unknown queued cards`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r2', 'g1', 'y1', 'y1', 'r4'],
+			['p2', 'b2', 'r3', 'y5', 'y4'],
+			['g1', 'g2', 'g3', 'g5', 'p4'],
+		], {
+			level: 11,
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.DONALD
+		});
+		takeTurn(game, 'Donald clues red to Cathy');
+		// With r2 queued, we cannot bluff the g1.
+		const { play_clues } = find_clues(game);
+		const bluff_clues = play_clues[2].filter(clue => {
+			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2 ||
+				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == 3 || clue.value == 4);
+		});
+		assert.equal(bluff_clues.length, 0);
+	});
+
 });
