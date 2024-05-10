@@ -167,4 +167,21 @@ describe('play clue', () => {
 		assert.ok([1, 0, 0, 0, 2].every((stack_rank, suitIndex) => game.common.hypo_stacks[suitIndex] === stack_rank),
 			`Expected hypo stacks ${[1, 0, 0, 0, 2]}, got ${game.common.hypo_stacks}`);
 	});
+
+	it('correctly counts the number of playables when connecting on unknown plays', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g2', 'b3', 'p5', 'r4', 'y4'],
+			['g2', 'g3', 'p2', 'p1', 'b4']
+		], {
+			level: 1,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Alice (slots 2,3)');
+		takeTurn(game, 'Cathy clues 2 to Bob');
+
+		// Bob's g2 is unknown playable.
+		assert.ok(game.common.unknown_plays.has(game.state.hands[PLAYER.BOB][0].order));
+	});
 });

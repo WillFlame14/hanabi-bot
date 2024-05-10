@@ -34,8 +34,8 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
 				return false;
 
 			// Note that if we are the target, we can't verify if finesse/prompt connections are real
-			return wc.fake || (wc.target === state.ourPlayerIndex && giver === state.ourPlayerIndex &&
-				wc.connections.some((conn, i) => i >= wc.conn_index && i <= connIndex && (conn.type === 'finesse' || conn.type === 'prompt')));
+			return wc.target === state.ourPlayerIndex && giver === state.ourPlayerIndex &&
+				wc.connections.some((conn, i) => i >= wc.conn_index && i <= connIndex && (conn.type === 'finesse' || conn.type === 'prompt'));
 		});
 	};
 

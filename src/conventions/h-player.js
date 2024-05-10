@@ -13,6 +13,7 @@ import * as Utils from '../tools/util.js';
  */
 
 export class HGroup_Player extends Player {
+
 	clone() {
 		return new HGroup_Player(this.playerIndex,
 			this.all_possible,
@@ -20,6 +21,7 @@ export class HGroup_Player extends Player {
 			this.hypo_stacks.slice(),
 			this.thoughts.map(infs => infs.clone()),
 			this.links.map(link => Utils.objClone(link)),
+			this.play_links.map(link => Utils.objClone(link)),
 			this.unknown_plays,
 			Utils.objClone(this.waiting_connections));
 	}
@@ -31,6 +33,7 @@ export class HGroup_Player extends Player {
 			this.hypo_stacks,
 			this.thoughts,
 			this.links,
+			this.play_links,
 			this.unknown_plays,
 			this.waiting_connections);
 	}

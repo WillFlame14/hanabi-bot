@@ -27,6 +27,9 @@ export class Player {
 	/** @type {number[]} */
 	hypo_stacks;
 
+	/** @type {{ orders: number[], prereqs: Identity[], connected: number}[]} */
+	play_links;
+
 	/**
 	 * @param {number} playerIndex
 	 * @param {IdentitySet} all_possible
@@ -34,15 +37,17 @@ export class Player {
 	 * @param {number[]} hypo_stacks
 	 * @param {Card[]} [thoughts]
 	 * @param {Link[]} [links]
-	 * @param {Set<number>} unknown_plays
-	 * @param {WaitingConnection[]} waiting_connections
-	 * @param {Record<string, number[]>} elims
+	 * @param {{ orders: number[], prereqs: Identity[], connected: number}[]} [play_links]
+	 * @param {Set<number>} [unknown_plays]
+	 * @param {WaitingConnection[]} [waiting_connections]
+	 * @param {Record<string, number[]>} [elims]
 	 */
-	constructor(playerIndex, all_possible, all_inferred, hypo_stacks, thoughts = [], links = [], unknown_plays = new Set(), waiting_connections = [], elims = {}) {
+	constructor(playerIndex, all_possible, all_inferred, hypo_stacks, thoughts = [], links = [], play_links = [], unknown_plays = new Set(), waiting_connections = [], elims = {}) {
 		this.playerIndex = playerIndex;
 
 		this.thoughts = thoughts;
 		this.links = links;
+		this.play_links = play_links;
 
 		this.hypo_stacks = hypo_stacks;
 		this.all_possible = all_possible;
@@ -64,6 +69,7 @@ export class Player {
 			this.hypo_stacks.slice(),
 			this.thoughts.map(infs => infs.clone()),
 			this.links.map(link => Utils.objClone(link)),
+			this.play_links.map(link => Utils.objClone(link)),
 			this.unknown_plays,
 			Utils.objClone(this.waiting_connections),
 			Utils.objClone(this.elims));
@@ -76,6 +82,7 @@ export class Player {
 			this.hypo_stacks,
 			this.thoughts,
 			this.links,
+			this.play_links,
 			this.unknown_plays,
 			this.waiting_connections,
 			this.elims);
@@ -229,8 +236,8 @@ export class Player {
 					continue;
 
 				const fake_wcs = this.waiting_connections.filter(wc => {
-					const { fake, focused_card, inference } = wc;
-					return focused_card.order === order && (fake || !state.deck[focused_card.order].matches(inference, { assume: true }));
+					const { focused_card, inference } = wc;
+					return focused_card.order === order && !state.deck[focused_card.order].matches(inference, { assume: true });
 				});
 
 				// Ignore all waiting connections that will be proven wrong
@@ -238,7 +245,10 @@ export class Player {
 				diff.inferred = diff.inferred.subtract(fake_wcs.flatMap(wc => wc.inference));
 
 				if (diff.matches_inferences() &&
-					(delayed_playable(diff.possible.array) || delayed_playable(diff.inferred.array) || (diff.finessed && delayed_playable([card])))
+					(delayed_playable(diff.possible.array) ||
+					delayed_playable(diff.inferred.array) ||
+					(diff.finessed && delayed_playable([card])) ||
+					this.play_links.some(pl => pl.connected === order && pl.orders.every(o => unknown_plays.has(o))))
 				) {
 					const id = card.identity({ infer: true });
 					const actual_id = state.deck[order].identity();

@@ -8,9 +8,10 @@ import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 import { assign_connections, inference_known, inference_rank, find_symmetric_connections, generate_symmetric_connections } from './connection-helper.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
+import * as Basics from '../../../basics.js';
+import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
-import * as Basics from '../../../basics.js';
 import { logCard, logConnections, logHand } from '../../../tools/log.js';
 
 /**
@@ -105,11 +106,26 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities.some(fp => fp.save), selfRanks, ownBlindPlays);
 		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver, target);
 
-		common.waiting_connections = common.waiting_connections.concat(symmetric_connections);
-		for (const { fake, connections } of symmetric_connections)
-			assign_connections(game, connections, giver, { symmetric: true, target, fake });
+		for (const focus_possibility of symmetric_fps) {
+			const { connections } = focus_possibility;
 
-		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(c => !c.fake && inf.matches(c))));
+			for (const conn of connections) {
+				if (conn.type === 'playable' && conn.linked.length > 1) {
+					const orders = Array.from(conn.linked.map(c => c.order));
+					const existing_link = common.play_links.find(pl => Utils.setEquals(new Set(pl.orders), new Set(orders)));
+
+					logger.info('adding play link with orders', orders, 'prereq', logCard(conn.identities[0]), 'connected', logCard(focused_card));
+
+					if (existing_link !== undefined)
+						existing_link.prereqs.push(conn.identities[0]);
+					else
+						common.play_links.push({ orders, prereqs: [conn.identities[0]], connected: focused_card.order });
+				}
+			}
+		}
+
+		common.waiting_connections = common.waiting_connections.concat(symmetric_connections);
+		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(c => inf.matches(c))));
 	}
 	reset_superpositions(game);
 }

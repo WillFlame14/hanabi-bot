@@ -55,7 +55,7 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
 	const symmetric_connections = [];
 
 	for (const sym of sym_possibilities) {
-		const { connections, suitIndex, rank, fake } = sym;
+		const { connections, suitIndex, rank } = sym;
 
 		// No connections required
 		if (connections.length === 0)
@@ -73,7 +73,6 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
 			giver,
 			target,
 			action_index: state.actionList.length - 1,
-			fake,
 			symmetric: true
 		});
 	}
@@ -155,7 +154,7 @@ export function find_symmetric_connections(game, action, looksSave, selfRanks, o
 
 	// Filter out focus possibilities that are strictly more complicated (i.e. connections match up until some point, but has more self-components after)
 	const simplest_connections = possible_connections.filter((conns, i) => !possible_connections.some((other_conns, j) =>
-		i !== j && other_conns.connections.every((other_conn, index) => {
+		i !== j && other_conns.connections.length > 0 && other_conns.connections.every((other_conn, index) => {
 			const conn = conns.connections[index];
 
 			return conn === undefined ||
@@ -167,14 +166,10 @@ export function find_symmetric_connections(game, action, looksSave, selfRanks, o
 	const symmetric_connections = simplest_connections.map(({ id, connections }) => ({
 		connections,
 		suitIndex: id.suitIndex,
-		rank: inference_rank(state, id.suitIndex, connections),
-		fake: blind_plays(connections, state.ourPlayerIndex) > ownBlindPlays
+		rank: inference_rank(state, id.suitIndex, connections)
 	}));
 
-	const sym_conn = symmetric_connections.map(conn => {
-		const nextIdentity = { suitIndex: conn.suitIndex, rank: conn.rank };
-		return logConnections(conn.connections, nextIdentity) + (conn.fake ? ' (fake)' : '');
-	});
+	const sym_conn = symmetric_connections.map(conn => logConnections(conn.connections, { suitIndex: conn.suitIndex, rank: conn.rank }));
 
 	logger.info('symmetric connections', sym_conn);
 	return symmetric_connections;
@@ -186,22 +181,15 @@ export function find_symmetric_connections(game, action, looksSave, selfRanks, o
  * @param {Game} game
  * @param {Connection[]} connections
  * @param {number} giver
- * @param {{symmetric?: boolean, target?: number, fake?: boolean}} [options] 	If this is a symmetric connection, this indicates the only player we should write notes on.
  */
-export function assign_connections(game, connections, giver, options = {}) {
+export function assign_connections(game, connections, giver) {
 	const { common, state } = game;
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
-	for (const connection of connections) {
-		const { type, hidden, card: conn_card, linked, identities } = connection;
+	for (let i = 0; i < connections.length; i++) {
+		const { type, hidden, card: conn_card, linked, identities, certain } = connections[i];
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
-
-		// Do not write notes on:
-		// - fake connections (where we need to blind play more than necessary)
-		// - symmetric connections on anyone not the target, since they actually know their card
-		if (options?.fake || options?.symmetric)
-			continue;
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		if (!card.superposition && card.old_inferred === undefined)
@@ -215,7 +203,7 @@ export function assign_connections(game, connections, giver, options = {}) {
 			if (state.hands[giver].some(c => common.thoughts[c.order].finessed))
 				game.finesses_while_finessed[giver].push(state.deck[card.order]);
 
-			if (connection.certain)
+			if (certain)
 				card.certain_finessed = true;
 		}
 

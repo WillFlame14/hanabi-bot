@@ -106,10 +106,10 @@ export function find_clues(game, options = {}) {
 			const { focused_card, chop } = determine_focus(hand, common, list);
 
 			const in_finesse = common.waiting_connections.some(w_conn => {
-				const { fake, focused_card: wc_focus, inference } = w_conn;
+				const { focused_card: wc_focus, inference } = w_conn;
 				const matches = me.thoughts[wc_focus.order].matches(inference, { assume: true });
 
-				return !fake && matches && focused_card.playedBefore(inference, { equal: true });
+				return matches && focused_card.playedBefore(inference, { equal: true });
 			});
 
 			// Do not focus cards that are part of a finesse
@@ -154,7 +154,7 @@ export function find_clues(game, options = {}) {
 
 			// Clues where the focus isn't playable or that cause chop moves aren't plays/stalls
 			if ((playables.length > 0 && !playables.some(({ card }) => card.order === focused_card.order)) ||
-				chop_moved.length > 0 ||
+				(playables.length === 0 && chop_moved.length > 0) ||
 				isTrash(state, me, focused_card, focused_card.order)) {
 				logger.highlight('yellow', 'invalid play clue');
 				continue;
