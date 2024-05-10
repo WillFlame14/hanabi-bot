@@ -202,7 +202,7 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 		// between the bluffed card and at least one of the following plays
 		// as known by the player who would play next after the bluff play.
 		let known_bluff = false;
-		const next_player = state.hands.findIndex(hand => hand.indexOf(promised[1]) != -1);
+		const next_player = state.hands.findIndex(hand => hand.includes(promised[1]));
 		const bluff_identies = (giver + 1) % state.numPlayers == state.ourPlayerIndex ?
 			game.players[state.ourPlayerIndex].thoughts[bluffCard.order].inferred.filter(c => state.isPlayable(c)) :
 			[bluffCard];

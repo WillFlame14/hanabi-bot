@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
@@ -204,7 +204,7 @@ describe('bluff clues', () => {
 		const { play_clues } = find_clues(game);
 		const bluff_clues = play_clues[3].filter(clue => {
 			return clue.type == CLUE.RANK && clue.target == 3 && clue.value == 3 ||
-				clue.type == CLUE.COLOUR && clue.target == 3 && clue.value == 2;
+				clue.type == CLUE.COLOUR && clue.target == 3 && clue.value == COLOUR.GREEN;
 		});
 		assert.equal(bluff_clues.length, 0);
 	});
@@ -277,7 +277,7 @@ describe('bluff clues', () => {
 		const { play_clues } = find_clues(game);
 		const bluff_clues = play_clues[2].filter(clue => {
 			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2 ||
-				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == 3 || clue.value == 4);
+				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == COLOUR.BLUE || clue.value == COLOUR.PURPLE);
 		});
 		assert.equal(bluff_clues.length, 0);
 	});
@@ -300,24 +300,43 @@ describe('bluff clues', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][2].order].finessed, true);
 	});
 
-	it(`doesn't bluff on top of known cards which might match bluff`, () => {
+	it(`doesn't bluff on top of colour-clued cards which might match bluff`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['r1', 'g1', 'y1', 'y1', 'y5'],
+			['r1', 'r4', 'y1', 'y1', 'y5'],
 			['p4', 'b2', 'r3', 'y5', 'y4'],
-			['g1', 'g2', 'g3', 'g5', 'p4'],
+		], { level: 11 });
+
+		takeTurn(game, 'Alice clues red to Bob');
+		takeTurn(game, 'Bob plays r1', 'g1');
+		takeTurn(game, 'Cathy clues 5 to Bob');
+
+		// Alice cannot use r3 to bluff Bob's g1, as r4 would play instead.
+		const { play_clues } = find_clues(game);
+		assert.ok(!play_clues[PLAYER.CATHY].some(clue =>
+			(clue.type === CLUE.RANK && clue.value === 3) ||
+			(clue.type === CLUE.COLOUR && clue.value === COLOUR.RED)));
+	});
+
+	it(`doesn't bluff on top of rank-clued cards which might match bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y2', 'r2', 'y1', 'y1', 'y5'],
+			['g4', 'b2', 'p3', 'y5', 'y4'],
 		], {
 			level: 11,
-			play_stacks: [0, 0, 0, 0, 0],
-			starting: PLAYER.DONALD
+			play_stacks: [0, 1, 0, 0, 1]
 		});
-		takeTurn(game, 'Donald clues red to Bob');
-		// r2 is known to be queued, and would be played over finesse slot.
+
+		takeTurn(game, 'Alice clues 2 to Bob');
+		takeTurn(game, 'Bob plays y2', 'g1');
+		takeTurn(game, 'Cathy clues 5 to Bob');
+
+		// Alice cannot use p3 to bluff Bob's g1, as r2 would play instead.
 		const { play_clues } = find_clues(game);
-		const bluff_clues = play_clues[2].filter(clue => {
-			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2;
-		});
-		assert.equal(bluff_clues.length, 0);
+		assert.ok(!play_clues[PLAYER.CATHY].some(clue =>
+			(clue.type === CLUE.RANK && clue.value === 3) ||
+			(clue.type === CLUE.COLOUR && clue.value === COLOUR.PURPLE)));
 	});
 
 	it(`understands a complex play if the bluff isn't played into`, () => {
