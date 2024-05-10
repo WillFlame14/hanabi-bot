@@ -303,8 +303,8 @@ export function interpret_clue(game, action) {
 		}
 
 		// If there's a valid connection that doesn't require a bluff, a bluff is not a valid interpretation.
-		const no_bluff_connections = all_connections.filter(connection => connection.connections.length > 0 && !connection.connections[0].bluff);
-		if (no_bluff_connections.length > 0) {
+		const no_bluff_connections = all_connections.some(connection => connection.connections.length > 0 && !connection.connections[0].bluff);
+		if (no_bluff_connections) {
 			// Convert possible bluff connections to non-bluff connections.
 			all_connections = all_connections.map(conn => {
 				if (!conn.connections[0]?.bluff)

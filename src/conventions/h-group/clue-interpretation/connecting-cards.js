@@ -203,11 +203,11 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 		// as known by the player who would play next after the bluff play.
 		let known_bluff = false;
 		const next_player = state.hands.findIndex(hand => hand.find(c => c.order == promised[1].order));
-		const bluff_identies = (giver + 1) % state.numPlayers == state.ourPlayerIndex ?
+		const bluff_identities = (giver + 1) % state.numPlayers == state.ourPlayerIndex ?
 			game.players[state.ourPlayerIndex].thoughts[bluffCard.order].inferred.filter(c => state.isPlayable(c)) :
 			[bluffCard];
 		for (let i = 1; i < promised.length; ++i) {
-			const known_bluff_cards = bluff_identies.filter(identity => {
+			const has_known_bluffs = bluff_identities.some(identity => {
 				const expected = { suitIndex: identity.suitIndex , rank: identity.rank + i };
 				if (state.hands[next_player].find(c => c.order == promised[i].order)) {
 					const thoughts = game.players[next_player].thoughts[promised[i].order];
@@ -216,7 +216,7 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 					return !promised[i].matches(expected);
 				}
 			});
-			if (known_bluff_cards.length > 0) {
+			if (has_known_bluffs) {
 				known_bluff = true;
 				break;
 			}
@@ -228,7 +228,7 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 	if (!bluff_possible) {
 		// If a bluff is not possible, we only have a valid connection if the real card was found.
 		// If it is in our hand, we have to assume it is the promised card.
-		if (connections[0].card == promised[0] && connections[0].hidden)
+		if (connections[0].card.order == promised[0].order && connections[0].hidden)
 			return [];
 		connections[0].bluff = false;
 	}
