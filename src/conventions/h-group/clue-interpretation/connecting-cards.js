@@ -193,7 +193,7 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 	const { state } = game;
 	const bluffCard = connections[0].card;
 	// Determine the next play if this is a bluff.
-	const next_play = connections.findIndex(connection => connection.card == promised[0]) + 1;
+	const next_play = connections.findIndex(connection => connection.card.order == promised[0].order) + 1;
 	// A bluff must be followed only by prompts.
 	let bluff_possible = connections.every((conn, index) => index < next_play || (!conn.hidden && conn.type !== 'finesse'));
 
@@ -202,14 +202,14 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 		// between the bluffed card and at least one of the following plays
 		// as known by the player who would play next after the bluff play.
 		let known_bluff = false;
-		const next_player = state.hands.findIndex(hand => hand.includes(promised[1]));
+		const next_player = state.hands.findIndex(hand => hand.find(c => c.order == promised[1].order));
 		const bluff_identies = (giver + 1) % state.numPlayers == state.ourPlayerIndex ?
 			game.players[state.ourPlayerIndex].thoughts[bluffCard.order].inferred.filter(c => state.isPlayable(c)) :
 			[bluffCard];
 		for (let i = 1; i < promised.length; ++i) {
 			const known_bluff_cards = bluff_identies.filter(identity => {
 				const expected = { suitIndex: identity.suitIndex , rank: identity.rank + i };
-				if (state.hands[next_player].includes(promised[i])) {
+				if (state.hands[next_player].find(c => c.order == promised[i].order)) {
 					const thoughts = game.players[next_player].thoughts[promised[i].order];
 					return !thoughts.inferred.has(expected);
 				} else {
