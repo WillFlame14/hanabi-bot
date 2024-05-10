@@ -310,9 +310,8 @@ export function interpret_clue(game, action) {
 				if (!conn.connections[0]?.bluff)
 					return conn;
 				// If not a hidden connection, and we know the bluff card doesn't match, the real card wasn't found.
-				if (!conn.connections[0].hidden && !conn.connections[0].identities.find(i => conn.connections[0].card.matches(i, {assume: true}))) {
+				if (!conn.connections[0].hidden && !conn.connections[0].identities.find(i => conn.connections[0].card.matches(i, {assume: true})))
 					return null;
-				}
 				conn.connections[0].bluff = false;
 				return conn;
 			}).filter(conn => !!conn);
@@ -324,7 +323,7 @@ export function interpret_clue(game, action) {
 				// Remove everything after the bluff play to the non-hidden play as they won't
 				// play after the bluff play.
 				const next_visible_connection = conn.connections.findIndex(c => !c.bluff && !c.hidden);
-				conn.connections.splice(1, next_visible_connection)
+				conn.connections.splice(1, next_visible_connection);
 				return conn;
 			});
 		}

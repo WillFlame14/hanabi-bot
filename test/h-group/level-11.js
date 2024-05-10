@@ -397,7 +397,7 @@ describe('bluff clues', () => {
 		takeTurn(game, 'Donald clues 1 to Bob');
 		// Since Bob is only queued on 1s, Alice should be able to bluff Bob's p3 using g3.
 		takeTurn(game, 'Alice clues 3 to Donald');
-	
+
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order].finessed, true);
 	});
 
