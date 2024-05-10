@@ -12,6 +12,7 @@ import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finde
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('bluff clues', () => {
+
 	it(`understands a direct play if the bluff isn't played into`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -25,8 +26,8 @@ describe('bluff clues', () => {
 		takeTurn(game, 'Bob clues red to Alice (slot 2)');
 
 		// Cathy's slot 1 could be any of the playable 3's.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3', 'g3', 'b3', 'p3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
 		// Alice's slot 2 could be r3 or r4.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'r4']);
 

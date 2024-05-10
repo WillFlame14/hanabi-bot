@@ -303,10 +303,30 @@ export function interpret_clue(game, action) {
 		}
 
 		// If there's a valid connection that doesn't require a bluff, a bluff is not a valid interpretation.
-		const no_bluff_connections = all_connections.filter(connection => connection.connections.filter(c => c.bluff == true).length == 0);
+		const no_bluff_connections = all_connections.filter(connection => connection.connections.length > 0 && !connection.connections[0].bluff);
 		if (no_bluff_connections.length > 0) {
-			// TODO: Convert possible bluff connections to non-bluff connections.
-			all_connections = no_bluff_connections;
+			// Convert possible bluff connections to non-bluff connections.
+			all_connections = all_connections.map(conn => {
+				if (!conn.connections[0]?.bluff)
+					return conn;
+				// If not a hidden connection, and we know the bluff card doesn't match, the real card wasn't found.
+				if (!conn.connections[0].hidden && !conn.connections[0].identities.find(i => conn.connections[0].card.matches(i, {assume: true}))) {
+					return null;
+				}
+				conn.connections[0].bluff = false;
+				return conn;
+			}).filter(conn => !!conn);
+		} else {
+			// Filter plays after hidden bluff connection.
+			all_connections = all_connections.map(conn => {
+				if (!conn.connections[0]?.bluff || !conn.connections[0].hidden)
+					return conn;
+				// Remove everything after the bluff play to the non-hidden play as they won't
+				// play after the bluff play.
+				const next_visible_connection = conn.connections.findIndex(c => !c.bluff && !c.hidden);
+				conn.connections.splice(1, next_visible_connection)
+				return conn;
+			});
 		}
 
 		// No inference, but a finesse isn't possible

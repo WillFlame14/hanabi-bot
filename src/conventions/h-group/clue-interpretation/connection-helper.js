@@ -193,7 +193,7 @@ export function assign_connections(game, connections, giver, options = {}) {
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
 	for (const connection of connections) {
-		const { type, hidden, card: conn_card, linked, identities } = connection;
+		const { type, bluff, hidden, card: conn_card, linked, identities } = connection;
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
 
@@ -219,7 +219,7 @@ export function assign_connections(game, connections, giver, options = {}) {
 				card.certain_finessed = true;
 		}
 
-		if (connection.bluff || hidden) {
+		if (bluff || hidden) {
 			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }));
 			card.inferred = card.inferred.intersect(playable_identities);
 			if (connection.bluff) {
