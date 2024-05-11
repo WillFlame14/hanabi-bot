@@ -500,7 +500,7 @@ describe('bluff clues', () => {
 		const { play_clues } = find_clues(game);
 		const bluff_clues = play_clues[2].filter(clue => {
 			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2 ||
-				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == 3 || clue.value == 4);
+				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == COLOUR.BLUE || clue.value == COLOUR.PURPLE);
 		});
 		assert.equal(bluff_clues.length, 0);
 	});
@@ -538,6 +538,20 @@ describe('bluff clues', () => {
 		// Bob cannot receive a layered finesse as he cannot tell it apart from a bluff.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order].finessed, false);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2].order], ['b1', 'b2']);
+	});
+
+	it(`prefers a bluff clue when more information is given`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p1', 'y5', 'b4', 'g5', 'p3'],
+			['b3', 'r2', 'b5', 'b5', 'y4']
+		], {
+			level: 11,
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.ALICE
+		});
+		const action = take_action(game);
+		assert.equal(action.type, ACTION.COLOUR);
 	});
 
 });
