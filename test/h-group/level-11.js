@@ -552,6 +552,25 @@ describe('bluff clues', () => {
 		});
 		const action = take_action(game);
 		assert.equal(action.type, ACTION.COLOUR);
+		assert.equal(action.value, COLOUR.RED);
+		assert.equal(action.target, 2);
+	});
+
+	it(`prefers a bluff clue when more information is given case 2`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'p5', 'y5', 'g5'],
+			['p3', 'p4', 'b2', 'p2'],
+			['y2', 'p3', 'g3', 'p2']
+		], {
+			level: 11,
+			play_stacks: [4, 1, 1, 3, 0],
+			starting: PLAYER.ALICE
+		});
+		const action = take_action(game);
+		assert.equal(action.type, ACTION.COLOUR);
+		assert.equal(action.value, COLOUR.PURPLE);
+		assert.equal(action.target, 2);
 	});
 
 });

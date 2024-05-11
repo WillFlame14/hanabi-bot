@@ -153,7 +153,7 @@ export function find_clues(game, options = {}) {
 				saves.push(Object.assign(clue, { game: hypo_game, playable: playables.length > 0, cm: chop_moved, safe }));
 
 			const focus_known_bluff = hypo_game.common.waiting_connections.some(c => {
-				return c.connections[0].bluff && c.target == 2 && c.focused_card.order == focused_card.order;
+				return c.connections[0].bluff && c.focused_card.order == focused_card.order;
 			});
 			// Clues where the focus isn't playable but may be assumed playable or that cause chop moves aren't plays/stalls
 			if ((playables.length > 0 && !playables.some(({ card }) => card.order === focused_card.order) && !focus_known_bluff) ||
