@@ -197,7 +197,7 @@ describe('bluff clues', () => {
 
 		// After the play, we should narrow it down to only the bluff possibility.
 		// If it were the finesse through b1, Donald wouldn't have played.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g2']);		
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g2']);
 	});
 
 	it('understands being clued a bluff with a rank disconnect', () => {
