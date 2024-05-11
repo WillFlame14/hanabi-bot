@@ -156,7 +156,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
 		const bluff = game.level >= LEVEL.BLUFFS &&
 			firstPlay &&
 			((giver + 1) % state.numPlayers) == reacting &&
-			state.hands[reacting].filter(c => game.players[reacting].unknown_plays.has(c.order) && game.players[reacting].thoughts[c.order].inferred.some(id => id.matches(identity))).length == 0;
+			!state.hands[reacting].some(c => game.players[reacting].thoughts[c.order].finessed && game.players[reacting].thoughts[c.order].possible.some(id => id.matches(identity)));
 
 		if (finesse.matches(identity)) {
 			// At level 1, only forward finesses are allowed.
