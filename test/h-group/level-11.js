@@ -139,6 +139,28 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['b4']);
 	});
 
+	it('understands being clued a bluff with a rank disconnect', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'r1', 'y1', 'g5', 'p2'],
+			['p1', 'r4', 'b5', 'b2', 'y4']
+		], {
+			level: 11,
+			play_stacks: [1, 2, 1, 0, 0],
+			starting: PLAYER.BOB
+		});
+		takeTurn(game, 'Bob clues 3 to Alice (slot 2)');
+
+		// Alice's slot 2 could be any of the playable 3's
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'y3', 'g3']);
+
+		// Cathy plays to demonstrate the bluff.
+		takeTurn(game, 'Cathy plays p1', 'y5');
+
+		// After Cathy plays, Alice should know it was a bluff 
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'g3']);
+	});
+
 	it('never assumes a bluff when reverse finesse exists', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -437,8 +459,8 @@ describe('bluff clues', () => {
 
 		takeTurn(game, 'Alice clues 3 to Cathy');
 
-		// Simplest interpretations: r2 (Bob) prompt, b1 (Bob) -> y2 (Bob) layered finesse, b1 (Bob) -> b2 (Cathy) self-finesse
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3', 'b3']);
+		// Simplest interpretations: r2 (Bob) prompt, b1 (Bob) -> y2 (Bob) layered finesse
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3']);
 	});
 
 });

@@ -151,23 +151,23 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
 			return;
 		}
 
+		// This may be a bluff even if it matches. resolve_bluff will rule out a bluff if it doesn't
+		// look like it could lead to the following plays.
+		const bluff = game.level >= LEVEL.BLUFFS &&
+			firstPlay &&
+			((giver + 1) % state.numPlayers) == reacting &&
+			state.hands[reacting].filter(c => game.players[reacting].unknown_plays.has(c.order) && game.players[reacting].thoughts[c.order].matches(identity)).length == 0;
+
 		if (finesse.matches(identity)) {
 			// At level 1, only forward finesses are allowed.
 			if (game.level === 1 && !inBetween(state.numPlayers, reacting, giver, target)) {
 				logger.warn(`found finesse ${logCard(finesse)} in ${state.playerNames[reacting]}'s hand, but not between giver and target`);
 				return;
 			}
-			return { type: 'finesse', reacting, card: finesse, identities: [identity] };
+			return { type: 'finesse', reacting, card: finesse, bluff, identities: [identity] };
 		}
 		// Finessed card is delayed playable
 		else if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
-			// This may be a bluff. resolve_bluff will rule out a bluff if it doesn't
-			// look like it could lead to the following plays.
-			const bluff = game.level >= LEVEL.BLUFFS &&
-				firstPlay &&
-				((giver + 1) % state.numPlayers) == reacting &&
-				state.hands[reacting].filter(c => game.players[reacting].unknown_plays.has(c.order) && game.players[reacting].thoughts[c.order].matches(identity)).length == 0;
-
 			// Could be duplicated in giver's hand - disallow hidden finesse unless it could be a bluff.
 			if (!bluff && state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
@@ -195,8 +195,12 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 	const bluffCard = connections[0].card;
 	// Determine the next play if this is a bluff.
 	const next_play = connections.findIndex(connection => connection.card.order == promised[0].order) + 1;
-	// A bluff must be followed only by prompts.
-	let bluff_possible = connections.every((conn, index) => index < next_play || (!conn.hidden && conn.type !== 'finesse'));
+	// A bluff must be followed only by prompts. A possible first finesse can be ignored as it is more complicated than a bluff.
+	let bluff_possible = connections.every((conn, index) => index <= next_play || (!conn.hidden && (conn.type !== 'finesse' || conn.self)));
+	// If the second play is a finesse, the recipient must know that their card cannot match the finesse.
+	if (bluff_possible && connections[next_play]?.type == 'finesse') {
+		bluff_possible = bluff_possible && !connections[next_play].identities.some(id => game.players[target].thoughts[promised.at(-1).order].inferred.has(id));
+	}
 
 	if (bluff_possible) {
 		// A bluff must be recognizable. As such, there should be no connection
