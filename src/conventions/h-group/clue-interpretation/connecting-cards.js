@@ -239,6 +239,10 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 			return [];
 
 		connections[0].bluff = false;
+	} else {
+		// Remove hidden connections following bluff play.
+		// TODO: Is this right?
+		connections.splice(1, next_play - 1);
 	}
 
 	return connections;

@@ -499,4 +499,19 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3']);
 	});
 
+	it(`doesn't confuse a bluff as a layered finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g1', 'b1', 'y4', 'y3'], // After play b1, y2, r1, r2
+			['g4', 'r5', 'b2', 'p4'],
+			['r1', 'r1', 'r3', 'y1']
+		], { level: 11 });
+
+		takeTurn(game, 'Alice clues blue to Cathy');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['r1', 'y1', 'g1', 'b1', 'p1']);
+
+		// Bob cannot receive a layered finesse as he cannot tell it apart from a bluff.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order].finessed, false);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2].order], ['b1', 'b2']);
+	});
 });
