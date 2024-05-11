@@ -106,11 +106,12 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
  * @param {number} target 			The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {number} reacting
  * @param {Identity} identity
+ * @param {boolean} firstPlay		Is this the first play?
  * @param {number[]} [connected] 	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @returns {Connection | undefined}
  */
-function find_unknown_connecting(game, giver, target, reacting, identity, connected = [], ignoreOrders = []) {
+function find_unknown_connecting(game, giver, target, reacting, identity, firstPlay, connected = [], ignoreOrders = [], ) {
 	const { common, state } = game;
 
 	const hand = state.hands[reacting];
@@ -163,7 +164,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
 			// This may be a bluff. resolve_bluff will rule out a bluff if it doesn't
 			// look like it could lead to the following plays.
 			const bluff = game.level >= LEVEL.BLUFFS &&
-				connected.length == 1 &&
+				firstPlay &&
 				((giver + 1) % state.numPlayers) == reacting &&
 				state.hands[reacting].filter(c => game.players[reacting].unknown_plays.has(c.order) && game.players[reacting].thoughts[c.order].matches(identity)).length == 0;
 
@@ -228,7 +229,7 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 	if (!bluff_possible) {
 		// If a bluff is not possible, we only have a valid connection if the real card was found.
 		// If it is in our hand, we have to assume it is the promised card.
-		if (connections[0].card.order == promised[0].order && connections[0].hidden)
+		if (connections[0].card.order == promised[0].order && !connections[0].card.matches({...promised.at(-1), rank: promised.at(-1).rank - promised.length + 1}, {assume: true}))
 			return [];
 		connections[0].bluff = false;
 	}
@@ -243,12 +244,13 @@ export function resolve_bluff(game, giver, target, connections, promised) {
  * @param {number} target 			The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {Identity} identity
  * @param {boolean} looksDirect 	Whether the clue could be interpreted as direct play (i.e. never as self-prompt/finesse).
+ * @param {boolean} firstPlay		Is this the first play?
  * @param {number[]} [connected]	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @param {{knownOnly?: number[]}} options
  * @returns {Connection[]}
  */
-export function find_connecting(game, giver, target, identity, looksDirect, connected = [], ignoreOrders = [], options = {}) {
+export function find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected = [], ignoreOrders = [], options = {}) {
 	const { common, state, me } = game;
 	const { suitIndex, rank } = identity;
 
@@ -290,7 +292,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 		const already_connected = connected.slice();
 		state.play_stacks = old_play_stacks.slice();
 
-		let connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
+		let connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, firstPlay, already_connected, ignoreOrders);
 
 		if (connecting?.type === 'terminate') {
 			wrong_prompts.push(connecting);
@@ -306,7 +308,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 			already_connected.push(connecting.card.order);
 			state.play_stacks[connecting.card.suitIndex]++;
 
-			connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
+			connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, false, already_connected, ignoreOrders);
 		}
 
 		if (connecting) {

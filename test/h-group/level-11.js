@@ -344,7 +344,7 @@ describe('bluff clues', () => {
 			['xx', 'xx', 'xx', 'xx'],
 			['b3', 'g3', 'r3', 'g5'],
 			['p1', 'r4', 'b5', 'b2'],
-			['r2', 'b3', 'g1', 'y3']
+			['r2', 'b2', 'g1', 'y3']
 		], {
 			level: 11,
 			starting: PLAYER.DONALD
@@ -420,6 +420,25 @@ describe('bluff clues', () => {
 				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == 3 || clue.value == 4);
 		});
 		assert.equal(bluff_clues.length, 0);
+	});
+
+	it(`computes connections correctly`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y2', 'r1', 'r2', 'y4'], // After play b1, y2, r1, r2
+			['y3', 'p2', 'y1', 'r4'],
+			['g5', 'y1', 'p4', 'b5']
+		], { level: 11 });
+
+		takeTurn(game, 'Alice clues red to Bob');
+		takeTurn(game, 'Bob plays r1', 'b1');
+		takeTurn(game, 'Cathy clues yellow to Donald');
+		takeTurn(game, 'Donald clues green to Alice (slots 3,4)');
+
+		takeTurn(game, 'Alice clues 3 to Cathy');
+
+		// Simplest interpretations: r2 (Bob) prompt, b1 (Bob) -> y2 (Bob) layered finesse, b1 (Bob) -> b2 (Cathy) self-finesse
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3']);
 	});
 
 });

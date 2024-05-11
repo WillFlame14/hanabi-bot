@@ -63,14 +63,15 @@ function own_prompt(game, finesses, prompt, identity) {
  * @param {number} ignorePlayer
  * @param {number[]} selfRanks
  * @param {number} finesses
+ * @param {boolean} firstPlay
  * @returns {Connection[]}
  */
-function connect(game, giver, target, identity, looksDirect, connected, ignoreOrders, ignorePlayer, selfRanks, finesses) {
+function connect(game, giver, target, identity, looksDirect, connected, ignoreOrders, ignorePlayer, selfRanks, finesses, firstPlay) {
 	const { common, state } = game;
 	const our_hand = state.hands[state.ourPlayerIndex];
 
 	// First, see if someone else has the connecting card
-	const other_connecting = find_connecting(game, giver, target, identity, looksDirect, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
+	const other_connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
 	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate')
 		return other_connecting;
 
@@ -94,7 +95,7 @@ function connect(game, giver, target, identity, looksDirect, connected, ignoreOr
 		}
 		else if (!selfRanks.includes(identity.rank)) {
 			try {
-				return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses);
+				return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay);
 			}
 			catch (error) {
 				if (error instanceof IllegalInterpretation)
@@ -182,6 +183,8 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 
 	const connections = /** @type {Connection[]} */ ([]);
 	const already_connected = /** @type {number[]} */ ([]);
+
+	let firstPlay = true;
 	let finesses = 0;
 	let direct = looksDirect;
 	const promised = [];
@@ -191,7 +194,8 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		const ignoreOrders = game.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1]?.filter(i =>
 			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order) ?? [];
 
-		const curr_connections = connect(hypo_game, giver, target, next_identity, direct, already_connected, ignoreOrders, ignorePlayer, selfRanks, finesses);
+		const curr_connections = connect(hypo_game, giver, target, next_identity, direct, already_connected, ignoreOrders, ignorePlayer, selfRanks, finesses, firstPlay);
+		firstPlay = false;
 
 		if (curr_connections.length === 0)
 			throw new IllegalInterpretation(`no connecting cards found for identity ${logCard(next_identity)}`);
@@ -305,9 +309,10 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
  * @param {number[]} connected
  * @param {number[]} ignoreOrders
  * @param {number} finesses
+ * @param {boolean} firstPlay
  * @returns {Connection[]}
  */
-function find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses) {
+function find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay) {
 	const { common, state, me } = game;
 	const { suitIndex, rank } = identity;
 	const bluff_seat = (giver + 1) % state.numPlayers;
@@ -351,7 +356,7 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 			return state.hands.flat().find(c => c.order === ignored_order).matches(identity);
 		});
 
-		const bluff = game.level >= LEVEL.BLUFFS && connected.length == 0 && state.ourPlayerIndex == bluff_seat;
+		const bluff = game.level >= LEVEL.BLUFFS && firstPlay && state.ourPlayerIndex == bluff_seat;
 
 		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff, identities: [identity], certain, ambiguous }];
 	}

@@ -310,7 +310,7 @@ export function interpret_clue(game, action) {
 				if (!conn.connections[0]?.bluff)
 					return conn;
 				// If not a hidden connection, and we know the bluff card doesn't match, the real card wasn't found.
-				if (!conn.connections[0].hidden && !conn.connections[0].identities.find(i => conn.connections[0].card.matches(i, {assume: true})))
+				if (!conn.connections[0].hidden && !conn.connections[0].card.matches({suitIndex: conn.suitIndex, rank: conn.rank - conn.connections.filter(c => !c.hidden).length} , {assume: true}))
 					return null;
 				conn.connections[0].bluff = false;
 				return conn;
