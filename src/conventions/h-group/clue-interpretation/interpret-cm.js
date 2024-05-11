@@ -131,9 +131,11 @@ export function interpret_5cm(game, target, focus_order, clue) {
 export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 	const { common, state } = game;
 
+	logger.info('checking tccm: old score', oldCommon.hypo_stacks, oldCommon.unknown_plays, 'new score', common.hypo_stacks, common.unknown_plays);
+
 	// Some hypo stacks went down, assume fix
 	if (oldCommon.hypo_stacks.some((stack, index) => stack > common.hypo_stacks[index])) {
-		logger.info(`hypo stacks went from ${oldCommon.hypo_stacks} to ${common.hypo_stacks}, not tccm`);
+		logger.info(`hypo stacks went down, not tccm`);
 		return false;
 	}
 
@@ -152,7 +154,7 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 	}
 
 	if (common.hypo_score !== oldCommon.hypo_score + 1) {
-		logger.info('old score', oldCommon.hypo_stacks, oldCommon.unknown_plays, 'new score', common.hypo_stacks, common.unknown_plays, 'not tccm');
+		logger.info('new score is not 1 exactly more than old score, not tccm');
 		return false;
 	}
 

@@ -22,11 +22,8 @@ import { older_queued_finesse } from './hanabi-logic.js';
  */
 function remove_finesse(game, waiting_connection) {
 	const { common, state } = game;
-	const { connections, focused_card, inference, fake, symmetric } = waiting_connection;
+	const { connections, focused_card, inference, symmetric } = waiting_connection;
 	const focus_thoughts = common.thoughts[focused_card.order];
-
-	if (fake)
-		return;
 
 	// Remove remaining finesses
 	for (const connection of connections) {
@@ -242,7 +239,7 @@ function resolve_card_played(game, waiting_connection) {
  */
 function resolve_giver_play(game, waiting_connection) {
 	const { common, state } = game;
-	const { connections, conn_index, giver, fake } = waiting_connection;
+	const { connections, conn_index, giver } = waiting_connection;
 	const { reacting, identities, card: old_card } = connections[conn_index];
 
 	// Card may have been updated, so need to find it again
@@ -254,22 +251,20 @@ function resolve_giver_play(game, waiting_connection) {
 	waiting_connection.conn_index = connections.findIndex((conn, index) =>
 		index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
 
-	if (!fake) {
-		const thoughts = common.thoughts[card.order];
-		// Remove finesse
-		thoughts.inferred = thoughts.inferred.subtract(identities);
+	const thoughts = common.thoughts[card.order];
+	// Remove finesse
+	thoughts.inferred = thoughts.inferred.subtract(identities);
 
-		if (thoughts.inferred.length === 0) {
-			if (thoughts.old_inferred !== undefined) {
-				// Restore old inferences
-				thoughts.inferred = thoughts.old_inferred;
-				thoughts.old_inferred = undefined;
-			}
-			else {
-				logger.error(`no old inferences on card ${logCard(thoughts)} ${card.order} (while resolving giver play)! current inferences ${thoughts.inferred.map(logCard)}`);
-			}
-			thoughts.finessed = false;
+	if (thoughts.inferred.length === 0) {
+		if (thoughts.old_inferred !== undefined) {
+			// Restore old inferences
+			thoughts.inferred = thoughts.old_inferred;
+			thoughts.old_inferred = undefined;
 		}
+		else {
+			logger.error(`no old inferences on card ${logCard(thoughts)} ${card.order} (while resolving giver play)! current inferences ${thoughts.inferred.map(logCard)}`);
+		}
+		thoughts.finessed = false;
 	}
 	return { remove: waiting_connection.conn_index === -1 };
 }

@@ -104,7 +104,7 @@
  * @property {boolean} [save]
  * @property {INTERP} interp
  *
- * @typedef {Omit<FocusPossibility & {fake: boolean}, 'interp'>} SymFocusPossibility
+ * @typedef {Omit<FocusPossibility, 'interp'>} SymFocusPossibility
  */
 /**
  * @typedef WaitingConnection
@@ -117,7 +117,6 @@
  * @property {number} action_index
  * @property {boolean} [ambiguousPassback]
  * @property {boolean} [selfPassback]
- * @property {boolean} [fake]
  * @property {boolean} [symmetric]
  */
 /**

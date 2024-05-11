@@ -51,7 +51,7 @@ describe('bluff clues', () => {
 		// Bob's slot 1 could be any of the playable 3's.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, false);
 		// Cathy's slot 2 will be known to be r3 by Cathy after Bob doesn't play.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r3', 'r4']);
 
 		takeTurn(game, 'Bob discards p2', 'y5');
 
@@ -438,7 +438,7 @@ describe('bluff clues', () => {
 		takeTurn(game, 'Alice clues 3 to Cathy');
 
 		// Simplest interpretations: r2 (Bob) prompt, b1 (Bob) -> y2 (Bob) layered finesse, b1 (Bob) -> b2 (Cathy) self-finesse
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3', 'b3']);
 	});
 
 });
