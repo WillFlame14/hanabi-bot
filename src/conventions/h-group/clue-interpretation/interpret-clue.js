@@ -83,19 +83,15 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 		game.interpretMove(interp);
 
+		const matches = focused_card.matches(inference, { assume: true });
+		const bluff = !save && !matches && connections[0]?.bluff;
 		// Don't assign save connections or known false connections
-		if (save || !focused_card.matches(inference, { assume: true })) {
-			// If this is a fake bluff, resolve the inference now, as we won't save the connection.
-			if (!save && connections.length > 0 && connections[0].bluff)
-				focus_thoughts.inferred = focus_thoughts.inferred.subtract(inference);
-
-			continue;
+		if (!save && matches) {
+			assign_connections(game, connections, giver);
 		}
 
-		assign_connections(game, connections, giver);
-
 		// Multiple possible sets, we need to wait for connections
-		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
+		if ((matches || bluff) && connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
 			common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, target, action_index: state.actionList.length - 1 });
 	}
 
