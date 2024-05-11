@@ -196,11 +196,10 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 	// Determine the next play if this is a bluff.
 	const next_play = connections.findIndex(connection => connection.card.order == promised[0].order) + 1;
 	// A bluff must be followed only by prompts. A possible first finesse can be ignored as it is more complicated than a bluff.
-	let bluff_possible = connections.every((conn, index) => index <= next_play || (!conn.hidden && (conn.type !== 'finesse' || conn.self)));
+	let bluff_possible = connections.every((conn, index) => index <= next_play || (!conn.hidden && conn.type !== 'finesse'));
 	// If the second play is a finesse, the recipient must know that their card cannot match the finesse.
-	if (bluff_possible && connections[next_play]?.type == 'finesse') {
+	if (bluff_possible && connections[next_play]?.type == 'finesse')
 		bluff_possible = bluff_possible && !connections[next_play].identities.some(id => game.players[target].thoughts[promised.at(-1).order].inferred.has(id));
-	}
 
 	if (bluff_possible) {
 		// A bluff must be recognizable. As such, there should be no connection
@@ -231,10 +230,14 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 
 
 	if (!bluff_possible) {
-		// If a bluff is not possible, we only have a valid connection if the real card was found.
-		// If it is in our hand, we have to assume it is the promised card.
-		if (connections[0].card.order == promised[0].order && !connections[0].card.matches({...promised.at(-1), rank: promised.at(-1).rank - promised.length + 1}, {assume: true}))
+		// If a bluff is not possible, we only have a valid connection if a real matching card was found,
+		// or the bluff card matches the target,
+		// and the second play is not a finesse on ourselves
+		if (connections[0].card.order == promised[0].order &&
+			!game.players[target].thoughts[promised.at(-1).order].inferred.some(id => bluffCard.matches({suitIndex: id.suitIndex, rank: id.rank - promised.length + 1}, {assume: true})) ||
+			connections[1]?.reacting === target && connections[1]?.type == 'finesse' && connections.filter(c => c.type == 'finesse').length < 3)
 			return [];
+
 		connections[0].bluff = false;
 	}
 

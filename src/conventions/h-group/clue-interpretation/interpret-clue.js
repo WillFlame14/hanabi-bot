@@ -86,9 +86,8 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		const matches = focused_card.matches(inference, { assume: true });
 		const bluff = !save && !matches && connections[0]?.bluff;
 		// Don't assign save connections or known false connections
-		if (!save && matches) {
+		if (!save && matches)
 			assign_connections(game, connections, giver);
-		}
 
 		// Multiple possible sets, we need to wait for connections
 		if ((matches || bluff) && connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))

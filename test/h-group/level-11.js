@@ -37,6 +37,42 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3']);
 	});
 
+	it(`understands a finesse if the played card matches`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g5', 'y2', 'b3', 'y5'],
+			['p1', 'r3', 'g1', 'y4'],
+			['p2', 'b5', 'b1', 'y1']
+		], {
+			level: 11,
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.BOB
+		});
+		takeTurn(game, 'Bob clues purple to Alice (slot 1)');
+		takeTurn(game, 'Cathy plays p1', 'r2');
+		takeTurn(game, 'Donald plays p2', 'b4');
+
+		// Alice's slot 1 could be any of the playable 3's.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['p3']);
+	});
+
+	it(`understands a self finesse that's too long to be a bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g5', 'y2', 'b3', 'y5'],
+			['p4', 'r3', 'g1', 'y4'],
+			['p2', 'b5', 'b1', 'y1']
+		], {
+			level: 11,
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.DONALD
+		});
+		takeTurn(game, 'Donald clues 4 to Alice (slot 2)');
+
+		// Cathy's slot 1 could be any of the next 1's.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r1', 'y1', 'g1', 'b1', 'p1']);
+	});
+
 	it('understands giving a direct play through a bluff opportunity', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -157,7 +193,7 @@ describe('bluff clues', () => {
 		// Cathy plays to demonstrate the bluff.
 		takeTurn(game, 'Cathy plays p1', 'y5');
 
-		// After Cathy plays, Alice should know it was a bluff 
+		// After Cathy plays, Alice should know it was a bluff.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'g3']);
 	});
 
