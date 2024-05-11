@@ -175,6 +175,31 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['b4']);
 	});
 
+	it(`makes the correct inferrences on a received bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'], // y4 y2 y4 b5
+			['p2', 'y2', 'g3', 'b1'],
+			['r4', 'b1', 'g5', 'r2'],
+			['p2', 'r4', 'r1', 'b3']
+		], {
+			level: 11,
+			play_stacks: [1, 1, 0, 0, 1],
+			starting: PLAYER.DONALD
+		});
+		takeTurn(game, 'Donald clues 1 to Bob');
+		takeTurn(game, 'Alice clues yellow to Bob');
+		takeTurn(game, 'Bob clues red to Cathy');
+		takeTurn(game, 'Cathy clues 2 to Alice (slot 2)');
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g2', 'b2', 'p2']);
+
+		takeTurn(game, 'Donald plays p2', 'b2');
+
+		// After the play, we should narrow it down to only the bluff possibility.
+		// If it were the finesse through b1, Donald wouldn't have played.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g2']);		
+	});
+
 	it('understands being clued a bluff with a rank disconnect', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -514,4 +539,5 @@ describe('bluff clues', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order].finessed, false);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2].order], ['b1', 'b2']);
 	});
+
 });
