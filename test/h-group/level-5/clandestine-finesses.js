@@ -117,4 +117,21 @@ describe('clandestine finesses', () => {
 
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
 	});
+
+	it(`understands a clandestine finesse with card elimination`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y4', 'y5', 'y1', 'y1'],
+			['g3', 'g3', 'b2', 'b1'],
+			['g1', 'r1', 'r3', 'y2']
+		], {
+			level: 5,
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 3 to Alice (slot 4)');
+
+		// Alice's slot 4 should be r3 as a Clandestine Finesse (no 3 is a valid bluff target.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3']);
+	});
 });

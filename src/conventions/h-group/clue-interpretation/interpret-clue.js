@@ -143,7 +143,7 @@ export function interpret_clue(game, action) {
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], common, list, { beforeClue: true });
 
-	const focus_thoughts = common.thoughts[focused_card.order];
+	const focus_thoughts = game.players[target].thoughts[focused_card.order];
 	focus_thoughts.focused = true;
 
 	const { fix, layered_reveal } = apply_good_touch(game, action);
