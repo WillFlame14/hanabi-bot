@@ -551,9 +551,7 @@ describe('bluff clues', () => {
 			starting: PLAYER.ALICE
 		});
 		const action = take_action(game);
-		assert.equal(action.type, ACTION.COLOUR);
-		assert.equal(action.value, COLOUR.RED);
-		assert.equal(action.target, 2);
+		ExAsserts.objHasProperties(action, {target: 2, type: ACTION.COLOUR, value: COLOUR.RED});
 	});
 
 	it(`prefers a bluff clue when more information is given case 2`, () => {
@@ -568,9 +566,7 @@ describe('bluff clues', () => {
 			starting: PLAYER.ALICE
 		});
 		const action = take_action(game);
-		assert.equal(action.type, ACTION.COLOUR);
-		assert.equal(action.value, COLOUR.PURPLE);
-		assert.equal(action.target, 2);
+		ExAsserts.objHasProperties(action, {target: 2, type: ACTION.COLOUR, value: COLOUR.PURPLE});
 	});
 
 	it(`understands a clandestine finesse`, () => {
@@ -586,10 +582,10 @@ describe('bluff clues', () => {
 	
 		takeTurn(game, 'Cathy clues 3 to Alice (slot 4)');
 	
-		// Alice's slot 4 should be r3 as a Clandestine Finesse (no 3 is a valid bluff target.
-		// TODO: g3 is an invalid interpretation since both g3s are in Cathy's hand.
-		// see https://github.com/WillFlame14/hanabi-bot/issues/209
+		// Alice's slot 4 should be r3 as a Clandestine Finesse (no 3 is a valid bluff target).
+		// Note, it's not common knowledge that both g3's are visible in Cathy's hand.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3', 'g3']);
+		ExAsserts.cardHasInferences(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3']);
 	});
 
 });
