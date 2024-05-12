@@ -9,7 +9,7 @@ import logger from '../../src/tools/logger.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 
-logger.setLevel(logger.LEVELS.INFO);
+logger.setLevel(logger.LEVELS.ERROR);
 
 describe('bluff clues', () => {
 
