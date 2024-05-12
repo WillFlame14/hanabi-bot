@@ -17,7 +17,6 @@ describe('clandestine finesses', () => {
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'r1', 'b2', 'y3', 'p3']
 		], {
-			level: 5,
 			starting: PLAYER.BOB
 		});
 
@@ -45,7 +44,6 @@ describe('clandestine finesses', () => {
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'r1', 'b2', 'y3', 'p3']
 		], {
-			level: 5,
 			starting: PLAYER.BOB
 		});
 
@@ -73,7 +71,6 @@ describe('clandestine finesses', () => {
 			['r4', 'r4', 'g4', 'r5', 'r3'],
 			['r2', 'y1', 'b2', 'y3', 'p3']
 		], {
-			level: 5,
 			play_stacks: [1, 0, 0, 0, 0]
 		});
 
@@ -88,7 +85,7 @@ describe('clandestine finesses', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'r1', 'g1', 'y3', 'p3'],
 			['r4', 'r4', 'g4', 'r5', 'b4']
-		], { level: 5 });
+		]);
 
 		const { play_clues } = find_clues(game);
 
@@ -103,7 +100,7 @@ describe('clandestine finesses', () => {
 			['b3', 'p4', 'p1', 'b1'],
 			['b4', 'y2', 'y1', 'b3'],
 			['b1', 'b2', 'y1', 'p2']
-		], { level: 5 });
+		]);
 
 		// Alice gives a triple finesse on b4. However, Cathy believes that it could be a y4 Clandestine Finesse.
 		takeTurn(game, 'Alice clues 4 to Cathy');

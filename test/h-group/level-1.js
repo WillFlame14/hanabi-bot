@@ -20,7 +20,6 @@ describe('save clue', () => {
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 			['g3', 'p1', 'b3', 'b2', 'b5']
 		], {
-			level: 1,
 			play_stacks: [1, 5, 1, 0, 5],
 			clue_tokens: 2
 		});
@@ -43,7 +42,6 @@ describe('save clue', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'g5', 'p2', 'p4', 'g4']
 		], {
-			level: 1,
 			discarded: ['g4']
 		});
 		const { state } = game;
@@ -64,7 +62,6 @@ describe('save clue', () => {
 			['g5', 'b2', 'g2', 'y2'],
 			['y3', 'g2', 'y1', 'b3']
 		], {
-			level: 1,
 			starting: PLAYER.BOB
 		});
 
@@ -82,7 +79,6 @@ describe('save clue', () => {
 			['r5', 'r4', 'r2', 'y4', 'y2'],
 			['g5', 'b4', 'g1', 'y2', 'b3']
 		], {
-			level: 1,
 			starting: PLAYER.CATHY
 		});
 
@@ -100,7 +96,7 @@ describe('save clue', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'g2', 'p5', 'r2', 'y2'],
 			['p3', 'g3', 'p2', 'p1', 'b4']
-		], { level: 1 });
+		]);
 
 		takeTurn(game, 'Alice clues red to Bob');				// getting r1, touching r2
 		takeTurn(game, 'Bob plays r1', 'b3');
@@ -119,7 +115,6 @@ describe('early game', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g4', 'r5', 'r4', 'y4', 'b3'],
 		], {
-			level: 1,
 			discarded: ['r4', 'r4'],
 			clue_tokens: 7
 		});
@@ -136,7 +131,6 @@ describe('sacrifice discards', () => {
 			['g4', 'r2', 'r4', 'p4', 'b3'],
 			['r3', 'b4', 'r2', 'y4', 'y2'],
 		], {
-			level: 1,
 			discarded: ['r4'],
 			starting: PLAYER.BOB
 		});
@@ -154,7 +148,6 @@ describe('sacrifice discards', () => {
 		const game = setup(HGroup, [
 			['r4', 'b4', 'r5', 'b2', 'y5'],
 		], {
-			level: 1,
 			play_stacks: [2, 1, 0, 0, 0],
 			discarded: ['r4', 'b2', 'b4']
 		});

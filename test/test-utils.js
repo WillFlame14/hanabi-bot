@@ -1,4 +1,4 @@
-import { CLUE } from '../src/constants.js';
+import { CLUE, MAX_H_LEVEL } from '../src/constants.js';
 import { State } from '../src/basics/State.js';
 import { cardCount, shortForms } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
@@ -164,7 +164,7 @@ export function setup(GameClass, hands, test_options = {}) {
 	testShortForms = shortForms.toSpliced(0, 0, 'x');
 
 	const state = new State(playerNames, 0, variant, {});
-	const game = new GameClass(-1, state, false, test_options.level ?? 1);
+	const game = new GameClass(-1, state, false, test_options.level ?? MAX_H_LEVEL);
 	Utils.globalModify({ game });
 
 	let orderCounter = 0;

@@ -17,7 +17,7 @@ describe('play clue', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g4', 'r1', 'b5', 'p2', 'y1']
-		], { level: 1 });
+		]);
 
 		takeTurn(game, 'Alice clues red to Bob');
 
@@ -30,7 +30,7 @@ describe('play clue', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r4', 'r3', 'p2', 'y1']
-		], { level: 1 });
+		]);
 
 		takeTurn(game, 'Alice clues red to Bob');
 
@@ -43,7 +43,7 @@ describe('play clue', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r3', 'r4', 'p2', 'b5', 'r1']
-		], { level: 1 });
+		]);
 
 		takeTurn(game, 'Alice clues red to Bob');
 
@@ -57,7 +57,6 @@ describe('play clue', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p2', 'b5', 'r3', 'y4', 'y3']
 		], {
-			level: 1,
 			play_stacks: [2, 0, 0, 0, 0]
 		});
 
@@ -73,7 +72,7 @@ describe('play clue', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p2', 'b5', 'r2', 'y4', 'y3'],
 			['g1', 'r1', 'g4', 'y2', 'b2']
-		], { level: 1 });
+		]);
 
 		const { state } = game;
 
@@ -94,7 +93,7 @@ describe('play clue', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r2', 'r1', 'b2', 'p5', 'y4'],
-		], { level: 1 });
+		]);
 
 		const { common, state } = game;
 
@@ -117,7 +116,6 @@ describe('play clue', () => {
 			['y1', 'p4', 'g4', 'g4', 'r4'],
 			['y5', 'r2', 'y3', 'p1', 'y1']
 		], {
-			level: 1,
 			play_stacks: [5, 0, 5, 5, 5]
 		});
 
@@ -132,7 +130,6 @@ describe('play clue', () => {
 			['r1', 'g1', 'p5', 'r2', 'y2'],
 			['g2', 'g3', 'p2', 'p1', 'b4']
 		], {
-			level: 1,
 			starting: PLAYER.CATHY
 		});
 		const { state } = game;
@@ -155,7 +152,6 @@ describe('play clue', () => {
 			['g4', 'g3', 'p2', 'b3'],
 			['y2', 'b4', 'r5', 'r1']
 		], {
-			level: 1,
 			starting: PLAYER.DONALD
 		});
 
@@ -174,7 +170,6 @@ describe('play clue', () => {
 			['g2', 'b3', 'p5', 'r4', 'y4'],
 			['g2', 'g3', 'p2', 'p1', 'b4']
 		], {
-			level: 1,
 			starting: PLAYER.BOB
 		});
 

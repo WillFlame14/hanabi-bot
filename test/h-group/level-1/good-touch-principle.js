@@ -15,7 +15,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'r4', 'r2', 'y4', 'y2']
 		], {
-			level: 1,
 			play_stacks: [0, 0, 0, 0, 4],
 			starting: PLAYER.BOB
 		});
@@ -32,7 +31,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2']
 		], {
-			level: 1,
 			play_stacks: [0, 0, 2, 0, 0],
 			discarded: ['g4'],
 			starting: PLAYER.BOB
@@ -52,7 +50,6 @@ describe('good touch principle', () => {
 			['b2', 'b4', 'b2', 'p2', 'r1'],
 			['y3', 'r4', 'y2', 'p1', 'g3']
 		], {
-			level: 1,
 			play_stacks: [5, 2, 5, 3, 5],
 			discarded: ['y4'],
 			starting: PLAYER.BOB
@@ -78,7 +75,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y3', 'r4', 'y2', 'p1', 'g3']
 		], {
-			level: 1,
 			play_stacks: [4, 0, 0, 0, 0],
 			starting: PLAYER.BOB
 		});
@@ -94,7 +90,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2']
 		], {
-			level: 1,
 			play_stacks: [0, 0, 0, 0, 3],
 			starting: PLAYER.BOB
 		});
@@ -115,7 +110,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2']
 		], {
-			level: 1,
 			play_stacks: [0, 0, 0, 0, 3],
 			starting: PLAYER.BOB
 		});
@@ -141,7 +135,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2'],
 		], {
-			level: 1,
 			play_stacks: [0, 0, 0, 0, 3],
 			starting: PLAYER.BOB
 		});
@@ -167,7 +160,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'g3', 'g3', 'g5', 'y2'],
 		], {
-			level: 1,
 			play_stacks: [0, 0, 0, 0, 3],
 			starting: PLAYER.BOB
 		});
@@ -193,7 +185,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p5', 'p4', 'p4', 'p3', 'p3'],
 		], {
-			level: 1,
 			starting: PLAYER.BOB
 		});
 
@@ -217,7 +208,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p1', 'r2', 'p4', 'p3', 'b1'],
 		], {
-			level: 1,
 			play_stacks: [5, 5, 1, 5, 5],
 			starting: PLAYER.BOB
 		});
@@ -233,7 +223,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p1', 'r2', 'p4', 'p3', 'b1'],
 		], {
-			level: 1,
 			play_stacks: [5, 5, 1, 5, 5],
 			discarded: ['g2'],
 			starting: PLAYER.BOB
@@ -250,7 +239,6 @@ describe('good touch principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y3', 'p2', 'g4', 'p1', 'g2']
 		], {
-			level: 1,
 			starting: PLAYER.BOB
 		});
 
