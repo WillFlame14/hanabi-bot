@@ -240,7 +240,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 			next_rank--;
 	}
 	promised.push(focused_card);
-	return resolve_bluff(game, giver, target, connections, promised);
+	return resolve_bluff(game, giver, target, connections, promised, { suitIndex, rank });
 }
 
 /**

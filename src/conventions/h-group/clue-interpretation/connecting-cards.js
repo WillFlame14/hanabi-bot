@@ -186,20 +186,22 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
  * @param {number} target 				The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {Connection[]} connections	The complete connections leading to the play of a card.
  * @param {ActualCard[]} promised		The non-hidden play(s) which are promised.
+ * @param {Identity} focusIdentity		The expected identity of the focus.
  * @returns {Connection[]}
  */
-export function resolve_bluff(game, giver, target, connections, promised) {
+export function resolve_bluff(game, giver, target, connections, promised, focusIdentity) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
 	const { state } = game;
 	const bluffCard = connections[0].card;
 	// Determine the next play if this is a bluff.
 	const next_play = connections.findIndex(connection => connection.card.order == promised[0].order) + 1;
-	// A bluff must be followed only by prompts. A possible first finesse can be ignored as it is more complicated than a bluff.
-	let bluff_possible = connections.every((conn, index) => index <= next_play || (!conn.hidden && conn.type !== 'finesse'));
+	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
+	let bluff_possible = connections.every((conn, index) => index < next_play || (!conn.hidden && conn.type !== 'finesse'));
 	// If the second play is a finesse, the recipient must know that their card cannot match the finesse.
-	if (bluff_possible && connections[next_play]?.type == 'finesse')
+	if (bluff_possible && connections[next_play]?.type == 'finesse') {
 		bluff_possible = bluff_possible && !connections[next_play].identities.some(id => game.players[target].thoughts[promised.at(-1).order].inferred.has(id));
+	}
 
 	if (bluff_possible) {
 		// A bluff must be recognizable. As such, there should be no connection
@@ -234,8 +236,7 @@ export function resolve_bluff(game, giver, target, connections, promised) {
 		// or the bluff card matches the target,
 		// and the second play is not a finesse on ourselves
 		if (connections[0].card.order == promised[0].order &&
-			!game.players[target].thoughts[promised.at(-1).order].inferred.some(id => bluffCard.matches({suitIndex: id.suitIndex, rank: id.rank - promised.length + 1}, {assume: true})) ||
-			connections[1]?.reacting === target && connections[1]?.type == 'finesse' && connections.filter(c => c.type == 'finesse').length < 3)
+			![-1, focusIdentity.suitIndex].includes(promised[0].suitIndex))
 			return [];
 
 		connections[0].bluff = false;

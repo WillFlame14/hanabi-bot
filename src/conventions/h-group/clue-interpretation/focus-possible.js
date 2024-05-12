@@ -85,7 +85,7 @@ function find_colour_focus(game, suitIndex, action) {
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
 	promised.push(focused_card);
-	connections = resolve_bluff(game, giver, target, connections, promised);
+	connections = resolve_bluff(game, giver, target, connections, promised, { suitIndex, rank: next_rank });
 	if (connections.length == 0) {
 		// Undo plays invalidated by a false bluff.
 		next_rank = old_play_stacks[suitIndex] + 1;
@@ -260,7 +260,7 @@ function find_rank_focus(game, rank, action) {
 			connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, firstPlay, already_connected, ignoreOrders);
 		}
 		promised.push(focused_card);
-		connections = resolve_bluff(game, giver, target, connections, promised);
+		connections = resolve_bluff(game, giver, target, connections, promised, { suitIndex, rank: next_rank });
 		if (connections.length == 0) {
 			// Undo plays invalidated by a false bluff.
 			next_rank = old_play_stacks[suitIndex] + 1;

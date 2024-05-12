@@ -9,7 +9,7 @@ import logger from '../../src/tools/logger.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 
-logger.setLevel(logger.LEVELS.ERROR);
+logger.setLevel(logger.LEVELS.INFO);
 
 describe('bluff clues', () => {
 
@@ -52,7 +52,7 @@ describe('bluff clues', () => {
 		takeTurn(game, 'Cathy plays p1', 'r2');
 		takeTurn(game, 'Donald plays p2', 'b4');
 
-		// Alice's slot 1 could be any of the playable 3's.
+		// Alice's slot 1 must be the p3.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['p3']);
 	});
 
@@ -507,8 +507,8 @@ describe('bluff clues', () => {
 
 	it(`computes connections correctly`, () => {
 		const game = setup(HGroup, [
-			['xx', 'xx', 'xx', 'xx'],
-			['y2', 'r1', 'r2', 'y4'], // After play b1, y2, r1, r2
+			['xx', 'xx', 'xx', 'xx'], // Known g1*
+			['y2', 'r1', 'r2', 'y4'], // After play b1, y2, r2*, y4
 			['y3', 'p2', 'y1', 'r4'],
 			['g5', 'y1', 'p4', 'b5']
 		], { level: 11 });
@@ -521,7 +521,7 @@ describe('bluff clues', () => {
 		takeTurn(game, 'Alice clues 3 to Cathy');
 
 		// Simplest interpretations: r2 (Bob) prompt, b1 (Bob) -> y2 (Bob) layered finesse
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['r3', 'y3', 'b3']);
 	});
 
 	it(`doesn't confuse a bluff as a layered finesse`, () => {
@@ -571,6 +571,25 @@ describe('bluff clues', () => {
 		assert.equal(action.type, ACTION.COLOUR);
 		assert.equal(action.value, COLOUR.PURPLE);
 		assert.equal(action.target, 2);
+	});
+
+	it(`understands a clandestine finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y4', 'y5', 'y1', 'y1'],
+			['g3', 'g3', 'b2', 'b1'],
+			['g1', 'r1', 'r3', 'y2']
+		], {
+			level: 11,
+			starting: PLAYER.CATHY
+		});
+	
+		takeTurn(game, 'Cathy clues 3 to Alice (slot 4)');
+	
+		// Alice's slot 4 should be r3 as a Clandestine Finesse (no 3 is a valid bluff target.
+		// TODO: g3 is an invalid interpretation since both g3s are in Cathy's hand.
+		// see https://github.com/WillFlame14/hanabi-bot/issues/209
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3', 'g3']);
 	});
 
 });

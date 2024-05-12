@@ -329,16 +329,23 @@ export function interpret_clue(game, action) {
 				return conn;
 			}).filter(conn => !!conn);
 		} else {
-			// Filter plays after hidden bluff connection.
+			const bluff_connections = all_connections.some(connection =>
+				connection.connections.length > 0 && connection.connections[0].bluff);
+			// Filter plays after hidden bluff connection,
 			all_connections = all_connections.map(conn => {
-				if (!conn.connections[0]?.bluff || !conn.connections[0].hidden)
+				if (!conn.connections[0]?.bluff || !conn.connections[0].hidden) {
+					// A non-bluff connection is invalid if it requires a self finesse after a potential bluff play.
+					// E.g. if we could be bluffed for a 3 in one suit, we can't assume we have the connecting 2 in another suit.
+					if (bluff_connections && conn.connections[1]?.type == 'finesse' && conn.connections[1]?.self)
+						return null;
 					return conn;
+				}
 				// Remove everything after the bluff play to the non-hidden play as they won't
 				// play after the bluff play.
 				const next_visible_connection = conn.connections.findIndex(c => !c.bluff && !c.hidden);
 				conn.connections.splice(1, next_visible_connection);
 				return conn;
-			});
+			}).filter(conn => !!conn);
 		}
 
 		// No inference, but a finesse isn't possible
