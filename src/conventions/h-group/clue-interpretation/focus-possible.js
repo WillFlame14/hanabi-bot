@@ -75,7 +75,7 @@ function find_colour_focus(game, suitIndex, action) {
 
 			// Even if a finesse is possible, it might not be a finesse
 			promised.push(focused_card);
-			const possible_connections = resolve_bluff(game, giver, target, Utils.objClone(connections), promised, { suitIndex, rank: next_rank });
+			const possible_connections = resolve_bluff(game, giver, target, connections, promised, { suitIndex, rank: next_rank });
 			if (connections.length == 0 || possible_connections.length > 0)
 				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
 			promised.pop();

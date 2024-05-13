@@ -4,6 +4,7 @@ import { LEVEL } from '../h-constants.js';
 import { order_1s } from '../action-helper.js';
 import { inBetween } from '../hanabi-logic.js';
 
+import * as Utils from '../../../tools/util.js';
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
 import { ActualCard } from '../../../basics/Card.js';
@@ -156,7 +157,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
 		const bluff = game.level >= LEVEL.BLUFFS &&
 			firstPlay &&
 			((giver + 1) % state.numPlayers) == reacting &&
-			!state.hands[reacting].some(c => game.players[reacting].thoughts[c.order].finessed && game.players[reacting].thoughts[c.order].possible.some(id => id.matches(identity)));
+			!state.hands[reacting].some(c => game.players[reacting].thoughts[c.order].finessed && game.players[reacting].thoughts[c.order].possible.has(identity));
 
 		if (finesse.matches(identity)) {
 			// At level 1, only forward finesses are allowed.
@@ -207,7 +208,7 @@ export function resolve_bluff(game, giver, target, connections, promised, focusI
 		// as known by the player who would play next after the bluff play.
 		let known_bluff = false;
 		const next_player = state.hands.findIndex(hand => hand.find(c => c.order == promised[1].order));
-		const bluff_identities = bluffCard.suitIndex == -1 ?
+		const bluff_identities = bluffCard.identity() === undefined ?
 			game.players[state.ourPlayerIndex].thoughts[bluffCard.order].inferred.filter(c => state.isPlayable(c)) :
 			[bluffCard];
 		for (let i = 1; i < promised.length; ++i) {
@@ -241,12 +242,14 @@ export function resolve_bluff(game, giver, target, connections, promised, focusI
 		}
 
 		logger.warn(`bluff invalid but connection still exists: ${bluff_fail_reason}`);
+		connections = connections.slice();
+		connections[0] = Utils.objClone(connections[0]);
 		connections[0].bluff = false;
 	} else {
 		if (next_play > 1) {
 			logger.warn(`bluff is possible, removing ${next_play - 1} layered finesse connections`);
 			// Remove hidden connections following bluff play.
-			connections.splice(1, next_play - 1);
+			connections = connections.toSpliced(1, next_play - 1);
 		}
 	}
 
