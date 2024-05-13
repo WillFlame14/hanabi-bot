@@ -209,7 +209,7 @@ export function resolve_bluff(game, giver, target, connections, promised, focusI
 		// as known by the player who would play next after the bluff play.
 		let known_bluff = false;
 		const next_player = state.hands.findIndex(hand => hand.find(c => c.order == promised[1].order));
-		const bluff_identities = (giver + 1) % state.numPlayers == state.ourPlayerIndex ?
+		const bluff_identities = bluffCard.suitIndex == -1 ?
 			game.players[state.ourPlayerIndex].thoughts[bluffCard.order].inferred.filter(c => state.isPlayable(c)) :
 			[bluffCard];
 		for (let i = 1; i < promised.length; ++i) {
@@ -242,7 +242,6 @@ export function resolve_bluff(game, giver, target, connections, promised, focusI
 		connections[0].bluff = false;
 	} else {
 		// Remove hidden connections following bluff play.
-		// TODO: Is this right?
 		connections.splice(1, next_play - 1);
 	}
 

@@ -71,8 +71,8 @@ function connect(game, giver, target, identity, looksDirect, connected, ignoreOr
 	const our_hand = state.hands[state.ourPlayerIndex];
 
 	// First, see if someone else has the connecting card
-	const other_connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
-	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate')
+	let other_connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
+	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate' && (other_connecting.at(-1).reacting != state.ourPlayerIndex || other_connecting.at(-1).card.matches(identity, {assume: true})))
 		return other_connecting;
 
 	// See if the giver knows about their own card
@@ -191,8 +191,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 
 	for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
 		const next_identity = { suitIndex, rank: next_rank };
-		const ignoreOrders = game.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1]?.filter(i =>
-			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order) ?? [];
+		const ignoreOrders = game.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1]?.map(i => i.order) ?? [];
 
 		const curr_connections = connect(hypo_game, giver, target, next_identity, direct, already_connected, ignoreOrders, ignorePlayer, selfRanks, finesses, firstPlay);
 		firstPlay = false;
