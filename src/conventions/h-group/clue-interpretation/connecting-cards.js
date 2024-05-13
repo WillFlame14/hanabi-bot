@@ -226,7 +226,7 @@ export function resolve_bluff(game, giver, target, connections, promised, focusI
 			}
 		}
 		if (!known_bluff)
-			bluff_fail_reason = `player ${next_player} would not recognize the bluff`;
+			bluff_fail_reason = `${game.state.playerNames[next_player]} would not recognize the bluff`;
 	}
 
 
