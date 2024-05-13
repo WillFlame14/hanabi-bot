@@ -115,8 +115,12 @@ export function playables_result(state, player, hypo_player) {
 		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
 
 		// Only count unknown playables if they actually go on top of the stacks
-		if (state.deck[order].rank > player.hypo_stacks[state.deck[order].suitIndex])
+		if (state.deck[order].rank > player.hypo_stacks[state.deck[order].suitIndex]) {
+			if (hypo_player.thoughts[order].finessed)
+				finesses.push({ playerIndex, card: hypo_player.thoughts[order] });
+
 			playables.push({ playerIndex, card: hypo_player.thoughts[order] });
+		}
 	}
 
 	return { finesses, playables };
