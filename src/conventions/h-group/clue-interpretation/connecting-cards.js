@@ -194,16 +194,14 @@ export function resolve_bluff(game, giver, target, connections, promised, focusI
 		return connections;
 	const { state } = game;
 	const bluffCard = connections[0].card;
+	let bluff_fail_reason = undefined;
 	// Determine the next play if this is a bluff.
 	const next_play = connections.findIndex(connection => connection.card.order == promised[0].order) + 1;
 	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
-	let bluff_possible = connections.every((conn, index) => index < next_play || (!conn.hidden && conn.type !== 'finesse'));
-	// If the second play is a finesse, the recipient must know that their card cannot match the finesse.
-	if (bluff_possible && connections[next_play]?.type == 'finesse') {
-		bluff_possible = bluff_possible && !connections[next_play].identities.some(id => game.players[target].thoughts[promised.at(-1).order].inferred.has(id));
-	}
+	if (!connections.every((conn, index) => index < next_play || (!conn.hidden && conn.type !== 'finesse')))
+		bluff_fail_reason = `requires additional finesses`;
 
-	if (bluff_possible) {
+	if (!bluff_fail_reason) {
 		// A bluff must be recognizable. As such, there should be no connection
 		// between the bluffed card and at least one of the following plays
 		// as known by the player who would play next after the bluff play.
@@ -227,22 +225,29 @@ export function resolve_bluff(game, giver, target, connections, promised, focusI
 				break;
 			}
 		}
-		bluff_possible = bluff_possible && known_bluff;
+		if (!known_bluff)
+			bluff_fail_reason = `player ${next_player} would not recognize the bluff`;
 	}
 
 
-	if (!bluff_possible) {
+	if (bluff_fail_reason) {
 		// If a bluff is not possible, we only have a valid connection if a real matching card was found,
 		// or the bluff card matches the target,
 		// and the second play is not a finesse on ourselves
 		if (connections[0].card.order == promised[0].order &&
-			![-1, focusIdentity.suitIndex].includes(promised[0].suitIndex))
+			![-1, focusIdentity.suitIndex].includes(promised[0].suitIndex)) {
+			logger.warn(`bluff invalid and connecting card not found: ${bluff_fail_reason}`);
 			return [];
+		}
 
+		logger.warn(`bluff invalid but connection still exists: ${bluff_fail_reason}`);
 		connections[0].bluff = false;
 	} else {
-		// Remove hidden connections following bluff play.
-		connections.splice(1, next_play - 1);
+		if (next_play > 1) {
+			logger.warn(`bluff is possible, removing ${next_play - 1} layered finesse connections`);
+			// Remove hidden connections following bluff play.
+			connections.splice(1, next_play - 1);
+		}
 	}
 
 	return connections;
