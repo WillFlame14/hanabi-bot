@@ -208,7 +208,7 @@ export function assign_connections(game, connections, giver) {
 		}
 
 		if (bluff || hidden) {
-			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }));
+			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 })).filter(id => id.rank <= state.max_ranks[id.suitIndex]);
 			card.inferred = card.inferred.intersect(playable_identities);
 			if (bluff) {
 				const currently_playable_identities = state.play_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }));

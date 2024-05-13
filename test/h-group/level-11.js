@@ -544,10 +544,10 @@ describe('bluff clues', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p1', 'y5', 'b4', 'g5', 'p3'],
-			['b3', 'r2', 'b5', 'b5', 'y4']
+			['b3', 'r2', 'b2', 'b4', 'y4']
 		], {
 			level: 11,
-			play_stacks: [0, 0, 0, 0, 0],
+			play_stacks: [0, 0, 5, 3, 0],
 			starting: PLAYER.ALICE
 		});
 		const action = take_action(game);
