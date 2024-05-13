@@ -50,7 +50,8 @@ function find_colour_focus(game, suitIndex, action) {
 		state.play_stacks = old_play_stacks.slice();
 
 		// Note that a colour clue always looks direct
-		const ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.map(i => i.order);
+		const ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
+			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
 		const looksDirect = common.thoughts[focused_card.order].identity() === undefined;
 		const connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, already_connected, ignoreOrders);
 		firstPlay = false;
@@ -201,7 +202,8 @@ function find_rank_focus(game, rank, action) {
 		// Try looking for all connecting cards
 		state.play_stacks = old_play_stacks.slice();
 
-		let ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.map(i => i.order);
+		let ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
+			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
 		let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focused_card.order));
 		let connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, firstPlay, already_connected, ignoreOrders);
 		firstPlay = false;
@@ -261,7 +263,8 @@ function find_rank_focus(game, rank, action) {
 				break;
 			}
 
-			ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.map(i => i.order);
+			ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
+				i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
 			connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, firstPlay, already_connected, ignoreOrders);
 		}
 		promised.push(focused_card);
