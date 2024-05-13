@@ -579,9 +579,9 @@ describe('bluff clues', () => {
 			level: 11,
 			starting: PLAYER.CATHY
 		});
-	
+
 		takeTurn(game, 'Cathy clues 3 to Alice (slot 4)');
-	
+
 		// Alice's slot 4 should be r3 as a Clandestine Finesse (no 3 is a valid bluff target).
 		// Note, it's not common knowledge that both g3's are visible in Cathy's hand.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3', 'g3']);
@@ -598,10 +598,10 @@ describe('bluff clues', () => {
 			starting: PLAYER.DONALD,
 			level: 11
 		});
-	
+
 		takeTurn(game, 'Donald clues 2 to Alice (slot 3)');
 		takeTurn(game, 'Alice plays g1 (slot 1)');
-	
+
 		// Slot 3 should be g2.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['g2']);
 	});
