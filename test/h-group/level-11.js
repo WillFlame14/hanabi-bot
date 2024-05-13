@@ -588,4 +588,21 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3']);
 	});
 
+	it('rank connects on a self-finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'p1', 'y1', 'p4'],
+			['r3', 'p3', 'p1', 'y2'],
+			['b3', 'y2', 'g4', 'r5']
+		], {
+			starting: PLAYER.DONALD,
+			level: 11
+		});
+	
+		takeTurn(game, 'Donald clues 2 to Alice (slot 3)');
+		takeTurn(game, 'Alice plays g1 (slot 1)');
+	
+		// Slot 3 should be g2.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['g2']);
+	});
 });
