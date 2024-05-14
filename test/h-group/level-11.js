@@ -175,6 +175,72 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['b4']);
 	});
 
+	it('infers the identity of indirect bluffs', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'r1', 'y1', 'g5', 'g3'],
+			['p1', 'r4', 'b5', 'b2', 'y3'],
+		], {
+			level: 11,
+			starting: PLAYER.BOB
+		});
+		takeTurn(game, 'Bob clues red to Alice (slot 4)');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r1', 'r2']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
+		takeTurn(game, 'Cathy plays p1', 'p2');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r2']);
+		takeTurn(game, 'Alice discards g4 (slot 5)');
+		takeTurn(game, 'Bob clues red to Alice (slots 1,5)');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r1', 'r3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
+		takeTurn(game, 'Cathy plays p2', 'p3');
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r3']);
+	});
+
+	it('infers the identity of bluffed prompts', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'r1', 'y1', 'g5'],
+			['p1', 'r4', 'b5', 'b2'],
+			['g4', 'r4', 'r5', 'g3']
+		], {
+			level: 11,
+			starting: PLAYER.DONALD
+		});
+		takeTurn(game, 'Donald clues red to Alice (slots 3,4)');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r1']);
+		takeTurn(game, 'Alice plays r1 (slot 4)');
+
+		// The only way this clue makes sense is if we have r3 to connect to the r4, r5 in Donald's hand.
+		takeTurn(game, 'Bob clues red to Donald');
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3']);
+	});
+
+	it('infers the identity of bluff prompts through other people', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'r1', 'y1', 'g5'],
+			['p1', 'r4', 'b5', 'b2'],
+			['g4', 'b2', 'r3', 'r1']
+		], {
+			level: 11,
+			starting: PLAYER.CATHY
+		});
+		takeTurn(game, 'Cathy clues red to Donald');
+		takeTurn(game, 'Donald plays r1', 'p5');
+		takeTurn(game, 'Alice discards y4 (slot 4)');
+
+		takeTurn(game, 'Bob clues red to Alice (slots 2,3)');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2', 'r4']);
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
+		takeTurn(game, 'Cathy plays p1', 'p2');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r4']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][3].order], ['r3']);
+	});
+
 	it(`makes the correct inferrences on a received bluff`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'], // y4 y2 y4 b5
