@@ -13,6 +13,7 @@ import logger from '../../../src/tools/logger.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('play clue', () => {
+
 	it('can interpret a colour play clue touching one card', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

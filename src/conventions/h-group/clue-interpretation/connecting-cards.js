@@ -4,8 +4,10 @@ import { LEVEL } from '../h-constants.js';
 import { order_1s } from '../action-helper.js';
 import { inBetween } from '../hanabi-logic.js';
 
+import * as Utils from '../../../tools/util.js';
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
+import { ActualCard } from '../../../basics/Card.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -99,17 +101,18 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
 }
 
 /**
- * Finds a (possibly layered) prompt or finesse as a connecting card (or unknown playable).
+ * Finds a (possibly layered) prompt, finesse or bluff as a connecting card (or unknown playable).
  * @param {Game} game
  * @param {number} giver 			The player index that gave the clue. They cannot deduce unknown information about their own hand.
  * @param {number} target 			The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {number} reacting
  * @param {Identity} identity
+ * @param {boolean} firstPlay		Is this the first play?
  * @param {number[]} [connected] 	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @returns {Connection | undefined}
  */
-function find_unknown_connecting(game, giver, target, reacting, identity, connected = [], ignoreOrders = []) {
+function find_unknown_connecting(game, giver, target, reacting, identity, firstPlay, connected = [], ignoreOrders = [], ) {
 	const { common, state } = game;
 
 	const hand = state.hands[reacting];
@@ -149,25 +152,108 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
 			return;
 		}
 
+		// This may be a bluff even if it matches. resolve_bluff will rule out a bluff if it doesn't
+		// look like it could lead to the following plays.
+		const bluff = game.level >= LEVEL.BLUFFS &&
+			firstPlay &&
+			((giver + 1) % state.numPlayers) == reacting &&
+			!state.hands[reacting].some(c => game.players[reacting].thoughts[c.order].finessed && game.players[reacting].thoughts[c.order].possible.has(identity));
+
 		if (finesse.matches(identity)) {
 			// At level 1, only forward finesses are allowed.
 			if (game.level === 1 && !inBetween(state.numPlayers, reacting, giver, target)) {
 				logger.warn(`found finesse ${logCard(finesse)} in ${state.playerNames[reacting]}'s hand, but not between giver and target`);
 				return;
 			}
-			return { type: 'finesse', reacting, card: finesse, identities: [identity] };
+			return { type: 'finesse', reacting, card: finesse, bluff, identities: [identity] };
 		}
 		// Finessed card is delayed playable
 		else if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
-			// Could be duplicated in giver's hand - disallow hidden finesse
-			if (state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
+			// Could be duplicated in giver's hand - disallow hidden finesse unless it could be a bluff.
+			if (!bluff && state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
 				return;
 			}
 
-			return { type: 'finesse', reacting, card: finesse, hidden: true, identities: [finesse.raw()] };
+			return { type: 'finesse', reacting, card: finesse, hidden: true, bluff, identities: [finesse.raw()] };
 		}
 	}
+}
+
+/**
+ * Determines whether a bluff connection is a valid bluff, and updates the connection accordingly.
+ * @param {Game} game
+ * @param {number} giver 				The player index that gave the clue. They cannot deduce unknown information about their own hand.
+ * @param {number} target 				The player index receiving the clue. They will not find self-prompts or self-finesses.
+ * @param {Connection[]} connections	The complete connections leading to the play of a card.
+ * @param {ActualCard[]} promised		The non-hidden play(s) which are promised.
+ * @param {Identity} focusIdentity		The expected identity of the focus.
+ * @returns {Connection[]}
+ */
+export function resolve_bluff(game, giver, target, connections, promised, focusIdentity) {
+	if (connections.length == 0 || !connections[0].bluff)
+		return connections;
+	const { state } = game;
+	const bluffCard = connections[0].card;
+	let bluff_fail_reason = undefined;
+	// Determine the next play if this is a bluff.
+	const next_play = connections.findIndex(connection => connection.card.order == promised[0].order) + 1;
+	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
+	if (!connections.every((conn, index) => index < next_play || (!conn.hidden && conn.type !== 'finesse')))
+		bluff_fail_reason = `requires additional finesses`;
+
+	if (!bluff_fail_reason) {
+		// A bluff must be recognizable. As such, there should be no connection
+		// between the bluffed card and at least one of the following plays
+		// as known by the player who would play next after the bluff play.
+		let known_bluff = false;
+		const next_player = state.hands.findIndex(hand => hand.find(c => c.order == promised[1].order));
+		const bluff_identities = bluffCard.identity() === undefined ?
+			game.players[state.ourPlayerIndex].thoughts[bluffCard.order].inferred.filter(c => state.isPlayable(c)) :
+			[bluffCard];
+		for (let i = 1; i < promised.length; ++i) {
+			const has_known_bluffs = bluff_identities.some(identity => {
+				const expected = { suitIndex: identity.suitIndex , rank: identity.rank + i };
+				if (state.hands[next_player].find(c => c.order == promised[i].order)) {
+					const thoughts = game.players[next_player].thoughts[promised[i].order];
+					return !thoughts.inferred.has(expected);
+				} else {
+					return !promised[i].matches(expected);
+				}
+			});
+			if (has_known_bluffs) {
+				known_bluff = true;
+				break;
+			}
+		}
+		if (!known_bluff)
+			bluff_fail_reason = `${game.state.playerNames[next_player]} would not recognize the bluff`;
+	}
+
+
+	if (bluff_fail_reason) {
+		// If a bluff is not possible, we only have a valid connection if a real matching card was found,
+		// or the bluff card matches the target,
+		// and the second play is not a finesse on ourselves
+		if (connections[0].card.order == promised[0].order &&
+			![-1, focusIdentity.suitIndex].includes(promised[0].suitIndex)) {
+			logger.warn(`bluff invalid and connecting card not found: ${bluff_fail_reason}`);
+			return [];
+		}
+
+		logger.warn(`bluff invalid but connection still exists: ${bluff_fail_reason}`);
+		connections = connections.slice();
+		connections[0] = Utils.objClone(connections[0]);
+		connections[0].bluff = false;
+	} else {
+		if (next_play > 1) {
+			logger.warn(`bluff is possible, removing ${next_play - 1} layered finesse connections`);
+			// Remove hidden connections following bluff play.
+			connections = connections.toSpliced(1, next_play - 1);
+		}
+	}
+
+	return connections;
 }
 
 /**
@@ -177,12 +263,13 @@ function find_unknown_connecting(game, giver, target, reacting, identity, connec
  * @param {number} target 			The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {Identity} identity
  * @param {boolean} looksDirect 	Whether the clue could be interpreted as direct play (i.e. never as self-prompt/finesse).
+ * @param {boolean} firstPlay		Is this the first play?
  * @param {number[]} [connected]	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @param {{knownOnly?: number[]}} options
  * @returns {Connection[]}
  */
-export function find_connecting(game, giver, target, identity, looksDirect, connected = [], ignoreOrders = [], options = {}) {
+export function find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected = [], ignoreOrders = [], options = {}) {
 	const { common, state, me } = game;
 	const { suitIndex, rank } = identity;
 
@@ -224,7 +311,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 		const already_connected = connected.slice();
 		state.play_stacks = old_play_stacks.slice();
 
-		let connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
+		let connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, firstPlay, already_connected, ignoreOrders);
 
 		if (connecting?.type === 'terminate') {
 			wrong_prompts.push(connecting);
@@ -233,12 +320,14 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 
 		// If the connection is hidden, that player must have the actual card playable in order for the layer to work.
 		// Thus, we keep searching for unknown connections in their hand until we find a non-hidden connection.
+		// If the connection could be a bluff, we will search for the actual playable card in case it turns out
+		// not to be a valid bluff target.
 		while (connecting?.hidden) {
 			connections.push(connecting);
 			already_connected.push(connecting.card.order);
 			state.play_stacks[connecting.card.suitIndex]++;
 
-			connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, already_connected, ignoreOrders);
+			connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, false, already_connected, ignoreOrders);
 		}
 
 		if (connecting) {
@@ -248,6 +337,13 @@ export function find_connecting(game, giver, target, identity, looksDirect, conn
 			}
 
 			connections.push(connecting);
+		}
+
+		// If we don't find the actual card, a bluff of the first card is still a valid interpretation.
+		if (connections.length > 0 && connections.at(0).bluff && connections.at(-1).hidden) {
+			// Remove all of the hidden plays after the bluff and treat the bluff as the known target.
+			connections.splice(1, connections.length - 1);
+			connections[0].hidden = false;
 		}
 
 		// The final card must not be hidden

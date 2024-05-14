@@ -84,14 +84,14 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 		game.interpretMove(interp);
 
+		const matches = focused_card.matches(inference, { assume: true });
+		const bluff = !save && !matches && connections[0]?.bluff;
 		// Don't assign save connections or known false connections
-		if (save || !focused_card.matches(inference, { assume: true }))
-			continue;
-
-		assign_connections(game, connections, giver);
+		if (!save && matches)
+			assign_connections(game, connections, giver);
 
 		// Multiple possible sets, we need to wait for connections
-		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
+		if ((matches || bluff) && connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
 			common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, target, action_index: state.actionList.length - 1 });
 	}
 
@@ -230,7 +230,7 @@ export function interpret_clue(game, action) {
 			logger.info(`card ${logCard(focused_card)} order ${focused_card.order} doesn't match any inferences! currently ${focus_thoughts.inferred.map(logCard).join(',')}`);
 
 		/** @type {FocusPossibility[]} */
-		const all_connections = [];
+		let all_connections = [];
 
 		const looksDirect = focus_thoughts.identity() === undefined && (	// Focused card must be unknown AND
 			action.clue.type === CLUE.COLOUR ||											// Colour clue always looks direct
@@ -311,6 +311,47 @@ export function interpret_clue(game, action) {
 				else
 					throw error;
 			}
+		}
+
+		// If there's a visible connection outside of the bluff seat, a bluff is not a valid interpretation.
+		const bluff_seat = (giver + 1) % state.numPlayers;
+		const no_bluff_connections = state.ourPlayerIndex == bluff_seat && all_connections.some(connection =>
+			connection.connections.length > 0 && connection.connections[0].reacting != bluff_seat);
+		if (no_bluff_connections) {
+			// Convert possible bluff connections to non-bluff connections.
+			logger.info('Removing bluffs due to visible non-bluff connection');
+			all_connections = all_connections.map(conn => {
+				if (!conn.connections[0]?.bluff)
+					return conn;
+				// If not a hidden connection, and we know the bluff card doesn't match, the real card wasn't found.
+				if (!conn.connections[0].hidden && !conn.connections[0].card.matches({suitIndex: conn.suitIndex, rank: conn.rank - conn.connections.filter(c => !c.hidden).length} , {assume: true}))
+					return null;
+				conn.connections[0].bluff = false;
+				return conn;
+			}).filter(conn => !!conn);
+		} else {
+			const bluff_connections = all_connections.some(connection =>
+				connection.connections.length > 0 && connection.connections[0].bluff);
+			let removed = 0;
+			// Filter plays after hidden bluff connection,
+			all_connections = all_connections.map(conn => {
+				if (!conn.connections[0]?.bluff || !conn.connections[0].hidden) {
+					// A non-bluff connection is invalid if it requires a self finesse after a potential bluff play.
+					// E.g. if we could be bluffed for a 3 in one suit, we can't assume we have the connecting 2 in another suit.
+					if (bluff_connections && conn.connections[1]?.type == 'finesse' && conn.connections[1]?.self) {
+						removed++;
+						return null;
+					}
+					return conn;
+				}
+				// Remove everything after the bluff play to the non-hidden play as they won't
+				// play after the bluff play.
+				const next_visible_connection = conn.connections.findIndex(c => !c.bluff && !c.hidden);
+				conn.connections.splice(1, next_visible_connection);
+				return conn;
+			}).filter(conn => !!conn);
+			if (removed)
+				logger.info(`Removing ${removed} self finesses due to possible bluff interpretation`);
 		}
 
 		// No inference, but a finesse isn't possible

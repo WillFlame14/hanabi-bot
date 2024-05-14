@@ -1,4 +1,4 @@
-export const MAX_H_LEVEL = 7;
+export const MAX_H_LEVEL = 11;
 export const BOT_VERSION = '1.3.10';
 
 export const ACTION =  /** @type {const} */ ({

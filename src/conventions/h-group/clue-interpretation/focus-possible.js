@@ -1,6 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
-import { find_connecting } from './connecting-cards.js';
+import { find_connecting, resolve_bluff } from './connecting-cards.js';
 import { visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
@@ -41,7 +41,9 @@ function find_colour_focus(game, suitIndex, action) {
 	const old_play_stacks = state.play_stacks;
 	let already_connected = [focused_card.order];
 
+	let firstPlay = true;
 	let finesses = 0;
+	const promised = [];
 
 	while (next_rank < state.max_ranks[suitIndex]) {
 		const identity = { suitIndex, rank: next_rank };
@@ -51,7 +53,8 @@ function find_colour_focus(game, suitIndex, action) {
 		const ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
 			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
 		const looksDirect = common.thoughts[focused_card.order].identity() === undefined;
-		const connecting = find_connecting(game, giver, target, identity, looksDirect, already_connected, ignoreOrders);
+		const connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, already_connected, ignoreOrders);
+		firstPlay = false;
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
 
@@ -72,13 +75,24 @@ function find_colour_focus(game, suitIndex, action) {
 			}
 
 			// Even if a finesse is possible, it might not be a finesse
-			focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: Utils.objClone(connections), interp: CLUE_INTERP.PLAY });
+			promised.push(focused_card);
+			const possible_connections = resolve_bluff(game, giver, target, connections, promised, { suitIndex, rank: next_rank });
+			if (connections.length == 0 || possible_connections.length > 0)
+				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
+			promised.pop();
 		}
 		state.play_stacks[suitIndex]++;
 		next_rank++;
 
+		promised.push(connecting.at(-1).card);
 		connections = connections.concat(connecting);
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
+	}
+	promised.push(focused_card);
+	connections = resolve_bluff(game, giver, target, connections, promised, { suitIndex, rank: next_rank });
+	if (connections.length == 0) {
+		// Undo plays invalidated by a false bluff.
+		next_rank = old_play_stacks[suitIndex] + 1;
 	}
 
 	// Restore play stacks
@@ -178,10 +192,12 @@ function find_rank_focus(game, rank, action) {
 			continue;
 		}
 
+		const promised = [];
 		/** @type {Connection[]} */
 		let connections = [];
 		let finesses = 0;
 		let already_connected = [focused_card.order];
+		let firstPlay = true;
 
 		// Try looking for all connecting cards
 		state.play_stacks = old_play_stacks.slice();
@@ -189,7 +205,8 @@ function find_rank_focus(game, rank, action) {
 		let ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
 			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
 		let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focused_card.order));
-		let connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
+		let connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, firstPlay, already_connected, ignoreOrders);
+		firstPlay = false;
 
 		while (connecting.length !== 0) {
 			const { type, card } = connecting.at(-1);
@@ -225,11 +242,16 @@ function find_rank_focus(game, rank, action) {
 				looksDirect = focus_thoughts.identity() === undefined && looksSave;
 
 				if (rank === next_rank) {
+					promised.push(focused_card);
+					const possible_connections = resolve_bluff(game, giver, target, Utils.objClone(connections), promised, { suitIndex, rank: next_rank });
 					// Even if a finesse is possible, it might not be a finesse
-					focus_possible.push({ suitIndex, rank, save: false, connections: Utils.objClone(connections), interp: CLUE_INTERP.PLAY });
+					if (connections.length == 0 || possible_connections.length > 0)
+						focus_possible.push({ suitIndex, rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
+					promised.pop();
 				}
 			}
 
+			promised.push(connecting.at(-1).card);
 			connections = connections.concat(connecting);
 			already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 
@@ -243,7 +265,13 @@ function find_rank_focus(game, rank, action) {
 
 			ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
 				i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
-			connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, already_connected, ignoreOrders);
+			connecting = find_connecting(game, giver, target, { suitIndex, rank: next_rank }, looksDirect, firstPlay, already_connected, ignoreOrders);
+		}
+		promised.push(focused_card);
+		connections = resolve_bluff(game, giver, target, connections, promised, { suitIndex, rank: next_rank });
+		if (connections.length == 0) {
+			// Undo plays invalidated by a false bluff.
+			next_rank = old_play_stacks[suitIndex] + 1;
 		}
 
 		if (next_rank <= rank)
