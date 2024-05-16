@@ -210,6 +210,7 @@ export class Player {
 		// Reset hypo stacks to play stacks
 		const hypo_stacks = state.play_stacks.slice();
 		const unknown_plays = new Set();
+		const already_played = new Set();
 
 		let found_new_playable = true;
 		const good_touch_elim = /** @type {Identity[]}*/ ([]);
@@ -232,7 +233,7 @@ export class Player {
 			for (const { order } of state.hands.flat()) {
 				const card = this.thoughts[order];
 
-				if (!card.saved || good_touch_elim.some(e => card.matches(e)) || linked_orders.has(order) || unknown_plays.has(order))
+				if (!card.saved || good_touch_elim.some(e => card.matches(e)) || linked_orders.has(order) || unknown_plays.has(order) || already_played.has(order))
 					continue;
 
 				const fake_wcs = this.waiting_connections.filter(wc => {
@@ -285,6 +286,7 @@ export class Player {
 								hypo_stacks[suitIndex] = rank;
 								good_touch_elim.push(promised_link.identities[0]);
 								found_new_playable = true;
+								already_played.add(order);
 							}
 						}
 						continue;
@@ -301,6 +303,7 @@ export class Player {
 					hypo_stacks[suitIndex] = rank;
 					good_touch_elim.push(id);
 					found_new_playable = true;
+					already_played.add(order);
 				}
 			}
 		}

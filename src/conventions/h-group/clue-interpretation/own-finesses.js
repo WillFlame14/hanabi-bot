@@ -137,7 +137,7 @@ function connect(game, giver, target, identity, looksDirect, connected, ignoreOr
 		// Try finesse in our hand again (if we skipped it earlier to prefer ignoring player)
 		if (giver !== state.ourPlayerIndex && !(target === state.ourPlayerIndex && looksDirect) && selfRanks.includes(identity.rank)) {
 			try {
-				return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses);
+				return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay);
 			}
 			catch (error) {
 				if (error instanceof IllegalInterpretation)

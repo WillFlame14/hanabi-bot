@@ -335,6 +335,14 @@ function assignSettings(data, priv) {
 			reply(`This bot can currently only play between levels 1 and ${MAX_H_LEVEL}. Currently set to level ${settings.level}.`);
 			return;
 		}
+
+		if (level > 7) {
+			reply(`This bot can currently only play up to level 7 (+ level 11). There is no support for levels 8 - 10.`);
+
+			if (level < 11)
+				level = 7;
+		}
+
 		settings.level = Math.max(Math.min(level, MAX_H_LEVEL), 1);
 	}
 

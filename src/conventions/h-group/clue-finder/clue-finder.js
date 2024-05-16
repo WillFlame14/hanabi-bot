@@ -58,7 +58,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	if (!hypo_game.players[target].thinksLoaded(hypo_game.state, target) && (new_chop ? cardValue(state, me, new_chop) : 4) > cardValue(state, me, old_chop))
 		return -10;
 
-	return find_clue_value(result);
+	return find_clue_value(result) - 0.1*saved_trash.length;
 }
 
 /**

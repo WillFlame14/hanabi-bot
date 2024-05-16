@@ -12,7 +12,8 @@ import * as Basics from '../../../basics.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logConnections, logHand } from '../../../tools/log.js';
+import { logCard, logConnection, logConnections, logHand } from '../../../tools/log.js';
+import { remove_finesse } from '../update-turn.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -85,13 +86,12 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		game.interpretMove(interp);
 
 		const matches = focused_card.matches(inference, { assume: true });
-		const bluff = !save && !matches && connections[0]?.bluff;
 		// Don't assign save connections or known false connections
 		if (!save && matches)
 			assign_connections(game, connections, giver);
 
 		// Multiple possible sets, we need to wait for connections
-		if ((matches || bluff) && connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
+		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
 			common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, target, action_index: state.actionList.length - 1 });
 	}
 
@@ -168,6 +168,51 @@ export function interpret_clue(game, action) {
 			return;
 		}
 	}
+
+	const to_remove = new Set();
+
+	for (const [i, waiting_connection] of Object.entries(common.waiting_connections)) {
+		const { connections, conn_index, focused_card: wc_focus, inference, target: wc_target } = waiting_connection;
+
+		const impossible_conn = connections.find((conn, index) => {
+			const { reacting, card, identities } = conn;
+			const current_card = common.thoughts[card.order];
+
+			// No intersection between connection's identities and current card's possibilities
+			if (current_card.possible.intersect(identities).value === 0)
+				return true;
+
+			const last_reacting_action = game.last_actions[reacting];
+
+			return index >= conn_index &&
+				last_reacting_action?.type === 'play' &&
+				last_reacting_action?.card.order === card.order &&
+				!identities.some(id => last_reacting_action.card.matches(id));
+		});
+
+		if (impossible_conn !== undefined)
+			logger.warn(`connection [${connections.map(logConnection)}] depends on revealed card having identities ${impossible_conn.identities.map(logCard)}`);
+
+		else if (!common.thoughts[wc_focus.order].possible.has(inference))
+			logger.warn(`connection [${connections.map(logConnection)}] depends on focused card having identity ${logCard(inference)}`);
+
+		else
+			continue;
+
+		const rewind_card = impossible_conn?.card ?? wc_focus;
+		const rewind_identity = common.thoughts[rewind_card.order]?.identity();
+
+		if (rewind_identity !== undefined && wc_target === state.ourPlayerIndex) {
+			const { suitIndex, rank } = rewind_identity;
+			game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, suitIndex, rank });
+			return;
+		}
+
+		to_remove.add(i);
+		remove_finesse(game, waiting_connection);
+	}
+
+	common.waiting_connections = common.waiting_connections.filter((_, i) => !to_remove.has(i));
 
 	logger.debug('pre-inferences', focus_thoughts.inferred.map(logCard).join());
 

@@ -114,16 +114,19 @@ export function interpret_discard(game, action, card) {
 		const result = check_sdcm(game, action, before_trash, old_chop);
 
 		if (result !== undefined) {
-			state.screamed_at = true;
-
 			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
 			const chop = common.chop(state.hands[nextPlayerIndex]);
 
 			if (result === 'scream' || result === 'shout') {
-				if (chop === undefined)
+				state.screamed_at = true;
+
+				if (chop === undefined) {
 					logger.warn(`interpreted ${result} when ${state.playerNames[nextPlayerIndex]} has no chop!`);
-				else
+				}
+				else {
+					logger.info(`interpreted ${result} on ${state.playerNames[nextPlayerIndex]}!`);
 					common.thoughts[chop.order].chop_moved = true;
+				}
 			}
 		}
 	}
@@ -140,7 +143,7 @@ export function interpret_discard(game, action, card) {
  */
 function check_sdcm(game, action, before_trash, old_chop) {
 	const { common, state } = game;
-	const { order, playerIndex } = action;
+	const { order, playerIndex, suitIndex, rank } = action;
 	const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
 	const nextPlayerIndex2 = (nextPlayerIndex + 1) % state.numPlayers;
 
@@ -151,7 +154,7 @@ function check_sdcm(game, action, before_trash, old_chop) {
 	const scream = state.clue_tokens === 1 && old_chop &&
 		(common.thinksPlayables(state, playerIndex).length > 0 || before_trash.length > 0) && order === old_chop.order;
 
-	const shout = common.thinksPlayables(state, playerIndex).length > 0 && before_trash.some(c => c.order === order);
+	const shout = common.thinksPlayables(state, playerIndex).length > 0 && before_trash.some(c => c.order === order) && isTrash(state, common, { suitIndex, rank }, order, { infer: true });
 
 	if (!scream && !shout)
 		return;

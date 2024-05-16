@@ -141,7 +141,6 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 
 	const chop = common.chop(state.hands[target], { afterClue: true });
 	const touched_cards = state.hands[target].filter(card => list.includes(card.order));
-	const prompt = oldCommon.find_prompt(state.hands[target], focused_card, state.variant.suits);
 
 	if (chop === undefined) {
 		logger.info('target was locked, not tccm');
@@ -158,8 +157,13 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 		return false;
 	}
 
-	if (prompt && prompt.rank !== 5 && prompt.order !== focused_card.order) {
-		logger.info('tempo on non-promptable non-5, not tccm');
+	const focus_thoughts = common.thoughts[focused_card.order];
+	const not_promptable = focus_thoughts.inferred.every(i =>
+		oldCommon.find_prompt(state.hands[target], i, state.variant.suits).order !== focused_card.order);
+	const identity = focus_thoughts.identity({ infer: true });
+
+	if (not_promptable && (identity === undefined || identity.rank !== 5)) {
+		logger.info(`tempo on non-promptable non-5, not tccm`);
 		return false;
 	}
 

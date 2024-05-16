@@ -60,9 +60,9 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 
 		const allowable_trash = card.chop_moved ||													// Chop moved (might have become trash)
 			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||	// Didn't match inference even before clue
-			(clued && isTrash(state, game.me, visible_card, order)) ||								// Previously-clued duplicate or recently became basic trash
+			(clued && isTrash(state, game.me, visible_card, order, { infer: true })) ||				// Previously-clued duplicate or recently became basic trash
 			bad_touch_cards.some(b => b.order === order) ||											// Bad touched
-			card.possible.every(id => isTrash(hypo_game.state, hypo_game.common, id, order));		// Known trash
+			card.possible.every(id => isTrash(hypo_game.state, hypo_game.common, id, order, { infer: true }));		// Known trash
 
 		if (allowable_trash || card.possible.length === 1)
 			continue;

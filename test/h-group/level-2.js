@@ -7,6 +7,7 @@ import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 import logger from '../../src/tools/logger.js';
+import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -448,5 +449,23 @@ describe('continuation clues', () => {
 		// Red to Donald is not a valid play clue.
 		const { play_clues } = find_clues(game);
 		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.RED));
+	});
+});
+
+describe('safe clues', () => {
+	it('recognizes when a critical save is required over an ambiguous play', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r5', 'g1', 'r4', 'b5'],
+			['g1', 'y3', 'p4', 'p3'],
+			['y2', 'p3', 'b4', 'g4'],
+		], {
+			level: 2,
+			clue_tokens: 1
+		});
+
+		// Green to Bob is not a safe play clue, since it may look g2.
+		const clue = { target: PLAYER.BOB, type: CLUE.COLOUR, value: COLOUR.GREEN };
+		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue), false);
 	});
 });

@@ -20,7 +20,7 @@ import { older_queued_finesse } from './hanabi-logic.js';
  * @param {Game} game
  * @param {WaitingConnection} waiting_connection
  */
-function remove_finesse(game, waiting_connection) {
+export function remove_finesse(game, waiting_connection) {
 	const { common, state } = game;
 	const { connections, focused_card, inference, symmetric } = waiting_connection;
 	const focus_thoughts = common.thoughts[focused_card.order];
@@ -167,9 +167,14 @@ function resolve_card_retained(game, waiting_connection) {
 		logger.warn(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);
 
 		if (reacting !== state.ourPlayerIndex) {
-			const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
-			game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
-			return { quit: true };
+			try {
+				const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
+				game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
+				return { quit: true };
+			}
+			catch(err) {
+				logger.warn(err);
+			}
 		}
 
 		// Can't remove finesses if we allow ourselves to "defer" an ambiguous finesse the first time around.

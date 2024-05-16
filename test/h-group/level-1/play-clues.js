@@ -13,7 +13,6 @@ import logger from '../../../src/tools/logger.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('play clue', () => {
-
 	it('can interpret a colour play clue touching one card', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -123,8 +122,30 @@ describe('play clue', () => {
 		});
 
 		const { play_clues } = find_clues(game);
-		assert.ok(play_clues[PLAYER.CATHY].some(clue =>
-			clue.type === CLUE.COLOUR && clue.value === COLOUR.YELLOW && clue.result.playables.length === 1));
+		const clue = play_clues[PLAYER.CATHY].find(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.YELLOW);
+
+		assert.ok(clue !== undefined);
+		assert.equal(clue.result.playables.length, 1);
+	});
+
+	it('correctly counts the number of playables when also cluing known trash', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'g1', 'p4', 'r2', 'r3']
+		], {
+			level: 1,
+			starting: PLAYER.BOB,
+			play_stacks: [2, 5, 5, 5, 5]
+		});
+
+		const clue = { type: CLUE.RANK, target: PLAYER.BOB, value: 3 };
+		const list = game.state.hands[PLAYER.BOB].clueTouched(clue, game.state.variant).map(c => c.order);
+		const hypo_state = game.simulate_clue({ type: 'clue', clue, list, giver: PLAYER.ALICE, target: PLAYER.BOB });
+		const { playables, trash } = get_result(game, hypo_state, clue, PLAYER.ALICE);
+
+		// There should be 1 playable and 1 trash.
+		assert.equal(playables.length, 1);
+		assert.equal(trash, 1);
 	});
 
 	it('correctly counts the number of playables when connecting on unknown plays', () => {

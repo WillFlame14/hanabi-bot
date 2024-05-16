@@ -192,7 +192,7 @@ export function assign_connections(game, connections, giver) {
 		const card = common.thoughts[conn_card.order];
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
-		if (!card.superposition && card.old_inferred === undefined)
+		if (card.old_inferred === undefined)
 			card.old_inferred = card.inferred;
 
 		if (type === 'finesse') {
