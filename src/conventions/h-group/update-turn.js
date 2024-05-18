@@ -112,6 +112,20 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
+		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && type === 'finesse' && game.last_actions[reacting].type === 'clue') {
+			// TODO: This should only allow for saving a card that was on chop.
+			if (game.last_actions[reacting].list.some(order => game.common.thoughts[order].saved)) {
+				logger.warn(`allowing ${state.playerNames[reacting]} to defer a finesse by giving a save`);
+				return { remove: false };
+			}
+
+			// TODO: We should only allow deferring a finesse for another finesse if no-one else could have given the other finesse.
+			if (game.common.waiting_connections.find(waiting => waiting.action_index == state.actionList.indexOf(game.last_actions[reacting]))) {
+				logger.warn(`allowing ${state.playerNames[reacting]} to defer a finesse by giving a finesse clue`);
+				return { remove: false };
+			}
+		}
+
 		if (passback()) {
 			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but they need to play multiple non-hidden cards, passing back`);
 			waiting_connection.ambiguousPassback = true;

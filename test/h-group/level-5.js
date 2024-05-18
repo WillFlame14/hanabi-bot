@@ -143,6 +143,54 @@ describe('ambiguous clues', () => {
 		assert.equal(slot1.finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[slot1.order], ['b2']);
 	});
+
+	it('does not assume it has finessed card if another finesse is given', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y4', 'p2', 'p4', 'y3'],
+			['r3', 'r4', 'g3', 'g2'],
+			['r1', 'r2', 'b3', 'y5']
+		], { level: 5, starting: PLAYER.BOB });
+
+		takeTurn(game, 'Bob clues red to Cathy');
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, false);
+
+		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Donald plays r1', 'p1');
+		takeTurn(game, 'Alice discards b4 (slot 4)');
+		takeTurn(game, 'Bob clues 2 to Alice (slot 4)');
+		takeTurn(game, 'Cathy clues purple to Donald');
+		takeTurn(game, 'Donald clues green to Cathy');
+
+		// Donald gave a finesse, so Alice should still wait for the r2 play.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.DONALD][1].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, false);
+
+		// Meanwhile, Alice should play into the green finesse.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g1']);
+	});
+
+	it('does not assume it has finessed card if a save was given', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y4', 'p2', 'p4', 'y3'],
+			['r3', 'r4', 'g3', 'g2'],
+			['r1', 'r2', 'b3', 'y5']
+		], { level: 5, starting: PLAYER.BOB });
+
+		takeTurn(game, 'Bob clues red to Cathy');
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, false);
+
+		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Donald clues 5 to Alice (slot 4)');
+
+		// Donald gave a save, so Alice should still wait for the r1 play.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.DONALD][0].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+	});
 });
 
 describe('guide principle', () => {
