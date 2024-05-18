@@ -17,7 +17,7 @@ import { logAction, logClue } from '../src/tools/log.js';
  * @property {number} clue_tokens
  * @property {number} starting
  * @property {Variant} variant
- * @property {(state: State) => void} init
+ * @property {(game: Game) => void} init
  */
 
 export const COLOUR = /** @type {const} */ ({
@@ -114,7 +114,7 @@ function init_game(game, options) {
 	state.clue_tokens = options.clue_tokens ?? 8;
 
 	if (options.init)
-		options.init(state);
+		options.init(game);
 }
 
 /**

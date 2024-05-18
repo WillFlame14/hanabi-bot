@@ -119,6 +119,18 @@ function best_stall_clue(stall_clues, severity) {
 	return stall_clues[5][0];
 }
 
+/** @param {Game} game */
+export function find_all_clues(game) {
+	logger.collect();
+	const { play_clues, save_clues } = find_clues(game);
+	logger.flush(false);
+
+	return [
+		...play_clues.flatMap((clues, target) => clues.map(clue => Object.assign(clue, { target }))),
+		...Utils.range(0, game.state.numPlayers).reduce((acc, target) => (save_clues[target] ? acc.concat([Object.assign(save_clues[target], { target })]) : acc), []),
+	];
+}
+
 /**
  * Performs the most appropriate action given the current state.
  * @param {Game} game
@@ -233,7 +245,7 @@ export function take_action(game) {
 	// Attempt to solve endgame
 	if (state.inEndgame() && state.cardsLeft > 0) {
 		try {
-			const action = solve_game(game, state.ourPlayerIndex);
+			const action = solve_game(game, state.ourPlayerIndex, find_all_clues);
 
 			if (action.type === ACTION.COLOUR || action.type === ACTION.RANK) {
 				const stall_clue = best_play_clue ?? best_stall_clue(stall_clues, 4) ??

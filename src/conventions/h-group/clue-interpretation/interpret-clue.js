@@ -203,9 +203,14 @@ export function interpret_clue(game, action) {
 		const rewind_identity = common.thoughts[rewind_card.order]?.identity();
 
 		if (rewind_identity !== undefined && wc_target === state.ourPlayerIndex) {
-			const { suitIndex, rank } = rewind_identity;
-			game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, suitIndex, rank });
-			return;
+			try {
+				const { suitIndex, rank } = rewind_identity;
+				game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, suitIndex, rank });
+				return;
+			}
+			catch(err) {
+				logger.warn(err.message);
+			}
 		}
 
 		to_remove.add(i);
@@ -374,7 +379,8 @@ export function interpret_clue(game, action) {
 				conn.connections[0].bluff = false;
 				return conn;
 			}).filter(conn => !!conn);
-		} else {
+		}
+		else {
 			const bluff_connections = all_connections.some(connection =>
 				connection.connections.length > 0 && connection.connections[0].bluff);
 			let removed = 0;

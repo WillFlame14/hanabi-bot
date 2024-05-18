@@ -1,12 +1,15 @@
 import { visibleFind } from '../../basics/hanabi-util.js';
 import { ACTION } from '../../constants.js';
-import { logCard } from '../../tools/log.js';
+import { logCard, logClue, logObjectiveAction } from '../../tools/log.js';
 import logger from '../../tools/logger.js';
 import { cardCount } from '../../variants.js';
+
+import * as Utils from '../../tools/util.js';
 
 /**
  * @typedef {import('../../basics/Game.js').Game} Game
  * @typedef {import('../../basics/State.js').State} State
+ * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').PerformAction} PerformAction
  */
 
@@ -18,34 +21,12 @@ export class UnsolvedGame extends Error {
 }
 
 /**
- * @param {State} state
- * @param {PerformAction & {playerIndex: number}} action
- */
-function logPerformActionLimited(state, action) {
-	/** @type {string} */
-	let actionType;
-
-	switch (action.type) {
-		case ACTION.PLAY:
-			actionType = `play ${logCard(state.deck[action.target])}`;
-			break;
-		case ACTION.COLOUR:
-		case ACTION.RANK:
-			actionType = 'clue';
-			break;
-		case ACTION.DISCARD:
-			actionType = 'discard';
-	}
-
-	return `${actionType} (${state.playerNames[action.playerIndex]})`;
-}
-
-/**
  * @param {Game} game
  * @param {number} playerTurn
+ * @param {(game: Game) => Clue[]} find_clues
  */
-export function solve_game(game, playerTurn) {
-	const { state, me } = game;
+export function solve_game(game, playerTurn, find_clues) {
+	const { common, state, me } = game;
 
 	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= state.max_ranks[suitIndex]; rank++) {
@@ -56,43 +37,37 @@ export function solve_game(game, playerTurn) {
 		}
 	}
 
-	const fullyKnown = state.hands.every((hand, index) => {
-		if (index === state.ourPlayerIndex)
-			return true;
-
-		return hand.every(c => state.isBasicTrash(c) || game.players[index].thoughts[c.order].identity({ infer: true })?.matches(c));
-	});
-
-	const known_state = state.minimalCopy();
+	const common_state = state.minimalCopy();
 
 	for (const { order } of state.hands[state.ourPlayerIndex]) {
-		const id = me.thoughts[order].identity({ infer: true });
+		const id = common.thoughts[order].identity({ infer: true });
 
 		if (id !== undefined) {
 			const identity = { suitIndex: id.suitIndex, rank: id.rank };
-			Object.assign(known_state.hands[state.ourPlayerIndex].findOrder(order), identity);
+			Object.assign(common_state.hands[state.ourPlayerIndex].findOrder(order), identity);
 			Object.assign(state.deck[order], identity);
 		}
 	}
 
-	const { actions, winrate } = winnable(known_state, playerTurn, fullyKnown);
+	const { actions, winrate } = winnable_simple(game, playerTurn, find_clues);
 
 	if (winrate === 0)
 		throw new UnsolvedGame(`couldn't find a winning strategy`);
 
-	logger.highlight('purple', `endgame solved! found actions [${actions.map(action => logPerformActionLimited(known_state, action)).join(', ')}] with winrate ${winrate}`);
+	logger.highlight('purple', `endgame solved! found actions [${actions.map(action => logObjectiveAction(common_state, action)).join(', ')}] with winrate ${winrate}`);
 	return actions[0];
 }
 
-
 /**
- * @param {State} state
+ * @param {Game} game
  * @param {number} playerTurn
- * @param {boolean} fullyKnown 		Whether all useful cards are known by their owners.
+ * @param {(game: Game) => Clue[]} find_clues
  * @param {number} endgameTurns
- * @returns {{actions: (PerformAction & {playerIndex: number})[] | undefined, winrate: number}}
+ * @returns {{actions: (Omit<PerformAction, 'tableID'> & {playerIndex: number})[] | undefined, winrate: number}}
  */
-export function winnable(state, playerTurn, fullyKnown, endgameTurns = -1) {
+export function winnable_simple(game, playerTurn, find_clues = () => [], endgameTurns = -1) {
+	const { state, common } = game;
+
 	if (state.score === state.maxScore)
 		return { actions: [], winrate: 1 };
 
@@ -100,40 +75,23 @@ export function winnable(state, playerTurn, fullyKnown, endgameTurns = -1) {
 		return { actions: [], winrate: 0 };
 
 	const nextPlayerIndex = state.nextPlayerIndex(playerTurn);
-
-	const usefulHands = state.hands.map(hand =>
-		Array.from(hand.filter(c => state.play_stacks[c.suitIndex] < c.rank && c.rank <= state.max_ranks[c.suitIndex])));
-
-	const playables = usefulHands[playerTurn].filter(c => state.isPlayable(c));
+	const playables = common.thinksPlayables(state, playerTurn);
 
 	let best_actions = [], best_winrate = 0;
 
-	if (state.clue_tokens > 0) {
-		const clue_state = state.minimalCopy();
-		clue_state.clue_tokens--;
+	if (playables.length > 0) {
+		for (const { order } of playables) {
+			const { suitIndex, rank } = state.deck[order];
 
-		logger.debug(state.playerNames[playerTurn], 'trying to clue', endgameTurns);
-		const { actions, winrate } = winnable(clue_state, nextPlayerIndex, fullyKnown, endgameTurns === -1 ? -1 : endgameTurns - 1);
+			const new_game = game.simulate_action({ type: 'play', order, suitIndex, rank, playerIndex: playerTurn });
+			new_game.state.cardsLeft--;
 
-		if (winrate > best_winrate) {
-			best_actions = actions.toSpliced(0, 0, { tableID: -1, type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn });
-			best_winrate = winrate;
-		}
-	}
-
-	// If cards are fully known, we prefer playing if possible
-	if ((fullyKnown || best_winrate < 1) && playables.length > 0) {
-		for (const { suitIndex, rank, order } of playables) {
-			const play_state = state.minimalCopy();
-			play_state.play_stacks[suitIndex] = rank;
-			play_state.cardsLeft--;
-
-			const nextEndgameTurns = endgameTurns !== -1 ? endgameTurns - 1 : (play_state.cardsLeft === 0 ? state.numPlayers : -1);
 			logger.debug(state.playerNames[playerTurn], 'trying to play', logCard({ suitIndex, rank }), endgameTurns);
-			const { actions, winrate } = winnable(play_state, nextPlayerIndex, fullyKnown, nextEndgameTurns);
+			const nextEndgameTurns = endgameTurns !== -1 ? endgameTurns - 1 : (new_game.state.cardsLeft === 0 ? state.numPlayers : -1);
+			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, nextEndgameTurns);
 
 			if (winrate >= best_winrate) {
-				best_actions = actions.toSpliced(0, 0, { tableID: -1, type: ACTION.PLAY, target: order, playerIndex: playerTurn });
+				best_actions = actions.toSpliced(0, 0, { type: ACTION.PLAY, target: order, playerIndex: playerTurn });
 				best_winrate = winrate;
 			}
 
@@ -142,20 +100,58 @@ export function winnable(state, playerTurn, fullyKnown, endgameTurns = -1) {
 		}
 	}
 
-	if (best_winrate < 1) {
-		const discard_state = state.minimalCopy();
-		discard_state.clue_tokens++;
-		discard_state.cardsLeft--;
+	if (best_winrate < 1 && state.clue_tokens > 0) {
+		const clues = find_clues(game).filter(c => c.target !== playerTurn);
+
+		if (clues.length === 0) {
+			const clue_game = game.shallowCopy();
+			clue_game.state = state.minimalCopy();
+			clue_game.state.clue_tokens--;
+
+			const { actions, winrate } = winnable_simple(clue_game, nextPlayerIndex, find_clues, endgameTurns === -1 ? -1 : endgameTurns - 1);
+
+			if (winrate > best_winrate) {
+				best_actions = actions.toSpliced(0, 0, Object.assign({ type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn }));
+				best_winrate = winrate;
+			}
+		}
+
+		for (const clue of clues) {
+			logger.debug(state.playerNames[playerTurn], 'trying to clue', logClue(clue), endgameTurns);
+
+			const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
+			const new_game = game.simulate_clue({ type: 'clue', clue, list, giver: playerTurn, target: clue.target });
+
+			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, endgameTurns === -1 ? -1 : endgameTurns - 1);
+
+			if (winrate > best_winrate) {
+				best_actions = actions.toSpliced(0, 0, Object.assign(Utils.clueToAction(clue, -1), { playerIndex: playerTurn }));
+				best_winrate = winrate;
+			}
+
+			if (best_winrate === 1)
+				break;
+		}
+	}
+
+	const not_useful = state.hands[playerTurn].find(c => state.isBasicTrash(c));
+
+	if (best_winrate < 1 && not_useful !== undefined) {
+		const { suitIndex, rank } = not_useful;
+		const new_game = game.simulate_action({ type: 'discard', order: not_useful.order, playerIndex: playerTurn, suitIndex, rank, failed: false });
+		new_game.state.cardsLeft--;
 
 		logger.debug(state.playerNames[playerTurn], 'trying to discard', endgameTurns);
-		const nextEndgameTurns = endgameTurns !== -1 ? endgameTurns - 1 : (discard_state.cardsLeft === 0 ? state.numPlayers : -1);
-		const { actions, winrate } = winnable(discard_state, nextPlayerIndex, fullyKnown, nextEndgameTurns);
+		const nextEndgameTurns = endgameTurns !== -1 ? endgameTurns - 1 : (new_game.state.cardsLeft === 0 ? state.numPlayers : -1);
+		const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, nextEndgameTurns);
 
 		if (winrate > best_winrate) {
-			best_actions = actions.toSpliced(0, 0, { tableID: -1, type: ACTION.DISCARD, target: -1, playerIndex: playerTurn });
+			best_actions = actions.toSpliced(0, 0, { type: ACTION.DISCARD, target: -1, playerIndex: playerTurn });
 			best_winrate = winrate;
 		}
 	}
+
+	Utils.globalModify({ game });
 
 	return { actions: best_actions, winrate: best_winrate };
 }

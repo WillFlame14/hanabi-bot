@@ -118,6 +118,33 @@ export function logPerformAction(action) {
 }
 
 /**
+ * Returns a log-friendly representation of a PerformAction objectively.
+ * @param  {State} state
+ * @param  {Omit<PerformAction, 'tableID'> & { playerIndex: number }} action
+ */
+export function logObjectiveAction(state, action) {
+	/** @type {string} */
+	let actionType;
+
+	switch (action.type) {
+		case ACTION.PLAY:
+			actionType = `play ${logCard(state.deck[action.target])}`;
+			break;
+		case ACTION.COLOUR:
+		case ACTION.RANK:
+			if (action.target === -1)
+				actionType = 'clue';
+			else
+				actionType = `clue ${logClue(action)}`;
+			break;
+		case ACTION.DISCARD:
+			actionType = 'discard';
+	}
+
+	return `${actionType} (${state.playerNames[action.playerIndex]})`;
+}
+
+/**
  * Returns a log-friendly representation of an Action.
  * @param  {Action} action
  */

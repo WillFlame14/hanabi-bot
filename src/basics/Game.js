@@ -103,7 +103,7 @@ export class Game {
 	minimalCopy() {
 		const newGame = new Game(this.tableID, this.state.minimalCopy(), this.in_progress);
 
-		if (this.copyDepth > 3)
+		if (this.copyDepth > 100)
 			throw new Error('Maximum recursive depth reached.');
 
 		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory'];
@@ -180,7 +180,7 @@ export class Game {
 		const { actionList } = this.state;
 
 		this.rewinds++;
-		if (this.rewinds > 50)
+		if (this.rewinds > 100)
 			throw new Error('Attempted to rewind too many times!');
 
 		if (this.rewindDepth > 2)
@@ -323,8 +323,7 @@ export class Game {
 
 	/**
 	 * Returns a hypothetical state where the provided clue was given.
-	 * 
-	 * The 'simulatePlayerIndex' option changes ourPlayerIndex to the given index.
+	 * This is slightly different from simulate_action() in that the normal "clue cleanup" actions are not taken.
 	 * 
 	 * The 'enableLogs' option causes all logs from the simulated state to be printed.
 	 * Otherwise, only errors are printed from the simulated state.
@@ -338,6 +337,28 @@ export class Game {
 
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
 			hypo_game.interpret_clue(hypo_game, action);
+		});
+
+		Utils.globalModify({ game: this });
+
+		return hypo_game;
+	}
+
+	/**
+	 * Returns a hypothetical state where the provided action was taken.
+	 * 
+	 * The 'enableLogs' option causes all logs from the simulated state to be printed.
+	 * Otherwise, only errors are printed from the simulated state.
+	 * @param {Action} action
+	 * @param {{enableLogs?: boolean}} options
+	 */
+	simulate_action(action, options = {}) {
+		const hypo_game = /** @type {this} */ (this.minimalCopy());
+
+		Utils.globalModify({ game: hypo_game });
+
+		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
+			hypo_game.handle_action(action, true);
 		});
 
 		Utils.globalModify({ game: this });

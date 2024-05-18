@@ -44,7 +44,7 @@ export default class PlayfulSieve extends Game {
 	minimalCopy() {
 		const newGame = new PlayfulSieve(this.tableID, this.state.minimalCopy(), this.in_progress);
 
-		if (this.copyDepth > 3)
+		if (this.copyDepth > 100)
 			throw new Error('Maximum recursive depth reached.');
 
 		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'locked_shifts'];
