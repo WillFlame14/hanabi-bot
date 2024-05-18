@@ -117,16 +117,15 @@ export function interpret_discard(game, action, card) {
 			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
 			const chop = common.chop(state.hands[nextPlayerIndex]);
 
+			logger.info(`interpreted ${result}!`);
+
 			if (result === 'scream' || result === 'shout') {
 				state.screamed_at = true;
 
-				if (chop === undefined) {
-					logger.warn(`interpreted ${result} when ${state.playerNames[nextPlayerIndex]} has no chop!`);
-				}
-				else {
-					logger.info(`interpreted ${result} on ${state.playerNames[nextPlayerIndex]}!`);
+				if (chop === undefined)
+					logger.warn(`${state.playerNames[nextPlayerIndex]} has no chop!`);
+				else
 					common.thoughts[chop.order].chop_moved = true;
-				}
 			}
 		}
 	}

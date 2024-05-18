@@ -82,6 +82,7 @@ export function card_elim(state) {
 					certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
 				}
 			}
+			reverse_elim_map.delete(o1);
 		}
 		elim_map.delete(card.possible.value);
 	};
