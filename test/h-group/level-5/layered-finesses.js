@@ -226,4 +226,26 @@ describe('layered finesse', () => {
 		// Green to Cathy is not safe, Bob cannot play into the r3 layer.
 		assert.equal(clue_safe(game, game.me, { type: CLUE.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN }), false);
 	});
+
+	it(`doesn't give finesses to a player who may need to demonstrate a finesse to us`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'b5', 'p2', 'p1'],
+			['r1', 'g3', 'r2', 'b4'],
+			['g1', 'g5', 'p1', 'y4']
+		], {
+			level: 5,
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 2 to Alice (slots 2,4)');		// 2 Save
+		takeTurn(game, 'Alice clues 1 to Donald');					// getting g1, p1
+		takeTurn(game, 'Bob clues green to Alice (slots 1,4)');		// revealing g2, and touching g3 (direct) or g4 (r1, g3 reverse layer)
+		takeTurn(game, 'Cathy clues 5 to Donald');
+
+		const { play_clues } = find_clues(game);
+
+		// 3 to Bob does not work, since we may have g3
+		assert.equal(play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 3), false);
+	});
 });

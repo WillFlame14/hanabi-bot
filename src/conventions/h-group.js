@@ -77,7 +77,7 @@ export default class HGroup extends Game {
 	minimalCopy() {
 		const newGame = new HGroup(this.tableID, this.state.minimalCopy(), this.in_progress, this.level);
 
-		if (this.copyDepth > 3)
+		if (this.copyDepth > 100)
 			throw new Error('Maximum recursive depth reached.');
 
 		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory',

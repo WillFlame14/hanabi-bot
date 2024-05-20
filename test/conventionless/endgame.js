@@ -1,16 +1,18 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, setup } from '../test-utils.js';
+import { PLAYER, expandShortCard, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
+import * as ExAsserts from '../extra-asserts.js';
 
 import { ACTION } from '../../src/constants.js';
-import { winnable } from '../../src/conventions/shared/endgame.js';
+import { solve_game } from '../../src/conventions/shared/endgame.js';
 import logger from '../../src/tools/logger.js';
+import { logObjectiveAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
-describe('endgames with 1 card left', () => {
+describe('simple endgames with 1 card left', () => {
 	it('clues to start b4 -> b5 endgame', () => {
 		const game = setup(HGroup, [
 			['y5', 'xx', 'xx', 'xx'],
@@ -18,15 +20,28 @@ describe('endgames with 1 card left', () => {
 			['g1', 'b1', 'b1', 'r5'],
 			['b4', 'p1', 'p1', 'r1'],
 		], {
-			play_stacks: [4, 4, 5, 3, 5]
+			play_stacks: [4, 4, 5, 3, 5],
+			init: (game) => {
+				const { common, state } = game;
+				const a_slot1 = common.thoughts[state.hands[PLAYER.ALICE][0].order];
+				a_slot1.inferred = a_slot1.inferred.intersect(expandShortCard('y5'));
+
+				const [b_slot1, b_slot4] = [0, 3].map(i => common.thoughts[state.hands[PLAYER.BOB][i].order]);
+				b_slot1.inferred = b_slot1.inferred.intersect(expandShortCard('b4'));
+				b_slot4.inferred = b_slot4.inferred.intersect(expandShortCard('b5'));
+
+				const c_slot4 = common.thoughts[state.hands[PLAYER.CATHY][3].order];
+				c_slot4.inferred = c_slot4.inferred.intersect(expandShortCard('r5'));
+
+				const d_slot1 = common.thoughts[state.hands[PLAYER.DONALD][0].order];
+				d_slot1.inferred = d_slot1.inferred.intersect(expandShortCard('b4'));
+
+				game.state.cardsLeft = 1;
+			}
 		});
 
-		game.state.cardsLeft = 1;
-
-		const { actions, winrate } = winnable(game.state, PLAYER.ALICE, true);
-
-		assert.equal(actions[0].type, ACTION.RANK);
-		assert.equal(winrate, 1);
+		const action = solve_game(game, PLAYER.ALICE);
+		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR, `expected clue, selected ${logObjectiveAction(game.state, action)}`);
 	});
 
 	it('clues to start endgame on a double player with different suits', () => {
@@ -36,15 +51,23 @@ describe('endgames with 1 card left', () => {
 			['g1', 'b1', 'b1', 'r1'],
 			['y4', 'p1', 'p1', 'y5'],
 		], {
-			play_stacks: [5, 3, 4, 5, 5]
+			play_stacks: [5, 3, 4, 5, 5],
+			init: (game) => {
+				const { common, state } = game;
+				const [b_slot1, b_slot2] = [0, 1].map(i => common.thoughts[state.hands[PLAYER.BOB][i].order]);
+				b_slot1.inferred = b_slot1.inferred.intersect(expandShortCard('g5'));
+				b_slot2.inferred = b_slot2.inferred.intersect(expandShortCard('y4'));
+
+				const [d_slot1, d_slot4] = [0, 3].map(i => common.thoughts[state.hands[PLAYER.DONALD][i].order]);
+				d_slot1.inferred = d_slot1.inferred.intersect(expandShortCard('y4'));
+				d_slot4.inferred = d_slot4.inferred.intersect(expandShortCard('y5'));
+
+				game.state.cardsLeft = 1;
+			}
 		});
 
-		game.state.cardsLeft = 1;
-
-		const { actions, winrate } = winnable(game.state, PLAYER.ALICE, true);
-
-		assert.equal(actions[0].type, ACTION.RANK);
-		assert.equal(winrate, 1);
+		const action = solve_game(game, PLAYER.ALICE);
+		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR, `expected clue, selected ${logObjectiveAction(game.state, action)}`);
 	});
 
 	it('plays to start endgame', () => {
@@ -54,15 +77,26 @@ describe('endgames with 1 card left', () => {
 			['g1', 'b1', 'b1', 'r1'],
 			['b2', 'p1', 'p1', 'r5'],
 		], {
-			play_stacks: [3, 5, 5, 4, 5]
+			play_stacks: [3, 5, 5, 4, 5],
+			init: (game) => {
+				const { common, state } = game;
+				const [a_slot1, a_slot2] = [0, 1].map(i => common.thoughts[state.hands[PLAYER.ALICE][i].order]);
+				a_slot1.inferred = a_slot1.inferred.intersect(expandShortCard('r4'));
+				a_slot2.inferred = a_slot2.inferred.intersect(expandShortCard('r4'));
+
+				const b_slot4 = common.thoughts[state.hands[PLAYER.BOB][3].order];
+				b_slot4.inferred = b_slot4.inferred.intersect(expandShortCard('b5'));
+
+				const d_slot4 = common.thoughts[state.hands[PLAYER.DONALD][3].order];
+				d_slot4.inferred = d_slot4.inferred.intersect(expandShortCard('r5'));
+
+				game.state.cardsLeft = 1;
+			}
 		});
 
-		game.state.cardsLeft = 1;
-
-		const { actions, winrate } = winnable(game.state, PLAYER.ALICE, true);
-
-		assert.equal(actions[0].type, ACTION.PLAY);
-		assert.equal(winrate, 1);
+		// Alice should play r4.
+		const action = solve_game(game, PLAYER.ALICE);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
 	});
 
 	it('plays to start endgame when other has dupes', () => {
@@ -73,14 +107,55 @@ describe('endgames with 1 card left', () => {
 			['r1', 'p1', 'p1', 'p5'],
 		], {
 			play_stacks: [5, 5, 5, 5, 2],
-			discarded: ['p3']
+			discarded: ['p3'],
+			init: (game) => {
+				const { common, state } = game;
+				const a_slot1 = common.thoughts[state.hands[PLAYER.ALICE][0].order];
+				a_slot1.inferred = a_slot1.inferred.intersect(expandShortCard('p3'));
+
+				const [b_slot2, b_slot4] = [1, 3].map(i => common.thoughts[state.hands[PLAYER.BOB][i].order]);
+				b_slot2.inferred = b_slot2.inferred.intersect(expandShortCard('p4'));
+				b_slot4.inferred = b_slot4.inferred.intersect(expandShortCard('p4'));
+
+				const d_slot4 = common.thoughts[state.hands[PLAYER.DONALD][3].order];
+				d_slot4.inferred = d_slot4.inferred.intersect(expandShortCard('p5'));
+
+				game.state.cardsLeft = 1;
+			}
 		});
 
-		game.state.cardsLeft = 1;
+		// Alice should play p3.
+		const action = solve_game(game, PLAYER.ALICE);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
+	});
+});
 
-		const { actions, winrate } = winnable(game.state, PLAYER.ALICE, true);
+describe('more complex endgames where all cards are seen', () => {
+	it('plays to start endgame 1', () => {
+		const game = setup(HGroup, [
+			['xx', 'p3', 'p4', 'r5', 'r4'],
+			['b1', 'r1', 'g1', 'p5', 'p2'],
+			['g1', 'b1', 'r4', 'r1', 'g5']
+		], {
+			play_stacks: [3, 5, 4, 5, 1],
+			init: (game) => {
+				const { common, state } = game;
+				const a_hand = state.hands[PLAYER.ALICE].map(c => common.thoughts[c.order]);
+				['p3', 'p4', 'r5', 'r4'].map((id, i) => a_hand[i + 1].inferred = a_hand[i + 1].inferred.intersect(expandShortCard(id)));
 
-		assert.equal(actions[0].type, ACTION.PLAY);
-		assert.equal(winrate, 1);
+				const [b_slot4, b_slot5] = [3, 4].map(i => common.thoughts[state.hands[PLAYER.BOB][i].order]);
+				b_slot4.inferred = b_slot4.inferred.intersect(expandShortCard('p5'));
+				b_slot5.inferred = b_slot5.inferred.intersect(expandShortCard('p2'));
+
+				const c_slot5 = common.thoughts[state.hands[PLAYER.CATHY][4].order];
+				c_slot5.inferred = c_slot5.inferred.intersect(expandShortCard('g5'));
+
+				game.state.cardsLeft = 4;
+			}
+		});
+
+		// Alice should play r4.
+		const action = solve_game(game, PLAYER.ALICE);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
 	});
 });

@@ -36,7 +36,11 @@ export class State {
 	max_ranks = /** @type {number[]} */ ([]);
 
 	currentPlayerIndex = 0;
-	cardOrder = 0;
+
+	/** The order of the most recently drawn card. */
+	cardOrder = -1;
+
+	endgameTurns = -1;
 
 	/**
 	 * @param {string[]} playerNames
@@ -94,6 +98,10 @@ export class State {
 		return this.score + this.cardsLeft + this.numPlayers - this.maxScore;
 	}
 
+	get ended() {
+		return this.endgameTurns === 0;
+	}
+
 	/**
 	 * Returns the player index of the next player, in turn order.
 	 * @param {number} playerIndex
@@ -129,7 +137,7 @@ export class State {
 		const newState = new State(this.playerNames, this.ourPlayerIndex, this.variant, this.options);
 
 		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'turn_count', 'clue_tokens',
-			'strikes', 'early_game', 'cardsLeft', 'actionList', 'deck', 'screamed_at'];
+			'strikes', 'early_game', 'cardsLeft', 'cardOrder', 'actionList', 'deck', 'screamed_at', 'endgameTurns'];
 
 		for (const property of minimalProps)
 			newState[property] = Utils.objClone(this[property]);

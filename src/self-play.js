@@ -121,46 +121,41 @@ async function main() {
 function simulate_game(playerNames, deck, convention, level) {
 	const games = playerNames.map((_, index) => {
 		const state = new State(playerNames, index, noVar, {});
-
-		return {
-			game: new conventions[convention](-1, state, false, level),
-			order: 0
-		};
+		return new conventions[convention](-1, state, false, level);
 	});
 
-	Utils.globalModify({ game: games[0].game });
+	Utils.globalModify({ game: games[0] });
 
 	for (let gameIndex = 0; gameIndex < playerNames.length; gameIndex++) {
-		const { game } = games[gameIndex];
+		const game = games[gameIndex];
 
 		// Draw cards in starting hands
 		for (let playerIndex = 0; playerIndex < playerNames.length; playerIndex++) {
 			for (let j = 0; j < game.state.handSize; j++) {
-				const { order } = games[gameIndex];
+				const order = games[gameIndex].state.cardOrder + 1;
 				const { suitIndex, rank } = playerIndex !== game.state.ourPlayerIndex ? deck[order] : { suitIndex: -1, rank: -1 };
 
 				game.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank }, true);
-				games[gameIndex].order++;
 			}
 		}
 	}
 
-	let currentPlayerIndex = 0, turn = 0, endgameTurns = -1;
+	let currentPlayerIndex = 0, turn = 0;
 
 	/** @type {Pick<PerformAction, 'type' | 'target' | 'value'>[]} */
 	const actions = [];
 
 	try {
-		while (endgameTurns !== 0 && games[0].game.state.strikes !== 3 && games[0].game.state.score !== games[0].game.state.variant.suits.length * 5) {
+		while (games[0].state.endgameTurns !== 0 && games[0].state.strikes !== 3 && games[0].state.score !== games[0].state.maxScore) {
 			if (turn !== 0) {
-				games.forEach(({ game }, index) => {
+				games.forEach((game, index) => {
 					logger.debug('Turn for', game.state.playerNames[index]);
 					Utils.globalModify({ game });
 					game.handle_action({ type: 'turn', num: turn, currentPlayerIndex });
 				}, true);
 			}
 
-			const { game: currentPlayerGame } = games[currentPlayerIndex];
+			const currentPlayerGame = games[currentPlayerIndex];
 			Utils.globalModify({ game: currentPlayerGame });
 
 			// @ts-ignore (one day static analysis will get better)
@@ -168,8 +163,9 @@ function simulate_game(playerNames, deck, convention, level) {
 			actions.push(Utils.objPick(performAction, ['type', 'target', 'value'], { default: 0 }));
 
 			for (let gameIndex = 0; gameIndex < playerNames.length; gameIndex++) {
-				const { game, order } = games[gameIndex];
+				const game = games[gameIndex];
 				const { state } = game;
+				const order = state.cardOrder + 1;
 				const action = Utils.performToAction(state, performAction, currentPlayerIndex, deck);
 
 				logger.debug('Action for', state.playerNames[gameIndex]);
@@ -185,14 +181,8 @@ function simulate_game(playerNames, deck, convention, level) {
 				if ((action.type === 'play' || action.type === 'discard') && order < deck.length) {
 					const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
 					game.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank }, true);
-					games[gameIndex].order++;
 				}
 			}
-
-			if (games[currentPlayerIndex].order === deck.length && endgameTurns === -1)
-				endgameTurns = playerNames.length;
-			else if (endgameTurns > 0)
-				endgameTurns--;
 
 			currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.length;
 			// logger.setLevel(currentPlayerIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
@@ -202,7 +192,7 @@ function simulate_game(playerNames, deck, convention, level) {
 		actions.push({
 			type: ACTION.END_GAME,
 			target: (currentPlayerIndex + playerNames.length - 1) % playerNames.length,
-			value: endgameTurns === 0 ? END_CONDITION.NORMAL : END_CONDITION.STRIKEOUT
+			value: games[0].state.endgameTurns === 0 ? END_CONDITION.NORMAL : END_CONDITION.STRIKEOUT
 		});
 	}
 	catch (err) {
@@ -212,7 +202,7 @@ function simulate_game(playerNames, deck, convention, level) {
 			logger.flush();
 	}
 
-	const { score, strikes, variant, max_ranks } = games[0].game.state;
+	const { score, strikes, variant, max_ranks } = games[0].state;
 
 	const result = strikes === 3 ? 'strikeout' :
 		score === variant.suits.length * 5 ? 'perfect!' :
@@ -220,7 +210,7 @@ function simulate_game(playerNames, deck, convention, level) {
 		max_ranks.some(max => max !== 5) ? 'discarded critical, out of pace' :
 		'out of pace';
 
-	return { score: games[0].game.state.score, result, actions, notes: games.map(({ game }) => Array.from(game.notes).map(note => note?.full || "")) };
+	return { score: games[0].state.score, result, actions, notes: games.map(game => Array.from(game.notes).map(note => note?.full || "")) };
 }
 
 main();

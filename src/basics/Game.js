@@ -1,14 +1,14 @@
 import { IdentitySet } from './IdentitySet.js';
 import { Hand } from './Hand.js';
 import { Player } from './Player.js';
-
+import { ActualCard } from '../basics/Card.js';
 import { handle_action } from '../action-handler.js';
+
 import logger from '../tools/logger.js';
 import * as Utils from '../tools/util.js';
 import { logPerformAction } from '../tools/log.js';
 
 /**
- * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').BaseClue} BaseClue
@@ -53,6 +53,12 @@ export class Game {
 	next_finesse = [];
 
 	handle_action = handle_action;
+
+	/**
+	 * A function that executes after all cards have been drawn.
+	 * @param {this} [_game]
+	 */
+	hookAfterDraws = (_game) => {};
 
 	/**
 	 * @param {number} tableID
@@ -103,7 +109,7 @@ export class Game {
 	minimalCopy() {
 		const newGame = new Game(this.tableID, this.state.minimalCopy(), this.in_progress);
 
-		if (this.copyDepth > 3)
+		if (this.copyDepth > 100)
 			throw new Error('Maximum recursive depth reached.');
 
 		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory'];
@@ -180,7 +186,7 @@ export class Game {
 		const { actionList } = this.state;
 
 		this.rewinds++;
-		if (this.rewinds > 50)
+		if (this.rewinds > 100)
 			throw new Error('Attempted to rewind too many times!');
 
 		if (this.rewindDepth > 2)
@@ -207,16 +213,26 @@ export class Game {
 		const history = actionList.slice(0, action_index);
 		Utils.globalModify({ game: newGame });
 
+		let injected = false;
+
 		/** @param {Action} action */
 		const catchup_action = (action) => {
+			if (!injected && action.type !== 'draw') {
+				newGame.hookAfterDraws(newGame);
+				injected = true;
+			}
+
 			const our_action = action.type === 'clue' && action.giver === this.state.ourPlayerIndex;
+
+			if (!our_action) {
+				newGame.handle_action(action, true);
+				return;
+			}
 
 			const hypoGame = newGame.minimalCopy();
 
-			if (our_action) {
-				newGame.state.hands[this.state.ourPlayerIndex] = this.handHistory[newGame.state.turn_count];
-				newGame.restoreCardBindings();
-			}
+			newGame.state.hands[this.state.ourPlayerIndex] = this.handHistory[newGame.state.turn_count];
+			newGame.restoreCardBindings();
 
 			newGame.handle_action(action, true);
 
@@ -227,10 +243,8 @@ export class Game {
 			Utils.globalModify({ game: newGame });
 			logger.flush(false);
 
-			if (our_action) {
-				newGame.state.hands[this.state.ourPlayerIndex] = hypoGame.state.hands[this.state.ourPlayerIndex];
-				newGame.restoreCardBindings();
-			}
+			newGame.state.hands[this.state.ourPlayerIndex] = hypoGame.state.hands[this.state.ourPlayerIndex];
+			newGame.restoreCardBindings();
 		};
 
 		logger.wrapLevel(logger.LEVELS.ERROR, () => {
@@ -323,8 +337,7 @@ export class Game {
 
 	/**
 	 * Returns a hypothetical state where the provided clue was given.
-	 * 
-	 * The 'simulatePlayerIndex' option changes ourPlayerIndex to the given index.
+	 * This is slightly different from simulate_action() in that the normal "clue cleanup" actions are not taken.
 	 * 
 	 * The 'enableLogs' option causes all logs from the simulated state to be printed.
 	 * Otherwise, only errors are printed from the simulated state.
@@ -338,6 +351,38 @@ export class Game {
 
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
 			hypo_game.interpret_clue(hypo_game, action);
+		});
+
+		Utils.globalModify({ game: this });
+
+		return hypo_game;
+	}
+
+	/**
+	 * Returns a hypothetical state where the provided action was taken.
+	 * 
+	 * The 'enableLogs' option causes all logs from the simulated state to be printed.
+	 * Otherwise, only errors are printed from the simulated state.
+	 * @param {Action} action
+	 * @param {{enableLogs?: boolean}} options
+	 */
+	simulate_action(action, options = {}) {
+		const hypo_game = /** @type {this} */ (this.minimalCopy());
+
+		Utils.globalModify({ game: hypo_game });
+
+		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
+			hypo_game.handle_action(action, true);
+
+			if (action.type === 'play' || action.type === 'discard') {
+				hypo_game.handle_action({ type: 'turn', num: hypo_game.state.turn_count, currentPlayerIndex: action.playerIndex }, true);
+
+				if (hypo_game.state.cardsLeft > 0) {
+					const order = hypo_game.state.cardOrder + 1;
+					const { suitIndex, rank } = hypo_game.state.deck[order] ?? new ActualCard(-1, -1, order, hypo_game.state.actionList.length);
+					hypo_game.handle_action({ type: 'draw', playerIndex: action.playerIndex, order, suitIndex, rank }, true);
+				}
+			}
 		});
 
 		Utils.globalModify({ game: this });

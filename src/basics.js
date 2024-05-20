@@ -49,6 +49,9 @@ export function onClue(game, action) {
 		player.refresh_links(state);
 	}
 
+	if (state.endgameTurns !== -1)
+		state.endgameTurns--;
+
 	state.clue_tokens--;
 }
 
@@ -62,22 +65,28 @@ export function onDiscard(game, action) {
 	const identity = { suitIndex, rank };
 
 	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
-	state.discard_stacks[suitIndex][rank - 1]++;
-	Object.assign(state.deck[order], identity);
 
-	for (const player of game.allPlayers) {
-		const card = player.thoughts[order];
-		card.possible = card.possible.intersect(identity);
-		card.inferred = card.inferred.intersect(identity);
-		Object.assign(card, identity);
+	if (suitIndex !== -1 && rank !== -1) {
+		state.discard_stacks[suitIndex][rank - 1]++;
+		Object.assign(state.deck[order], identity);
 
-		player.card_elim(state);
-		player.refresh_links(state);
+		for (const player of game.allPlayers) {
+			const card = player.thoughts[order];
+			card.possible = card.possible.intersect(identity);
+			card.inferred = card.inferred.intersect(identity);
+			Object.assign(card, identity);
+
+			player.card_elim(state);
+			player.refresh_links(state);
+		}
+
+		// Discarded all copies of a card - the new max rank is (discarded rank - 1) if not already lower
+		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, { suitIndex, rank }))
+			state.max_ranks[suitIndex] = Math.min(state.max_ranks[suitIndex], rank - 1);
 	}
 
-	// Discarded all copies of a card - the new max rank is (discarded rank - 1) if not already lower
-	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, { suitIndex, rank }))
-		state.max_ranks[suitIndex] = Math.min(state.max_ranks[suitIndex], rank - 1);
+	if (state.endgameTurns !== -1)
+		state.endgameTurns--;
 
 	if (failed)
 		state.strikes++;
@@ -126,6 +135,9 @@ export function onDraw(game, action) {
 
 	state.cardOrder = order;
 	state.cardsLeft--;
+
+	if (state.cardsLeft === 0)
+		state.endgameTurns = state.numPlayers;
 }
 
 /**
@@ -138,18 +150,24 @@ export function onPlay(game, action) {
 	const identity = { suitIndex, rank };
 
 	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
-	state.play_stacks[suitIndex] = rank;
-	Object.assign(state.deck[order], identity);
 
-	for (const player of game.allPlayers) {
-		const card = player.thoughts[order];
-		card.possible = card.possible.intersect(identity);
-		card.inferred = card.inferred.intersect(identity);
-		Object.assign(card, identity);
+	if (suitIndex !== undefined && rank !== undefined) {
+		state.play_stacks[suitIndex] = rank;
+		Object.assign(state.deck[order], identity);
 
-		player.card_elim(state);
-		player.refresh_links(state);
+		for (const player of game.allPlayers) {
+			const card = player.thoughts[order];
+			card.possible = card.possible.intersect(identity);
+			card.inferred = card.inferred.intersect(identity);
+			Object.assign(card, identity);
+
+			player.card_elim(state);
+			player.refresh_links(state);
+		}
 	}
+
+	if (state.endgameTurns !== -1)
+		state.endgameTurns--;
 
 	// Get a clue token back for playing a 5
 	if (rank === 5 && state.clue_tokens < 8)
