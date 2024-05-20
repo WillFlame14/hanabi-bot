@@ -671,4 +671,33 @@ describe('bluff clues', () => {
 		// Slot 3 should be g2.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['g2']);
 	});
+
+	it(`understands a finesse when a player doesn't play into potential bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y1', 'r2', 'b3', 'b1', 'r3'],
+			['g3', 'r1', 'y4', 'p3', 'r1']
+		], {
+			starting: PLAYER.CATHY,
+			level: 11
+		});
+		takeTurn(game, 'Cathy clues 1 to Alice (slots 3,5)');
+		takeTurn(game, 'Alice plays g1 (slot 5)');
+		takeTurn(game, 'Bob clues 3 to Cathy');
+
+		// Initially Alice thinks this is a self bluff, rather than a finesse.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order], ['r1', 'y1', 'g2', 'b1', 'p1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+
+		takeTurn(game, 'Cathy clues 1 to Bob');
+
+		// After Cathy doesn't play into it, Alice should know it's a finesse.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g2']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+
+		// This should also remove the original thoughts in Cathy's hand.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][1].order].inferred.length > 5, true);
+	});
 });
