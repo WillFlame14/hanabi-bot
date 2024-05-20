@@ -95,7 +95,7 @@ describe('connecting cards', () => {
 
 		takeTurn(game, 'Bob plays g1', 'r2');
 		takeTurn(game, 'Alice clues 3 to Bob');
-		takeTurn(game, 'Bob discards r4', 'b1');
+		takeTurn(game, 'Bob discards r4 (slot 4)', 'b1');
 		takeTurn(game, 'Alice clues green to Bob');
 		takeTurn(game, 'Bob discards b1', 'r5');
 		// Bob now has known g3.

@@ -3,7 +3,7 @@ import { State } from '../src/basics/State.js';
 import { cardCount, shortForms } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
 
-import { logAction, logClue } from '../src/tools/log.js';
+import { logAction, logCard, logClue } from '../src/tools/log.js';
 
 /**
  * @typedef {import('../src/basics/Game.js').Game} Game
@@ -114,7 +114,7 @@ function init_game(game, options) {
 	state.clue_tokens = options.clue_tokens ?? 8;
 
 	if (options.init)
-		options.init(game);
+		game.hookAfterDraws = options.init;
 }
 
 /**
@@ -128,6 +128,7 @@ function injectFuncs(options) {
 	this.createBlank = function () {
 		// @ts-ignore
 		const new_game = this.createBlankDefault();
+
 		init_game(new_game, options);
 		injectFuncs.bind(new_game)(options);
 		return new_game;
@@ -172,7 +173,7 @@ export function setup(GameClass, hands, test_options = {}) {
 	// Draw all the hands
 	for (let playerIndex = 0; playerIndex < hands.length; playerIndex++) {
 		const hand = hands[playerIndex];
-		for (const short of hand.reverse()) {
+		for (const short of hand.toReversed()) {
 			const { suitIndex, rank } = expandShortCard(short);
 
 			game.handle_action({ type: 'draw', order: orderCounter, playerIndex, suitIndex, rank });
@@ -182,6 +183,8 @@ export function setup(GameClass, hands, test_options = {}) {
 
 	init_game(game, test_options);
 	injectFuncs.bind(game)(test_options);
+
+	game.hookAfterDraws(game);
 
 	for (const player of game.players)
 		player.card_elim(state);
@@ -235,7 +238,7 @@ function parseSlots(state, parts, partsIndex, expectOne, insufficientMsg = '') {
 	const original = parts[partsIndex - 1] + ' ' + parts[partsIndex];
 
 	if (parts.length < partsIndex + 1)
-		throw new Error(`Not enough arguments provided ${insufficientMsg}, needs '(slot x)'.`);
+		throw new Error(`Not enough arguments provided ${insufficientMsg} in '${parts.join(' ')}', needs '(slot x)'.`);
 
 	const slots = parts[partsIndex].slice(0, parts[partsIndex].length - 1).split(',').map(Number);
 
@@ -336,12 +339,22 @@ export function parseAction(state, rawAction) {
 		case 'bombs': {
 			const { suitIndex, rank } = expandShortCard(parts[2]);
 			if (playerIndex !== state.ourPlayerIndex) {
-				const order = state.hands[playerIndex].find(c => c.matches({ suitIndex, rank }))?.order;
+				const orders = state.hands[playerIndex].filter(c => c.matches({ suitIndex, rank })).map(c => c.order);
 
-				if (order === undefined)
+				if (orders.length === 0)
 					throw new Error(`Unable to find card ${parts[2]} to play in ${playerName}'s hand.`);
 
-				return { type: 'discard', playerIndex, suitIndex, rank, order, failed: parts[1] === 'bombs' };
+				if (orders.length === 1)
+					return { type: 'discard', playerIndex, suitIndex, rank, order: orders[0], failed: parts[1] === 'bombs' };
+
+				// e.g. "Bob discards b3 (slot 1)"
+				const slot = parseSlots(state, parts, 4, true, '(ambiguous identity)')[0];
+				const card = state.hands[playerIndex][slot - 1];
+
+				if (!card.matches({ suitIndex, rank }))
+					throw new Error(`Identity ${parts[2]} is not in slot ${slot} (found ${logCard(card)}), test written incorrectly?`);
+
+				return { type: 'discard', playerIndex, suitIndex, rank, order: card.order, failed: parts[1] === 'bombs' };
 			}
 			else {
 				// e.g. "Alice discards y5 (slot 1)"

@@ -29,8 +29,12 @@ export function clue_safe(game, player, clue) {
 		/** @param {number} index */
 		const get_finessed_card = (index) => hypo_state.hands[index].find(c => {
 			const card = hypo_player.thoughts[c.order];
-			// We can't use hidden cards, because the player will wait until their real connection is playable
-			return !card.hidden && card.finessed && hypo_state.isPlayable(c);
+
+			if (!card.finessed || !hypo_state.isPlayable(c))
+				return false;
+
+			// We can only use hidden cards if they're bluffs, otherwise the player will wait until their real connection is playable
+			return !card.hidden || hypo_player.waiting_connections.some(wc => wc.connections.some(conn => conn.card.order === c.order && conn.bluff));
 		});
 
 		let nextIndex = (startIndex + 1) % state.numPlayers;
@@ -91,7 +95,7 @@ export function chopUnsafe(state, player, playerIndex) {
 
 	// Crit or unique 2 on chop
 	if (chop)
-		return state.isCritical(chop) || save2(state, player, chop);
+		return chop.identity() && (state.isCritical(chop) || save2(state, player, chop));
 
 	// Locked with no clue tokens
 	return state.clue_tokens === 0 && !player.thinksLoaded(state, playerIndex);

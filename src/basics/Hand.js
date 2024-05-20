@@ -76,6 +76,6 @@ export class Hand extends Array {
 	 * @param {Variant} variant
 	 */
 	clueTouched(clue, variant) {
-		return Array.from(this.filter(card => cardTouched(card, variant, clue)));
+		return Array.from(this.filter(card => card.identity() !== undefined && cardTouched(card, variant, clue)));
 	}
 }

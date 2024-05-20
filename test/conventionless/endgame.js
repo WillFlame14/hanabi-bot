@@ -6,7 +6,7 @@ import HGroup from '../../src/conventions/h-group.js';
 import * as ExAsserts from '../extra-asserts.js';
 
 import { ACTION } from '../../src/constants.js';
-import { winnable_simple } from '../../src/conventions/shared/endgame.js';
+import { solve_game } from '../../src/conventions/shared/endgame.js';
 import logger from '../../src/tools/logger.js';
 import { logObjectiveAction } from '../../src/tools/log.js';
 
@@ -40,10 +40,8 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const { actions, winrate } = winnable_simple(game, PLAYER.ALICE);
-
-		assert.ok(actions[0].type === ACTION.RANK || actions[0].type === ACTION.COLOUR, `expected clue, selected ${actions.map(action => logObjectiveAction(game.state, action))}`);
-		assert.equal(winrate, 1);
+		const action = solve_game(game, PLAYER.ALICE);
+		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR, `expected clue, selected ${logObjectiveAction(game.state, action)}`);
 	});
 
 	it('clues to start endgame on a double player with different suits', () => {
@@ -68,10 +66,8 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const { actions, winrate } = winnable_simple(game, PLAYER.ALICE);
-
-		assert.ok(actions[0].type === ACTION.RANK || actions[0].type === ACTION.COLOUR, `expected clue, selected ${logObjectiveAction(game.state, actions[0])}`);
-		assert.equal(winrate, 1);
+		const action = solve_game(game, PLAYER.ALICE);
+		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR, `expected clue, selected ${logObjectiveAction(game.state, action)}`);
 	});
 
 	it('plays to start endgame', () => {
@@ -98,11 +94,9 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const { actions, winrate } = winnable_simple(game, PLAYER.ALICE);
-
-		// Alice sould play r4.
-		ExAsserts.objHasProperties(actions[0], { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
-		assert.equal(winrate, 1);
+		// Alice should play r4.
+		const action = solve_game(game, PLAYER.ALICE);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
 	});
 
 	it('plays to start endgame when other has dupes', () => {
@@ -130,11 +124,9 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const { actions, winrate } = winnable_simple(game, PLAYER.ALICE);
-
 		// Alice should play p3.
-		ExAsserts.objHasProperties(actions[0], { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
-		assert.equal(winrate, 1);
+		const action = solve_game(game, PLAYER.ALICE);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
 	});
 });
 
@@ -162,10 +154,8 @@ describe('more complex endgames where all cards are seen', () => {
 			}
 		});
 
-		const { actions, winrate } = winnable_simple(game, PLAYER.ALICE);
-
 		// Alice should play r4.
-		ExAsserts.objHasProperties(actions[0], { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
-		assert.equal(winrate, 1);
+		const action = solve_game(game, PLAYER.ALICE);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
 	});
 });

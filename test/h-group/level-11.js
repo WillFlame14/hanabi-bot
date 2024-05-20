@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
@@ -12,7 +12,6 @@ import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finde
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('bluff clues', () => {
-
 	it(`understands a direct play if the bluff isn't played into`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -670,5 +669,33 @@ describe('bluff clues', () => {
 
 		// Slot 3 should be g2.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['g2']);
+	});
+
+	it('does not allow a second round when a bluff is not played into', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g1', 'g3', 'p4', 'p3'],
+			['r5', 'y5', 'g4', 'r1'],
+			['r3', 'g1', 'p2', 'r3']
+		], {
+			level: 11,
+			play_stacks: [2, 0, 0, 0, 0],
+			starting: PLAYER.CATHY,
+			init: (game) => {
+				const d_slot3 = game.common.thoughts[game.state.hands[PLAYER.DONALD][2].order];
+				d_slot3.inferred = d_slot3.inferred.intersect(expandShortCard('p2'));
+				d_slot3.possible = d_slot3.possible.intersect(['p2', 'p3', 'p4', 'p5'].map(expandShortCard));
+				d_slot3.clues.push({ type: CLUE.COLOUR, value: COLOUR.PURPLE, giver: PLAYER.ALICE});
+				d_slot3.clued = true;
+			}
+		});
+
+		takeTurn(game, 'Cathy clues purple to Bob');		// Could be bluff on Cathy or finesse on us
+		takeTurn(game, 'Donald discards r3 (slot 4)', 'r4');
+
+		// Slot 1 should be finessed as p1.
+		const slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
+		assert.equal(slot1.finessed, true);
+		ExAsserts.cardHasInferences(slot1, ['p1']);
 	});
 });

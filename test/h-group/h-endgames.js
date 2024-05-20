@@ -5,7 +5,7 @@ import { PLAYER, expandShortCard, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 
 import { ACTION } from '../../src/constants.js';
-import { winnable_simple } from '../../src/conventions/shared/endgame.js';
+import { solve_game } from '../../src/conventions/shared/endgame.js';
 import { find_all_clues } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
@@ -38,9 +38,7 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const { actions, winrate } = winnable_simple(game, PLAYER.ALICE, find_all_clues);
-
-		assert.equal(actions[0].type, ACTION.RANK);
-		assert.equal(winrate, 1);
+		const action = solve_game(game, PLAYER.ALICE, find_all_clues);
+		assert.equal(action.type, ACTION.RANK);
 	});
 });

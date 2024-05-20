@@ -6,7 +6,7 @@ import { inBetween } from '../hanabi-logic.js';
 
 import * as Utils from '../../../tools/util.js';
 import logger from '../../../tools/logger.js';
-import { logCard } from '../../../tools/log.js';
+import { logCard, logConnection } from '../../../tools/log.js';
 import { ActualCard } from '../../../basics/Card.js';
 
 /**
@@ -202,7 +202,7 @@ export function resolve_bluff(game, giver, target, connections, promised, focusI
 
 	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
 	if (!connections.every((conn, index) => index < next_play || (!conn.hidden && conn.type !== 'finesse')))
-		bluff_fail_reason = `requires additional finesses`;
+		bluff_fail_reason = `requires additional finesses [${connections.map(logConnection)}]`;
 
 	if (!bluff_fail_reason) {
 		// A bluff must be recognizable. As such, there should be no connection

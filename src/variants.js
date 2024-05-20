@@ -137,7 +137,7 @@ export function cardTouched(card, variant, clue) {
 	const suit = variant.suits[suitIndex];
 
 	if (type === CLUE.COLOUR) {
-		if (suit.match(variantRegexes.whitish)) {
+		if (suitIndex === -1 || suit.match(variantRegexes.whitish)) {
 			return false;
 		}
 		else if (suit.match(variantRegexes.rainbowish)) {
@@ -158,7 +158,7 @@ export function cardTouched(card, variant, clue) {
 		return suitIndex === value;
 	}
 	else if (type === CLUE.RANK) {
-		if (suit.match(variantRegexes.brownish))
+		if (rank === -1 || suit.match(variantRegexes.brownish))
 			return false;
 		else if (suit.match(variantRegexes.pinkish))
 			return true;

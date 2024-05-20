@@ -57,7 +57,9 @@ export function card_elim(state) {
 		const elim_entry = elim_map.get(card.possible.value) ?? [];
 		elim_entry.push({ playerIndex, order });
 
-		if (card.possible.length > elim_entry.length) {
+		const total_multiplicity = card.possible.reduce((acc, id) => acc += cardCount(state.variant, id) - state.baseCount(id), 0);
+
+		if (total_multiplicity > elim_entry.length) {
 			elim_map.set(card.possible.value, elim_entry);
 			reverse_elim_map.set(order, card.possible.value);
 			return;
