@@ -26,7 +26,7 @@ export function find_clue_value(clue_result) {
 	const new_touched_value = (new_touched.length >= 1) ? 0.51 + 0.1 * (new_touched.length - 1) : 0;
 
 	const precision_value = (new_touched.reduce((acc, c) => acc + c.possible.length, 0) - new_touched.reduce((acc, c) => acc + c.inferred.length, 0)) * 0.01;
-	return 0.5*(finesses.length + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch - 0.5*avoidable_dupe - 0.2*remainder + precision_value;
+	return 0.5*(finesses.length + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch - 0.1*avoidable_dupe - 0.2*remainder + precision_value;
 }
 
 /**

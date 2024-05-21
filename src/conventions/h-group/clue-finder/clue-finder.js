@@ -151,8 +151,12 @@ export function find_clues(game, options = {}) {
 			};
 			logger.info('result,', JSON.stringify(result_log), find_clue_value(Object.assign(result, { remainder })));
 
-			if ((chop && !state.isBasicTrash(focused_card) && visibleFind(state, me, focused_card).length === 1) || chop_moved.length > 0)
-				saves.push(Object.assign(clue, { game: hypo_game, playable: playables.length > 0, cm: chop_moved, safe }));
+			if ((chop && !state.isBasicTrash(focused_card) && visibleFind(state, me, focused_card).length === 1) || chop_moved.length > 0) {
+				if (game.level < LEVEL.CONTEXT || clue.result.avoidable_dupe == 0)
+					saves.push(Object.assign(clue, { game: hypo_game, playable: playables.length > 0, cm: chop_moved, safe }));
+				else
+					logger.highlight('yellow', `${logClue(clue)} save results in avoidable potential duplication`);
+			}
 
 			const focus_known_bluff = hypo_game.common.waiting_connections.some(c => {
 				return c.connections[0].bluff && c.focused_card.order == focused_card.order;
