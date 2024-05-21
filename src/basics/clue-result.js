@@ -57,10 +57,13 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target, fo
 		// TODO: Should we consider chop moved cards?
 		for (const card of state.hands[target]) {
 			const identity = card.identity();
-			if (!identity)
+			// TODO: Should we cluing cards where receiver knows they are duplicated?
+			if (!identity || !hypo_game.state.isPlayable(identity))
 				continue;
 			for (const giverCard of state.hands[pi]) {
+				// Allow known duplication since we can discard to resolve it.
 				if (hypo_player.thoughts[giverCard.order].clued &&
+					game.players[pi].thoughts[giverCard.order].inferred.length > 1 &&
 					game.players[pi].thoughts[giverCard.order].inferred.has(identity))
 					possible_dupe++;
 			}
