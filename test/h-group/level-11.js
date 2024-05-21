@@ -174,6 +174,20 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['b4']);
 	});
 
+	it(`recognizes a finesse when target is not a valid bluff target`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b3', 'y3', 'g1', 'y1'],
+			['r2', 'b1', 'p5', 'p1'],
+			['p2', 'r1', 'b2', 'y1']
+		], {
+			level: 11,
+			starting: PLAYER.CATHY
+		});
+		takeTurn(game, 'Cathy clues 2 to Donald');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['p1']);
+	});
+
 	it('infers the identity of indirect bluffs', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
