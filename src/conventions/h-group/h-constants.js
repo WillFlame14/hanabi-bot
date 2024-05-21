@@ -6,7 +6,8 @@ export const LEVEL = /** @type {const} */ ({
 	TEMPO_CLUES: 6,
 	LAST_RESORTS: 7,
 	STALLING: 9,
-	BLUFFS: 11
+	BLUFFS: 11,
+	CONTEXT: 12,
 });
 
 export const ACTION_PRIORITY = /** @type {const} */ ({

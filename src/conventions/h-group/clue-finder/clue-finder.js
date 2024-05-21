@@ -10,6 +10,7 @@ import { find_clue_value } from '../action-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
+import { LEVEL } from '../h-constants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -132,13 +133,14 @@ export function find_clues(game, options = {}) {
 
 			const safe = clue_safe(game, me, clue);
 
-			const { elim, new_touched, bad_touch, trash, finesses, playables, chop_moved } = result;
+			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = result;
 			const remainder = (chop && (!safe || state.clue_tokens <= 2)) ? result.remainder: 0;
 
 			const result_log = {
 				clue: logClue(clue),
 				bad_touch,
 				trash,
+				avoidable_dupe,
 				interpret: interpret?.map(logCard),
 				elim,
 				new_touched: new_touched.length,
@@ -168,8 +170,10 @@ export function find_clues(game, options = {}) {
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focused_card);
 					if (tempo && !valuable)
 						stall_clues[1].push(clue);
-					else
+					else if (game.level < LEVEL.CONTEXT || clue.result.avoidable_dupe == 0)
 						play_clues[target].push(clue);
+					else
+						logger.highlight('yellow', `${logClue(clue)} results in avoidable potential duplication`);
 				}
 				else {
 					logger.highlight('yellow', `${logClue(clue)} is an unsafe play clue`);
