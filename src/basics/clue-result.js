@@ -56,9 +56,13 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target, fo
 		// Check if the giver may have a touched duplicate card.
 		// TODO: Should we consider chop moved cards?
 		for (const card of state.hands[target]) {
+			// Ignore cards that aren't newly clued
+			if (!card.newly_clued)
+				continue;
+
 			const identity = card.identity();
 			// TODO: Should we cluing cards where receiver knows they are duplicated?
-			if (!identity || !hypo_game.state.isPlayable(identity))
+			if (!identity || hypo_game.state.isBasicTrash(identity))
 				continue;
 			for (const giverCard of state.hands[pi]) {
 				// Allow known duplication since we can discard to resolve it.
@@ -71,16 +75,11 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target, fo
 		return possible_dupe;
 	});
 	const min_dupe = Math.min(...dupe_scores);
+	avoidable_dupe = dupe_scores[giver] - min_dupe;
 
 	for (const card of state.hands[target]) {
-		// Ignore cards that aren't newly clued
-		if (!card.newly_clued)
-			continue;
-
-		avoidable_dupe = dupe_scores[giver] - min_dupe;
-
-		// focused card can't be known bad touched.
-		if (card.order === focus_order)
+		// Ignore cards that aren't newly clued, focused card can't be bad touched
+		if (!card.newly_clued || card.order === focus_order)
 			continue;
 
 		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order, { infer: true })))
