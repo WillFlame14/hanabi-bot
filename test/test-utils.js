@@ -41,6 +41,7 @@ export const VARIANTS = /** @type {Record<string, Variant>} */ ({
 	RAINBOW: { id: 16,  name: 'Rainbow (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Rainbow'] },
 	BLACK: { id: 21,  name: 'Black (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Black'] },
 	WHITE: { id: 22,  name: 'White (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'White'] },
+	BROWN: { id : 70,  name: "Brown (5 Suits)", suits: ["Red", "Yellow", "Green", "Blue", "Brown"] },
 	PINK: { id: 107, name: 'Pink (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Pink'] },
 	PRISM: { id: 1465, name: 'Prism (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Prism'] }
 });
@@ -73,6 +74,7 @@ let testShortForms;
  * @param {string} short
  */
 export function expandShortCard(short) {
+	// TODO: Make this compatible with variants
 	return {
 		suitIndex: testShortForms.indexOf(short[0]) - 1,
 		rank: Number(short[1]) || -1

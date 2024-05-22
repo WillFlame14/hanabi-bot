@@ -136,7 +136,7 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 	if (touch.some(card => !card.clued))
 		return { tempo: false, valuable: false };
 
-	const prompt = common.find_prompt(state.hands[target], focused_card, state.variant.suits);
+	const prompt = common.find_prompt(state.hands[target], focused_card, state.variant);
 
 	// No prompt exists for this card (i.e. it is a hard burn)
 	if (prompt === undefined)

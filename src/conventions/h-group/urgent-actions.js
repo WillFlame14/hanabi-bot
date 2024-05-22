@@ -249,12 +249,19 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				}
 			}
 
-			// Check if Shout Discard is available
-			if (game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0)) {
-				const trash = me.thinksTrash(state, state.ourPlayerIndex);
+			// Check if Scream/Shout Discard is available (only to next player)
+			if (game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0) && target === state.nextPlayerIndex(state.ourPlayerIndex)) {
+				const trash = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued);
 
 				if (trash.length > 0) {
 					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push({ tableID, type: ACTION.DISCARD, target: trash[0].order });
+					continue;
+				}
+
+				const chop = common.chop(state.hands[state.ourPlayerIndex]);
+
+				if (state.clue_tokens === 0 && chop !== undefined) {
+					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push({ tableID, type: ACTION.DISCARD, target: chop.order });
 					continue;
 				}
 			}

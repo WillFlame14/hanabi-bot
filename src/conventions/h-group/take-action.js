@@ -198,39 +198,30 @@ export function take_action(game) {
 		return urgent_actions[ACTION_PRIORITY.UNLOCK][0];
 
 	// Urgent save for next player
-	if (state.clue_tokens > 0) {
-		for (let i = 1; i < actionPrioritySize; i++) {
-			const actions = urgent_actions[i];
-			if (actions.length > 0)
-				return actions[0];
-		}
+	for (let i = 1; i < actionPrioritySize; i++) {
+		const action = urgent_actions[i].find(action => state.clue_tokens > 0 || (action.type !== ACTION.RANK && action.type !== ACTION.COLOUR));
+
+		if (action)
+			return action;
 	}
 
 	const discardable = trash_cards[0] ?? common.chop(state.hands[state.ourPlayerIndex]);
 
-	if (state.clue_tokens === 0 && me.thinksPlayables(state, state.ourPlayerIndex).length > 0 && discardable !== undefined) {
-		// SDCM for next player
-		if (me.chopValue(state, nextPlayerIndex) >= 4 && !me.thinksLoaded(state, nextPlayerIndex)) {
-			logger.highlight('yellow', `performing scream discard on ${state.playerNames[nextPlayerIndex]}`);
-			return { tableID, type: ACTION.DISCARD, target: discardable.order };
-		}
+	if (state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
+		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
 
-		if (state.numPlayers > 2) {
-			const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
+		// Generate for next next player
+		if (me.chopValue(state, nextNextPlayerIndex) >= 4 && !common.thinksLoaded(state, nextNextPlayerIndex)) {
+			const nextChop = common.chop(state.hands[nextPlayerIndex]);
 
-			// Generate for next next player
-			if (me.chopValue(state, nextNextPlayerIndex) >= 4 && !me.thinksLoaded(state, nextNextPlayerIndex)) {
-				const nextChop = common.chop(state.hands[nextPlayerIndex]);
+			// Play a 5 if we have one
+			if (playable_priorities[3].length > 0)
+				return { tableID, type: ACTION.PLAY, target: playable_priorities[3][0].order };
 
-				// Play a 5 if we have one
-				if (playable_priorities[3].length > 0)
-					return { tableID, type: ACTION.PLAY, target: playable_priorities[3][0].order };
-
-				// Next player can't SDCM
-				if (me.thinksPlayables(state, nextPlayerIndex).length === 0 || nextChop === undefined || cardValue(state, me, nextChop, nextChop.order) >= 4) {
-					logger.highlight('yellow', `performing generation discard for ${state.playerNames[nextNextPlayerIndex]}`);
-					return { tableID, type: ACTION.DISCARD, target: discardable.order };
-				}
+			// Next player can't SDCM
+			if (me.thinksPlayables(state, nextPlayerIndex).length === 0 || nextChop === undefined || cardValue(state, me, nextChop, nextChop.order) >= 4) {
+				logger.highlight('yellow', `performing generation discard for ${state.playerNames[nextNextPlayerIndex]}`);
+				return { tableID, type: ACTION.DISCARD, target: discardable.order };
 			}
 		}
 	}

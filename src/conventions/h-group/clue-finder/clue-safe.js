@@ -55,6 +55,8 @@ export function clue_safe(game, player, clue) {
 	if (next_unoccupied === state.ourPlayerIndex)
 		return true;
 
+	logger.info('next unoccupied', state.playerNames[next_unoccupied], 'unsafe?', chopUnsafe(hypo_state, hypo_player, next_unoccupied));
+
 	// Not dangerous, clue is fine to give
 	if (!chopUnsafe(hypo_state, hypo_player, next_unoccupied))
 		return true;

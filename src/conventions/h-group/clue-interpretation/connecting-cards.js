@@ -116,7 +116,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
 	const { common, state } = game;
 
 	const hand = state.hands[reacting];
-	const prompt = common.find_prompt(hand, identity, state.variant.suits, connected, ignoreOrders);
+	const prompt = common.find_prompt(hand, identity, state.variant, connected, ignoreOrders);
 	const finesse = common.find_finesse(hand, connected, ignoreOrders);
 
 	// Prompt takes priority over finesse
@@ -186,14 +186,14 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
  * @param {number} giver 				The player index that gave the clue. They cannot deduce unknown information about their own hand.
  * @param {number} target 				The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {Connection[]} connections	The complete connections leading to the play of a card.
- * @param {ActualCard[]} promised		The non-hidden play(s) which are promised.
+ * @param {ActualCard} focusedCard		The focused card.
  * @param {Identity} focusIdentity		The expected identity of the focus.
  * @returns {Connection[]}
  */
-export function resolve_bluff(game, giver, target, connections, promised, focusIdentity) {
+export function resolve_bluff(game, giver, target, connections, focusedCard, focusIdentity) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
-
+	const promised = connections.filter(conn => !conn.hidden).map(conn => conn.card).concat([focusedCard]);
 	const { state } = game;
 	const bluffCard = connections[0].card;
 	let bluff_fail_reason = undefined;
