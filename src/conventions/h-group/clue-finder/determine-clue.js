@@ -123,7 +123,7 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const { focused_card } = determine_focus(hand, common, list, { beforeClue: true });
 
 	const { new_touched, fill } = elim_result(common, hypo_common, hand, list);
-	const { bad_touch, trash } = bad_touch_result(hypo_game, hypo_common, target, focused_card.order);
+	const { bad_touch, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target, focused_card.order);
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
 
@@ -131,5 +131,5 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, hypo_game.me, game.me.thoughts[new_chop.order], new_chop.order) :
 						hypo_common.thinksLoaded(hypo_state, target) ? 0 : 4;
 
-	return { elim: fill, new_touched, bad_touch, trash, finesses, playables, chop_moved, remainder };
+	return { elim: fill, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved, remainder };
 }

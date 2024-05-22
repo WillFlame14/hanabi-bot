@@ -29,6 +29,7 @@
  * @property {Card[]} new_touched
  * @property {number} bad_touch
  * @property {number} trash
+ * @property {number} avoidable_dupe
  * @property {number} remainder
  * @property {{playerIndex: number, card: Card}[]} playables
  * @property {{playerIndex: number, card: Card}[]} finesses
