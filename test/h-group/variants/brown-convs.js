@@ -13,7 +13,7 @@ logger.setLevel(logger.LEVELS.ERROR);
 
 describe('save clue interpretation', () => {
 	it('understands n2/5 save with brown', () => {
-		const state = setup(HGroup, [
+		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
@@ -22,15 +22,15 @@ describe('save clue interpretation', () => {
 			variant: VARIANTS.BROWN
 		});
 
-		takeTurn(state, 'Bob clues brown to Alice (slot 5)');
+		takeTurn(game, 'Bob clues brown to Alice (slot 5)');
 
-		assert.ok(state.common.thoughts[0].inferred.has(expandShortCard('n2')));
-		assert.ok(state.common.thoughts[0].inferred.has(expandShortCard('n5')));
+		assert.ok(['n2', 'n5'].every(id =>
+			game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
 	});
 
 	it('will save n5 with brown', () => {
 		// TODO: When expandShortForms and others works with variants, switch these to not fake brown as purple.
-		const state = setup(HGroup, [
+		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b2', 'r2', 'r3', 'n5'],
 		], {
@@ -39,7 +39,7 @@ describe('save clue interpretation', () => {
 			variant: VARIANTS.BROWN
 		});
 
-		const action = take_action(state);
+		const action = take_action(game);
 
 		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.PURPLE });
 	});

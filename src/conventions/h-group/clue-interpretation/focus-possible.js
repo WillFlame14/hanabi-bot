@@ -89,6 +89,7 @@ function find_colour_focus(game, suitIndex, action) {
 		connections = connections.concat(connecting);
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
+
 	connections = resolve_bluff(game, giver, target, connections, focused_card, { suitIndex, rank: next_rank });
 	if (connections.length == 0) {
 		// Undo plays invalidated by a false bluff.
@@ -98,8 +99,9 @@ function find_colour_focus(game, suitIndex, action) {
 	// Restore play stacks
 	state.play_stacks = old_play_stacks;
 
-	if (cardTouched({suitIndex: suitIndex, rank: next_rank}, game.state.variant, action.clue) && common.thoughts[focused_card.order].possible.has({ suitIndex, rank: next_rank })) {
-		logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
+	const next_identity = { suitIndex, rank: next_rank };
+	if (cardTouched(next_identity, game.state.variant, action.clue) && common.thoughts[focused_card.order].possible.has(next_identity)) {
+		logger.info('found connections:', logConnections(connections, next_identity));
 
 		// Our card could be the final rank that we can't find
 		focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
@@ -111,12 +113,14 @@ function find_colour_focus(game, suitIndex, action) {
 			// Skip if the card cannot be touched.
 			if (!cardTouched({suitIndex: suitIndex, rank: rank}, game.state.variant, action.clue))
 				continue;
+
 			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
 			// OR if the clue given is not black.
 			if (rank === 5 &&
 				!(state.variant.suits[suitIndex] === 'Black' ||
 					common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish))))
 				continue;
+
 			// Determine if possible save on k2, k5 with colour
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
 				let fill_ins = 0;

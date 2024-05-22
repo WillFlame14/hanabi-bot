@@ -1,7 +1,6 @@
 import { Hand } from '../basics/Hand.js';
 import { Player } from '../basics/Player.js';
 import { cardValue } from '../basics/hanabi-util.js';
-import { CLUE } from '../constants.js';
 
 import * as Utils from '../tools/util.js';
 import { cardTouched } from '../variants.js';

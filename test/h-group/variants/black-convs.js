@@ -59,8 +59,8 @@ describe('save clue interpretation', () => {
 
 		takeTurn(game, 'Bob clues black to Alice (slot 5)');
 
-		assert.ok(!game.common.thoughts[0].inferred.has(expandShortCard('k2')));
-		assert.ok(!game.common.thoughts[0].inferred.has(expandShortCard('k5')));
+		assert.ok(['k2', 'k5'].every(id =>
+			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands not k2/5 save with black if not filling in', () => {
@@ -79,7 +79,7 @@ describe('save clue interpretation', () => {
 
 		takeTurn(game, 'Bob clues black to Alice (slot 1,5)');
 
-		assert.ok(!game.common.thoughts[0].inferred.has(expandShortCard('k2')));
-		assert.ok(!game.common.thoughts[0].inferred.has(expandShortCard('k5')));
+		assert.ok(['k2', 'k5'].every(id =>
+			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
 	});
 });

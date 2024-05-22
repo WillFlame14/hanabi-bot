@@ -24,12 +24,6 @@ const conventions = /** @type {const} */ ({
 
 const playerNames = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily', 'Fred'];
 
-const noVar = /** @type {Variant} */ ({
-	"id": 0,
-	"name": "No Variant",
-	"suits": ["Red", "Yellow", "Green", "Blue", "Purple"]
-});
-
 async function main() {
 	const { convention = 'HGroup', level: lStr = '1', games: gStr = '10', players: pStr = '2', seed = '0', variant: vStr = 'No Variant' } = Utils.parse_args();
 	const variant = await getVariant(vStr);
@@ -119,7 +113,7 @@ async function main() {
  * @param {number} level
  * @param {Variant} variant
  */
-function simulate_game(playerNames, deck, convention, level, variant = noVar) {
+function simulate_game(playerNames, deck, convention, level, variant) {
 	const games = playerNames.map((_, index) => {
 		const state = new State(playerNames, index, variant, {});
 		return new conventions[convention](-1, state, false, level);

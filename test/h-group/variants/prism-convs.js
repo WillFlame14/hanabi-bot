@@ -23,10 +23,10 @@ describe('save clue interpretation', () => {
 
 		takeTurn(game, 'Bob clues green to Alice (slot 5)');
 
-		assert.ok(game.common.thoughts[0].inferred.has(expandShortCard('i3')));
+		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard('i3')));
 	});
 
-	it('understands not all color is prism save', () => {
+	it(`understands prism saves aren't all ranks`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
@@ -40,6 +40,7 @@ describe('save clue interpretation', () => {
 
 		takeTurn(game, 'Bob clues blue to Alice (slot 5)');
 
-		[1, 2, 3, 4, 5].forEach(rank => assert.ok(!game.common.thoughts[0].inferred.has({ suitIndex: 4, rank })));
+		assert.ok([1, 2, 3, 4, 5].every(rank =>
+			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has({ suitIndex: 4, rank })));
 	});
 });
