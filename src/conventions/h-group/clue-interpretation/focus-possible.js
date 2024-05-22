@@ -5,7 +5,7 @@ import { visibleFind } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
-import { variantRegexes } from '../../../variants.js';
+import { cardTouched, variantRegexes } from '../../../variants.js';
 import { CLUE_INTERP } from '../h-constants.js';
 
 /**
@@ -57,6 +57,11 @@ function find_colour_focus(game, suitIndex, action) {
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
 
+		if (!cardTouched(identity, game.state.variant, action.clue) || !common.thoughts[focused_card.order].possible.has(identity)) {
+			next_rank++;
+			continue;
+		}
+
 		const { type, card } = connecting.at(-1);
 
 		if (type === 'known' && card.newly_clued && common.thoughts[card.order].possible.length > 1 &&
@@ -84,6 +89,7 @@ function find_colour_focus(game, suitIndex, action) {
 		connections = connections.concat(connecting);
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
+
 	connections = resolve_bluff(game, giver, target, connections, focused_card, { suitIndex, rank: next_rank });
 	if (connections.length == 0) {
 		// Undo plays invalidated by a false bluff.
@@ -93,20 +99,28 @@ function find_colour_focus(game, suitIndex, action) {
 	// Restore play stacks
 	state.play_stacks = old_play_stacks;
 
-	logger.info('found connections:', logConnections(connections, { suitIndex, rank: next_rank }));
+	const next_identity = { suitIndex, rank: next_rank };
+	if (cardTouched(next_identity, game.state.variant, action.clue) && common.thoughts[focused_card.order].possible.has(next_identity)) {
+		logger.info('found connections:', logConnections(connections, next_identity));
 
-	// Our card could be the final rank that we can't find
-	focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
+		// Our card could be the final rank that we can't find
+		focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
+	}
 
-	// Save clue on chop (5 save cannot be done with colour)
+	// Save clue on chop (5 save cannot be done with colour usually)
 	if (chop) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
+			// Skip if the card cannot be touched.
+			if (!cardTouched({suitIndex: suitIndex, rank: rank}, game.state.variant, action.clue))
+				continue;
+
 			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
 			// OR if the clue given is not black.
 			if (rank === 5 &&
 				!(state.variant.suits[suitIndex] === 'Black' ||
 					common.thoughts[focused_card.order].possible.some(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish))))
 				continue;
+
 			// Determine if possible save on k2, k5 with colour
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
 				let fill_ins = 0;
@@ -299,7 +313,7 @@ export function find_focus_possible(game, action) {
 	let focus_possible = [];
 
 	if (clue.type === CLUE.COLOUR) {
-		const colours = state.variant.suits.filter(s => s.match(variantRegexes.rainbowish)).map(s => state.variant.suits.indexOf(s));
+		const colours = state.variant.suits.filter(s => s.match(Utils.combineRegex(variantRegexes.rainbowish, variantRegexes.prism))).map(s => state.variant.suits.indexOf(s));
 		colours.push(clue.value);
 		for (const colour of colours)
 			focus_possible = focus_possible.concat(find_colour_focus(game, colour, action));

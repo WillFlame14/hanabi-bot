@@ -116,7 +116,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
 	const { common, state } = game;
 
 	const hand = state.hands[reacting];
-	const prompt = common.find_prompt(hand, identity, state.variant.suits, connected, ignoreOrders);
+	const prompt = common.find_prompt(hand, identity, state.variant, connected, ignoreOrders);
 	const finesse = common.find_finesse(hand, connected, ignoreOrders);
 
 	// Prompt takes priority over finesse

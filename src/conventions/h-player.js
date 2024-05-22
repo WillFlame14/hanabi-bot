@@ -1,15 +1,16 @@
 import { Hand } from '../basics/Hand.js';
 import { Player } from '../basics/Player.js';
 import { cardValue } from '../basics/hanabi-util.js';
-import { CLUE } from '../constants.js';
 
 import * as Utils from '../tools/util.js';
+import { cardTouched } from '../variants.js';
 
 /**
  * @typedef {import('../basics/Card.js').Card} Card
  * @typedef {import('./h-group.js').default} Game
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../types.js').Identity} Identity
+ * @typedef {import('../variants.js').Variant} Variant
  */
 
 export class HGroup_Player extends Player {
@@ -84,13 +85,11 @@ export class HGroup_Player extends Player {
 	 * Finds a prompt in the hand for the given suitIndex and rank, or undefined if no card is a valid prompt.
 	 * @param {Hand} hand
 	 * @param {Identity} identity
-	 * @param {string[]} suits 			All suits in the current game.
+	 * @param {Variant} variant 		The current variant of the game
 	 * @param {number[]} connected 		Orders of cards that have previously connected
 	 * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
 	 */
-	find_prompt(hand, identity, suits, connected = [], ignoreOrders = []) {
-		const { suitIndex, rank } = identity;
-
+	find_prompt(hand, identity, variant, connected = [], ignoreOrders = []) {
 		const card = hand.find(card => {
 			const { clued, newly_clued, order, clues } = card;
 			const { inferred, possible } = this.thoughts[card.order];
@@ -99,9 +98,7 @@ export class HGroup_Player extends Player {
 				clued && !newly_clued && 					// previously clued
 				possible.has(identity) &&					// must be a possibility
 				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 	// must not be information-locked on a different identity
-				clues.some(clue =>													// at least one clue matches
-					(clue.type === CLUE.COLOUR && (clue.value === suitIndex || ['Rainbow', 'Omni'].includes(suits[suitIndex]))) ||
-					(clue.type === CLUE.RANK && clue.value === rank));
+				clues.some(clue => cardTouched(identity, variant, clue));	// at least one clue matches
 		});
 
 		return (card && !ignoreOrders.includes(card.order)) ? card : undefined;

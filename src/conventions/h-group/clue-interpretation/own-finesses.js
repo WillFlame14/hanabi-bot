@@ -85,7 +85,7 @@ function connect(game, giver, target, focusedCard, identity, looksDirect, connec
 
 	if (giver !== state.ourPlayerIndex && !(target === state.ourPlayerIndex && looksDirect)) {
 		// Otherwise, try to find prompt in our hand
-		const prompt = common.find_prompt(our_hand, identity, state.variant.suits, connected, ignoreOrders);
+		const prompt = common.find_prompt(our_hand, identity, state.variant, connected, ignoreOrders);
 		logger.debug('prompt in slot', prompt ? our_hand.findIndex(c => c.order === prompt.order) + 1 : '-1');
 
 		if (prompt !== undefined) {
@@ -111,7 +111,7 @@ function connect(game, giver, target, focusedCard, identity, looksDirect, connec
 	// Use the ignoring player's hand
 	if (ignorePlayer !== -1) {
 		const their_hand = state.hands[ignorePlayer];
-		const prompt = common.find_prompt(their_hand, identity, state.variant.suits, connected, ignoreOrders);
+		const prompt = common.find_prompt(their_hand, identity, state.variant, connected, ignoreOrders);
 
 		if (prompt !== undefined) {
 			if (game.level === 1 && finesses >= 1)
