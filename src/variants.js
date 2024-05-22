@@ -255,6 +255,9 @@ export function find_possibilities(clue, variant) {
  * @param {Identity} identity
  */
 export function cardCount(variant, { suitIndex, rank }) {
+	if (suitIndex === -1 || rank === -1)
+		return 4;
+
 	if (variant.suits[suitIndex].match(variantRegexes.dark))
 		return 1;
 

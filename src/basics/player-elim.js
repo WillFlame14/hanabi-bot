@@ -150,8 +150,12 @@ export function good_touch_elim(state, only_self = false) {
 		if (connections[conn_index].reacting === this.playerIndex)
 			continue;
 
-		for (let i = conn_index; i < connections.length; i++)
-			unconfirmed.add(connections[i].card.order);
+		for (let i = conn_index; i < connections.length; i++) {
+			const { order } = connections[i].card;
+
+			if (this.thoughts[order].identity() === undefined)
+				unconfirmed.add(order);
+		}
 	}
 
 	const match_map = /** @type {Map<string, Set<number>>} */ (new Map());

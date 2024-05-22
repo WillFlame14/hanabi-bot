@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 
 import { ACTION, CLUE } from '../../src/constants.js';
@@ -154,6 +154,30 @@ describe('tempo clue chop moves', () => {
 
 		// 4 to Bob is not a valid TCCM (p4 will play naturally).
 		assert.ok(!stall_clues[1].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 4));
+	});
+
+	it(`doesn't tccm for a finesse touching no new cards`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p5', 'r5', 'p4', 'p3', 'g4'],
+			['b1', 'y5', 'g3', 'y3', 'p4']
+		], {
+			level: 6,
+			starting: PLAYER.BOB,
+			init: (game) => {
+				const a_slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
+				a_slot1.inferred = a_slot1.inferred.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
+				a_slot1.possible = a_slot1.possible.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
+				a_slot1.clues = [{ type: CLUE.COLOUR, value: COLOUR.BLUE, giver: PLAYER.BOB }];
+				a_slot1.clued = true;
+			}
+		});
+
+		takeTurn(game, 'Bob clues blue to Alice (slot 1)');
+		takeTurn(game, 'Cathy plays b1', 'g1');
+
+		// Alice's slot 5 is not TCCM'd.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].chop_moved, false);
 	});
 
 	it(`prefers tccm to cm a useful card`, () => {
