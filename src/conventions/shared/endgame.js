@@ -28,7 +28,7 @@ let timeout;
  * @param {(game: Game) => Clue[]} find_clues
  */
 export function solve_game(game, playerTurn, find_clues = () => []) {
-	const { common, state, me } = game;
+	const { state, me } = game;
 
 	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= state.max_ranks[suitIndex]; rank++) {
@@ -41,8 +41,9 @@ export function solve_game(game, playerTurn, find_clues = () => []) {
 
 	const common_state = state.minimalCopy();
 
+	// Write identities on our own cards
 	for (const { order } of state.hands[state.ourPlayerIndex]) {
-		const id = common.thoughts[order].identity({ infer: true });
+		const id = me.thoughts[order].identity({ infer: true });
 
 		if (id !== undefined) {
 			const identity = { suitIndex: id.suitIndex, rank: id.rank };
@@ -136,6 +137,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], cache =
 			clue_game.state.clue_tokens--;
 			clue_game.state.endgameTurns = clue_game.state.endgameTurns === -1 ? -1 : (clue_game.state.endgameTurns - 1);
 
+			logger.debug(state.playerNames[playerTurn], 'trying to stall');
 			const { actions, winrate } = winnable_simple(clue_game, nextPlayerIndex, find_clues, cache);
 
 			if (winrate > best_winrate) {

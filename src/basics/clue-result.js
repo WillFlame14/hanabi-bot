@@ -39,13 +39,43 @@ export function elim_result(player, hypo_player, hand, list) {
 
 /**
  * @param  {Game} game
+ * @param  {Game} hypo_game
  * @param  {Player} hypo_player
+ * @param  {number} giver
  * @param  {number} target
  * @param  {number} focus_order
  */
-export function bad_touch_result(game, hypo_player, target, focus_order = -1) {
-	const { me, state } = game;
-	let bad_touch = 0, trash = 0;
+export function bad_touch_result(game, hypo_game, hypo_player, giver, target, focus_order = -1) {
+	const { me, state } = hypo_game;
+	let bad_touch = 0, trash = 0, avoidable_dupe = 0;
+
+	const dupe_scores = game.players.map((player, pi) => {
+		if (pi == target)
+			return Infinity;
+		let possible_dupe = 0;
+		// Check if the giver may have a touched duplicate card.
+		// TODO: Should we consider chop moved cards?
+		for (const card of state.hands[target]) {
+			// Ignore cards that aren't newly clued
+			if (!card.newly_clued)
+				continue;
+
+			const identity = card.identity();
+			// TODO: Should we cluing cards where receiver knows they are duplicated?
+			if (!identity || hypo_game.state.isBasicTrash(identity))
+				continue;
+			for (const giverCard of state.hands[pi]) {
+				// Allow known duplication since we can discard to resolve it.
+				if (giverCard.clued &&
+					player.thoughts[giverCard.order].inferred.length > 1 &&
+					player.thoughts[giverCard.order].inferred.has(identity))
+					possible_dupe++;
+			}
+		}
+		return possible_dupe;
+	});
+	const min_dupe = Math.min(...dupe_scores);
+	avoidable_dupe = dupe_scores[giver] - min_dupe;
 
 	for (const card of state.hands[target]) {
 		// Ignore cards that aren't newly clued, focused card can't be bad touched
@@ -60,7 +90,7 @@ export function bad_touch_result(game, hypo_player, target, focus_order = -1) {
 			bad_touch++;
 	}
 
-	return { bad_touch, trash };
+	return { bad_touch, trash, avoidable_dupe };
 }
 
 /**

@@ -150,6 +150,9 @@ export class State {
 	 * @param {Identity} identity
 	 */
 	baseCount({ suitIndex, rank }) {
+		if (suitIndex === -1 || rank === -1)
+			return 0;
+
 		return (this.play_stacks[suitIndex] >= rank ? 1 : 0) + this.discard_stacks[suitIndex][rank - 1];
 	}
 
@@ -158,6 +161,9 @@ export class State {
 	 * @param {Identity} identity
 	 */
 	isBasicTrash({ suitIndex, rank }) {
+		if (suitIndex === -1 || rank === -1)
+			return false;
+
 		return rank <= this.play_stacks[suitIndex] || rank > this.max_ranks[suitIndex];
 	}
 
@@ -166,6 +172,9 @@ export class State {
 	 * @param {Identity} identity
 	 */
 	isCritical({ suitIndex, rank }) {
+		if (suitIndex === -1 || rank === -1)
+			return false;
+
 		return this.discard_stacks[suitIndex][rank - 1] === (cardCount(this.variant, { suitIndex, rank }) - 1);
 	}
 
@@ -174,6 +183,9 @@ export class State {
 	 * @param {Identity} identity
 	 */
 	playableAway({ suitIndex, rank }) {
+		if (suitIndex === -1 || rank === -1)
+			return 5;
+
 		return rank - (this.play_stacks[suitIndex] + 1);
 	}
 

@@ -56,6 +56,7 @@ function own_prompt(game, finesses, prompt, identity) {
  * @param {Game} game
  * @param {number} giver
  * @param {number} target
+ * @param {ActualCard} focusedCard
  * @param {Identity} identity
  * @param {boolean} looksDirect
  * @param {number[]} connected
@@ -66,12 +67,12 @@ function own_prompt(game, finesses, prompt, identity) {
  * @param {boolean} firstPlay
  * @returns {Connection[]}
  */
-function connect(game, giver, target, identity, looksDirect, connected, ignoreOrders, ignorePlayer, selfRanks, finesses, firstPlay) {
+function connect(game, giver, target, focusedCard, identity, looksDirect, connected, ignoreOrders, ignorePlayer, selfRanks, finesses, firstPlay) {
 	const { common, state } = game;
 	const our_hand = state.hands[state.ourPlayerIndex];
 
 	// First, see if someone else has the connecting card
-	const other_connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
+	const other_connecting = resolve_bluff(game, giver, target, find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected, ignoreOrders, { knownOnly: [ignorePlayer] }), focusedCard, identity);
 	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate' && (other_connecting.at(-1).reacting != state.ourPlayerIndex || other_connecting.at(-1).card.matches(identity, {assume: true})))
 		return other_connecting;
 
@@ -84,7 +85,7 @@ function connect(game, giver, target, identity, looksDirect, connected, ignoreOr
 
 	if (giver !== state.ourPlayerIndex && !(target === state.ourPlayerIndex && looksDirect)) {
 		// Otherwise, try to find prompt in our hand
-		const prompt = common.find_prompt(our_hand, identity, state.variant.suits, connected, ignoreOrders);
+		const prompt = common.find_prompt(our_hand, identity, state.variant, connected, ignoreOrders);
 		logger.debug('prompt in slot', prompt ? our_hand.findIndex(c => c.order === prompt.order) + 1 : '-1');
 
 		if (prompt !== undefined) {
@@ -110,7 +111,7 @@ function connect(game, giver, target, identity, looksDirect, connected, ignoreOr
 	// Use the ignoring player's hand
 	if (ignorePlayer !== -1) {
 		const their_hand = state.hands[ignorePlayer];
-		const prompt = common.find_prompt(their_hand, identity, state.variant.suits, connected, ignoreOrders);
+		const prompt = common.find_prompt(their_hand, identity, state.variant, connected, ignoreOrders);
 
 		if (prompt !== undefined) {
 			if (game.level === 1 && finesses >= 1)
@@ -187,19 +188,17 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 	let firstPlay = true;
 	let finesses = 0;
 	let direct = looksDirect;
-	const promised = [];
 
 	for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
 		const next_identity = { suitIndex, rank: next_rank };
 		const ignoreOrders = game.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1]?.map(i => i.order) ?? [];
 
-		const curr_connections = connect(hypo_game, giver, target, next_identity, direct, already_connected, ignoreOrders, ignorePlayer, selfRanks, finesses, firstPlay);
+		const curr_connections = connect(hypo_game, giver, target, focused_card, next_identity, direct, already_connected, ignoreOrders, ignorePlayer, selfRanks, finesses, firstPlay);
 		firstPlay = false;
 
 		if (curr_connections.length === 0)
 			throw new IllegalInterpretation(`no connecting cards found for identity ${logCard(next_identity)}`);
 
-		promised.push(curr_connections.at(-1).card);
 		let allHidden = true;
 		for (const connection of curr_connections) {
 			connections.push(connection);
@@ -238,8 +237,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		if (allHidden)
 			next_rank--;
 	}
-	promised.push(focused_card);
-	return resolve_bluff(game, giver, target, connections, promised, { suitIndex, rank });
+	return resolve_bluff(game, giver, target, connections, focused_card, { suitIndex, rank });
 }
 
 /**
