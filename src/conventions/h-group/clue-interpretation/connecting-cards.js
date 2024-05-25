@@ -337,7 +337,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, firs
 			already_connected.push(connecting.card.order);
 			state.play_stacks[connecting.card.suitIndex]++;
 
-			connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, false, already_connected, ignoreOrders);
+			connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, looksDirect, false, already_connected, ignoreOrders);
 		}
 
 		if (connecting) {
