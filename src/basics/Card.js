@@ -122,6 +122,7 @@ export class Card extends BasicCard {
 	hidden = false;
 	called_to_discard = false;
 	certain_finessed = false;
+	self_connection = false; // Whether our own player may have been called to play this identity
 
 	finesse_index = -1;	// Action index of when the card was finessed
 	reasoning = /** @type {number[]} */ ([]);		// The action indexes of when the card's possibilities/inferences were updated
@@ -149,7 +150,7 @@ export class Card extends BasicCard {
 
 		for (const field of ['inferred', 'possible', 'old_inferred', 'focused',
 			'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'superposition',
-			'hidden', 'called_to_discard', 'certain_finessed','finesse_index', 'rewinded'])
+			'hidden', 'called_to_discard', 'certain_finessed','finesse_index', 'rewinded', 'self_connection'])
 			new_card[field] = this[field];
 
 		for (const field of ['reasoning', 'reasoning_turn'])

@@ -204,6 +204,23 @@ describe('guide principle', () => {
 		// Giving 3 to Cathy should be unsafe since b5 will be discarded.
 		assert.equal(clue_safe(game, game.me, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);
 	});
+
+	it('does not expect a play when it could be deferring playing into a finesse', () => {
+		// From https://github.com/WillFlame14/hanabi-bot/pull/224#issuecomment-2118885427
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'], // g1, b4, p2, p1
+			['b4', 'g1', 'g3', 'p5'],
+			['b1', 'b2', 'p1', 'y4'],
+			['b3', 'y2', 'b3', 'r5']
+		], { level: 5, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 3] });
+		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Donald clues green to Bob');
+
+		// Blue to Bob is not a safe clue, since Bob may see it as a b4 finesse, and
+		// may be waiting on Alice to not play their g1.
+		const clue = { target: PLAYER.BOB, type: CLUE.COLOUR, value: COLOUR.BLUE };
+		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue), false);
+	});
 });
 
 describe('mistake recovery', () => {

@@ -7,6 +7,7 @@ import { logCard, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 import { cardTouched, variantRegexes } from '../../../variants.js';
 import { CLUE_INTERP } from '../h-constants.js';
+import { find_own_prompt_or_finesse } from './own-finesses.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -103,8 +104,12 @@ function find_colour_focus(game, suitIndex, action) {
 	if (cardTouched(next_identity, game.state.variant, action.clue) && common.thoughts[focused_card.order].possible.has(next_identity)) {
 		logger.info('found connections:', logConnections(connections, next_identity));
 
+		const ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
+			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
+		const self_connection = find_own_prompt_or_finesse(game, giver, target, {suitIndex, rank: next_rank}, true, already_connected, ignoreOrders);
+
 		// Our card could be the final rank that we can't find
-		focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
+		focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY, self_connection });
 	}
 
 	// Save clue on chop (5 save cannot be done with colour usually)
@@ -289,8 +294,10 @@ function find_rank_focus(game, rank, action) {
 			else if (connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target)))
 				logger.warn('illegal self-finesse that will cause a wrong prompt!');
 
-			else
-				focus_possible.push({ suitIndex, rank, save: false, connections, interp: CLUE_INTERP.PLAY });
+			else {
+				const self_connection = find_own_prompt_or_finesse(game, giver, target, {suitIndex, rank}, looksDirect, already_connected, ignoreOrders);
+				focus_possible.push({ suitIndex, rank, save: false, connections, interp: CLUE_INTERP.PLAY, self_connection });
+			}
 		}
 	}
 

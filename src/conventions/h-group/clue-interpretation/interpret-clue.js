@@ -79,9 +79,11 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 	const old_inferred = old_game.common.thoughts[focused_card.order].inferred;
 
 	focus_thoughts.inferred = focus_thoughts.inferred.intersect(inf_possibilities);
+	focus_thoughts.self_connection = false;
 
-	for (const { connections, suitIndex, rank, save, interp } of inf_possibilities) {
+	for (const { connections, suitIndex, rank, save, interp, self_connection } of inf_possibilities) {
 		const inference = { suitIndex, rank };
+		focus_thoughts.self_connection ||= (self_connection?.length > 0);
 
 		game.interpretMove(interp);
 

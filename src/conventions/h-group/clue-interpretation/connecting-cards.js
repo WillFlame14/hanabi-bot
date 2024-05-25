@@ -8,6 +8,7 @@ import * as Utils from '../../../tools/util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection } from '../../../tools/log.js';
 import { ActualCard } from '../../../basics/Card.js';
+import { find_own_prompt_or_finesse } from './own-finesses.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -107,22 +108,26 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
  * @param {number} target 			The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {number} reacting
  * @param {Identity} identity
+ * @param {boolean} looksDirect 	Whether the clue could be interpreted as direct play (i.e. never as self-prompt/finesse).
  * @param {boolean} firstPlay		Is this the first play?
  * @param {number[]} [connected] 	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @returns {Connection | undefined}
  */
-function find_unknown_connecting(game, giver, target, reacting, identity, firstPlay, connected = [], ignoreOrders = []) {
+function find_unknown_connecting(game, giver, target, reacting, identity, looksDirect, firstPlay, connected = [], ignoreOrders = []) {
 	const { common, state } = game;
 
 	const hand = state.hands[reacting];
 	const prompt = common.find_prompt(hand, identity, state.variant, connected, ignoreOrders);
 	const finesse = common.find_finesse(hand, connected, ignoreOrders);
 
+	// Track if the identity could also be in our own hand.
+	const self_connection = find_own_prompt_or_finesse(game, giver, target, identity, looksDirect, connected, ignoreOrders);
+
 	// Prompt takes priority over finesse
 	if (prompt !== undefined && prompt.identity() !== undefined) {
 		if (prompt.matches(identity))
-			return { type: 'prompt', reacting, card: prompt, identities: [identity] };
+			return { type: 'prompt', reacting, card: prompt, identities: [identity], self_connection };
 
 		// Prompted card is delayed playable
 		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank) {
@@ -131,7 +136,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
 				logger.warn(`disallowed hidden prompt on ${logCard(prompt)} ${prompt.order}, true ${logCard(identity)}  could be duplicated in giver's hand`);
 				return;
 			}
-			return { type: 'prompt', reacting, card: prompt, hidden: true, identities: [prompt.raw()] };
+			return { type: 'prompt', reacting, card: prompt, hidden: true, identities: [prompt.raw()], self_connection };
 		}
 		logger.warn(`wrong prompt on ${logCard(prompt)} ${prompt.order} when searching for ${logCard(identity)}, play stacks at ${state.play_stacks[prompt.suitIndex]}`);
 		return { type: 'terminate', reacting, card: prompt, identities: [identity] };
@@ -165,7 +170,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
 				logger.warn(`found finesse ${logCard(finesse)} in ${state.playerNames[reacting]}'s hand, but not between giver and target`);
 				return;
 			}
-			return { type: 'finesse', reacting, card: finesse, bluff, identities: [identity] };
+			return { type: 'finesse', reacting, card: finesse, bluff, identities: [identity], self_connection };
 		}
 		// Finessed card is delayed playable
 		else if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
@@ -175,7 +180,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, firstP
 				return;
 			}
 
-			return { type: 'finesse', reacting, card: finesse, hidden: true, bluff, identities: [finesse.raw()] };
+			return { type: 'finesse', reacting, card: finesse, hidden: true, bluff, identities: [finesse.raw()], self_connection };
 		}
 	}
 }
@@ -316,7 +321,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, firs
 		const already_connected = connected.slice();
 		state.play_stacks = old_play_stacks.slice();
 
-		let connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, firstPlay, already_connected, ignoreOrders);
+		let connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, looksDirect, firstPlay, already_connected, ignoreOrders);
 
 		if (connecting?.type === 'terminate') {
 			wrong_prompts.push(connecting);

@@ -187,9 +187,11 @@ export function assign_connections(game, connections, giver) {
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
 	for (let i = 0; i < connections.length; i++) {
-		const { type, bluff, hidden, card: conn_card, linked, identities, certain } = connections[i];
+		const { reacting, type, bluff, hidden, card: conn_card, linked, identities, certain, self_connection } = connections[i];
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
+		card.self_connection = self_connection?.length > 0;
+
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		if (card.old_inferred === undefined)

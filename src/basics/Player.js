@@ -121,6 +121,7 @@ export class Player {
 			return !linked_orders.has(c.order) &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
+				!card.self_connection &&
 				card.matches_inferences();
 		}));
 	}

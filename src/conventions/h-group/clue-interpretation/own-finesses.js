@@ -83,30 +83,10 @@ function connect(game, giver, target, focusedCard, identity, looksDirect, connec
 		return [{ type: 'known', reacting: giver, card: duplicated_in_own, identities: [identity] }];
 	}
 
-	if (giver !== state.ourPlayerIndex && !(target === state.ourPlayerIndex && looksDirect)) {
-		// Otherwise, try to find prompt in our hand
-		const prompt = common.find_prompt(our_hand, identity, state.variant, connected, ignoreOrders);
-		logger.debug('prompt in slot', prompt ? our_hand.findIndex(c => c.order === prompt.order) + 1 : '-1');
-
-		if (prompt !== undefined) {
-			const connections = own_prompt(game, finesses, prompt, identity);
-
-			if (connections.length > 0)
-				return connections;
-		}
-		else if (!selfRanks.includes(identity.rank)) {
-			try {
-				return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay);
-			}
-			catch (error) {
-				if (error instanceof IllegalInterpretation)
-					// Will probably never be seen
-					logger.warn(error.message);
-				else
-					throw error;
-			}
-		}
-	}
+	// Otherwise, try to find prompt in our hand
+	const self_connection = find_own_prompt_or_finesse(game, giver, target, identity, looksDirect, connected, ignoreOrders, selfRanks, finesses, firstPlay);
+	if (self_connection.length > 0)
+		return self_connection;
 
 	// Use the ignoring player's hand
 	if (ignorePlayer !== -1) {
@@ -146,6 +126,51 @@ function connect(game, giver, target, focusedCard, identity, looksDirect, connec
 				else
 					throw error;
 			}
+		}
+	}
+	return [];
+}
+
+/**
+ * Looks for a connecting card in own hand.
+ * @param {Game} game
+ * @param {number} giver
+ * @param {number} target
+ * @param {Identity} identity
+ * @param {boolean} looksDirect
+ * @param {number[]} connected
+ * @param {number[]} ignoreOrders
+ * @param {number[]} selfRanks
+ * @param {number} finesses
+ * @param {boolean} firstPlay
+ * @returns {Connection[]}
+ */
+export function find_own_prompt_or_finesse(game, giver, target, identity, looksDirect, connected, ignoreOrders, selfRanks = [], finesses = 0, firstPlay = false) {
+	const { common, state } = game;
+	const our_hand = state.hands[state.ourPlayerIndex];
+
+	if (giver === state.ourPlayerIndex || (target === state.ourPlayerIndex && looksDirect))
+		return [];
+
+	const prompt = common.find_prompt(our_hand, identity, state.variant, connected, ignoreOrders);
+	logger.debug('prompt in slot', prompt ? our_hand.findIndex(c => c.order === prompt.order) + 1 : '-1');
+
+	if (prompt !== undefined) {
+		const connections = own_prompt(game, 0, prompt, identity);
+
+		if (connections.length > 0)
+			return connections;
+	}
+	else if (!selfRanks.includes(identity.rank)) {
+		try {
+			return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay);
+		}
+		catch (error) {
+			if (error instanceof IllegalInterpretation)
+				// Will probably never be seen
+				logger.warn(error.message);
+			else
+				throw error;
 		}
 	}
 	return [];
