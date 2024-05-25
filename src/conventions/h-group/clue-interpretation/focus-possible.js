@@ -288,13 +288,13 @@ function find_rank_focus(game, rank, action) {
 
 		// Connected cards can stack up to this rank
 		if (rank === next_rank) {
-			if (connections.some(conn => conn.reacting === target && conn.hidden && conn.identities[0].rank + 1 === rank))
+			if (connections.some(conn => conn.reacting === target && conn.hidden && conn.identities[0].rank + 1 === rank)) {
 				logger.warn('illegal clandestine self-finesse!');
 
-			else if (connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target)))
+			} else if (connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target))) {
 				logger.warn('illegal self-finesse that will cause a wrong prompt!');
 
-			else {
+			} else {
 				const self_connection = find_own_prompt_or_finesse(game.minimalCopy(), giver, target, {suitIndex, rank}, looksDirect, already_connected, ignoreOrders);
 				focus_possible.push({ suitIndex, rank, save: false, connections, interp: CLUE_INTERP.PLAY, self_connection });
 			}

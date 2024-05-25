@@ -34,9 +34,8 @@ export function interpret_discard(game, action, card) {
 
 	if (playerIndex === state.ourPlayerIndex) {
 		// Possible self connections can be resolved.
-		for (const card of game.common.thoughts) {
+		for (const card of game.common.thoughts)
 			card.self_connection = false;
-		}
 	}
 
 	const to_remove = [];

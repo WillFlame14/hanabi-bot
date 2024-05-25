@@ -71,9 +71,8 @@ export function interpret_play(game, action) {
 		}
 		// Possible self connections can be resolved.
 		// TODO: Should only remove them if the card may not be queued behind other plays.
-		for (const card of game.common.thoughts) {
+		for (const card of game.common.thoughts)
 			card.self_connection = false;
-		}
 	}
 
 	if (common.thoughts[order].finessed)

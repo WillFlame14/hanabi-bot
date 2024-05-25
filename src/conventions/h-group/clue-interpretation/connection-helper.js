@@ -187,7 +187,7 @@ export function assign_connections(game, connections, giver) {
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
 	for (let i = 0; i < connections.length; i++) {
-		const { reacting, type, bluff, hidden, card: conn_card, linked, identities, certain, self_connection } = connections[i];
+		const { type, bluff, hidden, card: conn_card, linked, identities, certain, self_connection } = connections[i];
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
 		card.self_connection = self_connection?.length > 0;

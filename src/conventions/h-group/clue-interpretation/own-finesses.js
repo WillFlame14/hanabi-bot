@@ -69,7 +69,6 @@ function own_prompt(game, finesses, prompt, identity) {
  */
 function connect(game, giver, target, focusedCard, identity, looksDirect, connected, ignoreOrders, ignorePlayer, selfRanks, finesses, firstPlay) {
 	const { common, state } = game;
-	const our_hand = state.hands[state.ourPlayerIndex];
 
 	// First, see if someone else has the connecting card
 	const other_connecting = resolve_bluff(game, giver, target, find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected, ignoreOrders, { knownOnly: [ignorePlayer] }), focusedCard, identity);
