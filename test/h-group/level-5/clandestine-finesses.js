@@ -61,7 +61,10 @@ describe('clandestine finesses', () => {
 
 		takeTurn(game, 'Alice discards b1 (slot 5)');
 		takeTurn(game, 'Bob discards b4', 'g5');
-		takeTurn(game, 'Cathy clues 5 to Bob');
+
+		// TODO: Cathy should be allowed to 5-save Bob without it being treated as a delay,
+		// since Alice could just as easily give the 5 save.
+		takeTurn(game, 'Cathy discards p3', 'y2');
 
 		// Alice's slot 4 (used to be 3) should just be g2 now.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['g2']);
