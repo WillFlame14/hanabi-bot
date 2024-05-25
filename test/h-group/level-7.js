@@ -47,7 +47,7 @@ describe('scream discard chop moves', () => {
 		});
 
 		takeTurn(game, 'Alice discards r1 (slot 5)');	// End early game
-		takeTurn(game, 'Bob clues green to Cathy');
+		takeTurn(game, 'Bob clues 1 to Cathy');
 		takeTurn(game, 'Cathy discards p3', 'p4');
 
 		const action = take_action(game);
