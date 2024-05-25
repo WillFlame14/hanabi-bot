@@ -122,7 +122,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
 	const finesse = common.find_finesse(hand, connected, ignoreOrders);
 
 	// Track if the identity could also be in our own hand.
-	const self_connection = find_own_prompt_or_finesse(game, giver, target, identity, looksDirect, connected, ignoreOrders);
+	const self_connection = find_own_prompt_or_finesse(game.minimalCopy(), giver, target, identity, looksDirect, connected, ignoreOrders);
 
 	// Prompt takes priority over finesse
 	if (prompt !== undefined && prompt.identity() !== undefined) {
