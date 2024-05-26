@@ -118,7 +118,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
 
-	if (!inference_known(inf_possibilities) && target !== state.ourPlayerIndex && !correct_match.save) {
+	if (correct_match && !inference_known(inf_possibilities) && target !== state.ourPlayerIndex && !correct_match.save) {
 		const selfRanks = Array.from(new Set(inf_possibilities.flatMap(({ connections }) =>
 			connections.filter(conn => conn.type === 'finesse' && conn.reacting === target && conn.identities.length === 1
 			).map(conn => conn.identities[0].rank))
