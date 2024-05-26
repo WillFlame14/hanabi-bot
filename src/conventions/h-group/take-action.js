@@ -193,16 +193,28 @@ export function take_action(game) {
 	if (playable_cards.length > 0 && priority === 0 && playable_cards.some(c => common.thoughts[c.order].bluffed))
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
+	const has_finesse_plays = playable_cards.length > 0 && priority === 0;
 	// Unlock next player
-	if (urgent_actions[ACTION_PRIORITY.UNLOCK].length > 0)
+	if (!has_finesse_plays && urgent_actions[ACTION_PRIORITY.UNLOCK].length > 0)
 		return urgent_actions[ACTION_PRIORITY.UNLOCK][0];
 
-	// Urgent save for next player
-	for (let i = 1; i < actionPrioritySize; i++) {
-		const action = urgent_actions[i].find(action => state.clue_tokens > 0 || (action.type !== ACTION.RANK && action.type !== ACTION.COLOUR));
+	// TODO: We should be able to delay a finesse for any urgent action. This will require
+	// the other players being able to recognize the urgent action in update-turn.js.
+	if (has_finesse_plays) {
+		const save_action = urgent_actions[ACTION_PRIORITY.ONLY_SAVE].find(action => action.type === ACTION.RANK || action.type === ACTION.COLOUR);
+		if (save_action)
+			return save_action;
+	} else {
+		// Urgent save for next player
+		for (let i = 1; i < actionPrioritySize; i++) {
+			const action = urgent_actions[i].find(action => state.clue_tokens > 0 || (action.type !== ACTION.RANK && action.type !== ACTION.COLOUR));
 
-		if (action)
-			return action;
+			if (action)
+				return action;
+
+			if (has_finesse_plays && i == ACTION_PRIORITY.ONLY_SAVE)
+				break;
+		}
 	}
 
 	// Playing into finesse
