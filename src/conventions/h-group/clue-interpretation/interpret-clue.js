@@ -85,6 +85,25 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		const inference = { suitIndex, rank };
 		focus_thoughts.self_connection ||= (self_connection?.length > 0);
 
+		// A finesse is considered important if it could only have been given by this player.
+		if (connections.some(connection => connection.type == 'finesse')) {
+			for (let i = (giver + 1) % state.numPlayers; i != target; i = (i + 1) % state.numPlayers) {
+				if (i == target)
+					continue;
+
+				if (i == connections[0].reacting) {
+					// The clue must be given before the first reacting player.
+					// If we get to the first reacting player, assume important.
+					action.important = true;
+					break;
+				}
+
+				// A player can't give a finesse if they didn't know some card in the finesse.
+				if (connections.some(connection => connection.reacting == i && connection.type != 'known'))
+					continue;
+			}
+		}
+
 		game.interpretMove(interp);
 
 		const matches = focused_card.matches(inference, { assume: true });
@@ -145,6 +164,7 @@ export function interpret_clue(game, action) {
 	const { clue, giver, list, target, mistake = false, ignoreStall = false } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], common, list, { beforeClue: true });
 
+	const old_focus_thoughts = oldCommon.thoughts[focused_card.order];
 	const focus_thoughts = common.thoughts[focused_card.order];
 	focus_thoughts.focused = true;
 
@@ -154,8 +174,13 @@ export function interpret_clue(game, action) {
 	if (layered_reveal)
 		return;
 
-	if (chop)
+	if (chop) {
 		focus_thoughts.chop_when_first_clued = true;
+
+		// A save is important if no one else could have given the save.
+		if (!old_focus_thoughts.saved && focus_thoughts.saved && (giver + 1) % state.numPlayers == target)
+			action.important = true;
+	}
 
 	if (focus_thoughts.inferred.length === 0 && oldCommon.thoughts[focused_card.order].possible.length > 1) {
 		focus_thoughts.inferred = focus_thoughts.possible;
