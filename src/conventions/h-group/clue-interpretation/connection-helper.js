@@ -199,6 +199,8 @@ export function assign_connections(game, connections, giver) {
 
 		if (type === 'finesse') {
 			card.finessed = true;
+			if (bluff)
+				card.bluffed = true;
 			card.finesse_index = state.actionList.length;
 			card.hidden = hidden;
 

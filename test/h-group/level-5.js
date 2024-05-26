@@ -4,9 +4,10 @@ import { describe, it } from 'node:test';
 import { PLAYER, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
-import { CLUE } from '../../src/constants.js';
+import { ACTION, CLUE } from '../../src/constants.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 import logger from '../../src/tools/logger.js';
+import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -220,6 +221,18 @@ describe('guide principle', () => {
 		// may be waiting on Alice to not play their g1.
 		const clue = { target: PLAYER.BOB, type: CLUE.RANK, value: 4 };
 		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue), false);
+	});
+
+	it(`gives a critical save even when it is finessed`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p4', 'g2', 'g4', 'p5'],
+			['p4', 'b2', 'b3', 'y4'],
+			['b5', 'y2', 'b3', 'r5']
+		], { level: 5, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Donald clues blue to Cathy');
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 1, value: 5 });
 	});
 });
 

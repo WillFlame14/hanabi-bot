@@ -189,8 +189,8 @@ export function take_action(game) {
 		find_best_playable(game, playable_cards, playable_priorities) :
 		{ priority: -1, best_playable_card: undefined };
 
-	// Playing into finesse/bluff
-	if (playable_cards.length > 0 && priority === 0)
+	// Bluffs should never be deferred as they can lead to significant desync with human players
+	if (playable_cards.length > 0 && priority === 0 && playable_cards.some(c => common.thoughts[c.order].bluffed))
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
 	// Unlock next player
@@ -204,6 +204,10 @@ export function take_action(game) {
 		if (action)
 			return action;
 	}
+
+	// Playing into finesse
+	if (playable_cards.length > 0 && priority === 0)
+		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
 	const discardable = trash_cards[0] ?? common.chop(state.hands[state.ourPlayerIndex]);
 

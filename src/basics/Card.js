@@ -115,6 +115,7 @@ export class Card extends BasicCard {
 	// Boolean flags about the state of the card
 	focused = false;
 	finessed = false;
+	bluffed = false;
 	chop_moved = false;
 	reset = false;			// Whether the card has previously lost all inferences
 	chop_when_first_clued = false;
