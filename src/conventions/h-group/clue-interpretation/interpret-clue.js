@@ -83,24 +83,29 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 	for (const { connections, suitIndex, rank, save, interp, self_connection } of inf_possibilities) {
 		const inference = { suitIndex, rank };
-		focus_thoughts.self_connection ||= (self_connection?.length > 0);
+		focus_thoughts.self_connection ||= self_connection;
 
 		// A finesse is considered important if it could only have been given by this player.
+		// A finesse must be given before the first finessed player (card indices would shift after)
+		// and only by someone who knows or can see all of the cards in the connections.
 		if (connections.some(connection => connection.type == 'finesse')) {
-			for (let i = (giver + 1) % state.numPlayers; i != target; i = (i + 1) % state.numPlayers) {
-				if (i == target)
-					continue;
-
-				if (i == connections[0].reacting) {
-					// The clue must be given before the first reacting player.
-					// If we get to the first reacting player, assume important.
+			for (let i = (giver + 1) % state.numPlayers; i != giver; i = (i + 1) % state.numPlayers) {
+				if (connections.some(connection => connection.type == 'finesse' && connection.reacting == i)) {
+					// The clue must be given before the first finessed player,
+					// as otherwise the finesse position may change.
 					action.important = true;
 					break;
 				}
+				// The target cannot clue themselves.
+				if (i == target)
+					continue;
 
 				// A player can't give a finesse if they didn't know some card in the finesse.
 				if (connections.some(connection => connection.reacting == i && connection.type != 'known'))
 					continue;
+
+				// This player could give the finesse, don't mark the action as important.
+				break;
 			}
 		}
 
@@ -118,12 +123,12 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
 
-	if (correct_match && !inference_known(inf_possibilities) && target !== state.ourPlayerIndex && !correct_match.save) {
+	if (!inference_known(inf_possibilities) && target !== state.ourPlayerIndex && !correct_match?.save) {
 		const selfRanks = Array.from(new Set(inf_possibilities.flatMap(({ connections }) =>
 			connections.filter(conn => conn.type === 'finesse' && conn.reacting === target && conn.identities.length === 1
 			).map(conn => conn.identities[0].rank))
 		));
-		const ownBlindPlays = correct_match.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length;
+		const ownBlindPlays = correct_match?.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length || 0;
 		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities.some(fp => fp.save), selfRanks, ownBlindPlays);
 		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver, target);
 

@@ -106,7 +106,7 @@ function find_colour_focus(game, suitIndex, action) {
 
 		const ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
 			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
-		const self_connection = game.level < LEVEL.INTERMEDIATE_FINESSES ? null : find_own_prompt_or_finesse(game.minimalCopy(), giver, target, {suitIndex, rank: next_rank}, true, already_connected, ignoreOrders);
+		const self_connection = game.level < LEVEL.INTERMEDIATE_FINESSES ? false : find_own_prompt_or_finesse(game.minimalCopy(), giver, target, {suitIndex, rank: next_rank}, true, already_connected, ignoreOrders).length > 0;
 
 		// Our card could be the final rank that we can't find
 		focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY, self_connection });
@@ -295,7 +295,7 @@ function find_rank_focus(game, rank, action) {
 				logger.warn('illegal self-finesse that will cause a wrong prompt!');
 
 			} else {
-				const self_connection = game.level < LEVEL.INTERMEDIATE_FINESSES ? null : find_own_prompt_or_finesse(game.minimalCopy(), giver, target, {suitIndex, rank}, looksDirect, already_connected, ignoreOrders);
+				const self_connection = game.level < LEVEL.INTERMEDIATE_FINESSES ? false : find_own_prompt_or_finesse(game.minimalCopy(), giver, target, {suitIndex, rank}, looksDirect, already_connected, ignoreOrders).length > 0;
 				focus_possible.push({ suitIndex, rank, save: false, connections, interp: CLUE_INTERP.PLAY, self_connection });
 			}
 		}

@@ -217,7 +217,7 @@ describe('guide principle', () => {
 		takeTurn(game, 'Cathy clues 5 to Donald');
 		takeTurn(game, 'Donald clues green to Bob');
 
-		// Blue to Bob is not a safe clue, since Bob may see it as a b4 finesse, and
+		// 4 to Bob is not a safe clue, since Bob may see it as a b4 finesse, and
 		// may be waiting on Alice to not play their g1.
 		const clue = { target: PLAYER.BOB, type: CLUE.RANK, value: 4 };
 		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue), false);

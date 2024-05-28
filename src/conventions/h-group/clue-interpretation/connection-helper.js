@@ -190,7 +190,7 @@ export function assign_connections(game, connections, giver) {
 		const { type, bluff, hidden, card: conn_card, linked, identities, certain, self_connection } = connections[i];
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
-		card.self_connection = self_connection?.length > 0;
+		card.self_connection = self_connection;
 
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)

@@ -189,37 +189,34 @@ export function take_action(game) {
 		find_best_playable(game, playable_cards, playable_priorities) :
 		{ priority: -1, best_playable_card: undefined };
 
-	// Bluffs should never be deferred as they can lead to significant desync with human players
-	if (playable_cards.length > 0 && priority === 0 && playable_cards.some(c => common.thoughts[c.order].bluffed))
-		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
+	// If we have a finesse
+	if (playable_cards.length > 0 && priority === 0) {
+		// Bluffs should never be deferred as they can lead to significant desync with human players
+		if (playable_cards.some(c => common.thoughts[c.order].bluffed))
+			return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
-	const has_finesse_plays = playable_cards.length > 0 && priority === 0;
-	// Unlock next player
-	if (!has_finesse_plays && urgent_actions[ACTION_PRIORITY.UNLOCK].length > 0)
-		return urgent_actions[ACTION_PRIORITY.UNLOCK][0];
-
-	// TODO: We should be able to delay a finesse for any urgent action. This will require
-	// the other players being able to recognize the urgent action in update-turn.js.
-	if (has_finesse_plays) {
+		// Before playing a finesse, look for any urgent saves.
+		// TODO: We should be able to delay a finesse for any urgent action. This will require
+		// the other players being able to recognize the urgent action in update-turn.js.
 		const save_action = urgent_actions[ACTION_PRIORITY.ONLY_SAVE].find(action => action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 		if (save_action)
 			return save_action;
-	} else {
-		// Urgent save for next player
-		for (let i = 1; i < actionPrioritySize; i++) {
-			const action = urgent_actions[i].find(action => state.clue_tokens > 0 || (action.type !== ACTION.RANK && action.type !== ACTION.COLOUR));
 
-			if (action)
-				return action;
-
-			if (has_finesse_plays && i == ACTION_PRIORITY.ONLY_SAVE)
-				break;
-		}
+		// If no urgent saves, play into the finesse
+		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 	}
 
-	// Playing into finesse
-	if (playable_cards.length > 0 && priority === 0)
-		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
+	// Unlock next player
+	if (urgent_actions[ACTION_PRIORITY.UNLOCK].length > 0)
+		return urgent_actions[ACTION_PRIORITY.UNLOCK][0];
+
+	// Urgent save for next player
+	for (let i = 1; i < actionPrioritySize; i++) {
+		const action = urgent_actions[i].find(action => state.clue_tokens > 0 || (action.type !== ACTION.RANK && action.type !== ACTION.COLOUR));
+
+		if (action)
+			return action;
+	}
 
 	const discardable = trash_cards[0] ?? common.chop(state.hands[state.ourPlayerIndex]);
 
