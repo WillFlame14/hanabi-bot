@@ -56,7 +56,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	const new_chop = hypo_game.common.chop(hypo_game.state.hands[target], { afterClue: true });
 
 	// Target is not loaded and their new chop is more valuable than their old one
-	if (!hypo_game.players[target].thinksLoaded(hypo_game.state, target) && (new_chop ? cardValue(state, me, new_chop) : 4) > cardValue(state, me, old_chop))
+	if (!hypo_game.players[target].thinksLoaded(hypo_game.state, target, {assume: false}) && (new_chop ? cardValue(state, me, new_chop) : 4) > cardValue(state, me, old_chop))
 		return -10;
 
 	return find_clue_value(result) - 0.1*saved_trash.length;

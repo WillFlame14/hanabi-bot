@@ -101,17 +101,19 @@ export class Player {
 	 * Returns whether they they think the given player is loaded (i.e. has a known playable or trash).
 	 * @param {State} state
 	 * @param {number} playerIndex
+	 * @param {{assume: boolean}} options
 	 */
-	thinksLoaded(state, playerIndex) {
-		return this.thinksPlayables(state, playerIndex).length > 0 || this.thinksTrash(state, playerIndex).length > 0;
+	thinksLoaded(state, playerIndex, options = {assume: true}) {
+		return this.thinksPlayables(state, playerIndex, options).length > 0 || this.thinksTrash(state, playerIndex).length > 0;
 	}
 
 	/**
 	 * Returns playables in the given player's hand, according to this player.
 	 * @param {State} state
 	 * @param {number} playerIndex
+	 * @param {{assume: boolean}} options
 	 */
-	thinksPlayables(state, playerIndex) {
+	thinksPlayables(state, playerIndex, options = {assume: true}) {
 		const linked_orders = this.linkedOrders(state);
 
 		// TODO: Revisit if the card identity being known is relevant?
@@ -121,7 +123,7 @@ export class Player {
 			return !linked_orders.has(c.order) &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
-				!card.self_connection &&
+				(options?.assume || !card.self_connection) &&
 				card.matches_inferences();
 		}));
 	}

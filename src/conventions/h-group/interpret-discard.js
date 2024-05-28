@@ -157,9 +157,9 @@ function check_sdcm(game, action, before_trash, old_chop) {
 		return;
 
 	const scream = state.clue_tokens === 1 && old_chop &&
-		(common.thinksPlayables(state, playerIndex).length > 0 || before_trash.length > 0) && order === old_chop.order;
+		(common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 || before_trash.length > 0) && order === old_chop.order;
 
-	const shout = common.thinksPlayables(state, playerIndex).length > 0 && before_trash.some(c => c.order === order) && isTrash(state, common, { suitIndex, rank }, order, { infer: true });
+	const shout = common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 && before_trash.some(c => c.order === order) && isTrash(state, common, { suitIndex, rank }, order, { infer: true });
 
 	if (!scream && !shout)
 		return;
@@ -167,7 +167,7 @@ function check_sdcm(game, action, before_trash, old_chop) {
 	if (state.numPlayers === 2)
 		return scream ? 'scream' : 'shout';
 
-	if (common.thinksLoaded(state, nextPlayerIndex)) {
+	if (common.thinksLoaded(state, nextPlayerIndex, {assume: true})) {
 		logger.warn(`${state.playerNames[playerIndex]} discarded with a playable/kt at 0 clues but next players was safe! (echo?)`);
 		return 'generation';
 	}

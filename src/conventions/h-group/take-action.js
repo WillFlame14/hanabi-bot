@@ -224,7 +224,7 @@ export function take_action(game) {
 		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
 
 		// Generate for next next player
-		if (me.chopValue(state, nextNextPlayerIndex) >= 4 && !common.thinksLoaded(state, nextNextPlayerIndex)) {
+		if (me.chopValue(state, nextNextPlayerIndex) >= 4 && !common.thinksLoaded(state, nextNextPlayerIndex, {assume: false})) {
 			const nextChop = common.chop(state.hands[nextPlayerIndex]);
 
 			// Play a 5 if we have one
