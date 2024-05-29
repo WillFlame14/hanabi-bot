@@ -101,9 +101,9 @@ export class Player {
 	 * Returns whether they they think the given player is loaded (i.e. has a known playable or trash).
 	 * @param {State} state
 	 * @param {number} playerIndex
-	 * @param {{assume: boolean}} options
+	 * @param {{assume?: boolean}} options
 	 */
-	thinksLoaded(state, playerIndex, options = undefined) {
+	thinksLoaded(state, playerIndex, options = {}) {
 		return this.thinksPlayables(state, playerIndex, options).length > 0 || this.thinksTrash(state, playerIndex).length > 0;
 	}
 
@@ -111,9 +111,9 @@ export class Player {
 	 * Returns playables in the given player's hand, according to this player.
 	 * @param {State} state
 	 * @param {number} playerIndex
-	 * @param {{assume: boolean}} options
+	 * @param {{assume?: boolean}} options
 	 */
-	thinksPlayables(state, playerIndex, options = undefined) {
+	thinksPlayables(state, playerIndex, options = {}) {
 		const linked_orders = this.linkedOrders(state);
 
 		// TODO: Revisit if the card identity being known is relevant?
