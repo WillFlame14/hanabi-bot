@@ -103,7 +103,7 @@ export class Player {
 	 * @param {number} playerIndex
 	 * @param {{assume: boolean}} options
 	 */
-	thinksLoaded(state, playerIndex, options = {assume: true}) {
+	thinksLoaded(state, playerIndex, options = undefined) {
 		return this.thinksPlayables(state, playerIndex, options).length > 0 || this.thinksTrash(state, playerIndex).length > 0;
 	}
 
@@ -113,7 +113,7 @@ export class Player {
 	 * @param {number} playerIndex
 	 * @param {{assume: boolean}} options
 	 */
-	thinksPlayables(state, playerIndex, options = {assume: true}) {
+	thinksPlayables(state, playerIndex, options = undefined) {
 		const linked_orders = this.linkedOrders(state);
 
 		// TODO: Revisit if the card identity being known is relevant?
@@ -123,7 +123,7 @@ export class Player {
 			return !linked_orders.has(c.order) &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
-				(options?.assume || !card.self_connection) &&
+				((options?.assume ?? true) || !card.self_connection) &&
 				card.matches_inferences();
 		}));
 	}
