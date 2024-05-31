@@ -173,7 +173,7 @@ function resolve_card_retained(game, waiting_connection) {
 				return { quit: true };
 			}
 			catch(err) {
-				logger.warn(err);
+				logger.warn(err.message);
 			}
 		}
 
@@ -395,9 +395,8 @@ export function update_turn(game, action) {
 		for (const connection of connections) {
 			const { reacting, identities } = connection;
 			const connecting_card = common.thoughts[connection.card.order];
-			const card_exists = state.hands[reacting].some(c => c.order === connection.card.order);
 
-			if (!card_exists)
+			if (!state.hands[reacting].some(c => c.order === connection.card.order))
 				continue;
 
 			if (!connecting_card.superposition) {

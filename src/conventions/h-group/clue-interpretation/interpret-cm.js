@@ -30,16 +30,8 @@ export function interpret_tcm(game, target, focus_order) {
 		focus_thoughts.inferred.every(i => state.isPlayable(i) && !isTrash(state, common, i, focus_order, { infer: true })))
 		return false;
 
-	let oldest_trash_index;
-	// Find the oldest newly clued trash
-	for (let i = state.hands[target].length - 1; i >= 0; i--) {
-		const card = state.hands[target][i];
-
-		if (card.newly_clued && common.thoughts[card.order].possible.every(c => isTrash(state, common, c, card.order, { infer: true }))) {
-			oldest_trash_index = i;
-			break;
-		}
-	}
+	const oldest_trash_index = state.hands[target].findLastIndex(card =>
+		card.newly_clued && common.thoughts[card.order].possible.every(c => isTrash(state, common, c, card.order, { infer: true })));
 
 	logger.info(`oldest trash card is ${logCard(state.hands[target][oldest_trash_index])}`);
 

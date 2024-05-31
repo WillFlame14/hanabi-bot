@@ -12,6 +12,7 @@ import { logHand } from '../../tools/log.js';
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').Clue} Clue
+ * @typedef {import('../../types.js').Identity} Identity
  */
 
 /**
@@ -154,7 +155,7 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 
 	const valuable = playables.length > 1 ||
 		prompt.order !== focused_card.order ||
-		playables.some(({card}) => card.chop_moved && card.newly_clued);
+		playables.some(({ card }) => card.chop_moved && card.newly_clued);
 
 	return { tempo: true, valuable };
 }
@@ -188,4 +189,15 @@ export function older_queued_finesse(hand, player, new_finesse_order) {
 		return finessed &&
 			finesse_index < player.thoughts[new_finesse_order].finesse_index;		// The finesse must have been older
 	});
+}
+
+/**
+ * @param {Game} game
+ * @param {number} index
+ * @param {number} suitIndex
+ */
+export function getIgnoreOrders(game, index, suitIndex) {
+	return (game.next_ignore[index] ?? [])
+		.filter(i => i.inference === undefined || i.inference.suitIndex === suitIndex)
+		.map(i => i.order);
 }

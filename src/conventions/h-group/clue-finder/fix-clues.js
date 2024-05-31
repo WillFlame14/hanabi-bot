@@ -51,7 +51,7 @@ export function find_fix_clues(game, play_clues, save_clues, options = {}) {
 				continue;
 
 			// Part of a symmetric waiting connection
-			if (common.waiting_connections.some(wc => wc.symmetric && wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order)))
+			if (common.dependentConnections(order).some(wc => wc.symmetric))
 				continue;
 
 			if (card.inferred.length === 0) {

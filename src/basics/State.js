@@ -1,6 +1,6 @@
 import { CLUE, HAND_SIZE } from '../constants.js';
 import { Hand } from './Hand.js';
-import { cardCount, isCluable } from '../variants.js';
+import { cardCount, colourableSuits } from '../variants.js';
 
 import * as Utils from '../tools/util.js';
 
@@ -215,9 +215,9 @@ export class State {
 		for (let rank = 1; rank <= 5; rank++)
 			clues.push({ type: CLUE.RANK, value: rank, target });
 
-		for (let suitIndex = 0; suitIndex < this.variant.suits.length; suitIndex++)
+		for (let suitIndex = 0; suitIndex < colourableSuits(this.variant).length; suitIndex++)
 			clues.push({ type: CLUE.COLOUR, value: suitIndex, target });
 
-		return clues.filter(clue => isCluable(this.variant, clue) && hand.clueTouched(clue, this.variant).length > 0);
+		return clues.filter(clue => hand.clueTouched(clue, this.variant).length > 0);
 	}
 }

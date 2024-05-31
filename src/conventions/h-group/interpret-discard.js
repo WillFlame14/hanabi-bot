@@ -37,44 +37,46 @@ export function interpret_discard(game, action, card) {
 		const { connections, conn_index, inference, action_index } = common.waiting_connections[i];
 
 		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.card.order === order);
-		if (dc_conn_index !== -1) {
-			if (failed && game.finesses_while_finessed[playerIndex].some(c => c.matches({ suitIndex, rank }))) {
-				logger.info('bombed duplicated card from finessing while finessed');
-				action.intentional = true;
+		if (dc_conn_index === -1)
+			continue;
+
+		if (failed && game.finesses_while_finessed[playerIndex].some(c => c.matches({ suitIndex, rank }))) {
+			logger.info('bombed duplicated card from finessing while finessed');
+			action.intentional = true;
+			continue;
+		}
+
+		const { card } = connections[dc_conn_index];
+		logger.info(`discarded connecting card ${logCard(card)}, cancelling waiting connection for inference ${logCard(inference)}`);
+
+		to_remove.push(i);
+
+		// Another waiting connection exists for this, can ignore
+		if (common.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index)))
+			continue;
+
+		// Check if sarcastic
+		if (card.clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !failed) {
+			const sarcastics = interpret_sarcastic(game, action);
+
+			// Sarcastic, rewrite connection onto this person
+			if (sarcastics.length === 1) {
+				logger.info('rewriting connection to use sarcastic on order', sarcastics[0].order);
+				Object.assign(connections[dc_conn_index], {
+					reacting: state.hands.findIndex(hand => hand.findOrder(sarcastics[0].order)),
+					card: sarcastics[0]
+				});
 				continue;
 			}
+		}
 
-			const { card } = connections[dc_conn_index];
-			logger.info(`discarded connecting card ${logCard(card)}, cancelling waiting connection for inference ${logCard(inference)}`);
-
-			to_remove.push(i);
-
-			// No other waiting connections exist for this
-			if (!common.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index))) {
-				// Check if sarcastic
-				if (card.clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !failed) {
-					const sarcastics = interpret_sarcastic(game, action);
-
-					// Sarcastic, rewrite connection onto this person
-					if (sarcastics.length === 1) {
-						logger.info('rewriting connection to use sarcastic on order', sarcastics[0].order);
-						Object.assign(connections[dc_conn_index], {
-							reacting: state.hands.findIndex(hand => hand.findOrder(sarcastics[0].order)),
-							card: sarcastics[0]
-						});
-						return;
-					}
-				}
-
-				try {
-					const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
-					game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
-					return;
-				}
-				catch(err) {
-					logger.warn(err.message);
-				}
-			}
+		try {
+			const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
+			game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
+			return;
+		}
+		catch(err) {
+			logger.warn(err.message);
 		}
 	}
 

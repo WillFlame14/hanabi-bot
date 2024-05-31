@@ -125,6 +125,9 @@ export class IdentitySet {
 	 * @param {Identity} identity
 	 */
 	has(identity) {
+		if (identity.suitIndex === -1 || identity.rank === -1)
+			return false;
+
 		return (this.value & IdentitySet.toMask(identity, this.maxStackRank)) !== 0;
 	}
 
