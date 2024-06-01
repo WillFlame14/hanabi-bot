@@ -5,7 +5,7 @@ import { cardTouched, find_possibilities } from '../../../variants.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection } from '../../../tools/log.js';
 import { CLUE } from '../../../constants.js';
-import { determine_focus } from '../hanabi-logic.js';
+import { determine_focus, getIgnoreOrders } from '../hanabi-logic.js';
 
 export class IllegalInterpretation extends Error {
 	/** @param {string} message */
@@ -71,7 +71,8 @@ function connect(game, giver, target, focusedCard, identity, looksDirect, connec
 	const { common, state } = game;
 
 	// First, see if someone else has the connecting card
-	const other_connecting = resolve_bluff(game, giver, target, find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected, ignoreOrders, { knownOnly: [ignorePlayer] }), focusedCard, identity);
+	const connections = find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
+	const other_connecting = resolve_bluff(game, connections, focusedCard, identity);
 	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate' && (other_connecting.at(-1).reacting != state.ourPlayerIndex || other_connecting.at(-1).card.matches(identity, {assume: true})))
 		return other_connecting;
 
@@ -195,8 +196,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		throw new IllegalInterpretation('cannot finesse ourselves.');
 
 	if (target === (ignorePlayer === -1 ? state.ourPlayerIndex : ignorePlayer)) {
-		const connected = find_known_connecting(game, giver, { suitIndex, rank }, game.next_ignore[0]?.filter(i =>
-			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order) ?? []);
+		const connected = find_known_connecting(game, giver, { suitIndex, rank }, getIgnoreOrders(game, 0, suitIndex));
 
 		if (connected !== undefined && connected.type !== 'terminate' && connected.card.order !== focused_card.order)
 			throw new IllegalInterpretation(`won't find own finesses for ${logCard({ suitIndex, rank })} when someone already has [${logConnection(connected)}]`);
@@ -215,7 +215,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 
 	for (let next_rank = hypo_state.play_stacks[suitIndex] + 1; next_rank < rank; next_rank++) {
 		const next_identity = { suitIndex, rank: next_rank };
-		const ignoreOrders = game.next_ignore[next_rank - hypo_state.play_stacks[suitIndex] - 1]?.map(i => i.order) ?? [];
+		const ignoreOrders = getIgnoreOrders(game, next_rank - state.play_stacks[suitIndex] - 1, suitIndex);
 
 		const curr_connections = connect(hypo_game, giver, target, focused_card, next_identity, direct, already_connected, ignoreOrders, ignorePlayer, selfRanks, finesses, firstPlay);
 		firstPlay = false;
@@ -261,7 +261,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		if (allHidden)
 			next_rank--;
 	}
-	return resolve_bluff(game, giver, target, connections, focused_card, { suitIndex, rank });
+	return resolve_bluff(game, connections, focused_card, { suitIndex, rank });
 }
 
 /**
@@ -369,8 +369,7 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 			if (finesse === undefined)
 				return false;
 
-			const ignored_order = (game.next_ignore[rank - state.play_stacks[suitIndex] - 1]?.filter(i =>
-				i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order) ?? []).find(order => order === finesse.order);
+			const ignored_order = getIgnoreOrders(game, rank - state.play_stacks[suitIndex] - 1, suitIndex).find(order => order === finesse.order);
 			if (ignored_order === undefined)
 				return false;
 

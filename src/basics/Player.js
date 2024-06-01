@@ -1,4 +1,5 @@
 import { unknownIdentities } from './hanabi-util.js';
+import { IdentitySet } from './IdentitySet.js';
 import * as Utils from '../tools/util.js';
 import * as Elim from './player-elim.js';
 
@@ -10,7 +11,6 @@ import { logCard } from '../tools/log.js';
  * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').BasicCard} BasicCard
- * @typedef {import('./IdentitySet.js').IdentitySet} IdentitySet
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Link} Link
  * @typedef {import('../types.js').WaitingConnection} WaitingConnection
@@ -205,6 +205,11 @@ export class Player {
 		return this.hypo_stacks.reduce((sum, stack) => sum + stack) + this.unknown_plays.size;
 	}
 
+	/** @param {number} order */
+	dependentConnections(order) {
+		return this.waiting_connections.filter(wc => wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order));
+	}
+
 	/**
 	 * @param {State} state
 	 * Computes the hypo stacks and unknown plays.
@@ -216,7 +221,7 @@ export class Player {
 		const already_played = new Set();
 
 		let found_new_playable = true;
-		const good_touch_elim = /** @type {Identity[]}*/ ([]);
+		let good_touch_elim = new IdentitySet(state.variant.suits.length, 0);
 
 		const linked_orders = this.linkedOrders(state);
 
@@ -225,7 +230,7 @@ export class Player {
 		 * @param {BasicCard[]} poss
 		 */
 		const delayed_playable = (poss) => {
-			const remaining_poss = poss.filter(c => !good_touch_elim.some(e => c.matches(e)));
+			const remaining_poss = poss.filter(c => !good_touch_elim.has(c));
 			return remaining_poss.length > 0 && remaining_poss.every(c => hypo_stacks[c.suitIndex] + 1 === c.rank);
 		};
 
@@ -236,78 +241,76 @@ export class Player {
 			for (const { order } of state.hands.flat()) {
 				const card = this.thoughts[order];
 
-				if (!card.saved || good_touch_elim.some(e => card.matches(e)) || linked_orders.has(order) || unknown_plays.has(order) || already_played.has(order))
+				if (!card.saved || good_touch_elim.has(card) || linked_orders.has(order) || unknown_plays.has(order) || already_played.has(order))
 					continue;
 
-				const fake_wcs = this.waiting_connections.filter(wc => {
-					const { focused_card, inference } = wc;
-					return focused_card.order === order && !state.deck[focused_card.order].matches(inference, { assume: true });
-				});
+				const fake_wcs = this.waiting_connections.filter(wc =>
+					wc.focused_card.order === order && !state.deck[wc.focused_card.order].matches(wc.inference, { assume: true }));
 
 				// Ignore all waiting connections that will be proven wrong
 				const diff = card.clone();
 				diff.inferred = diff.inferred.subtract(fake_wcs.flatMap(wc => wc.inference));
 
-				if (diff.matches_inferences() &&
+				const playable = diff.matches_inferences() &&
 					(delayed_playable(diff.possible.array) ||
 					delayed_playable(diff.inferred.array) ||
 					(diff.finessed && delayed_playable([card])) ||
-					this.play_links.some(pl => pl.connected === order && pl.orders.every(o => unknown_plays.has(o))))
-				) {
-					const id = card.identity({ infer: true });
-					const actual_id = state.deck[order].identity();
+					this.play_links.some(pl => pl.connected === order && pl.orders.every(o => unknown_plays.has(o))));
 
-					// Do not allow false updating of hypo stacks
-					if (this.playerIndex === -1 && (
-						(actual_id &&
-							(!card.inferred.has(actual_id) ||		// None of the inferences match
-							state.hands.flat().some(c => unknown_plays.has(c.order) && c.matches(actual_id))))	||	// Duping playable
-						(this.waiting_connections.some(wc =>				// Only part of a fake ambiguous connection
-							!state.deck[wc.focused_card.order].matches(wc.inference, { assume: true }) &&
-							wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order))
-						&&
-							!this.waiting_connections.some(wc =>
-								state.deck[wc.focused_card.order].matches(wc.inference, { assume: true }) &&
-								wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order)))
-					))
-						continue;
+				if (!playable)
+					continue;
 
-					if (id === undefined) {
-						// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
-						unknown_plays.add(order);
+				const id = card.identity({ infer: true });
+				const actual_id = state.deck[order].identity();
 
-						const promised_link = this.links.find(link => link.promised && link.cards.some(c => c.order === order));
+				// Do not allow false updating of hypo stacks
+				if (this.playerIndex === -1 && (
+					(actual_id &&
+						(!card.inferred.has(actual_id) ||		// None of the inferences match
+						state.hands.flat().some(c => unknown_plays.has(c.order) && c.matches(actual_id))))	||	// Duping playable
+					(this.dependentConnections(order).some(wc =>				// Only part of a fake ambiguous connection
+						!state.deck[wc.focused_card.order].matches(wc.inference, { assume: true }))
+					&&
+						!this.dependentConnections(order).some(wc2 =>
+							state.deck[wc2.focused_card.order].matches(wc2.inference, { assume: true })))
+				))
+					continue;
 
-						// All cards in a promised link will be played
-						if (promised_link?.cards.every(c => unknown_plays.has(c.order))) {
-							const { suitIndex, rank } = promised_link.identities[0];
+				if (id === undefined) {
+					// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
+					unknown_plays.add(order);
 
-							if (rank !== hypo_stacks[suitIndex] + 1) {
-								logger.warn(`tried to add ${logCard(promised_link.identities[0])} onto hypo stacks, but they were at ${hypo_stacks[suitIndex]}??`);
-							}
-							else {
-								hypo_stacks[suitIndex] = rank;
-								good_touch_elim.push(promised_link.identities[0]);
-								found_new_playable = true;
-								already_played.add(order);
-							}
+					const promised_link = this.links.find(link => link.promised && link.cards.some(c => c.order === order));
+
+					// All cards in a promised link will be played
+					if (promised_link?.cards.every(c => unknown_plays.has(c.order))) {
+						const id2 = promised_link.identities[0];
+
+						if (id2.rank !== hypo_stacks[id2.suitIndex] + 1) {
+							logger.warn(`tried to add ${logCard(id2)} onto hypo stacks, but they were at ${hypo_stacks[id2.suitIndex]}??`);
 						}
-						continue;
+						else {
+							hypo_stacks[id2.suitIndex] = id2.rank;
+							good_touch_elim = good_touch_elim.union(id2);
+							found_new_playable = true;
+							already_played.add(order);
+						}
 					}
-
-					const { suitIndex, rank } = id;
-
-					if (rank !== hypo_stacks[suitIndex] + 1) {
-						// e.g. a duplicated 1 before any 1s have played will have all bad possibilities eliminated by good touch
-						logger.warn(`tried to add new playable card ${logCard(card)} ${card.order}, hypo stacks at ${hypo_stacks[suitIndex]}`);
-						continue;
-					}
-
-					hypo_stacks[suitIndex] = rank;
-					good_touch_elim.push(id);
-					found_new_playable = true;
-					already_played.add(order);
+					continue;
 				}
+
+				const { suitIndex, rank } = id;
+
+				if (rank !== hypo_stacks[suitIndex] + 1) {
+					// e.g. a duplicated 1 before any 1s have played will have all bad possibilities eliminated by good touch
+					logger.warn(`tried to add new playable card ${logCard(id)} ${card.order}, hypo stacks at ${hypo_stacks[suitIndex]}`);
+					continue;
+				}
+
+				hypo_stacks[suitIndex] = rank;
+				good_touch_elim = good_touch_elim.union(id);
+				found_new_playable = true;
+				already_played.add(order);
 			}
 		}
 		this.hypo_stacks = hypo_stacks;

@@ -1,6 +1,6 @@
 import { ACTION, CLUE, END_CONDITION } from '../constants.js';
 import { Card } from '../basics/Card.js';
-import { shortForms } from '../variants.js';
+import { colourableSuits, shortForms, variantRegexes } from '../variants.js';
 import { globals } from './util.js';
 
 /**
@@ -73,9 +73,10 @@ export function logClue(clue) {
 	if (clue === undefined)
 		return;
 
-	const value = (clue.type === CLUE.COLOUR || clue.type === ACTION.COLOUR) ? globals.game.state.variant.suits[clue.value].toLowerCase() : clue.value;
+	const { state } = globals.game;
+	const value = (clue.type === CLUE.COLOUR || clue.type === ACTION.COLOUR) ? colourableSuits(state.variant)[clue.value].toLowerCase() : clue.value;
 
-	return `(${value} to ${globals.game.state.playerNames[clue.target]})`;
+	return `(${value} to ${state.playerNames[clue.target]})`;
 }
 
 /**
@@ -162,7 +163,7 @@ export function logAction(action) {
 			let clue_value;
 
 			if (clue.type === CLUE.COLOUR)
-				clue_value = state.variant.suits[clue.value].toLowerCase();
+				clue_value = state.variant.suits.filter(suit => !suit.match(variantRegexes.noColour))[clue.value].toLowerCase();
 			else
 				clue_value = clue.value;
 

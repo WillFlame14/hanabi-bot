@@ -204,18 +204,14 @@ export function objEquals(obj1, obj2) {
 	if (typeof obj1 !== typeof obj2)
 		return false;
 
-	if (typeof obj1 !== 'object')
-		return false;
+	if (typeof obj1 !== 'object' || obj1 === null || obj2 === null)
+		return obj1 === obj2;
 
 	const keys1 = Object.keys(obj1);
 
 	// Different number of keys
 	if (keys1.length !== Object.keys(obj2).length)
 		return false;
-
-	// Two literals
-	if (keys1.length === 0)
-		return obj1 === obj2;
 
 	for (const key of keys1) {
 		const val1 = obj1[key];
@@ -224,7 +220,6 @@ export function objEquals(obj1, obj2) {
 		// Values have different types
 		if (typeof val1 !== typeof obj2[key])
 			return false;
-
 
 		if (typeof val1 === 'object') {
 			// Nested objects aren't the same

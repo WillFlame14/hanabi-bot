@@ -7,8 +7,6 @@ import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
 
-import logger from '../../tools/logger.js';
-
 /**
  * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../../basics/State.js').State} State
@@ -59,17 +57,16 @@ function find_unlock(game, target) {
 function find_play_over_save(game, target, all_play_clues, locked, remainder_boost) {
 	const { common, state, tableID } = game;
 
-	/** @type {Clue[]} */
-	const play_clues = [];
-
-	for (const clue of all_play_clues) {
+	const play_clues = all_play_clues.filter(clue => {
 		const clue_value = find_clue_value(clue.result) + remainder_boost;
 
-		// Locked reduces needed clue value (TODO: try readding only 1 clue token increases needed clue value?)
-		if (clue_value < (locked ? 0 : 1)) {
-			logger.debug('clue value', clue_value, 'skipping');
-			continue;
-		}
+		// Locked reduces needed clue value
+		if (clue_value < (locked ? 0 : 1))
+			return false;
+
+		// Unsafe play clue
+		if (clue.result.trash === 0 && state.clue_tokens < (state.numPlayers > 2 ? 1 : 2))
+			return false;
 
 		const { playables } = clue.result;
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target).map(p => p.card);
@@ -77,10 +74,8 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 			state.isPlayable(state.deck[card.order]) && card.inferred.every(i => state.isPlayable(i)));
 
 		// The card can be played without any additional help
-		if (immediately_playable.length > 0) {
-			play_clues.push(clue);
-			continue;
-		}
+		if (immediately_playable.length > 0)
+			return true;
 
 		// Try to see if any target card can be made playable by players between us and them, including themselves
 		for (const { order } of target_cards) {
@@ -92,7 +87,7 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 
 				if (nextPlayer === target) {
 					if (stackRank + 1 === rank)
-						play_clues.push(clue);
+						return true;
 
 					break;
 				}
@@ -102,22 +97,14 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 					playables.some(p => p.playerIndex === nextPlayer && p.card.matches({ suitIndex, rank: stackRank + 1 })) ||
 					common_playables.some(p => p.matches({ suitIndex, rank: stackRank + 1 }));
 
-				if (connecting_playable) {
-					logger.info('found connecting playable', stackRank + 1);
+				if (connecting_playable)
 					stackRank++;
-				}
 			}
 		}
+		return false;
+	});
 
-		// Unsure what this does?
-		// const touches_chop = state.hands[target].clueTouched(clue, state.variant).some(c => c.order === common.chop(state.hands[target])?.order);
-		// if (!locked && touches_chop && clue_safe(game, me, clue))
-		// 	play_clues.push({ clue, playables: [] });
-	}
-
-	const safe_play_clues = play_clues.filter(clue => clue.result.trash > 0 || state.clue_tokens >= (state.numPlayers > 2 ? 1 : 2));
-
-	if (safe_play_clues.length === 0)
+	if (play_clues.length === 0)
 		return;
 
 	// If there are clues that make the save target playable, we should prioritize those
@@ -125,7 +112,7 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 	// const save_target = state.hands[target].chop();
 	// const playable_saves = play_clues.filter(({ playables }) => playables.some(c => c.matches(save_target.suitIndex, save_target.rank)));
 
-	const clue = Utils.maxOn(safe_play_clues, (clue) => find_clue_value(clue.result));
+	const clue = Utils.maxOn(play_clues, (clue) => find_clue_value(clue.result));
 
 	// Convert CLUE to ACTION
 	return Utils.clueToAction(clue, tableID);

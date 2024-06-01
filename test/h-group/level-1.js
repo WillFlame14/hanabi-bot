@@ -72,8 +72,8 @@ describe('save clue', () => {
 
 		const { common, state } = game;
 
-		// g2 is visible in Donald's hand. Other than that, the saved 2 can be any 2.
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.CATHY][3].order], ['r2', 'y2', 'b2', 'p2']);
+		// From the common perspective, the saved 2 can be any 2.
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.CATHY][3].order], ['r2', 'y2', 'g2', 'b2', 'p2']);
 	});
 
 	it('does not finesse from a 2 Save', () => {
@@ -93,6 +93,20 @@ describe('save clue', () => {
 		// Our slot 1 should not only be y1.
 		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0].order].inferred.length > 1, true);
 		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
+	});
+
+	it('does not give 2 Saves when a duplicate is visible', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r5', 'r4', 'r2', 'y4', 'y2'],
+			['g5', 'b4', 'g1', 'y2', 'b3']
+		], {
+			level: 1,
+			clue_tokens: 7
+		});
+
+		const { save_clues } = find_clues(game);
+		assert.equal(save_clues[PLAYER.BOB], undefined);
 	});
 
 	it('prefers giving saves that fill in plays', () => {

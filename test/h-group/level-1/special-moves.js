@@ -72,8 +72,8 @@ describe('other cases', () => {
 		takeTurn(game, 'Cathy clues 1 to Donald');
 		takeTurn(game, 'Donald plays r1', 'p1');
 
-		// Alice's slot 5 should be [r2,y2,g2,p2] (r2 would be stomped finesse, b2 is an illegal 2 Save).
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r2','y2','g2','p2']);
+		// Common knowledge of Alice's slot 5 should be [r2,y2,g2,b2,p2] (r2 would be stomped finesse).
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r2','y2','g2','b2','p2']);
 	});
 
 	it(`doesn't eliminate on missed finesses`, () => {

@@ -1,5 +1,5 @@
 import { CLUE } from '../../../constants.js';
-import { cardTouched, isCluable } from '../../../variants.js';
+import { cardTouched } from '../../../variants.js';
 import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue, get_result } from './determine-clue.js';
@@ -100,9 +100,6 @@ export function find_clues(game, options = {}) {
 		for (const clue of state.allValidClues(target)) {
 			const touch = state.hands[target].clueTouched(clue, state.variant);
 
-			if (!isCluable(state.variant, clue) || touch.length === 0)
-				continue;
-
 			const list = touch.map(c => c.order);
 			const { focused_card, chop } = determine_focus(hand, common, list);
 
@@ -189,7 +186,7 @@ export function find_clues(game, options = {}) {
 					logger.info('5 stall', logClue(clue));
 					stall_clues[0].push(clue);
 				}
-				else if (chop) {
+				else if (me.thinksLocked(state, state.ourPlayerIndex) && chop) {
 					logger.info('locked hand save', logClue(clue));
 					stall_clues[3].push(clue);
 				}
@@ -204,7 +201,17 @@ export function find_clues(game, options = {}) {
 					}
 				}
 				else {
-					logger.info('unknown valid clue??', logClue(clue));
+					if (chop && focused_card.rank === 2) {
+						const copies = visibleFind(state, me, focused_card);
+						const chops = state.hands.map(hand => common.chop(hand)?.order);
+
+						if (copies.some(c => chops.includes(c.order))) {
+							logger.warn('illegal 2 save');
+							continue;
+						}
+					}
+
+					logger.highlight('yellow', 'unknown valid clue??', logClue(clue));
 				}
 			}
 		}

@@ -74,7 +74,6 @@ let testShortForms;
  * @param {string} short
  */
 export function expandShortCard(short) {
-	// TODO: Make this compatible with variants
 	return {
 		suitIndex: testShortForms.indexOf(short[0]) - 1,
 		rank: Number(short[1]) || -1

@@ -3,10 +3,8 @@ import { describe, it } from 'node:test';
 
 import { PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
-import { isCluable } from '../../src/variants.js';
 
 import logger from '../../src/tools/logger.js';
-import { CLUE } from '../../src/constants.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -40,10 +38,6 @@ describe('rainbow', () => {
 
 		assert.ok(!game.common.thoughts[4].possible.has({ suitIndex: 4, rank: 1 }));
 	});
-
-	it('cannot clue rainbow', () => {
-		assert.ok(!isCluable(VARIANTS.RAINBOW, { type: CLUE.COLOUR, value: 4 }));
-	});
 });
 
 describe('pink', () => {
@@ -74,10 +68,6 @@ describe('pink', () => {
 
 		assert.ok(!game.common.thoughts[4].possible.has({ suitIndex: 4, rank: 5 }));
 	});
-
-	it('can clue pink', () => {
-		assert.ok(isCluable(VARIANTS.PINK, { type: CLUE.COLOUR, value: 4 } ));
-	});
 });
 
 describe('white', () => {
@@ -94,10 +84,6 @@ describe('white', () => {
 
 		assert.ok(!game.common.thoughts[4].possible.has({ suitIndex: 4, rank: 1 }));
 	});
-
-	it('cannot clue white', () => {
-		assert.ok(!isCluable(VARIANTS.WHITE, { type: CLUE.COLOUR, value: 4 }));
-	});
 });
 
 describe('black', () => {
@@ -112,9 +98,5 @@ describe('black', () => {
 
 		assert.ok(game.state.isCritical(expandShortCard('k1')));
 		assert.ok(!game.state.isCritical(expandShortCard('r1')));
-	});
-
-	it('can clue black', () => {
-		assert.ok(isCluable(VARIANTS.BLACK, { type: CLUE.COLOUR, value: 4 }));
 	});
 });

@@ -1,23 +1,16 @@
-import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import * as ExAsserts from '../extra-asserts.js';
 
 import { PLAYER, VARIANTS, setup, takeTurn } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
-import { isCluable } from '../../src/variants.js';
 
 import logger from '../../src/tools/logger.js';
-import { CLUE } from '../../src/constants.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
 // TODO: Make this actually conventionless and not dependant on the HGroup conventions?
 
 describe('prism cluing', () => {
-	it('cannot clue prism', () => {
-		assert.ok(!isCluable(VARIANTS.PRISM, { type: CLUE.COLOUR, value: 4 }));
-	});
-
 	it('understands prism touch', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

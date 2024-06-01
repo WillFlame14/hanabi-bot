@@ -153,14 +153,14 @@ export function find_symmetric_connections(game, action, looksSave, selfRanks, o
 	const possible_connections = non_self_connections.length === 0 ? self_connections : non_self_connections;
 
 	// Filter out focus possibilities that are strictly more complicated (i.e. connections match up until some point, but has more self-components after)
-	const simplest_connections = possible_connections.filter((conns, i) => !possible_connections.some((other_conns, j) =>
-		i !== j && other_conns.connections.length > 0 && other_conns.connections.every((other_conn, index) => {
-			const conn = conns.connections[index];
+	const simplest_connections = possible_connections.filter(({ connections: conns }, i) => !possible_connections.some(({ connections: other_conns }, j) =>
+		i !== j && other_conns.length > 0 && other_conns.every((other_conn, index) => {
+			const conn = conns[index];
 
 			return conn === undefined ||
 				Utils.objEquals(other_conn, conn) ||
 				(other_conn.reacting !== target && conn.reacting === target) ||
-				(other_conn.reacting === target && conn.reacting === target && other_conns.connections.length < conns.connections.length);
+				(other_conn.reacting === target && conn.reacting === target && other_conns.length < conns.length);
 		})));
 
 	const symmetric_connections = simplest_connections.map(({ id, connections }) => ({

@@ -61,6 +61,7 @@ export function checkFix(game, oldThoughts, clueAction) {
 	const { giver, list, target } = clueAction;
 	const { common, state } = game;
 
+	/** @type {Set<number>} */
 	const clue_resets = new Set();
 	for (const { order } of state.hands[target]) {
 		if (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
@@ -76,6 +77,17 @@ export function checkFix(game, oldThoughts, clueAction) {
 	const all_resets = new Set([...clue_resets, ...resets]);
 
 	if (all_resets.size > 0) {
+		const reset_order = Array.from(all_resets).find(order =>
+			common.thoughts[order].possible.length === 1 && common.dependentConnections(order).length > 0);
+
+		// There is a waiting connection that depends on this card
+		if (reset_order !== undefined) {
+			const reset_card = common.thoughts[reset_order];
+			const { suitIndex, rank } = reset_card.possible.array[0];
+			game.rewind(reset_card.drawn_index, { type: 'identify', order: reset_card.order, playerIndex: target, suitIndex, rank });
+			return;
+		}
+
 		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
 		const infs_to_recheck = Array.from(all_resets).map(order => oldThoughts[order].identity({ infer: true })).filter(id => id !== undefined);
 

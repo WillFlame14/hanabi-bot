@@ -125,6 +125,11 @@ export async function getShortForms(variant) {
 	shortForms = abbreviations;
 }
 
+/** @param {Variant} variant */
+export function colourableSuits(variant) {
+	return variant.suits.filter(suit => !suit.match(variantRegexes.noColour));
+}
+
 /**
  * Returns whether the card would be touched by the clue.
  * @param {Identity} card
@@ -136,17 +141,17 @@ export function cardTouched(card, variant, clue) {
 	const { suitIndex, rank } = card;
 	const suit = variant.suits[suitIndex];
 
+	const colourableSuits = variant.suits.filter(suit => !suit.match(variantRegexes.noColour));
+
 	if (type === CLUE.COLOUR) {
-		if (suitIndex === -1 || suit.match(variantRegexes.whitish)) {
+		if (suitIndex === -1 || suit.match(variantRegexes.whitish))
 			return false;
-		}
-		else if (suit.match(variantRegexes.rainbowish)) {
+
+		if (suit.match(variantRegexes.rainbowish))
 			return true;
-		}
-		else if (suit.match(variantRegexes.prism)) {
-			const colourlessCount = variant.suits.filter(s => s.match(variantRegexes.noColour)).length;
-			return ((rank - 1) % (variant.suits.length - colourlessCount)) === value;
-		}
+
+		if (suit.match(variantRegexes.prism))
+			return ((rank - 1) % colourableSuits.length) === value;
 
 		if (rank === variant.specialRank) {
 			if (variant.specialRankAllClueColors)
@@ -155,12 +160,13 @@ export function cardTouched(card, variant, clue) {
 				return false;
 		}
 
-		return suitIndex === value;
+		return variant.suits[suitIndex] === colourableSuits[value];
 	}
 	else if (type === CLUE.RANK) {
 		if (rank === -1 || suit.match(variantRegexes.brownish))
 			return false;
-		else if (suit.match(variantRegexes.pinkish))
+
+		if (suit.match(variantRegexes.pinkish))
 			return true;
 
 		if (rank === variant.specialRank) {
@@ -175,26 +181,12 @@ export function cardTouched(card, variant, clue) {
 
 		if (variant.chimneys)
 			return rank >= value;
+
 		if (variant.funnels)
 			return rank <= value;
 
 		return rank === value;
 	}
-}
-
-/**
- * Returns whether the clue is possible to give. For example, white cannot be clued.
- * @param {Variant} variant
- * @param {Omit<Clue, 'target'>} clue
- */
-export function isCluable(variant, clue) {
-	const { type, value } = clue;
-
-	if (type === CLUE.COLOUR && (variant.suits[value].match(variantRegexes.noColour)))
-		return false;
-	if (type === CLUE.RANK && !(variant.clueRanks?.includes(value) ?? true))
-		return false;
-	return true;
 }
 
 /**
@@ -208,10 +200,10 @@ export function direct_clues(variant, target, card, options) {
 	const direct_clues = [];
 
 	if (!options?.excludeColour) {
-		for (let suitIndex = 0; suitIndex < variant.suits.length; suitIndex++) {
+		for (let suitIndex = 0; suitIndex < colourableSuits(variant).length; suitIndex++) {
 			const clue = { type: CLUE.COLOUR, value: suitIndex, target };
 
-			if (isCluable(variant, clue) && cardTouched(card, variant, clue))
+			if (cardTouched(card, variant, clue))
 				direct_clues.push(clue);
 		}
 	}
@@ -220,7 +212,7 @@ export function direct_clues(variant, target, card, options) {
 		for (let rank = 1; rank <= 5; rank++) {
 			const clue = { type: CLUE.RANK, value: rank, target };
 
-			if (isCluable(variant, clue) && cardTouched(card, variant, clue))
+			if ((variant.clueRanks?.includes(rank) ?? true) && cardTouched(card, variant, clue))
 				direct_clues.push(clue);
 		}
 	}

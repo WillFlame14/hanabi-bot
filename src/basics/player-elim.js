@@ -282,10 +282,6 @@ export function reset_card(order) {
 			logger.error(`no old inferred on card with order ${order}! player ${this.playerIndex}`);
 			card.inferred = card.possible;
 		}
-
-		// Filter out future waiting connections involving this card
-		this.waiting_connections = this.waiting_connections.filter(wc =>
-			!wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order));
 	}
 	else {
 		card.inferred = card.possible;

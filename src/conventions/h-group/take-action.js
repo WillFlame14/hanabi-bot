@@ -32,7 +32,7 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 	let best_playable_card = playable_priorities[priority][0];
 
 	// Best playable card is an unknown 1, so we should order correctly
-	if (best_playable_card.clues.length > 0 && best_playable_card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
+	if (priority !== 0 && best_playable_card.clues.length > 0 && best_playable_card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
 		const ordered_1s = order_1s(state, common, playable_cards);
 
 		if (ordered_1s.length > 0 && game.level >= LEVEL.BASIC_CM) {
@@ -68,23 +68,19 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 		}
 	}
 
-	if (game.level >= LEVEL.INTERMEDIATE_FINESSES) {
-		while (priority === 0) {
-			const older_finesse = older_queued_finesse(state.hands[state.ourPlayerIndex], common, best_playable_card.order);
+	if (game.level >= LEVEL.INTERMEDIATE_FINESSES && priority === 0) {
+		playable_priorities[0] = playable_priorities[0].filter(c => {
+			const older_finesse = older_queued_finesse(state.hands[state.ourPlayerIndex], common, c.order);
 
-			if (older_finesse === undefined)
-				break;
+			if (older_finesse !== undefined)
+				logger.warn('older finesse', logCard(older_finesse), older_finesse.order, 'could be layered, unable to play newer finesse', logCard(c));
 
-			logger.warn('older finesse', logCard(older_finesse), older_finesse.order, 'could be layered, unable to play newer finesse', logCard(best_playable_card));
+			return older_finesse === undefined;
+		});
 
-			// Remove from playable cards
-			playable_priorities[priority].splice(playable_priorities[priority].findIndex(c => c.order === best_playable_card.order), 1);
-			playable_cards.splice(playable_cards.findIndex(c => c.order === best_playable_card.order), 1);
-
-			// Find new best playable card
-			priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
-			best_playable_card = playable_priorities[priority]?.[0];
-		}
+		// Find new best playable card
+		priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
+		best_playable_card = playable_priorities[priority]?.[0];
 	}
 
 	if (best_playable_card !== undefined)
