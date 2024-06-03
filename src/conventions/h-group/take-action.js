@@ -2,7 +2,7 @@ import { ACTION, CLUE } from '../../constants.js';
 import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
 import { select_play_clue, determine_playable_card, order_1s, find_clue_value } from './action-helper.js';
 import { UnsolvedGame, solve_game } from '../shared/endgame.js';
-import { find_urgent_actions } from './urgent-actions.js';
+import { find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { determine_focus, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
 import { cardValue, isTrash } from '../../basics/hanabi-util.js';
@@ -207,7 +207,7 @@ export function take_action(game) {
 		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
 
 		// Generate for next next player
-		if (me.chopValue(state, nextNextPlayerIndex) >= 4 && !common.thinksLoaded(state, nextNextPlayerIndex)) {
+		if (me.chopValue(state, nextNextPlayerIndex) >= 4 && !common.thinksLoaded(state, nextNextPlayerIndex) && find_unlock(game, nextNextPlayerIndex) === undefined) {
 			const nextChop = common.chop(state.hands[nextPlayerIndex]);
 
 			// Play a 5 if we have one

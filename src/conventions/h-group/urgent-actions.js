@@ -21,10 +21,10 @@ import * as Utils from '../../tools/util.js';
  * Determines whether we can play a connecting card into the target's hand.
  * @param {Game} game
  * @param {number} target
- * @returns {PerformAction | undefined}	The action to perform if we can do so, otherwise undefined.
+ * @returns {number | undefined}	The order of the card to play, otherwise undefined.
  */
-function find_unlock(game, target) {
-	const { me, state, tableID } = game;
+export function find_unlock(game, target) {
+	const { me, state } = game;
 
 	for (const card of state.hands[target]) {
 		const { suitIndex, rank } = card;
@@ -40,7 +40,7 @@ function find_unlock(game, target) {
 		// The card must become playable
 		const known = game.players[target].thoughts[card.order].inferred.every(c => state.isPlayable(c) || c.matches(card));
 		if (known)
-			return { tableID, type: ACTION.PLAY, target: our_connecting.order };
+			return our_connecting.order;
 	}
 	return;
 }
@@ -151,9 +151,9 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 		// They are locked, we should try to unlock
 		if (common.thinksLocked(state, target)) {
-			const unlock_action = find_unlock(game, target);
-			if (unlock_action !== undefined) {
-				urgent_actions[PRIORITY.UNLOCK + nextPriority].push(unlock_action);
+			const unlock_order = find_unlock(game, target);
+			if (unlock_order !== undefined) {
+				urgent_actions[PRIORITY.UNLOCK + nextPriority].push({ tableID, type: ACTION.PLAY, target: unlock_order });
 				continue;
 			}
 
@@ -189,9 +189,9 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			// Try to see if they have a playable card that connects directly through our hand
 			// Although this is only optimal for the next player, it is often a "good enough" action for future players.
-			const unlock_action = find_unlock(game, target);
-			if (unlock_action !== undefined) {
-				urgent_actions[PRIORITY.UNLOCK + nextPriority].push(unlock_action);
+			const unlock_order = find_unlock(game, target);
+			if (unlock_order !== undefined) {
+				urgent_actions[PRIORITY.UNLOCK + nextPriority].push({ tableID, type: ACTION.PLAY, target: unlock_order });
 				continue;
 			}
 

@@ -43,11 +43,9 @@ export function elim_result(player, hypo_player, hand, list) {
  * @param  {Player} hypo_player
  * @param  {number} giver
  * @param  {number} target
- * @param  {number} focus_order
  */
-export function bad_touch_result(game, hypo_game, hypo_player, giver, target, focus_order = -1) {
+export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 	const { me, state } = hypo_game;
-	let bad_touch = 0, trash = 0, avoidable_dupe = 0;
 
 	const dupe_scores = game.players.map((player, pi) => {
 		if (pi == target)
@@ -74,12 +72,15 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target, fo
 		}
 		return possible_dupe;
 	});
+
 	const min_dupe = Math.min(...dupe_scores);
-	avoidable_dupe = dupe_scores[giver] - min_dupe;
+	const avoidable_dupe = dupe_scores[giver] - min_dupe;
+
+	let bad_touch = 0, trash = 0;
 
 	for (const card of state.hands[target]) {
-		// Ignore cards that aren't newly clued, focused card can't be bad touched
-		if (!card.newly_clued || card.order === focus_order)
+		// Ignore cards that aren't newly clued
+		if (!card.newly_clued)
 			continue;
 
 		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order, { infer: true })))

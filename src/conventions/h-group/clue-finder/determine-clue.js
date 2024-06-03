@@ -1,4 +1,3 @@
-import { determine_focus } from '../hanabi-logic.js';
 import { bad_touch_result, cm_result, elim_result, playables_result } from '../../../basics/clue-result.js';
 import { cardValue, isTrash } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
@@ -120,10 +119,8 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const touch = provisions.touch ?? hand.clueTouched(clue, state.variant);
 	const list = provisions.list ?? touch.map(c => c.order);
 
-	const { focused_card } = determine_focus(hand, common, list, { beforeClue: true });
-
 	const { new_touched, fill } = elim_result(common, hypo_common, hand, list);
-	const { bad_touch, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target, focused_card.order);
+	const { bad_touch, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target);
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
 

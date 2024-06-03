@@ -210,8 +210,12 @@ function resolve_card_played(game, waiting_connection) {
 		const connection = game.last_actions[reacting].card;
 		const thoughts = common.thoughts[connection.order];
 
-		if (type === 'finesse' && target === state.ourPlayerIndex && connection.clued && (thoughts.focused || thoughts.inferred.every(i => state.isPlayable(i) || connection.matches(i)))) {
-			logger.warn('connecting card was focused/known playable with a clue (stomped on), not confirming finesse');
+		// Consider a stomped finesse if the played card was focused or they didn't choose to play it first
+		const stomped_finesse = type === 'finesse' && connection.clued && (thoughts.focused ||
+			(common.thinksPlayables(state, reacting).length === 0 && thoughts.inferred.every(i => state.isPlayable(i) || connection.matches(i))));
+
+		if (stomped_finesse) {
+			logger.warn(`connecting card was focused/known playable with a clue (stomped on), not confirming ${logCard(inference)} finesse`);
 
 			if (connections[conn_index + 1]?.self) {
 				logger.warn(`connection requires that we blind play, removing due to occam's razor`);

@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, VARIANTS, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { CLUE } from '../../src/constants.js';
@@ -142,6 +142,66 @@ describe('ambiguous clues', () => {
 		const slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
 		assert.equal(slot1.finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[slot1.order], ['b2']);
+	});
+
+	it(`doesn't confirm symmetric finesses after a "stomped play"`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r1', 'p2', 'b2', 'p2'],
+			['y1', 'g4', 'g3', 'y4'],
+			['y1', 'g1', 'y3', 'r4']
+		], {
+			level: 5,
+			clue_tokens: 7,
+			play_stacks: [0, 0, 3, 1, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues yellow to Donald');
+		takeTurn(game, 'Donald plays y1', 'p1');
+
+		takeTurn(game, 'Alice discards g1 (slot 4)');
+		takeTurn(game, 'Bob clues 4 to Cathy');				// y2 finesse on us, y3 prompt, y4 (symmetrically, could be purple)
+		takeTurn(game, 'Cathy clues 1 to Donald');
+		takeTurn(game, 'Donald plays p1', 'p1');
+
+		// Alice's y2 in slot 1 should still be finessed.
+		const slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
+		assert.equal(slot1.finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[slot1.order], ['y2']);
+	});
+
+	it(`eliminates all finesse possibilities when a player doesn't play`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b5', 'r4', 'r1', 'r1'],
+			['y4', 'm4', 'b4', 'b2'],
+			['m3', 'g1', 'y1', 'b1']
+		], {
+			level: 5,
+			variant: VARIANTS.RAINBOW,
+			play_stacks: [0, 2, 0, 0, 1],
+			starting: PLAYER.DONALD,
+		});
+
+		takeTurn(game, 'Donald clues green to Alice (slots 2,3,4)');
+		takeTurn(game, 'Alice plays m2 (slot 4)');
+		takeTurn(game, 'Bob discards r1 (slot 4)', 'b1');
+		takeTurn(game, 'Cathy clues blue to Donald');
+
+		// Clue could be b1 finesse (Bob) -> b2 (Donald)
+		assert.ok(game.common.waiting_connections.some(wc => wc.inference.suitIndex === COLOUR.BLUE && wc.inference.rank === 2 && wc.target === PLAYER.DONALD));
+
+		takeTurn(game, 'Donald clues 3 to Alice (slots 2,3)');		// b1 reverse + self composition finesse, y3 direct
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y3', 'b3']);
+
+		takeTurn(game, 'Alice clues green to Donald');
+		takeTurn(game, 'Bob clues red to Cathy');
+
+		// After Bob doesn't play, both b1 and y3 should be known.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][3].order], ['b1']);
 	});
 });
 

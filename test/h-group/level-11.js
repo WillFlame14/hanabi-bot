@@ -387,8 +387,8 @@ describe('bluff clues', () => {
 
 		// The bluff is not allowed as it can't be resolved immediately.
 		// Alice must have a playable 3 with a connection to it in the second position.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r3', 'y3', 'g3', 'b3', 'p3']);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2', 'y2', 'g1', 'b1', 'p2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r3', 'y3', 'p3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2', 'y2', 'p2']);
 	});
 
 	it(`doesn't bluff through self finesses`, () => {

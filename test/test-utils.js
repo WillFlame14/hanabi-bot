@@ -14,6 +14,7 @@ import { logAction, logCard, logClue } from '../src/tools/log.js';
  * @property {number} level
  * @property {number[]} play_stacks
  * @property {string[]} discarded
+ * @property {number} strikes
  * @property {number} clue_tokens
  * @property {number} starting
  * @property {Variant} variant
@@ -113,6 +114,7 @@ function init_game(game, options) {
 
 	state.currentPlayerIndex = options.starting ?? 0;
 	state.clue_tokens = options.clue_tokens ?? 8;
+	state.strikes = options.strikes ?? 0;
 
 	if (options.init)
 		game.hookAfterDraws = options.init;
@@ -276,7 +278,6 @@ export function parseAction(state, rawAction) {
 			if (clue.type === CLUE.COLOUR && clue.value === -1)
 				throw new Error(`Unable to parse clue ${parts[2]}`);
 
-
 			const targetName = parts[4];
 			const target = state.playerNames.findIndex(name => name === targetName);
 			if (target === -1)
@@ -343,7 +344,7 @@ export function parseAction(state, rawAction) {
 				const orders = state.hands[playerIndex].filter(c => c.matches({ suitIndex, rank })).map(c => c.order);
 
 				if (orders.length === 0)
-					throw new Error(`Unable to find card ${parts[2]} to play in ${playerName}'s hand.`);
+					throw new Error(`Unable to find card ${parts[2]} to discard in ${playerName}'s hand.`);
 
 				if (orders.length === 1)
 					return { type: 'discard', playerIndex, suitIndex, rank, order: orders[0], failed: parts[1] === 'bombs' };

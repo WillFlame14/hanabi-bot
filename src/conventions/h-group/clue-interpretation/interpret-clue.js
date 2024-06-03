@@ -92,7 +92,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 		// Multiple possible sets, we need to wait for connections
 		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
-			common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, target, action_index: state.actionList.length - 1 });
+			common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, target, action_index: state.actionList.length - 1, symmetric: !matches });
 	}
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
@@ -109,7 +109,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		for (const conn of symmetric_fps.flatMap(fp => fp.connections)) {
 			if (conn.type === 'playable' && conn.linked.length > 1) {
 				const orders = Array.from(conn.linked.map(c => c.order));
-				const existing_link = common.play_links.find(pl => Utils.setEquals(new Set(pl.orders), new Set(orders)));
+				const existing_link = common.play_links.find(pl => Utils.setEquals(new Set(pl.orders), new Set(orders)) && pl.connected === focused_card.order);
 
 				logger.info('adding play link with orders', orders, 'prereq', logCard(conn.identities[0]), 'connected', logCard(focused_card));
 
@@ -310,7 +310,7 @@ export function interpret_clue(game, action) {
 					// Skipping knowns/playables, starts with self-finesse or self-prompt
 					if (connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.self) {
 						// If a connection with no self-component exists, don't consider any connection with a self-component
-						if (!self)
+						if (!self || blind_plays > min_blind_plays)
 							continue;
 
 						if (blind_plays < min_blind_plays) {

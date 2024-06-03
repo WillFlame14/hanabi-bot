@@ -58,7 +58,8 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
 
 			return card.matches(identity, { infer: true, symmetric: true }) &&
 				state.deck[order].matches(identity, { assume: true }) &&
-				card.touched && !possibly_fake(order);
+				card.touched && !possibly_fake(order) &&
+				!common.linkedOrders(state).has(order);
 		});
 
 		if (globally_known)

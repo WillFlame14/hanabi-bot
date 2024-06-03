@@ -4,7 +4,7 @@ import { determine_focus } from '../hanabi-logic.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logConnections } from '../../../tools/log.js';
+import { logCard, logConnection, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 
 /**
@@ -190,6 +190,8 @@ export function assign_connections(game, connections, giver) {
 		const { type, bluff, hidden, card: conn_card, linked, identities, certain } = connections[i];
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
+
+		logger.debug('assigning connection', logConnection(connections[i]));
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		if (card.old_inferred === undefined)
