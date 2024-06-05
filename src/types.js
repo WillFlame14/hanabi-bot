@@ -97,7 +97,6 @@
  * @property {ActualCard[]} [linked]
  * @property {boolean} [certain]
  * @property {boolean} [ambiguous]
- * @property {boolean} [fake]
  * 
  * @typedef FocusPossibility
  * @property {number} suitIndex
@@ -106,7 +105,7 @@
  * @property {boolean} [save]
  * @property {INTERP} interp
  *
- * @typedef {Omit<FocusPossibility, 'interp'>} SymFocusPossibility
+ * @typedef {Omit<FocusPossibility, 'interp'> & { fake?: boolean }} SymFocusPossibility
  */
 /**
  * @typedef WaitingConnection

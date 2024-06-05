@@ -127,10 +127,10 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			).map(conn => conn.identities[0].rank))
 		));
 		const ownBlindPlays = correct_match?.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length || 0;
-		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities.some(fp => fp.save), selfRanks, ownBlindPlays);
+		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities, selfRanks, ownBlindPlays);
 		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver, target);
 
-		for (const conn of symmetric_fps.flatMap(fp => fp.connections)) {
+		for (const conn of symmetric_fps.concat(inf_possibilities).flatMap(fp => fp.connections)) {
 			if (conn.type === 'playable' && conn.linked.length > 1) {
 				const orders = Array.from(conn.linked.map(c => c.order));
 				const existing_link = common.play_links.find(pl => Utils.setEquals(new Set(pl.orders), new Set(orders)) && pl.connected === focused_card.order);
@@ -145,7 +145,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		}
 
 		common.waiting_connections = common.waiting_connections.concat(symmetric_connections);
-		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(c => !c.connections.some(conn => conn.fake) && inf.matches(c))));
+		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(fp => !fp.fake && inf.matches(fp))));
 	}
 	reset_superpositions(game);
 }
