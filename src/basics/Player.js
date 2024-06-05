@@ -120,7 +120,10 @@ export class Player {
 		// (e.g. if I later discover that I did not have a playable when I thought I did)
 		return Array.from(state.hands[playerIndex].filter(c => {
 			const card = this.thoughts[c.order];
-			return !linked_orders.has(c.order) &&
+			const unsafe_linked = linked_orders.has(c.order) &&
+				(state.strikes === 2 || card.possible.some(p => state.play_stacks[p.suitIndex] + 1 < p.rank && p.rank <= state.max_ranks[p.suitIndex]));
+
+			return !unsafe_linked &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
 				((options?.assume ?? true) || !this.waiting_connections.some(conn => conn.connections.length > 0 && conn.focused_card.order == c.order)) &&

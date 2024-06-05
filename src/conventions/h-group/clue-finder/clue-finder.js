@@ -49,14 +49,18 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	if (isTrash(state, me, old_chop, old_chop.order, { infer: true }) || chop_moved.some(c => c.duplicateOf(old_chop)))
 		return -10;
 
+	// Save clue must be given
+	if (state.isCritical(old_chop))
+		return Math.max(find_clue_value(result), 0.1);
+
 	// More trash cards saved than useful cards
 	if (saved_trash.length > Math.min(1, chop_moved.length - saved_trash.length))
 		return -10;
 
 	const new_chop = hypo_game.common.chop(hypo_game.state.hands[target], { afterClue: true });
 
-	// Target is not loaded and their new chop is more valuable than their old one
-	if (!hypo_game.players[target].thinksLoaded(hypo_game.state, target, {assume: false}) && (new_chop ? cardValue(state, me, new_chop) : 4) > cardValue(state, me, old_chop))
+	// Target doesn't have trash and their new chop is more valuable than their old one (having a playable is not good enough)
+	if (hypo_game.players[target].thinksTrash(hypo_game.state, target).length === 0 && (new_chop ? cardValue(state, me, new_chop) : 4) > cardValue(state, me, old_chop))
 		return -10;
 
 	return find_clue_value(result) - 0.1*saved_trash.length;
@@ -205,7 +209,7 @@ export function find_clues(game, options = {}) {
 						const copies = visibleFind(state, me, focused_card);
 						const chops = state.hands.map(hand => common.chop(hand)?.order);
 
-						if (copies.some(c => chops.includes(c.order))) {
+						if (copies.some(c => !chops.includes(c.order) && !c.newly_clued)) {
 							logger.warn('illegal 2 save');
 							continue;
 						}

@@ -143,4 +143,27 @@ describe('generation discards', () => {
 		// Alice should discard slot 4 to generate for Cathy.
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3].order });
 	});
+
+	it(`doesn't perform a gen discard if they can connect`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r2', 'g4', 'b4', 'r1'],
+			['r3', 'b3', 'r5', 'y3', 'b1']
+		], {
+			level: 7,
+			clue_tokens: 2,
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues red to Alice (slots 4,5)');
+		takeTurn(game, 'Alice plays r2 (slot 5)');
+		takeTurn(game, 'Bob clues red to Cathy');
+		takeTurn(game, 'Cathy plays r3', 'p4');
+
+		const action = take_action(game);
+
+		// Alice should play slot 5 (r4 -> r5) rather than generating for Cathy.
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
+	});
 });

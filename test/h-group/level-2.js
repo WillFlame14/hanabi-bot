@@ -137,7 +137,7 @@ describe('self-finesse', () => {
 	it('maintains a self-finesse even as inferences are reduced', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['y1', 'b4', 'b5', 'g1'],
+			['y1', 'b4', 'b1', 'g1'],
 			['r1', 'r3', 'r1', 'b4'],
 			['y1', 'r4', 'p3', 'g1']
 		], { level: 2 });
@@ -149,14 +149,34 @@ describe('self-finesse', () => {
 		const slot1_order = game.state.hands[PLAYER.ALICE][0].order;
 
 		// All of these are valid self-finesse possibilities.
-		ExAsserts.cardHasInferences(game.common.thoughts[slot1_order], ['y2', 'g2', 'b1', 'p1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[slot1_order], ['y2', 'g2', 'b2']);
 		assert.equal(game.common.thoughts[slot1_order].finessed, true);
 
-		takeTurn(game, 'Donald clues purple to Alice (slot 4)');
+		takeTurn(game, 'Donald clues green to Alice (slot 4)');
 
-		// After knowing we have p1 in slot 4, the finesse should still be on.
-		ExAsserts.cardHasInferences(game.common.thoughts[slot1_order], ['y2', 'g2', 'b1']);
+		// After knowing we have g2 in slot 4, the finesse should still be on.
+		ExAsserts.cardHasInferences(game.common.thoughts[slot1_order], ['y2', 'b2']);
 		assert.equal(game.common.thoughts[slot1_order].finessed, true);
+	});
+
+	it('prefers prompting over self-finessing', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'p4', 'g1', 'g4'],
+			['p3', 'g5', 'p4', 'g2'],
+			['p1', 'g2', 'p1', 'g4']
+		], {
+			level: 2,
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues yellow to Alice (slots 2,4)');
+		takeTurn(game, 'Alice plays y1 (slot 4)');
+		takeTurn(game, 'Bob clues purple to Alice (slot 4)');
+		takeTurn(game, 'Cathy clues 3 to Alice (slot 1)');
+
+		// y3 is the simplest possibility.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y3']);
 	});
 });
 

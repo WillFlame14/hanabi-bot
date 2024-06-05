@@ -96,6 +96,7 @@ describe('good touch principle', () => {
 		], {
 			level: 1,
 			play_stacks: [0, 0, 0, 0, 3],
+			strikes: 2,
 			starting: PLAYER.BOB
 		});
 

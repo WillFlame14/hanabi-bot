@@ -190,7 +190,7 @@ describe('play clue', () => {
 			`Expected hypo stacks ${[1, 0, 0, 0, 2]}, got ${game.common.hypo_stacks}`);
 	});
 
-	it('correctly counts the number of playables when connecting on unknown plays', () => {
+	it('correctly counts the number of playables when connecting on unknown plays 2', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b3', 'p5', 'r4', 'y4'],
@@ -205,5 +205,29 @@ describe('play clue', () => {
 
 		// Bob's g2 is unknown playable.
 		assert.ok(game.common.unknown_plays.has(game.state.hands[PLAYER.BOB][0].order));
+	});
+
+	it('correctly counts the number of playables when connecting on unknown plays 3', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'y2', 'r2', 'b3', 'g1'],
+			['y4', 'b3', 'p3', 'p2', 'y2']
+		], {
+			level: 1,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 2 to Cathy');
+		takeTurn(game, 'Cathy clues 1 to Alice (slots 2,3,5)');
+		takeTurn(game, 'Alice clues green to Bob');
+
+		takeTurn(game, 'Bob clues purple to Cathy');		// We are promised p1
+		takeTurn(game, 'Cathy clues 2 to Bob');				// We are promised r1
+
+		// Purple stack is known up to 3.
+		assert.equal(game.common.hypo_stacks[COLOUR.PURPLE], 3);
+
+		// Bob's y2 is unknown playable.
+		assert.ok(game.common.unknown_plays.has(game.state.hands[PLAYER.BOB][1].order));
 	});
 });
