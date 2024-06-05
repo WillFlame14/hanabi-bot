@@ -32,12 +32,6 @@ export function interpret_discard(game, action, card) {
 
 	Basics.onDiscard(game, action);
 
-	if (playerIndex === state.ourPlayerIndex) {
-		// Possible self connections can be resolved.
-		for (const card of game.common.thoughts)
-			card.self_connection = false;
-	}
-
 	const to_remove = [];
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const { connections, conn_index, inference, action_index } = common.waiting_connections[i];

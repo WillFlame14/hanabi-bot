@@ -8,7 +8,6 @@ import * as Utils from '../../../tools/util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection } from '../../../tools/log.js';
 import { ActualCard } from '../../../basics/Card.js';
-import { find_own_prompt_or_finesse } from './own-finesses.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -123,13 +122,10 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
 	const prompt = common.find_prompt(hand, identity, state.variant, connected, ignoreOrders);
 	const finesse = common.find_finesse(hand, connected, ignoreOrders);
 
-	// Track if the identity could also be in our own hand.
-	const self_connection = game.level < LEVEL.INTERMEDIATE_FINESSES ? false : find_own_prompt_or_finesse(game.minimalCopy(), giver, target, identity, looksDirect, connected, ignoreOrders).length > 0;
-
 	// Prompt takes priority over finesse
 	if (prompt !== undefined && prompt.identity() !== undefined) {
 		if (prompt.matches(identity))
-			return { type: 'prompt', reacting, card: prompt, identities: [identity], self_connection };
+			return { type: 'prompt', reacting, card: prompt, identities: [identity] };
 
 		// Prompted card is delayed playable
 		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt.suitIndex] + 1 === prompt.rank) {
@@ -138,7 +134,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
 				logger.warn(`disallowed hidden prompt on ${logCard(prompt)} ${prompt.order}, true ${logCard(identity)}  could be duplicated in giver's hand`);
 				return;
 			}
-			return { type: 'prompt', reacting, card: prompt, hidden: true, identities: [prompt.raw()], self_connection };
+			return { type: 'prompt', reacting, card: prompt, hidden: true, identities: [prompt.raw()] };
 		}
 		logger.warn(`wrong prompt on ${logCard(prompt)} ${prompt.order} when searching for ${logCard(identity)}, play stacks at ${state.play_stacks[prompt.suitIndex]}`);
 		return { type: 'terminate', reacting, card: prompt, identities: [identity] };
@@ -174,7 +170,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
 				logger.warn(`found finesse ${logCard(finesse)} in ${state.playerNames[reacting]}'s hand, but not between giver and target`);
 				return;
 			}
-			return { type: 'finesse', reacting, card: finesse, bluff, identities: [identity], self_connection };
+			return { type: 'finesse', reacting, card: finesse, bluff, identities: [identity] };
 		}
 
 		// Finessed card is delayed playable
@@ -185,7 +181,7 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
 				return;
 			}
 
-			return { type: 'finesse', reacting, card: finesse, hidden: true, bluff, identities: [finesse.raw()], self_connection };
+			return { type: 'finesse', reacting, card: finesse, hidden: true, bluff, identities: [finesse.raw()] };
 		}
 	}
 }

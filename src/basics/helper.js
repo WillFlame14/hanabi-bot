@@ -28,7 +28,6 @@ export function team_elim(game) {
 			const card = player.thoughts[i];
 			const ccard = game.common.thoughts[i];
 
-			card.self_connection = ccard.self_connection;
 			card.possible = ccard.possible.intersect(card.possible);
 			card.inferred = ccard.inferred.intersect(card.possible);
 

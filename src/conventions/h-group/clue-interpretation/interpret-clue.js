@@ -79,11 +79,9 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 	const old_inferred = old_game.common.thoughts[focused_card.order].inferred;
 
 	focus_thoughts.inferred = focus_thoughts.inferred.intersect(inf_possibilities);
-	focus_thoughts.self_connection = false;
 
-	for (const { connections, suitIndex, rank, save, interp, self_connection } of inf_possibilities) {
+	for (const { connections, suitIndex, rank, save, interp } of inf_possibilities) {
 		const inference = { suitIndex, rank };
-		focus_thoughts.self_connection ||= self_connection;
 
 		// A finesse is considered important if it could only have been given by this player.
 		// A finesse must be given before the first finessed player (card indices would shift after)
@@ -123,7 +121,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
 
-	if (!inference_known(inf_possibilities) && target !== state.ourPlayerIndex && !correct_match?.save) {
+	if (target !== state.ourPlayerIndex && !correct_match?.save) {
 		const selfRanks = Array.from(new Set(inf_possibilities.flatMap(({ connections }) =>
 			connections.filter(conn => conn.type === 'finesse' && conn.reacting === target && conn.identities.length === 1
 			).map(conn => conn.identities[0].rank))
@@ -147,7 +145,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		}
 
 		common.waiting_connections = common.waiting_connections.concat(symmetric_connections);
-		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(c => inf.matches(c))));
+		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(c => !c.connections.some(conn => conn.fake) && inf.matches(c))));
 	}
 	reset_superpositions(game);
 }

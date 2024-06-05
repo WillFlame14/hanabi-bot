@@ -69,10 +69,6 @@ export function interpret_play(game, action) {
 			if (game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
 				return;
 		}
-		// Possible self connections can be resolved.
-		// TODO: Should only remove them if the card may not be queued behind other plays.
-		for (const card of game.common.thoughts)
-			card.self_connection = false;
 	}
 
 	if (common.thoughts[order].finessed)

@@ -97,13 +97,12 @@
  * @property {ActualCard[]} [linked]
  * @property {boolean} [certain]
  * @property {boolean} [ambiguous]
- * @property {boolean} [self_connection]
+ * @property {boolean} [fake]
  * 
  * @typedef FocusPossibility
  * @property {number} suitIndex
  * @property {number} rank
  * @property {Connection[]} connections
- * @property {boolean} [self_connection]
  * @property {boolean} [save]
  * @property {INTERP} interp
  *
