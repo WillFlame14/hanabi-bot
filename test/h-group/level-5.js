@@ -204,6 +204,20 @@ describe('ambiguous clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y3']);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][3].order], ['b1']);
 	});
+
+	it(`recognizes a potential self fake finesse after a skipped finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p4', 'r1', 'g4', 'p4'],
+			['p4', 'b2', 'b3', 'y4'],
+			['r1', 'y2', 'b3', 'r4']
+		], { level: 5, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Cathy clues red to Bob');
+		takeTurn(game, 'Donald discards r4', 'r5');
+		assert.equal(game.common.waiting_connections.some(conn =>
+			conn.connections[0]?.reacting == PLAYER.ALICE &&
+			conn.connections[0].card.order == game.state.hands[PLAYER.ALICE][0].order), true);
+	});
 });
 
 describe('guide principle', () => {
