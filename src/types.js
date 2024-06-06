@@ -56,6 +56,7 @@
  * @property {boolean}  [mistake]
  * @property {boolean}	[lock]
  * @property {boolean}  [important]
+ * @property {boolean}  [hypothetical]
  * 
  * @typedef CardAction
  * @property {number} order

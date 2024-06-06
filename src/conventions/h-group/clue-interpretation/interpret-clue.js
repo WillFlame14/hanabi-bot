@@ -263,7 +263,11 @@ export function interpret_clue(game, action) {
 	if (stall !== undefined) {
 		logger.info('stalling situation', stall);
 
+		if (stall === CLUE_INTERP.STALL_5 && state.early_game)
+			game.stalled_5 = true;
+
 		common.update_hypo_stacks(state);
+		team_elim(game);
 		game.moveHistory.push({ turn: state.turn_count, move: stall });
 		return;
 	}
@@ -273,12 +277,14 @@ export function interpret_clue(game, action) {
 		// Trash chop move
 		if (interpret_tcm(game, target, focused_card.order)) {
 			game.interpretMove(CLUE_INTERP.CM_TRASH);
+			team_elim(game);
 			return;
 		}
 
 		// 5's chop move
 		if (interpret_5cm(game, target, focused_card.order, clue)) {
 			game.interpretMove(CLUE_INTERP.CM_5);
+			team_elim(game);
 			return;
 		}
 	}
@@ -295,6 +301,9 @@ export function interpret_clue(game, action) {
 		focus_thoughts.inferred = focus_thoughts.inferred.intersect(focus_possible);
 
 		resolve_clue(game, old_game, action, matched_inferences, focused_card);
+	}
+	else if (action.hypothetical) {
+		game.interpretMove(CLUE_INTERP.NONE);
 	}
 	// Card doesn't match any inferences (or we don't know the card)
 	else {

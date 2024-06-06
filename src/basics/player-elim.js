@@ -181,7 +181,7 @@ export function good_touch_elim(state, only_self = false) {
 		match_map.set(id_hash, (match_map.get(id_hash) ?? new Set()).add(order));
 	};
 
-	/** @type {number[]} */
+	/** @type {{ order: number, playerIndex: number }[]} */
 	const elim_candidates = [];
 
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -196,7 +196,7 @@ export function good_touch_elim(state, only_self = false) {
 				(this.playerIndex !== -1 && card.chop_moved);	// Chop moved cards can asymmetric elim
 
 			if (can_elim && card.inferred.length > 0 && card.inferred.some(inf => !state.isBasicTrash(inf)) && !card.certain_finessed)
-				elim_candidates.push(order);
+				elim_candidates.push({ order, playerIndex: i });
 		}
 	}
 
@@ -214,14 +214,22 @@ export function good_touch_elim(state, only_self = false) {
 		const hard_matches = hard_match_map.get(logCard(identity));
 		const matches = hard_matches ?? soft_matches ?? new Set();
 
-		for (const order of elim_candidates) {
+		for (const { order, playerIndex } of elim_candidates) {
 			const card = this.thoughts[order];
 
 			if (matches.has(order) || card.inferred.length === 0 || !card.inferred.has(identity))
 				continue;
 
-			// Check if every match was from the clue giver
-			const asymmetric_gt = Utils.range(0, state.numPlayers).some(index =>
+			const original_clue_giver = card.clues[0]?.giver;
+
+			// Check if every match was from the clue giver (or vice versa)
+			const asymmetric_gt = matches.size > 0 && (Array.from(matches).every(o => this.thoughts[o].clues[0]?.giver === playerIndex) ||
+				(original_clue_giver && Array.from(matches).every(o =>
+					state.hands[original_clue_giver].some(c => c.order === o) &&
+					this.thoughts[o].possibilities.length > 1
+				)));
+
+			Utils.range(0, state.numPlayers).some(index =>
 				card.clues.every(c => c.giver === index) &&
 				matches.size > 0 &&
 				Array.from(matches).every(o =>
@@ -236,7 +244,7 @@ export function good_touch_elim(state, only_self = false) {
 			if (card.finessed && [0, 1].some(i => card.finesse_index === state.actionList.length - i)) {
 				logger.warn(`tried to gt eliminate ${id_hash} from recently finessed card (player ${this.playerIndex}, order ${order})!`);
 				card.certain_finessed = true;
-				elim_candidates.splice(elim_candidates.indexOf(order), 1);
+				elim_candidates.splice(elim_candidates.findIndex(c => c.order === order), 1);
 				continue;
 			}
 

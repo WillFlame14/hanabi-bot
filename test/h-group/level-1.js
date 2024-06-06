@@ -6,10 +6,10 @@ import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
+import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
+import { early_game_clue } from '../../src/conventions/h-group/urgent-actions.js';
 
 import logger from '../../src/tools/logger.js';
-import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
-
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -140,6 +140,22 @@ describe('early game', () => {
 
 		const action = game.take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
+	});
+
+	it(`doesn't try to save in early game when clues are available`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g4', 'r2', 'r4', 'p4', 'y2'],
+			['r3', 'b4', 'r1', 'y4', 'b3'],
+		], {
+			level: 1,
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues blue to Alice (slot 2)');
+
+		// Bob can clue Cathy's r1.
+		assert.equal(early_game_clue(game, PLAYER.BOB), true);
 	});
 });
 

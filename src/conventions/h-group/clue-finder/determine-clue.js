@@ -2,6 +2,7 @@ import { bad_touch_result, cm_result, elim_result, playables_result } from '../.
 import { cardValue, isTrash } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
+import { CLUE_INTERP } from '../h-constants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -33,6 +34,11 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 	const hypo_game = game.simulate_clue(action, { enableLogs: true });
 
 	logger.highlight('green', '------- EXITING HYPO --------');
+
+	if (action.hypothetical && hypo_game.moveHistory.at(-1).move === CLUE_INTERP.NONE) {
+		logger.flush(false);
+		return undefined;
+	}
 
 	/** @type {string} */
 	let reason;
