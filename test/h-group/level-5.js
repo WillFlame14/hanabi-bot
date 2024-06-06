@@ -210,13 +210,16 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx'],
 			['p4', 'r1', 'g4', 'p4'],
 			['p4', 'b2', 'b3', 'y4'],
-			['r1', 'y2', 'b3', 'r4']
-		], { level: 5, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 0] });
+			['r1', 'y2', 'r4', 'r5']
+		], { level: 5, starting: PLAYER.BOB, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Bob clues 5 to Donald');
 		takeTurn(game, 'Cathy clues red to Bob');
 		takeTurn(game, 'Donald discards r4', 'r5');
 		assert.equal(game.common.waiting_connections.some(conn =>
 			conn.connections[0]?.reacting == PLAYER.ALICE &&
 			conn.connections[0].card.order == game.state.hands[PLAYER.ALICE][0].order), true);
+		takeTurn(game, 'Alice discards y2 (slot 4)');
+		assert.equal(game.common.waiting_connections.length, 0);
 	});
 });
 
@@ -254,7 +257,7 @@ describe('guide principle', () => {
 			['xx', 'xx', 'xx', 'xx'],
 			['p4', 'g2', 'g4', 'p5'],
 			['p4', 'b2', 'b3', 'y4'],
-			['b5', 'y2', 'b3', 'r5']
+			['b5', 'y2', 'b3', 'r4']
 		], { level: 5, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
 		takeTurn(game, 'Donald clues blue to Cathy');
 		const action = take_action(game);
