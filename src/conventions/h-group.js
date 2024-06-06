@@ -36,6 +36,8 @@ export default class HGroup extends Game {
 	 */
 	finesses_while_finessed;
 
+	stalled_5 = false;
+
 	/**
 	 * @param {number} tableID
 	 * @param {State} state
@@ -81,7 +83,7 @@ export default class HGroup extends Game {
 			throw new Error('Maximum recursive depth reached.');
 
 		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory',
-			'screamed_at', 'moveHistory', 'finesses_while_finessed'];
+			'screamed_at', 'moveHistory', 'finesses_while_finessed', 'stalled_5'];
 
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);

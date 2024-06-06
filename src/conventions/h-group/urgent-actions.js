@@ -6,6 +6,10 @@ import { determine_focus, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
+import { find_clues } from './clue-finder/clue-finder.js';
+
+import logger from '../../tools/logger.js';
+import { logClue } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -119,6 +123,27 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 }
 
 /**
+ * @param {Game} game
+ * @param {number} playerIndex
+ */
+export function early_game_clue(game, playerIndex) {
+	const { state } = game;
+
+	logger.collect();
+	const { play_clues, save_clues, stall_clues } = find_clues(game, playerIndex);
+	logger.flush(false);
+
+	const expected_clue = play_clues.flat().find(clue => clue.result.playables.some(({ card }) => card.newly_clued)) ||
+		save_clues.find(clue => clue !== undefined && (clue.cm === undefined || clue.cm.length === 0)) ||
+		((game.level >= 2 && game.stalled_5 && stall_clues[0][0]) || undefined);
+
+	if (expected_clue !== undefined)
+		logger.highlight('yellow', `expecting ${state.playerNames[playerIndex]} to give ${logClue(expected_clue)} in early game`);
+
+	return expected_clue !== undefined;
+}
+
+/**
  * Returns a 2D array of urgent actions in order of descending priority.
  * @param {Game} game
  * @param {Clue[][]} play_clues
@@ -135,16 +160,19 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 	for (let i = 1; i < state.numPlayers; i++) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
-		// If there is at least one non-finessed player with 1 clue (or 2 non-finessed players with 0 clues) between us and target, lower priority
-		let playerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-		let high_priority = true;
+		let high_priority = !(state.early_game && early_game_clue(game, target) && state.clue_tokens > 0);
 
-		while (playerIndex !== target) {
-			if (!state.hands[playerIndex].some(c => common.thoughts[c.order].finessed && state.isPlayable(c))) {
-				high_priority = false;
-				break;
+		if (high_priority) {
+			// If there is at least one non-finessed player with 1 clue (or 2 non-finessed players with 0 clues) between us and target, lower priority
+			let playerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
+
+			while (playerIndex !== target) {
+				if (!state.hands[playerIndex].some(c => common.thoughts[c.order].finessed && state.isPlayable(c))) {
+					high_priority = false;
+					break;
+				}
+				playerIndex = (playerIndex + 1) % state.numPlayers;
 			}
-			playerIndex = (playerIndex + 1) % state.numPlayers;
 		}
 
 		const nextPriority = high_priority ? 0 : prioritySize;

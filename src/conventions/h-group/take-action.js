@@ -270,7 +270,7 @@ export function take_action(game) {
 		}, []);
 
 		// If playing reveals duplicates are trash, playing is better for tempo in endgame
-		if (duplicates.every(c => c.inferred.length === 0 || (c.inferred.every(inf => inf.matches(identity) || state.isBasicTrash(inf)))))
+		if (duplicates.every(c => c.possible.every(p => p.matches(identity) || state.isBasicTrash(p))))
 			return { tableID, type: ACTION.PLAY, target: discards[0].order };
 
 		return { tableID, type: ACTION.DISCARD, target: discards[0].order };

@@ -20,9 +20,8 @@ import { get_result } from './determine-clue.js';
  * @param {Game} game
  * @param {Clue[][]} play_clues
  * @param {SaveClue[]} save_clues
- * @param {{ignorePlayerIndex?: number}} options
  */
-export function find_fix_clues(game, play_clues, save_clues, options = {}) {
+export function find_fix_clues(game, play_clues, save_clues) {
 	const { common, me, state } = game;
 
 	/** @type {FixClue[][]} */
@@ -34,7 +33,7 @@ export function find_fix_clues(game, play_clues, save_clues, options = {}) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 		fix_clues[target] = [];
 
-		if (game.level < LEVEL.FIX || target === options.ignorePlayerIndex)
+		if (game.level < LEVEL.FIX)
 			continue;
 
 		for (const { clued, order } of state.hands[target]) {

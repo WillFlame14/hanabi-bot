@@ -55,6 +55,7 @@
  * @property {BaseClue} clue
  * @property {boolean}  [mistake]
  * @property {boolean}	[lock]
+ * @property {boolean}  [hypothetical]
  * 
  * @typedef CardAction
  * @property {number} order
