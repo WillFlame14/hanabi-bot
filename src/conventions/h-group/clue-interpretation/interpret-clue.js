@@ -5,7 +5,7 @@ import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
-import { assign_connections, inference_known, inference_rank, find_symmetric_connections, generate_symmetric_connections } from './connection-helper.js';
+import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections } from './connection-helper.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 import * as Basics from '../../../basics.js';

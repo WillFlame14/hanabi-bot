@@ -98,9 +98,6 @@ function find_colour_focus(game, suitIndex, action) {
 	if (cardTouched(next_identity, game.state.variant, action.clue) && common.thoughts[focused_card.order].possible.has(next_identity)) {
 		logger.info('found connections:', logConnections(connections, next_identity));
 
-		const ignoreOrders = game.next_ignore[next_rank - old_play_stacks[suitIndex] - 1]?.filter(i =>
-			i.inference === undefined || i.inference.suitIndex === suitIndex).map(i => i.order);
-
 		// Our card could be the final rank that we can't find
 		focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
 	}
