@@ -66,18 +66,14 @@ export function interpret_discard(game, action, card) {
 					reacting: state.hands.findIndex(hand => hand.findOrder(sarcastics[0].order)),
 					card: sarcastics[0]
 				});
+				to_remove.pop();
 				continue;
 			}
 		}
 
-		try {
-			const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
-			game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
-			return;
-		}
-		catch(err) {
-			logger.warn(err.message);
-		}
+		const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
+		game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
+		return;
 	}
 
 	if (to_remove.length > 0)
@@ -90,7 +86,7 @@ export function interpret_discard(game, action, card) {
 	}
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!thoughts.rewinded && playerIndex === state.ourPlayerIndex && (failed || (!thoughts.matches_inferences() && !isTrash(state, me, card, card.order)))) {
+	if (!thoughts.rewinded && playerIndex === state.ourPlayerIndex && (failed || (!state.hasConsistentInferences(thoughts) && !isTrash(state, me, card, card.order)))) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;

@@ -129,6 +129,9 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 export function early_game_clue(game, playerIndex) {
 	const { state } = game;
 
+	if (state.clue_tokens === 0)
+		return false;
+
 	logger.collect();
 	const { play_clues, save_clues, stall_clues } = find_clues(game, playerIndex);
 	logger.flush(false);
@@ -160,7 +163,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 	for (let i = 1; i < state.numPlayers; i++) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
-		let high_priority = !(state.early_game && early_game_clue(game, target) && state.clue_tokens > 0);
+		let high_priority = !(state.early_game && early_game_clue(game, target));
 
 		if (high_priority) {
 			// If there is at least one non-finessed player with 1 clue (or 2 non-finessed players with 0 clues) between us and target, lower priority

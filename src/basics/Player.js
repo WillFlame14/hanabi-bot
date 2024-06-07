@@ -127,7 +127,7 @@ export class Player {
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
 				((options?.assume ?? true) || !this.waiting_connections.some(conn => conn.connections.length > 0 && conn.focused_card.order == c.order)) &&
-				card.matches_inferences();
+				state.hasConsistentInferences(card);
 		}));
 	}
 
@@ -254,7 +254,7 @@ export class Player {
 				const diff = card.clone();
 				diff.inferred = diff.inferred.subtract(fake_wcs.flatMap(wc => wc.inference));
 
-				const playable = diff.matches_inferences() &&
+				const playable = state.hasConsistentInferences(diff) &&
 					(delayed_playable(diff.possible.array) ||
 					delayed_playable(diff.inferred.array) ||
 					(diff.finessed && delayed_playable([card])) ||

@@ -13,6 +13,7 @@ import { take_action } from '../../src/conventions/h-group/take-action.js';
 import { determine_playable_card } from '../../src/conventions/h-group/action-helper.js';
 import { find_urgent_actions } from '../../src/conventions/h-group/urgent-actions.js';
 import { logPerformAction } from '../../src/tools/log.js';
+import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -110,6 +111,21 @@ describe('trash chop move', () => {
 
 		assert.deepEqual(urgent_actions[PRIORITY.ONLY_SAVE], []);
 		ExAsserts.objHasProperties(urgent_actions[PRIORITY.PLAY_OVER_SAVE][0], { type: ACTION.COLOUR, value: 1 });
+	});
+
+	it('will not give unsafe tcms', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g3', 'y4', 'y1', 'r3', 'y3'],
+			['r4', 'r4', 'g4', 'b1', 'r5'],
+		], {
+			level: 4,
+			play_stacks: [1, 1, 1, 1, 1],
+			clue_tokens: 1
+		});
+
+		const clue = { type: CLUE.RANK, value: 1, target: PLAYER.BOB };
+		assert.equal(clue_safe(game, game.me, clue), false);
 	});
 });
 

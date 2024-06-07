@@ -10,6 +10,7 @@ import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finde
 import { early_game_clue } from '../../src/conventions/h-group/urgent-actions.js';
 
 import logger from '../../src/tools/logger.js';
+import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -124,6 +125,28 @@ describe('save clue', () => {
 
 		// We should save with 2 since it reveals r2 playable.
 		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 2 });
+	});
+
+	it('does not give unsafe saves', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'g2', 'y2', 'r1', 'p5'],
+			['p3', 'g3', 'p2', 'b5', 'p1']
+		], {
+			level: 1,
+			play_stacks: [3, 3, 3, 3, 3],
+			starting: PLAYER.CATHY,
+			clue_tokens: 0
+		});
+
+		takeTurn(game, 'Cathy discards p1', 'b1');
+
+		// 5 to Bob is unsafe.
+		const clue = { type: CLUE.RANK, value: 5, target: PLAYER.BOB };
+		assert.equal(clue_safe(game, game.me, clue), false);
+
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
 	});
 });
 

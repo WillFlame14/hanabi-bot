@@ -27,8 +27,11 @@ import * as Utils from '../../../tools/util.js';
  */
 function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	const { common, me, state } = game;
-	const { target, result } = save_clue;
+	const { target, result, safe } = save_clue;
 	const { chop_moved } = result;
+
+	if (!safe)
+		return -1;
 
 	const old_chop = common.chop(state.hands[target]);
 
@@ -104,7 +107,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex) {
 
 			const in_finesse = common.waiting_connections.some(w_conn => {
 				const { focused_card: wc_focus, inference } = w_conn;
-				const matches = state.deck[wc_focus.order].matches(inference, { assume: true });
+				const matches = player.thoughts[wc_focus.order].matches(inference, { assume: true });
 
 				return matches && focused_card.playedBefore(inference, { equal: true });
 			});
@@ -134,7 +137,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex) {
 			const result = get_result(game, hypo_game, clue, giver);
 			Object.assign(clue, { result });
 
-			const safe = clue_safe(game, player, clue);
+			const safe = hypothetical || clue_safe(game, player, clue);
 
 			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = result;
 			const remainder = (chop && (!safe || state.clue_tokens <= 2)) ? result.remainder: 0;

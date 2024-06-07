@@ -27,7 +27,7 @@ export function get_result(game, clue) {
 	const { common: hypo_common, state: hypo_state } = hypo_game;
 	const { bad_touch, trash } = bad_touch_result(game, hypo_game, hypo_common, state.ourPlayerIndex, partner);
 
-	const { new_touched, fill, elim } = elim_result(common, hypo_common, hypo_state.hands[partner], touch.map(c => c.order));
+	const { new_touched, fill, elim } = elim_result(hypo_state, common, hypo_common, hypo_state.hands[partner], touch.map(c => c.order));
 	const revealed_trash = hypo_common.thinksTrash(hypo_state, partner).filter(c1 =>
 		c1.clued && !common.thinksTrash(state, partner).some(c2 => c1.order !== c2.order));
 	const { playables } = playables_result(hypo_state, common, hypo_common);

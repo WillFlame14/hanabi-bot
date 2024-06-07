@@ -32,7 +32,7 @@ export function interpret_discard(game, action, card) {
 	Basics.onDiscard(this, action);
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!thoughts.rewinded && (failed || (!thoughts.matches_inferences() && !isTrash(state, me, card, card.order)))) {
+	if (!thoughts.rewinded && (failed || (!state.hasConsistentInferences(thoughts) && !isTrash(state, me, card, card.order)))) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;

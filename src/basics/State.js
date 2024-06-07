@@ -6,6 +6,7 @@ import * as Utils from '../tools/util.js';
 
 /**
  * @typedef {import('../basics/Card.js').ActualCard} ActualCard
+ * @typedef {import('../basics/Card.js').Card} Card
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Clue} Clue
@@ -219,5 +220,16 @@ export class State {
 			clues.push({ type: CLUE.COLOUR, value: suitIndex, target });
 
 		return clues.filter(clue => hand.clueTouched(clue, this.variant).length > 0);
+	}
+
+	/**
+	 * Returns whether one of the card's inferences matches its actual suitIndex and rank.
+	 * Returns true if the card has only 1 possibility or the card is unknown.
+	 * @param {Card} card
+	 */
+	hasConsistentInferences(card) {
+		const actual_id = this.deck[card.order].identity();
+
+		return actual_id === undefined || card.possible.length === 1 || card.inferred.has(actual_id);
 	}
 }

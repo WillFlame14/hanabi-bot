@@ -69,7 +69,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 			if (state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches(card, { infer: true })))
 				continue;
 
-			const wrong_inference = !card.matches_inferences() && state.playableAway(card) !== 0;
+			const wrong_inference = !state.hasConsistentInferences(card) && state.playableAway(card) !== 0;
 
 			const duplicate = visibleFind(state, me, card).find(c => c.order !== order && common.thoughts[c.order].touched);
 			const unknown_duplicated = clued && card.inferred.length > 1 && duplicate !== undefined;

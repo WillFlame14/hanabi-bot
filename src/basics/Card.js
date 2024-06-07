@@ -238,14 +238,6 @@ export class Card extends BasicCard {
 	}
 
 	/**
-	 * Returns whether one of the card's inferences matches its actual suitIndex and rank.
-	 * Returns true if the card has only 1 possibility or the card is unknown (i.e. in our hand). 
-	 */
-	matches_inferences() {
-		return this.identity() === undefined || this.possible.length === 1 || this.inferred.has(this);
-	}
-
-	/**
 	 * Returns the note on the card.
 	 */
 	getNote() {

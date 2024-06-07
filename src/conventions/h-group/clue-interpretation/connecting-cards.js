@@ -22,9 +22,10 @@ import { ActualCard } from '../../../basics/Card.js';
  * @param {number} giver 		The player index that gave the clue. They cannot deduce unknown information about their own hand.
  * @param {Identity} identity
  * @param {number[]} [ignoreOrders]		The orders of cards to ignore when searching.
+ * @param {{knownOnly?: number[]}} options
  * @returns {Connection | undefined}
  */
-export function find_known_connecting(game, giver, identity, ignoreOrders = []) {
+export function find_known_connecting(game, giver, identity, ignoreOrders = [], options = {}) {
 	const { common, state } = game;
 
 	/** @param {number} order */
@@ -52,8 +53,8 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
 			const card = common.thoughts[order].clone();
 
 			// Remove inferences that will be proven false (i.e. after someone plays the card with such identity)
-			// Unless we are giving the clue, then we can't eliminate from our own hand
-			if (!(giver === state.ourPlayerIndex && playerIndex === state.ourPlayerIndex))
+			// Except the giver, who can't eliminate from their own hand
+			if (giver !== playerIndex)
 				card.inferred = card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
 
 			return card.matches(identity, { infer: true, symmetric: true }) &&
@@ -69,6 +70,9 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
 	// Visible and already going to be played (excluding giver)
 	for (let i = 1; i < state.numPlayers; i++) {
 		const playerIndex = (giver + i) % state.numPlayers;
+
+		if (options.knownOnly?.includes(playerIndex))
+			continue;
 
 		// Unknown playables that could match
 		const playables = state.hands[playerIndex].filter(({ order }) => {
@@ -283,7 +287,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, firs
 		return [];
 	}
 
-	const connecting = find_known_connecting(game, giver, identity, connected.concat(ignoreOrders));
+	const connecting = find_known_connecting(game, giver, identity, connected.concat(ignoreOrders), options);
 	if (connecting) {
 		if (connecting.type === 'terminate')
 			return [];
@@ -366,7 +370,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, firs
 	state.play_stacks = old_play_stacks;
 
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
-	if (giver !== state.ourPlayerIndex) {
+	if (giver !== state.ourPlayerIndex && !options.knownOnly?.includes(state.ourPlayerIndex)) {
 		const playable_conns = state.hands[state.ourPlayerIndex].filter(({order}) => {
 			const card = me.thoughts[order];
 

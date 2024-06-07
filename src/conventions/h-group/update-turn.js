@@ -70,6 +70,19 @@ export function remove_finesse(game, waiting_connection) {
 
 /**
  * @param {Game} game
+ * @param {number} reacting
+ * @param {number} order
+ */
+function stomped_finesse(game, reacting, order) {
+	const { common, state } = game;
+	const thoughts = common.thoughts[order];
+
+	return thoughts.clued && (thoughts.focused ||
+		(common.thinksPlayables(state, reacting).length === 0 && thoughts.inferred.every(i => state.isPlayable(i) || thoughts.matches(i, { assume: true }))));
+}
+
+/**
+ * @param {Game} game
  * @param {WaitingConnection} waiting_connection
  */
 function resolve_card_retained(game, waiting_connection) {
@@ -91,7 +104,7 @@ function resolve_card_retained(game, waiting_connection) {
 			!ambiguousPassback;							// haven't already tried to pass back
 	};
 
-	const { card: reacting_card } = game.last_actions[reacting];
+	const last_reacting_action = game.last_actions[reacting];
 
 	const old_finesse = connections.find((conn, i) => i >= conn_index && conn.reacting === state.ourPlayerIndex && conn.type === 'finesse')?.card;
 
@@ -107,14 +120,21 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		if (type === 'prompt' && game.last_actions[reacting].type === 'clue') {
-			logger.warn(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a clue`);
-			return { remove: false };
-		}
+		if (last_reacting_action.type === 'clue') {
+			if (stomped_finesse(game, reacting, order)) {
+				logger.warn(`finesse was stomped on, ${state.playerNames[reacting]} no longer needs to demonstrate connection immediately`);
+				return { remove: false };
+			}
 
-		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && type === 'finesse' && game.last_actions[reacting].type === 'clue' && game.last_actions[reacting].important) {
-			logger.warn(`allowing ${state.playerNames[reacting]} to defer a finesse for an important clue`);
-			return { remove: false };
+			if (type === 'prompt') {
+				logger.warn(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a clue`);
+				return { remove: false };
+			}
+
+			if (game.level >= LEVEL.INTERMEDIATE_FINESSES && type === 'finesse' && last_reacting_action.important) {
+				logger.warn(`allowing ${state.playerNames[reacting]} to defer a finesse for an important clue`);
+				return { remove: false };
+			}
 		}
 
 		if (passback()) {
@@ -145,7 +165,9 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		if (game.last_actions[reacting].type === 'play') {
+		if (last_reacting_action.type === 'play') {
+			const { card: reacting_card } = last_reacting_action;
+
 			if (type === 'finesse' && reacting_card && common.thoughts[reacting_card.order].finessed) {
 				logger.warn(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
 				return { remove: false };
@@ -172,14 +194,9 @@ function resolve_card_retained(game, waiting_connection) {
 		logger.warn(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);
 
 		if (reacting !== state.ourPlayerIndex) {
-			try {
-				const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
-				game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
-				return { quit: true };
-			}
-			catch(err) {
-				logger.warn(err.message);
-			}
+			const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
+			game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
+			return { quit: true };
 		}
 
 		// Can't remove finesses if we allow ourselves to "defer" an ambiguous finesse the first time around.
@@ -188,7 +205,7 @@ function resolve_card_retained(game, waiting_connection) {
 
 		return { remove: true, remove_finesse: !ambiguous };
 	}
-	else if (game.last_actions[reacting].type === 'discard') {
+	else if (last_reacting_action.type === 'discard') {
 		logger.warn(`${state.playerNames[reacting]} discarded with a waiting connection, removing inference ${logCard(inference)}`);
 		return { remove: true, remove_finesse: true };
 	}
@@ -216,10 +233,7 @@ function resolve_card_played(game, waiting_connection) {
 		const thoughts = common.thoughts[connection.order];
 
 		// Consider a stomped finesse if the played card was focused or they didn't choose to play it first
-		const stomped_finesse = type === 'finesse' && connection.clued && (thoughts.focused ||
-			(common.thinksPlayables(state, reacting).length === 0 && thoughts.inferred.every(i => state.isPlayable(i) || connection.matches(i))));
-
-		if (stomped_finesse) {
+		if (type === 'finesse' && stomped_finesse(game, reacting, connection.order)) {
 			logger.warn(`connecting card was focused/known playable with a clue (stomped on), not confirming ${logCard(inference)} finesse`);
 
 			if (connections[conn_index + 1]?.self) {

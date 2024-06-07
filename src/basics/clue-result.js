@@ -12,12 +12,13 @@ import { isTrash } from './hanabi-util.js';
  */
 
 /**
+ * @param  {State} state
  * @param  {Player} player
  * @param  {Player} hypo_player
  * @param  {Hand} hand
  * @param  {number[]} list
  */
-export function elim_result(player, hypo_player, hand, list) {
+export function elim_result(state, player, hypo_player, hand, list) {
 	const new_touched = [];
 	let fill = 0, elim = 0;
 
@@ -25,7 +26,7 @@ export function elim_result(player, hypo_player, hand, list) {
 		const old_card = player.thoughts[order];
 		const hypo_card = hypo_player.thoughts[order];
 
-		if (hypo_card.clued && !hypo_card.called_to_discard && hypo_card.possible.length < old_card.possible.length && hypo_card.matches_inferences()) {
+		if (hypo_card.clued && !hypo_card.called_to_discard && hypo_card.possible.length < old_card.possible.length && state.hasConsistentInferences(hypo_card)) {
 			if (hypo_card.newly_clued && !hypo_card.finessed)
 				new_touched.push(hypo_card);
 			else if (list.includes(order))

@@ -201,8 +201,10 @@ export class Game {
 		const pivotal_action = /** @type {ClueAction} */ (actionList[action_index]);
 
 		logger.highlight('cyan', `Rewinding to insert ${JSON.stringify(rewind_action)}`);
-		if ([-1, 0].some(offset => Utils.objEquals(actionList[action_index + offset], rewind_action)))
-			throw new Error(`Attempted to rewind ${JSON.stringify(rewind_action)} that was already rewinded!`);
+		if ([-1, 0].some(offset => Utils.objEquals(actionList[action_index + offset], rewind_action))) {
+			logger.error(`Attempted to rewind ${JSON.stringify(rewind_action)} that was already rewinded!`);
+			return false;
+		}
 
 		if (pivotal_action.type === 'clue')
 			pivotal_action.mistake = mistake || this.rewindDepth > 1;

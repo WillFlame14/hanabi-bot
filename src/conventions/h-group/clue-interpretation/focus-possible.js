@@ -51,7 +51,8 @@ function find_colour_focus(game, suitIndex, action) {
 		const ignoreOrders = getIgnoreOrders(game, next_rank - old_play_stacks[suitIndex] - 1, suitIndex);
 		const looksDirect = common.thoughts[focused_card.order].identity() === undefined;
 
-		const connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, already_connected, ignoreOrders);
+		const connect_options = action.hypothetical ? { knownOnly: [state.ourPlayerIndex] } : {};
+		const connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, already_connected, ignoreOrders, connect_options);
 		firstPlay = false;
 
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
@@ -196,7 +197,8 @@ function find_rank_focus(game, rank, action) {
 		while (next_rank <= rank) {
 			const identity = { suitIndex, rank: next_rank };
 			const ignoreOrders = getIgnoreOrders(game, next_rank - old_play_stacks[suitIndex] - 1, suitIndex);
-			const connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, already_connected, ignoreOrders);
+			const connect_options = action.hypothetical ? { knownOnly: [state.ourPlayerIndex] } : {};
+			const connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, already_connected, ignoreOrders, connect_options);
 			firstPlay = false;
 
 			if (connecting.length === 0)

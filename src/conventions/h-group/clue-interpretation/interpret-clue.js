@@ -48,16 +48,12 @@ function apply_good_touch(game, action) {
 			if (card.finessed && oldThoughts[order].inferred.length >= 1 && card.inferred.length === 0) {
 				// TODO: Possibly try rewinding older reasoning until rewind works?
 				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
-				try {
-					if (game.rewind(action_index, { type: 'finesse', list, clue: action.clue }))
-						return { layered_reveal: true };
-				}
-				catch (error) {
-					// Rewinding the layered finesse doesn't work, just ignore us then.
-					logger.warn(error.message);
-					if (game.rewind(action_index, { type: 'ignore', order, conn_index: 0 }))
-						return { layered_reveal: true };
-				}
+				if (game.rewind(action_index, { type: 'finesse', list, clue: action.clue }))
+					return { layered_reveal: true };
+
+				// Rewinding the layered finesse doesn't work, just ignore us then.
+				if (game.rewind(action_index, { type: 'ignore', order, conn_index: 0 }))
+					return { layered_reveal: true };
 			}
 		}
 	}
@@ -227,14 +223,9 @@ export function interpret_clue(game, action) {
 		const rewind_identity = common.thoughts[rewind_card.order]?.identity();
 
 		if (rewind_identity !== undefined && wc_target === state.ourPlayerIndex) {
-			try {
-				const { suitIndex, rank } = rewind_identity;
-				game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, suitIndex, rank });
-				return;
-			}
-			catch(err) {
-				logger.warn(err.message);
-			}
+			const { suitIndex, rank } = rewind_identity;
+			game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, suitIndex, rank });
+			return;
 		}
 
 		to_remove.add(i);

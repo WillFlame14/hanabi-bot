@@ -64,7 +64,7 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 		const old_card = game.common.thoughts[order];
 
 		const allowable_trash = card.chop_moved ||													// Chop moved (might have become trash)
-			old_card.reset || !old_card.matches_inferences() || old_card.inferred.length === 0 ||	// Didn't match inference even before clue
+			old_card.reset || !state.hasConsistentInferences(old_card) || old_card.inferred.length === 0 ||	// Didn't match inference even before clue
 			(clued && isTrash(state, game.me, visible_card, order, { infer: true })) ||				// Previously-clued duplicate or recently became basic trash
 			bad_touch_cards.some(b => b.order === order) ||											// Bad touched
 			card.possible.every(id => isTrash(hypo_game.state, hypo_game.common, id, order, { infer: true }));		// Known trash
@@ -125,7 +125,7 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const touch = provisions.touch ?? hand.clueTouched(clue, state.variant);
 	const list = provisions.list ?? touch.map(c => c.order);
 
-	const { new_touched, fill } = elim_result(common, hypo_common, hand, list);
+	const { new_touched, fill } = elim_result(hypo_state, common, hypo_common, hand, list);
 	const { bad_touch, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target);
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
