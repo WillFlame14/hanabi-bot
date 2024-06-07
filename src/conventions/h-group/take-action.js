@@ -194,7 +194,7 @@ export function take_action(game) {
 		// Before playing a finesse, look for any urgent saves.
 		// TODO: We should be able to delay a finesse for any urgent action. This will require
 		// the other players being able to recognize the urgent action in update-turn.js.
-		const save_action = urgent_actions[ACTION_PRIORITY.ONLY_SAVE].find(action => action.type === ACTION.RANK || action.type === ACTION.COLOUR);
+		const save_action = urgent_actions[ACTION_PRIORITY.ONLY_SAVE].find(action => (action.type === ACTION.RANK || action.type === ACTION.COLOUR) && action.target == nextPlayerIndex);
 		if (save_action)
 			return save_action;
 

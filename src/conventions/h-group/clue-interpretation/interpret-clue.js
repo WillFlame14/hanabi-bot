@@ -177,7 +177,7 @@ export function interpret_clue(game, action) {
 		focus_thoughts.chop_when_first_clued = true;
 
 		// A save is important if no one else could have given the save.
-		if (!old_focus_thoughts.saved && focus_thoughts.saved && (giver + 1) % state.numPlayers == target)
+		if (!old_focus_thoughts.saved && focus_thoughts.saved && (giver + 1) % state.numPlayers == target && !common.thinksLoaded(state, target, {assume: false}))
 			action.important = true;
 	}
 
