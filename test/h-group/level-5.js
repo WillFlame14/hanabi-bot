@@ -4,9 +4,10 @@ import { describe, it } from 'node:test';
 import { COLOUR, PLAYER, VARIANTS, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
-import { CLUE } from '../../src/constants.js';
+import { ACTION, CLUE } from '../../src/constants.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 import logger from '../../src/tools/logger.js';
+import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -203,6 +204,23 @@ describe('ambiguous clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y3']);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][3].order], ['b1']);
 	});
+
+	it(`recognizes a potential self fake finesse after a skipped finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p4', 'r1', 'g4', 'p4'],
+			['p4', 'b2', 'b3', 'y4'],
+			['r1', 'y2', 'r4', 'r5']
+		], { level: 5, starting: PLAYER.BOB, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Bob clues 5 to Donald');
+		takeTurn(game, 'Cathy clues red to Bob');
+		takeTurn(game, 'Donald discards r4', 'r5');
+		assert.equal(game.common.waiting_connections.some(conn =>
+			conn.connections[0]?.reacting == PLAYER.ALICE &&
+			conn.connections[0].card.order == game.state.hands[PLAYER.ALICE][0].order), true);
+		takeTurn(game, 'Alice discards y2 (slot 4)');
+		assert.equal(game.common.waiting_connections.length, 0);
+	});
 });
 
 describe('guide principle', () => {
@@ -215,6 +233,35 @@ describe('guide principle', () => {
 
 		// Giving 3 to Cathy should be unsafe since b5 will be discarded.
 		assert.equal(clue_safe(game, game.me, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);
+	});
+
+	it('does not expect a play when it could be deferring playing into a finesse', () => {
+		// From https://github.com/WillFlame14/hanabi-bot/pull/224#issuecomment-2118885427
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'], // g1, b4, p2, p1
+			['p4', 'g1', 'g3', 'p5'],
+			['b1', 'b2', 'p1', 'y4'],
+			['b3', 'y2', 'b3', 'r5']
+		], { level: 5, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 3] });
+		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Donald clues green to Bob');
+
+		// 4 to Bob is not a safe clue, since Bob may see it as a b4 finesse, and
+		// may be waiting on Alice to not play their g1.
+		const clue = { target: PLAYER.BOB, type: CLUE.RANK, value: 4 };
+		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue), false);
+	});
+
+	it(`gives a critical save even when it is finessed`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p4', 'g2', 'g4', 'p5'],
+			['p4', 'b2', 'b3', 'y4'],
+			['b5', 'y2', 'b3', 'r4']
+		], { level: 5, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Donald clues blue to Cathy');
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 1, value: 5 });
 	});
 });
 

@@ -62,7 +62,7 @@ export function clue_safe(game, player, clue) {
 		return true;
 
 	const safely_loaded = hypo_game.common.thinksTrash(hypo_state, next_unoccupied).length > 0 ||
-		hypo_game.common.thinksPlayables(hypo_state, next_unoccupied).some(p => {
+		hypo_game.common.thinksPlayables(hypo_state, next_unoccupied, {assume: false}).some(p => {
 			const card = hypo_game.common.thoughts[p.order];
 			return (!card.finessed || !card.hidden) && state.isPlayable(state.deck[p.order]);
 		});
@@ -100,5 +100,5 @@ export function chopUnsafe(state, player, playerIndex) {
 		return chop.identity() && (state.isCritical(chop) || save2(state, player, chop));
 
 	// Locked with no clue tokens
-	return state.clue_tokens === 0 && !player.thinksLoaded(state, playerIndex);
+	return state.clue_tokens === 0 && !player.thinksLoaded(state, playerIndex, {assume: false});
 }

@@ -112,6 +112,11 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
+		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && type === 'finesse' && game.last_actions[reacting].type === 'clue' && game.last_actions[reacting].important) {
+			logger.warn(`allowing ${state.playerNames[reacting]} to defer a finesse for an important clue`);
+			return { remove: false };
+		}
+
 		if (passback()) {
 			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but they need to play multiple non-hidden cards, passing back`);
 			waiting_connection.ambiguousPassback = true;

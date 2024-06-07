@@ -222,7 +222,7 @@ describe('play clue', () => {
 		takeTurn(game, 'Alice clues green to Bob');
 
 		takeTurn(game, 'Bob clues purple to Cathy');		// We are promised p1
-		takeTurn(game, 'Cathy clues 2 to Bob');				// We are promised r1
+		takeTurn(game, 'Cathy clues 2 to Bob');				// We are promised y1
 
 		// Purple stack is known up to 3.
 		assert.equal(game.common.hypo_stacks[COLOUR.PURPLE], 3);

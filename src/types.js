@@ -55,6 +55,7 @@
  * @property {BaseClue} clue
  * @property {boolean}  [mistake]
  * @property {boolean}	[lock]
+ * @property {boolean}  [important]
  * @property {boolean}  [hypothetical]
  * 
  * @typedef CardAction
@@ -105,7 +106,7 @@
  * @property {boolean} [save]
  * @property {INTERP} interp
  *
- * @typedef {Omit<FocusPossibility, 'interp'>} SymFocusPossibility
+ * @typedef {Omit<FocusPossibility, 'interp'> & { fake?: boolean }} SymFocusPossibility
  */
 /**
  * @typedef WaitingConnection

@@ -5,7 +5,7 @@ import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
-import { assign_connections, inference_known, inference_rank, find_symmetric_connections, generate_symmetric_connections } from './connection-helper.js';
+import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections } from './connection-helper.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 import * as Basics from '../../../basics.js';
@@ -83,6 +83,30 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 	for (const { connections, suitIndex, rank, save, interp } of inf_possibilities) {
 		const inference = { suitIndex, rank };
 
+		// A finesse is considered important if it could only have been given by this player.
+		// A finesse must be given before the first finessed player (card indices would shift after)
+		// and only by someone who knows or can see all of the cards in the connections.
+		if (connections.some(connection => connection.type == 'finesse')) {
+			for (let i = (giver + 1) % state.numPlayers; i != giver; i = (i + 1) % state.numPlayers) {
+				if (connections.some(connection => connection.type == 'finesse' && connection.reacting == i)) {
+					// The clue must be given before the first finessed player,
+					// as otherwise the finesse position may change.
+					action.important = true;
+					break;
+				}
+				// The target cannot clue themselves.
+				if (i == target)
+					continue;
+
+				// A player can't give a finesse if they didn't know some card in the finesse.
+				if (connections.some(connection => connection.reacting == i && connection.type != 'known'))
+					continue;
+
+				// This player could give the finesse, don't mark the action as important.
+				break;
+			}
+		}
+
 		game.interpretMove(interp);
 
 		const matches = focused_card.matches(inference, { assume: true });
@@ -97,16 +121,16 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
 
-	if (!inference_known(inf_possibilities) && target !== state.ourPlayerIndex && !correct_match.save) {
+	if (target !== state.ourPlayerIndex && !correct_match?.save) {
 		const selfRanks = Array.from(new Set(inf_possibilities.flatMap(({ connections }) =>
 			connections.filter(conn => conn.type === 'finesse' && conn.reacting === target && conn.identities.length === 1
 			).map(conn => conn.identities[0].rank))
 		));
-		const ownBlindPlays = correct_match.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length;
-		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities.some(fp => fp.save), selfRanks, ownBlindPlays);
+		const ownBlindPlays = correct_match?.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length || 0;
+		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities, selfRanks, ownBlindPlays);
 		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver, target);
 
-		for (const conn of symmetric_fps.flatMap(fp => fp.connections)) {
+		for (const conn of symmetric_fps.concat(inf_possibilities).flatMap(fp => fp.connections)) {
 			if (conn.type === 'playable' && conn.linked.length > 1) {
 				const orders = Array.from(conn.linked.map(c => c.order));
 				const existing_link = common.play_links.find(pl => Utils.setEquals(new Set(pl.orders), new Set(orders)) && pl.connected === focused_card.order);
@@ -121,7 +145,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		}
 
 		common.waiting_connections = common.waiting_connections.concat(symmetric_connections);
-		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(c => inf.matches(c))));
+		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(fp => !fp.fake && inf.matches(fp))));
 	}
 	reset_superpositions(game);
 }
@@ -139,6 +163,7 @@ export function interpret_clue(game, action) {
 	const { clue, giver, list, target, mistake = false } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], common, list, { beforeClue: true });
 
+	const old_focus_thoughts = oldCommon.thoughts[focused_card.order];
 	const focus_thoughts = common.thoughts[focused_card.order];
 	focus_thoughts.focused = true;
 
@@ -148,8 +173,13 @@ export function interpret_clue(game, action) {
 	if (layered_reveal)
 		return;
 
-	if (chop)
+	if (chop) {
 		focus_thoughts.chop_when_first_clued = true;
+
+		// A save is important if no one else could have given the save.
+		if (!old_focus_thoughts.saved && focus_thoughts.saved && (giver + 1) % state.numPlayers == target && !common.thinksLoaded(state, target, {assume: false}))
+			action.important = true;
+	}
 
 	if (focus_thoughts.inferred.length === 0 && oldCommon.thoughts[focused_card.order].possible.length > 1) {
 		focus_thoughts.inferred = focus_thoughts.possible;

@@ -115,6 +115,7 @@ export class Card extends BasicCard {
 	// Boolean flags about the state of the card
 	focused = false;
 	finessed = false;
+	bluffed = false;
 	chop_moved = false;
 	reset = false;			// Whether the card has previously lost all inferences
 	chop_when_first_clued = false;
@@ -148,7 +149,7 @@ export class Card extends BasicCard {
 		});
 
 		for (const field of ['inferred', 'possible', 'old_inferred', 'focused',
-			'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'superposition',
+			'finessed', 'bluffed', 'chop_moved', 'reset', 'chop_when_first_clued', 'superposition',
 			'hidden', 'called_to_discard', 'certain_finessed','finesse_index', 'rewinded'])
 			new_card[field] = this[field];
 

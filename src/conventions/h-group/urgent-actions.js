@@ -210,7 +210,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			const save = save_clues[target];
 
 			// They already have a playable or trash (i.e. early save)
-			if (common.thinksLoaded(state, target)) {
+			if (common.thinksLoaded(state, target, {assume: false})) {
 				urgent_actions[prioritySize * 2].push(Utils.clueToAction(save, tableID));
 				continue;
 			}

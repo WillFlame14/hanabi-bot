@@ -98,7 +98,7 @@ describe('queued finesse', () => {
 	it(`doesn't wait for older queued finesses when they can't be layered`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['g2', 'b3', 'g4', 'p5'],
+			['g2', 'b3', 'g4', 'p4'],
 			['r1', 'r2', 'r3', 'y3'],
 			['b4', 'r5', 'p3', 'y2']
 		], {

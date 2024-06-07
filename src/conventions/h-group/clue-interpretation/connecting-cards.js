@@ -110,12 +110,13 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = []) 
  * @param {number} target 			The player index receiving the clue. They will not find self-prompts or self-finesses.
  * @param {number} reacting
  * @param {Identity} identity
+ * @param {boolean} looksDirect 	Whether the clue could be interpreted as direct play (i.e. never as self-prompt/finesse).
  * @param {boolean} firstPlay		Is this the first play?
  * @param {number[]} [connected] 	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @returns {Connection | undefined}
  */
-function find_unknown_connecting(game, giver, target, reacting, identity, firstPlay, connected = [], ignoreOrders = []) {
+function find_unknown_connecting(game, giver, target, reacting, identity, looksDirect, firstPlay, connected = [], ignoreOrders = []) {
 	const { common, state } = game;
 
 	const hand = state.hands[reacting];
@@ -319,7 +320,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, firs
 		const already_connected = connected.slice();
 		state.play_stacks = old_play_stacks.slice();
 
-		let connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, firstPlay, already_connected, ignoreOrders);
+		let connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, looksDirect, firstPlay, already_connected, ignoreOrders);
 
 		if (connecting?.type === 'terminate') {
 			wrong_prompts.push(connecting);
@@ -335,7 +336,7 @@ export function find_connecting(game, giver, target, identity, looksDirect, firs
 			already_connected.push(connecting.card.order);
 			state.play_stacks[connecting.card.suitIndex]++;
 
-			connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, false, already_connected, ignoreOrders);
+			connecting = find_unknown_connecting(game, giver, target, playerIndex, identity, looksDirect, false, already_connected, ignoreOrders);
 		}
 
 		if (connecting) {

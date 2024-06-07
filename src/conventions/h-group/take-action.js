@@ -185,9 +185,22 @@ export function take_action(game) {
 		find_best_playable(game, playable_cards, playable_priorities) :
 		{ priority: -1, best_playable_card: undefined };
 
-	// Playing into finesse/bluff
-	if (playable_cards.length > 0 && priority === 0)
+	// If we have a finesse
+	if (playable_cards.length > 0 && priority === 0) {
+		// Bluffs should never be deferred as they can lead to significant desync with human players
+		if (playable_cards.some(c => common.thoughts[c.order].bluffed))
+			return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
+
+		// Before playing a finesse, look for any urgent saves.
+		// TODO: We should be able to delay a finesse for any urgent action. This will require
+		// the other players being able to recognize the urgent action in update-turn.js.
+		const save_action = urgent_actions[ACTION_PRIORITY.ONLY_SAVE].find(action => (action.type === ACTION.RANK || action.type === ACTION.COLOUR) && action.target == nextPlayerIndex);
+		if (save_action)
+			return save_action;
+
+		// If no urgent saves, play into the finesse
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
+	}
 
 	// Unlock next player
 	if (urgent_actions[ACTION_PRIORITY.UNLOCK].length > 0)
@@ -207,7 +220,7 @@ export function take_action(game) {
 		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
 
 		// Generate for next next player
-		if (me.chopValue(state, nextNextPlayerIndex) >= 4 && !common.thinksLoaded(state, nextNextPlayerIndex) && find_unlock(game, nextNextPlayerIndex) === undefined) {
+		if (me.chopValue(state, nextNextPlayerIndex) >= 4 && !common.thinksLoaded(state, nextNextPlayerIndex, {assume: false}) && find_unlock(game, nextNextPlayerIndex) === undefined) {
 			const nextChop = common.chop(state.hands[nextPlayerIndex]);
 
 			// Play a 5 if we have one

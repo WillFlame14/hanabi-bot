@@ -366,13 +366,13 @@ describe('asymmetric clues', () => {
 			['xx', 'xx', 'xx', 'xx'],
 			['g2', 'g3', 'g4', 'r3'],
 			['g4', 'y3', 'r4', 'p2'],
-			['g1', 'y2', 'y5', 'b4']
+			['g1', 'b4', 'y5', 'y2']
 		], {
 			level: 2,
 			play_stacks: [0, 1, 0, 0, 0]	// y1 is played.
 		});
 
-		takeTurn(game, 'Alice clues yellow to Donald');	// y2
+		takeTurn(game, 'Alice clues 2 to Donald');
 		takeTurn(game, 'Bob clues 1 to Donald');
 		takeTurn(game, 'Cathy clues 4 to Bob');			// connecting on g2 (Bob, finesse) and g3 (Bob, finesse)
 
