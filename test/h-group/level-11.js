@@ -55,6 +55,24 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['p3']);
 	});
 
+	it(`understands a self color bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g5', 'y2', 'b3', 'y5', 'y3'],
+			['p4', 'r3', 'g1', 'y4', 'b3'],
+		], {
+			level: 11,
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.BOB
+		});
+		takeTurn(game, 'Bob clues 2 to Alice (slot 5)');
+		takeTurn(game, 'Cathy clues red to Alice (slot 5)');
+
+		// Cathy's slot 1 could be any playable 1.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y1', 'g1', 'b1', 'p1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+	});
+
 	it(`understands a self finesse that's too long to be a bluff`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],

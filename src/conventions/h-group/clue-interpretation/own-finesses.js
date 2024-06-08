@@ -331,7 +331,9 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 		return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, identities: [finesse.raw()] }];
 	}
 
-	if (card.inferred.has(identity) && card.matches(identity, { assume: true })) {
+	const bluff = game.level >= LEVEL.BLUFFS && firstPlay && state.ourPlayerIndex == bluff_seat;
+	if (card.inferred.has(identity) && card.matches(identity, { assume: true }) ||
+		bluff && card.inferred.some(id => state.isPlayable(id))) {
 		if (game.level === 1 && connected.length >= 1)
 			throw new IllegalInterpretation(`blocked ${finesses >= 1 ? 'double finesse' : 'prompt + finesse'} at level 1`);
 
@@ -351,8 +353,6 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 
 			return state.hands.flat().find(c => c.order === ignored_order).matches(identity);
 		});
-
-		const bluff = game.level >= LEVEL.BLUFFS && firstPlay && state.ourPlayerIndex == bluff_seat;
 
 		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff, identities: [identity], certain, ambiguous }];
 	}
