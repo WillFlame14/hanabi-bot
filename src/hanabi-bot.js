@@ -7,6 +7,7 @@ dotenv.config();
 import { handle } from './command-handler.js';
 import { initConsole } from './tools/console.js';
 import * as Utils from './tools/util.js';
+import { HANABI_HOSTNAME } from './constants.js';
 
 /**
  * Logs in to hanab.live and returns the session cookie to authenticate future requests.
@@ -25,7 +26,7 @@ function connect(bot_index = '') {
 	const data = `username=${username}&password=${password}&version=bot`;
 
 	const options = {
-		hostname: 'hanab.live',
+		hostname: HANABI_HOSTNAME,
 		port: 443,
 		path: '/login',
 		method: 'POST',
@@ -76,7 +77,7 @@ async function main() {
 	}
 
 	// Establish websocket
-	const ws = new WebSocket('wss://hanab.live/ws', { headers: { Cookie: cookie } });
+	const ws = new WebSocket(`wss://${HANABI_HOSTNAME}/ws`, { headers: { Cookie: cookie } });
 
 	// Pass the websocket to utils
 	Utils.globalModify({ ws });
