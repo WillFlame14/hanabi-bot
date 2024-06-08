@@ -423,6 +423,30 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
+	it(`doesn't bluff when bluff can't be known by a later player not to play`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r2', 'r1', 'p2', 'r4'],
+			['p3', 'p2', 'g1', 'g4'],
+			['r1', 'r1', 'r4', 'g3']
+		], {
+			level: 11,
+			starting: PLAYER.CATHY
+		});
+		takeTurn(game, 'Cathy clues purple to Bob');
+		takeTurn(game, 'Donald plays r1 (slot 1)', 'r5');
+
+		// Bob knows he has a purple 2.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][2].order], ['p2']);
+
+		const { play_clues } = find_clues(game);
+		// A bluff through the p2 is invalid, because after the r2 plays, Cathy would think she has r3.
+		const bluff_clues = play_clues[2].filter(clue => {
+			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 3;
+		});
+		assert.equal(bluff_clues.length, 0);
+	});
+
 	it(`doesn't bluff on top of unknown queued cards`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

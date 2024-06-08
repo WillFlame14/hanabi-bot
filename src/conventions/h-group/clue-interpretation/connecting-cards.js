@@ -194,16 +194,18 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
 /**
  * Determines whether a bluff connection is a valid bluff, and updates the connection accordingly.
  * @param {Game} game
+ * @param {number} target
  * @param {Connection[]} connections	The complete connections leading to the play of a card.
  * @param {ActualCard} focusedCard		The focused card.
  * @param {Identity} focusIdentity		The expected identity of the focus.
  * @returns {Connection[]}
  */
-export function resolve_bluff(game, connections, focusedCard, focusIdentity) {
+export function resolve_bluff(game, target, connections, focusedCard, focusIdentity) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
 
 	const promised = connections.filter(conn => !conn.hidden).map(conn => conn.card).concat([focusedCard]);
+	const promisedPlayer = connections.filter(conn => !conn.hidden).map(conn => conn.reacting).concat([target]);
 	const { state } = game;
 	const bluffCard = connections[0].card;
 	let bluff_fail_reason = undefined;
@@ -219,7 +221,7 @@ export function resolve_bluff(game, connections, focusedCard, focusIdentity) {
 		// A bluff must be recognizable. As such, there should be no connection
 		// between the bluffed card and at least one of the following plays
 		// as known by the player who would play next after the bluff play.
-		const next_player = state.hands.findIndex(hand => hand.findOrder(promised[1].order));
+		const next_player = promisedPlayer[1];
 		const bluff_identities = bluffCard.identity() === undefined ?
 			game.players[state.ourPlayerIndex].thoughts[bluffCard.order].inferred.filter(c => state.isPlayable(c)) :
 			[bluffCard];
