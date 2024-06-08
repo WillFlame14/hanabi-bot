@@ -19,7 +19,7 @@ describe('tempo clue chop moves', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r2', 'g4', 'r5', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], { level: 5 });
+		], { level: { min: 5, max: 5 } });
 
 		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r1', 'y5');
@@ -33,7 +33,7 @@ describe('tempo clue chop moves', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r2', 'g4', 'r5', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], { level: 6 });
+		], { level: { min: 6 } });
 
 		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r1', 'y5');
@@ -48,7 +48,7 @@ describe('tempo clue chop moves', () => {
 			['g2', 'y5', 'g4', 'r5', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 6,
+			level: { min: 6 },
 			starting: PLAYER.CATHY
 		});
 
@@ -66,7 +66,7 @@ describe('tempo clue chop moves', () => {
 			['b5', 'y5', 'g5', 'r5'],
 			['b4', 'p3', 'g1', 'g1']
 		], {
-			level: 6,
+			level: { min: 6 },
 			starting: PLAYER.DONALD
 		});
 
@@ -87,7 +87,7 @@ describe('tempo clue chop moves', () => {
 			['b2', 'y1', 'g5', 'r5'],
 			['b4', 'p3', 'g1', 'g4']
 		], {
-			level: 6,
+			level: { min: 6 },
 			play_stacks: [1, 1, 1, 1, 1],
 			starting: PLAYER.DONALD
 		});
@@ -105,7 +105,7 @@ describe('tempo clue chop moves', () => {
 			['b2', 'y5', 'g3', 'y3'],
 			['b4', 'p4', 'g1', 'g1']
 		], {
-			level: 6,
+			level: { min: 6 },
 			play_stacks: [2, 2, 2, 2, 0],
 			discarded: ['y3'],
 			starting: PLAYER.CATHY
@@ -126,7 +126,7 @@ describe('tempo clue chop moves', () => {
 			['b2', 'r3', 'r1', 'y1'],
 			['p1', 'y5', 'g3', 'y3'],
 			['b4', 'p4', 'g1', 'g1']
-		], { level: 6 });
+		], { level: { min: 6 } });
 
 		takeTurn(game, 'Alice clues purple to Cathy');
 		takeTurn(game, 'Bob clues purple to Cathy');
@@ -142,7 +142,7 @@ describe('tempo clue chop moves', () => {
 			['p5', 'y5', 'g3', 'y3'],
 			['b4', 'p4', 'g1', 'g1']
 		], {
-			level: 6,
+			level: { min: 6 },
 			play_stacks: [0, 0, 0, 0, 2],
 			starting: PLAYER.CATHY
 		});
@@ -162,7 +162,7 @@ describe('tempo clue chop moves', () => {
 			['p5', 'r5', 'p4', 'p3', 'g4'],
 			['b1', 'y5', 'g3', 'y3', 'p4']
 		], {
-			level: 6,
+			level: { min: 6 },
 			starting: PLAYER.BOB,
 			init: (game) => {
 				const a_slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
@@ -186,7 +186,7 @@ describe('tempo clue chop moves', () => {
 			['y4', 'r4', 'b4', 'p2', 'p1'],
 			['b2', 'y5', 'g4', 'y1', 'p4'],
 		], {
-			level: 6,
+			level: { min: 6 },
 			play_stacks: [5, 2, 2, 2, 0],
 			starting: PLAYER.CATHY
 		});
@@ -204,7 +204,7 @@ describe('multiple tempo clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r2', 'r3', 'g5', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], { level: 6 });
+		], { level: { min: 6 } });
 
 		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r1', 'y5');
@@ -218,7 +218,7 @@ describe('multiple tempo clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r2', 'r3', 'r4', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], { level: 6 });
+		], { level: { min: 6 } });
 
 		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r1', 'y5');
@@ -232,7 +232,7 @@ describe('multiple tempo clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r2', 'r3', 'r4', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
-		], { level: 6 });
+		], { level: { min: 6 } });
 
 		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r1', 'y5');
@@ -253,7 +253,7 @@ describe('multiple tempo clues', () => {
 			['p1', 'b2', 'g4', 'y2', 'r2'],
 			['g4', 'r2', 'b1', 'r3', 'p1']
 		], {
-			level: 6,
+			level: { min: 6 },
 			play_stacks: [1, 0, 0, 0, 0],
 			starting: PLAYER.CATHY
 		});

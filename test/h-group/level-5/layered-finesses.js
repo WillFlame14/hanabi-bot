@@ -18,7 +18,7 @@ describe('layered finesse', () => {
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'y1', 'r2', 'y3', 'p3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 
@@ -43,7 +43,7 @@ describe('layered finesse', () => {
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'g2', 'y1', 'y2', 'p3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 
@@ -59,7 +59,7 @@ describe('layered finesse', () => {
 			['b5', 'p4', 'y2', 'g3', 'r3'],
 			['r4', 'r4', 'g4', 'r5', 'b4']
 		], {
-			level: 5,
+			level: { min: 5, max: 10 },
 			starting: PLAYER.CATHY
 		});
 
@@ -81,7 +81,7 @@ describe('layered finesse', () => {
 			['g1', 'r4', 'g4', 'r5'],
 			['g2', 'r4', 'b4', 'g1']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 
@@ -107,7 +107,7 @@ describe('layered finesse', () => {
 			['g1', 'b2', 'y3', 'r4'],
 			['p1', 'r3', 'r1', 'g3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			play_stacks: [1, 0, 0, 0, 0],
 			starting: PLAYER.DONALD
 		});
@@ -131,7 +131,7 @@ describe('layered finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y1', 'y1', 'p1', 'r5', 'b4'],
 			['r2', 'y4', 'p2', 'g3', 'r3']
-		], { level: 5 });
+		], { level: { min: 5, max: 10 } });
 
 		const { play_clues } = find_clues(game);
 
@@ -145,7 +145,7 @@ describe('layered finesse', () => {
 			['g3', 'b5', 'r2', 'y1', 'p4'],
 			['r4', 'g2', 'g4', 'r5', 'b4']
 		], {
-			level: 5,
+			level: { min: 5, max: 10 },
 			starting: PLAYER.CATHY,
 			discarded: ['y4']
 		});
@@ -169,7 +169,7 @@ describe('layered finesse', () => {
 			['g3', 'b5', 'r2', 'y1', 'p4'],
 			['y4', 'g2', 'g4', 'r5', 'b4']
 		], {
-			level: 5,
+			level: { min: 5, max: 10 },
 			starting: PLAYER.CATHY,
 			discarded: ['r4']
 		});
@@ -193,7 +193,7 @@ describe('layered finesse', () => {
 			['b1', 'b4', 'y2', 'r5', 'r4'],
 			['g1', 'r1', 'b5', 'g4', 'b4']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.CATHY
 		});
 
@@ -215,7 +215,7 @@ describe('layered finesse', () => {
 			['y1', 'r3', 'r2', 'g5', 'p4'],
 			['r1', 'r2', 'g4', 'y3', 'b4']
 		], {
-			level: 6,
+			level: { min: 6 },
 			clue_tokens: 6
 		});
 
@@ -234,7 +234,7 @@ describe('layered finesse', () => {
 			['r1', 'g3', 'r2', 'b4'],
 			['g1', 'g5', 'p1', 'y4']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.DONALD
 		});
 

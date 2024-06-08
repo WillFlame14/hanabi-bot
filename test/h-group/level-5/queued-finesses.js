@@ -17,7 +17,7 @@ describe('queued finesse', () => {
 			['r4', 'r2', 'g4', 'r5', 'b4'],
 			['g2', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 
@@ -41,7 +41,7 @@ describe('queued finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b3', 'r2', 'y3', 'p3'],
 			['g1', 'r1', 'r4', 'g4', 'b4']
-		], { level: 5 });
+		], { level: { min: 5 } });
 
 		takeTurn(game, 'Alice clues green to Bob');			// g2 reverse finesse on Cathy
 		takeTurn(game, 'Bob clues red to Alice (slot 2)');		// r2 reverse finesse on Cathy
@@ -57,7 +57,7 @@ describe('queued finesse', () => {
 			['r4', 'r2', 'g4', 'r5', 'b4'],
 			['g2', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.CATHY
 		});
 
@@ -79,7 +79,7 @@ describe('queued finesse', () => {
 			['r1', 'r2', 'r3', 'y3'],
 			['b4', 'r5', 'p3', 'y2']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 
@@ -102,7 +102,7 @@ describe('queued finesse', () => {
 			['r1', 'r2', 'r3', 'y3'],
 			['b4', 'r5', 'p3', 'y2']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 

@@ -23,7 +23,7 @@ describe('trash chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r1', 'b4']
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [2, 2, 2, 2, 2]
 		});
 
@@ -36,7 +36,7 @@ describe('trash chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'b1', 'r1', 'b4']
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [2, 2, 2, 2, 2]
 		});
 
@@ -49,7 +49,7 @@ describe('trash chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'b1', 'b4', 'g2']
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [2, 2, 2, 2, 2]
 		});
 
@@ -62,7 +62,7 @@ describe('trash chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'b1', 'g4', 'g4']
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [2, 2, 2, 2, 2]
 		});
 
@@ -75,7 +75,7 @@ describe('trash chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'b1', 'r1', 'g5']
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [2, 2, 2, 2, 2]
 		});
 
@@ -88,7 +88,7 @@ describe('trash chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y4', 'g4', 'b1', 'r1', 'y2']
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [5, 0, 0, 2, 2]
 		});
 
@@ -101,7 +101,7 @@ describe('trash chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y4', 'g4', 'b1', 'r1', 'y2']
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [5, 1, 0, 2, 2]
 		});
 
@@ -119,7 +119,7 @@ describe('trash chop move', () => {
 			['g3', 'y4', 'y1', 'r3', 'y3'],
 			['r4', 'r4', 'g4', 'b1', 'r5'],
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [1, 1, 1, 1, 1],
 			clue_tokens: 1
 		});
@@ -135,7 +135,7 @@ describe('giving order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'r3', 'r5']
 		], {
-			level: 4,
+			level: { min: 4 },
 			starting: PLAYER.BOB
 		});
 
@@ -157,7 +157,7 @@ describe('giving order chop move', () => {
 			['g3', 'r3', 'y3', 'y4', 'y4'],
 			['r4', 'r4', 'g4', 'r3', 'r5'],
 		], {
-			level: 4,
+			level: { min: 4 },
 			starting: PLAYER.BOB
 		});
 
@@ -178,7 +178,7 @@ describe('giving order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'p5', 'r5']
 		], {
-			level: 4,
+			level: { min: 4 },
 			starting: PLAYER.BOB
 		});
 
@@ -193,7 +193,7 @@ describe('giving order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'g4', 'r1']
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [2, 0, 0, 0, 0],
 			starting: PLAYER.BOB
 		});
@@ -210,7 +210,7 @@ describe('giving order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g5', 'g4', 'g4']
 		], {
-			level: 4,
+			level: { min: 4 },
 			starting: PLAYER.BOB
 		});
 
@@ -227,7 +227,7 @@ describe('giving order chop move', () => {
 			['r4', 'r4', 'g3', 'g3', 'r2'],
 			['g4', 'r3', 'y3', 'y3', 'r2']
 		], {
-			level: 4,
+			level: { min: 4 },
 			starting: PLAYER.BOB
 		});
 
@@ -245,7 +245,7 @@ describe('giving order chop move', () => {
 			['r4', 'r4', 'g3', 'g3', 'r1'],
 			['g5', 'r1', 'y3', 'y3', 'r2']
 		], {
-			level: 4,
+			level: { min: 4 },
 			starting: PLAYER.BOB
 		});
 
@@ -264,7 +264,7 @@ describe('interpreting order chop move', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b1', 'g1', 'r1', 'r5'],
 			['y4', 'r4', 'g4', 'r4', 'b5']
-		], { level: 4 });
+		], { level: { min: 4 } });
 
 		takeTurn(game, 'Alice clues 1 to Bob');
 		takeTurn(game, 'Bob plays g1', 'r1');		// OCM on Cathy
@@ -279,7 +279,7 @@ describe('interpreting order chop move', () => {
 			['b4', 'b1', 'g1', 'r1', 'r5'],
 			['y4', 'r4', 'g4', 'r4', 'b5']
 		], {
-			level: 4,
+			level: { min: 4 },
 			starting: PLAYER.CATHY
 		});
 
@@ -298,7 +298,7 @@ describe('interpreting chop moves', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b3', 'g3', 'r3', 'r5']
 		], {
-			level: 4,
+			level: { min: 4 },
 			starting: PLAYER.BOB
 		});
 
@@ -316,7 +316,7 @@ describe('interpreting chop moves', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b3', 'g3', 'r3', 'r5']
 		], {
-			level: 4,
+			level: { min: 4 },
 			starting: PLAYER.BOB
 		});
 
@@ -335,7 +335,7 @@ describe('interpreting chop moves', () => {
 			['b4', 'b1', 'g1', 'r5', 'r2'],
 			['y2', 'b2', 'p3', 'y1', 'r4']
 		], {
-			level: 4,
+			level: { min: 4 },
 			play_stacks: [1, 5, 5, 5, 5],
 			discarded: ['r3', 'r4'],
 			clue_tokens: 4

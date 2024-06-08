@@ -18,7 +18,7 @@ describe('ambiguous finesse', () => {
 			['r1', 'b3', 'r2', 'y3', 'p3'],
 			['g1', 'b4', 'y5', 'y2', 'p4'],
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.CATHY
 		});
 
@@ -39,7 +39,7 @@ describe('ambiguous finesse', () => {
 			['r4', 'g2', 'g4', 'r5', 'b4'],
 			['r1', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 
@@ -57,7 +57,7 @@ describe('ambiguous finesse', () => {
 			['g3', 'y4', 'p4', 'y3'],
 			['r1', 'r2', 'b4', 'p3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.CATHY
 		});
 
@@ -76,7 +76,7 @@ describe('ambiguous finesse', () => {
 			['r4', 'g2', 'g4', 'r5'],
 			['p4', 'b4', 'y1', 'p2']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.CATHY
 		});
 
@@ -96,7 +96,7 @@ describe('ambiguous finesse', () => {
 			['g4', 'y3', 'r4', 'p2'],
 			['g2', 'y2', 'g5', 'b2']
 		], {
-			level: 5,
+			level: { min: 5 },
 			play_stacks: [0, 1, 1, 0, 0],
 			starting: PLAYER.BOB
 		});
@@ -115,7 +115,7 @@ describe('ambiguous finesse', () => {
 			['g1', 'g3', 'g4', 'r5', 'b4'],
 			['g2', 'b3', 'r2', 'y3', 'p3'],
 			['b2', 'b4', 'y5', 'y2', 'g2'],
-		], { level: 5 });
+		], { level: { min: 5 } });
 
 		const clue = { type: CLUE.COLOUR, target: PLAYER.DONALD, value: COLOUR.GREEN };
 		const list = game.state.hands[PLAYER.DONALD].clueTouched(clue, game.state.variant).map(c => c.order);
