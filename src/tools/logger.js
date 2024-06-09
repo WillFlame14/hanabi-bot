@@ -5,11 +5,19 @@ class Logger {
 		WARN: 2,
 		ERROR: 3
 	});
+	levelOverridden = false;
 	level = 1;
 	accumulateDepth = 0;
 
 	/** @type {{colour: string, args: string[]}[][]} */
 	buffer = [];
+
+	constructor() {
+		if (process.env['LOG_LEVEL']) {
+			this.levelOverridden = true;
+			this.level = parseInt(process.env['LOG_LEVEL']);
+		}
+	}
 
 	/**
 	 * Sets the lowest level of logs that will be printed to console.
@@ -18,7 +26,8 @@ class Logger {
 	 * @param {number} level 
 	 */
 	setLevel(level) {
-		this.level = level;
+		if (!this.levelOverridden)
+			this.level = level;
 	}
 
 	wrapLevel(level, func) {
