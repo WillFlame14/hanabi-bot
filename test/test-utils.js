@@ -1,4 +1,4 @@
-import { CLUE } from '../src/constants.js';
+import { CLUE, MAX_H_LEVEL } from '../src/constants.js';
 import { State } from '../src/basics/State.js';
 import { cardCount, shortForms } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
@@ -11,7 +11,7 @@ import { logAction, logCard, logClue } from '../src/tools/log.js';
  * @typedef {import('../src/variants.js').Variant} Variant
  * 
  * @typedef SetupOptions
- * @property {number} level
+ * @property {{min?: number, max?: number}} level
  * @property {number[]} play_stacks
  * @property {string[]} discarded
  * @property {number} strikes
@@ -46,6 +46,8 @@ export const VARIANTS = /** @type {Record<string, Variant>} */ ({
 	PINK: { id: 107, name: 'Pink (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Pink'] },
 	PRISM: { id: 1465, name: 'Prism (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Prism'] }
 });
+
+const DEFAULT_LEVEL = parseInt(process.env['HANABI_LEVEL'] ?? '1');
 
 const sampleColours = /** @type {const} */ ({
 	'Rainbow': 'm',
@@ -168,7 +170,8 @@ export function setup(GameClass, hands, test_options = {}) {
 	testShortForms = shortForms.toSpliced(0, 0, 'x');
 
 	const state = new State(playerNames, 0, variant, {});
-	const game = new GameClass(-1, state, false, test_options.level ?? 1);
+	const [minLevel, maxLevel] = [test_options?.level?.min ?? 1, test_options?.level?.max ?? MAX_H_LEVEL];
+	const game = new GameClass(-1, state, false, Math.min(Math.max(minLevel, DEFAULT_LEVEL), maxLevel));
 	Utils.globalModify({ game });
 
 	let orderCounter = 0;

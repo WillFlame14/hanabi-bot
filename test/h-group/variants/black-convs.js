@@ -15,7 +15,7 @@ describe('save clue interpretation', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
-			level: 1,
+			level: { min: 1 },
 			clue_tokens: 7,
 			starting: PLAYER.BOB,
 			variant: VARIANTS.BLACK
@@ -32,7 +32,7 @@ describe('save clue interpretation', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
-			level: 1,
+			level: { min: 1 },
 			clue_tokens: 7,
 			starting: PLAYER.BOB,
 			variant: VARIANTS.BLACK
@@ -51,7 +51,7 @@ describe('save clue interpretation', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
-			level: 1,
+			level: { min: 1 },
 			clue_tokens: 7,
 			starting: PLAYER.BOB,
 			variant: VARIANTS.BLACK
@@ -68,7 +68,7 @@ describe('save clue interpretation', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
-			level: 1,
+			level: { min: 1 },
 			clue_tokens: 7,
 			starting: PLAYER.BOB,
 			variant: VARIANTS.BLACK

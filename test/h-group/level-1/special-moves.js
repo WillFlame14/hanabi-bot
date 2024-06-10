@@ -18,7 +18,7 @@ describe('other cases', () => {
 			['r5', 'p4', 'r4', 'b2'],
 			['r1', 'g5', 'p2', 'p4']
 		], {
-			level: 1,
+			level: { min: 1 },
 			starting: PLAYER.BOB
 		});
 
@@ -41,7 +41,7 @@ describe('other cases', () => {
 			['p1', 'p4', 'r3', 'y3'],
 			['y5', 'r4', 'r4', 'r2']
 		], {
-			level: 1,
+			level: { min: 1 },
 			play_stacks: [1, 0, 0, 0, 0],
 			discarded: ['y3'],
 			starting: PLAYER.BOB
@@ -64,7 +64,7 @@ describe('other cases', () => {
 			['y5', 'r4', 'r4', 'r2'],
 			['r1', 'b2', 'g3', 'b1']
 		], {
-			level: 1,
+			level: { min: 1 },
 			starting: PLAYER.BOB
 		});
 
@@ -82,7 +82,7 @@ describe('other cases', () => {
 			['r2', 'p4', 'r3', 'y5', 'r1'],
 			['y5', 'g4', 'r3', 'b4', 'g5']
 		], {
-			level: 1,
+			level: { min: 1 },
 			play_stacks: [1, 0, 2, 2, 0],
 			starting: PLAYER.CATHY
 		});

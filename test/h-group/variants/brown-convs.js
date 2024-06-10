@@ -17,7 +17,7 @@ describe('save clue interpretation', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
 		], {
-			level: 1,
+			level: { min: 1 },
 			starting: PLAYER.BOB,
 			variant: VARIANTS.BROWN
 		});
@@ -34,7 +34,7 @@ describe('save clue interpretation', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b2', 'r2', 'r3', 'n5'],
 		], {
-			level: 1,
+			level: { min: 1 },
 			clue_tokens: 5,
 			variant: VARIANTS.BROWN
 		});

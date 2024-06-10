@@ -23,6 +23,7 @@ If you're interested in understanding how the bot works, I've written [some docu
 - You'll need to have NodeJS v20 or above. You can download it [here](https://nodejs.org/en/download/).
 - Clone the repository to your own computer. There are lots of tutorials online on using Git if you don't know how that works.
 - Navigate to the cloned repository in a terminal and run `npm install` to install required dependencies.
+- If you want to run on an alternate hanabi-live server, export the server hostname as `HANABI_HOSTNAME`.
 - Export the environment variables `HANABI_USERNAME` and `HANABI_PASSWORD` for the bot to log in.
     - You'll need to create its account on hanab.live first.
 - Run `npm start` to start the bot.

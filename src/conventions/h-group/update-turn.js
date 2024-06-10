@@ -120,7 +120,7 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		if (last_reacting_action.type === 'clue') {
+		if (last_reacting_action?.type === 'clue') {
 			if (stomped_finesse(game, reacting, order)) {
 				logger.warn(`finesse was stomped on, ${state.playerNames[reacting]} no longer needs to demonstrate connection immediately`);
 				return { remove: false };
@@ -165,7 +165,7 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		if (last_reacting_action.type === 'play') {
+		if (last_reacting_action?.type === 'play') {
 			const { card: reacting_card } = last_reacting_action;
 
 			if (type === 'finesse' && reacting_card && common.thoughts[reacting_card.order].finessed) {
@@ -205,7 +205,7 @@ function resolve_card_retained(game, waiting_connection) {
 
 		return { remove: true, remove_finesse: !ambiguous };
 	}
-	else if (last_reacting_action.type === 'discard') {
+	else if (last_reacting_action?.type === 'discard') {
 		logger.warn(`${state.playerNames[reacting]} discarded with a waiting connection, removing inference ${logCard(inference)}`);
 		return { remove: true, remove_finesse: true };
 	}
