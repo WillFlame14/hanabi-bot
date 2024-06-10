@@ -10,6 +10,7 @@ import { getShortForms, getVariant } from './variants.js';
 import { initConsole } from './tools/console.js';
 import * as Utils from './tools/util.js';
 import { State } from './basics/State.js';
+import { HANABI_HOSTNAME } from './constants.js';
 
 const conventions = {
 	HGroup,
@@ -22,7 +23,7 @@ const conventions = {
  */
 function fetchReplay(id) {
 	return new Promise((resolve, reject) => {
-		const req = https.request(`https://hanab.live/export/${id}`, (res) => {
+		const req = https.request(`https://${HANABI_HOSTNAME}/export/${id}`, (res) => {
 			console.log(`Request status code: ${res.statusCode}`);
 			let raw_data = '';
 

@@ -18,7 +18,7 @@ describe('self-finesse', () => {
 			['g3', 'g2', 'g4', 'r4', 'g3'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [1, 3, 0, 1, 2],
 			starting: PLAYER.BOB
 		});
@@ -36,7 +36,7 @@ describe('self-finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 2,
+			level: { min: 2 },
 			starting: PLAYER.BOB
 		});
 
@@ -54,7 +54,7 @@ describe('self-finesse', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g3', 'r1', 'g4', 'b1', 'g3'],
 			['g1', 'g2', 'r5', 'y3', 'p3']
-		], { level: 2 });
+		], { level: { min: 2 } });
 
 		takeTurn(game, 'Alice clues 1 to Bob');
 		takeTurn(game, 'Bob clues 2 to Cathy');
@@ -73,7 +73,7 @@ describe('self-finesse', () => {
 			['b2', 'b3', 'p1', 'g3'],
 			['b5', 'b2', 'r4', 'p5']
 		], {
-			level: 2,
+			level: { min: 2 },
 			starting: PLAYER.DONALD
 		});
 
@@ -98,7 +98,7 @@ describe('self-finesse', () => {
 			['b2', 'b3', 'p1', 'g3'],
 			['y2', 'b2', 'r5', 'r1']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [0, 1, 0, 0, 0],
 			starting: PLAYER.CATHY
 		});
@@ -118,7 +118,7 @@ describe('self-finesse', () => {
 			['r3', 'b3', 'g1', 'p1', 'y2'],
 			['g2', 'b3', 'p1', 'g3', 'b2']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [2, 0, 0, 0, 0]
 		});
 
@@ -140,7 +140,7 @@ describe('self-finesse', () => {
 			['y1', 'b4', 'b1', 'g1'],
 			['r1', 'r3', 'r1', 'b4'],
 			['y1', 'r4', 'p3', 'g1']
-		], { level: 2 });
+		], { level: { min: 2 } });
 
 		takeTurn(game, 'Alice clues 1 to Bob');
 		takeTurn(game, 'Bob plays y1', 'p4');
@@ -166,7 +166,7 @@ describe('self-finesse', () => {
 			['p3', 'g5', 'p4', 'g2'],
 			['p1', 'g2', 'p1', 'g4']
 		], {
-			level: 2,
+			level: { min: 2 },
 			starting: PLAYER.DONALD
 		});
 
@@ -187,7 +187,7 @@ describe('direct clues', () => {
 			['g5', 'b4', 'r4', 'r5', 'g2'],
 			['b2', 'y3', 'r4', 'p2', 'p3']
 		], {
-			level: 2,
+			level: { min: 2 },
 			starting: PLAYER.CATHY
 		});
 
@@ -207,7 +207,7 @@ describe('direct clues', () => {
 			['g1', 'b2', 'y4', 'r3', 'r5'],
 			['g5', 'y3', 'r4', 'p2', 'r3']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [0, 2, 0, 0, 0],
 			starting: PLAYER.CATHY
 		});
@@ -227,7 +227,7 @@ describe('direct clues', () => {
 			['g5', 'y3', 'r4', 'p2'],
 			['g1', 'r3', 'y2', 'b3']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [0, 2, 0, 0, 0],
 			starting: PLAYER.BOB
 		});
@@ -252,7 +252,7 @@ describe('asymmetric clues', () => {
 			['g4', 'y3', 'r4', 'p2'],
 			['g3', 'g2', 'p3', 'b3']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [0, 0, 0, 1, 0],	// b1 has been played. We hold a b2 in our hand.
 			starting: PLAYER.CATHY
 		});
@@ -282,7 +282,7 @@ describe('asymmetric clues', () => {
 			['g4', 'y3', 'r4', 'p2'],
 			['g1', 'g5', 'y1', 'b4']
 		], {
-			level: 2,
+			level: { min: 2 },
 			starting: PLAYER.BOB
 		});
 
@@ -301,7 +301,7 @@ describe('asymmetric clues', () => {
 			['g4', 'y3', 'r4', 'p2'],
 			['g1', 'y2', 'y5', 'b4']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [0, 1, 0, 0, 0]	// y1 is played.
 		});
 
@@ -322,7 +322,7 @@ describe('asymmetric clues', () => {
 			['g1', 'y3', 'r4', 'p2'],
 			['g2', 'p4', 'y5', 'b4']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [0, 2, 0, 0, 0]
 		});
 
@@ -344,7 +344,7 @@ describe('asymmetric clues', () => {
 			['g5', 'p4', 'y5', 'y3'],
 			['b2', 'b2', 'y4', 'r3']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [0, 2, 1, 0, 0],
 			discarded: ['r3', 'y3'],
 			starting: PLAYER.BOB
@@ -368,7 +368,7 @@ describe('asymmetric clues', () => {
 			['g4', 'y3', 'r4', 'p2'],
 			['g1', 'b4', 'y5', 'y2']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [0, 1, 0, 0, 0]	// y1 is played.
 		});
 
@@ -388,7 +388,7 @@ describe('asymmetric clues', () => {
 			['p1', 'g5', 'y3', 'y1'],
 			['g1', 'p2', 'y1', 'b5']
 		], {
-			level: 2,
+			level: { min: 2 },
 			starting: PLAYER.DONALD
 		});
 
@@ -415,7 +415,7 @@ describe('asymmetric clues', () => {
 			['b2', 'y4', 'r1', 'b3', 'y1'],
 			['g1', 'y3', 'p4', 'y1', 'b5']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [2, 1, 1, 1, 2],
 			starting: PLAYER.CATHY
 		});
@@ -436,7 +436,7 @@ describe('asymmetric clues', () => {
 			['y1', 'b3', 'b2', 'r4'],
 			['p4', 'p1', 'r1', 'y2']
 		], {
-			level: 2,
+			level: { min: 2 },
 			play_stacks: [0, 1, 1, 0, 0],
 			starting: PLAYER.DONALD
 		});
@@ -459,7 +459,7 @@ describe('continuation clues', () => {
 			['r3', 'g3', 'p2', 'p1'],
 			['b4', 'y2', 'r4', 'p1']
 		], {
-			level: 2,
+			level: { min: 2 },
 			starting: PLAYER.CATHY
 		});
 
@@ -480,7 +480,7 @@ describe('safe clues', () => {
 			['g1', 'y3', 'p4', 'p3'],
 			['y2', 'p3', 'b4', 'g4'],
 		], {
-			level: 2,
+			level: { min: 2 },
 			clue_tokens: 1
 		});
 

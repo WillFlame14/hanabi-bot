@@ -16,7 +16,7 @@ describe('hidden finesse', () => {
 			['r4', 'r4', 'g4', 'r5', 'b5'],
 			['r1', 'b3', 'p3', 'y3', 'r2']
 		], {
-			level: 5,
+			level: { min: 5 },
 			play_stacks: [1, 0, 1, 1, 0],
 			starting: PLAYER.BOB
 		});
@@ -42,7 +42,7 @@ describe('hidden finesse', () => {
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g3', 'b3', 'p3', 'y3', 'r2']
 		], {
-			level: 5,
+			level: { min: 5 },
 			play_stacks: [1, 0, 1, 1, 0],
 			starting: PLAYER.BOB
 		});
@@ -68,7 +68,7 @@ describe('hidden finesse', () => {
 			['p1', 'p4', 'r3', 'y3', 'r5'],
 			['y2', 'g2', 'b1', 'g3', 'r1']
 		], {
-			level: 1,
+			level: { min: 1 },
 			starting: PLAYER.BOB
 		});
 
@@ -96,7 +96,7 @@ describe('hidden finesse', () => {
 			['g2', 'r2', 'r3', 'p1', 'b4'],
 			['p2', 'g4', 'y2', 'b4', 'p5']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.CATHY
 		});
 
@@ -117,7 +117,7 @@ describe('hidden finesse', () => {
 			['g1', 'y4', 'b1', 'r5', 'g4'],
 			['y3', 'g2', 'b3', 'p5', 'p4']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.CATHY
 		});
 

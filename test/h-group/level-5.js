@@ -18,7 +18,7 @@ describe('ambiguous clues', () => {
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 
@@ -40,7 +40,7 @@ describe('ambiguous clues', () => {
 			['r4', 'r4', 'g4', 'r5', 'b4'],
 			['g3', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 
@@ -58,7 +58,7 @@ describe('ambiguous clues', () => {
 			['p4', 'r4', 'g4', 'r5', 'b4'],
 			['r3', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 5,
+			level: { min: 5 },
 			play_stacks: [1, 0, 1, 1, 0]
 		});
 
@@ -86,7 +86,7 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p4', 'r4', 'g4', 'r5', 'b4'],
 			['r2', 'b3', 'r1', 'y3', 'p3']
-		], { level: 5 });
+		], { level: { min: 5 } });
 
 		takeTurn(game, 'Alice clues 1 to Cathy');
 		takeTurn(game, 'Bob clues red to Alice (slot 3)');
@@ -106,7 +106,7 @@ describe('ambiguous clues', () => {
 			['g2', 'p4', 'r2', 'r3', 'g4'],
 			['p2', 'p1', 'b3', 'y3', 'b4']
 		], {
-			level: 5,
+			level: { min: 5 },
 			clue_tokens: 4,
 			starting: PLAYER.BOB
 		});
@@ -126,7 +126,7 @@ describe('ambiguous clues', () => {
 			['p5', 'g3', 'p1', 'b3'],
 			['p1', 'b1', 'r3', 'g1']
 		], {
-			level: 5,
+			level: { min: 5 },
 			starting: PLAYER.BOB
 		});
 
@@ -152,7 +152,7 @@ describe('ambiguous clues', () => {
 			['y1', 'g4', 'g3', 'y4'],
 			['y1', 'g1', 'y3', 'r4']
 		], {
-			level: 5,
+			level: { min: 5 },
 			clue_tokens: 7,
 			play_stacks: [0, 0, 3, 1, 0],
 			starting: PLAYER.CATHY
@@ -179,7 +179,7 @@ describe('ambiguous clues', () => {
 			['y4', 'm4', 'b4', 'b2'],
 			['m3', 'g1', 'y1', 'b1']
 		], {
-			level: 5,
+			level: { min: 5 },
 			variant: VARIANTS.RAINBOW,
 			play_stacks: [0, 2, 0, 0, 1],
 			starting: PLAYER.DONALD,
@@ -211,7 +211,7 @@ describe('ambiguous clues', () => {
 			['p4', 'r1', 'g4', 'p4'],
 			['p4', 'b2', 'b3', 'y4'],
 			['r1', 'y2', 'r4', 'r5']
-		], { level: 5, starting: PLAYER.BOB, play_stacks: [0, 0, 0, 0, 0] });
+		], { level: { min: 5 }, starting: PLAYER.BOB, play_stacks: [0, 0, 0, 0, 0] });
 		takeTurn(game, 'Bob clues 5 to Donald');
 		takeTurn(game, 'Cathy clues red to Bob');
 		takeTurn(game, 'Donald discards r4', 'r5');
@@ -229,7 +229,7 @@ describe('guide principle', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r2', 'g4', 'r5', 'b4'],
 			['r4', 'r3', 'b3', 'y3', 'b5']
-		], { level: 5 });
+		], { level: { min: 5 } });
 
 		// Giving 3 to Cathy should be unsafe since b5 will be discarded.
 		assert.equal(clue_safe(game, game.me, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);
@@ -242,7 +242,7 @@ describe('guide principle', () => {
 			['p4', 'g1', 'g3', 'p5'],
 			['b1', 'b2', 'p1', 'y4'],
 			['b3', 'y2', 'b3', 'r5']
-		], { level: 5, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 3] });
+		], { level: { min: 5 }, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 3] });
 		takeTurn(game, 'Cathy clues 5 to Donald');
 		takeTurn(game, 'Donald clues green to Bob');
 
@@ -258,7 +258,7 @@ describe('guide principle', () => {
 			['p4', 'g2', 'g4', 'p5'],
 			['p4', 'b2', 'b3', 'y4'],
 			['b5', 'y2', 'b3', 'r4']
-		], { level: 5, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
+		], { level: { min: 5, max: 10 }, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
 		takeTurn(game, 'Donald clues blue to Cathy');
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 1, value: 5 });
@@ -273,7 +273,7 @@ describe('mistake recovery', () => {
 			['g3', 'b2', 'y1', 'r5'],
 			['r3', 'r1', 'g4', 'b1']
 		], {
-			level: 2,
+			level: { min: 2 },
 			starting: PLAYER.DONALD
 		});
 

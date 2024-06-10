@@ -18,7 +18,7 @@ describe('scream discard chop moves', () => {
 			['r4', 'r2', 'g4', 'b4', 'r5'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 7,
+			level: { min: 7 },
 			clue_tokens: 1,
 			starting: PLAYER.CATHY
 		});
@@ -42,7 +42,7 @@ describe('scream discard chop moves', () => {
 			['r5', 'r2', 'g4', 'b4', 'b3'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 7,
+			level: { min: 7 },
 			clue_tokens: 0
 		});
 
@@ -64,7 +64,7 @@ describe('shout discard chop moves', () => {
 			['r4', 'r2', 'g4', 'p1', 'g3'],
 			['g1', 'b3', 'r2', 'y3', 'p3']
 		], {
-			level: 7,
+			level: { min: 7 },
 			clue_tokens: 2,
 			play_stacks: [1, 1, 1, 1, 0],
 			starting: PLAYER.CATHY
@@ -89,7 +89,7 @@ describe('shout discard chop moves', () => {
 			['r5', 'r4', 'g4', 'b4', 'b3'],
 			['g1', 'p1', 'r4', 'y3', 'p3']
 		], {
-			level: 7,
+			level: { min: 7 },
 			clue_tokens: 2,
 			play_stacks: [1, 1, 0, 1, 1]
 		});
@@ -112,7 +112,7 @@ describe('generation discards', () => {
 			['r4', 'r2', 'g4', 'b4', 'p2'],
 			['g1', 'b3', 'r2', 'y3', 'r5']
 		], {
-			level: 7,
+			level: { min: 7 },
 			clue_tokens: 1,
 			starting: PLAYER.CATHY
 		});
@@ -131,7 +131,7 @@ describe('generation discards', () => {
 			['r4', 'r2', 'g4', 'b4', 'p2'],
 			['g1', 'b3', 'r2', 'y3', 'r5']
 		], {
-			level: 7,
+			level: { min: 7 },
 			clue_tokens: 1,
 			starting: PLAYER.CATHY
 		});
@@ -150,7 +150,7 @@ describe('generation discards', () => {
 			['r4', 'r2', 'g4', 'b4', 'r1'],
 			['r3', 'b3', 'r5', 'y3', 'b1']
 		], {
-			level: 7,
+			level: { min: 7 },
 			clue_tokens: 2,
 			play_stacks: [1, 0, 0, 0, 0],
 			starting: PLAYER.CATHY
