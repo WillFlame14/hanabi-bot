@@ -19,7 +19,7 @@ import { State } from './basics/State.js';
 const conventions = { HGroup, PlayfulSieve };
 const settings = {
 	convention: 'HGroup',
-	level: 1
+	level: parseInt(process.env['HANABI_LEVEL'] ?? '1')
 };
 
 /** @type {Record<number, Table>} */

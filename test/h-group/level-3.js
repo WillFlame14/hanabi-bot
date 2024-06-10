@@ -19,7 +19,7 @@ describe('playing 1s in the correct order', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
 		], {
-			level: 3,
+			level: { min: 3 },
 			starting: PLAYER.BOB
 		});
 
@@ -34,7 +34,7 @@ describe('playing 1s in the correct order', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
-		], { level: 3 });
+		], { level: { min: 3 } });
 
 		// Slot 1 is a new card
 		takeTurn(game, 'Alice bombs b5 (slot 1)');
@@ -49,7 +49,7 @@ describe('playing 1s in the correct order', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
-		], { level: 3 });
+		], { level: { min: 3 } });
 
 		// Slot 1 is a new card
 		takeTurn(game, 'Alice bombs b5 (slot 1)');
@@ -66,7 +66,7 @@ describe('playing 1s in the correct order', () => {
 			['b2', 'r2', 'g3', 'r5', 'b3'],
 			['r4', 'b4', 'g4', 'y3', 'p4']
 		], {
-			level: 3,
+			level: { min: 3 },
 			starting: PLAYER.BOB
 		});
 
@@ -85,7 +85,7 @@ describe('sarcastic discard', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y1', 'p4']
-		], { level: 3 });
+		], { level: { min: 3 } });
 
 		takeTurn(game, 'Alice clues 1 to Bob');
 		takeTurn(game, 'Bob clues yellow to Alice (slot 5)');
@@ -100,7 +100,7 @@ describe('sarcastic discard', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y3', 'y1']
 		], {
-			level: 3,
+			level: { min: 3 },
 			starting: PLAYER.BOB
 		});
 
@@ -118,7 +118,7 @@ describe('sarcastic discard', () => {
 			['r4', 'b4', 'y5', 'y4', 'p4'],
 			['g4', 'b2', 'y1', 'y2', 'p1']
 		], {
-			level: 3,
+			level: { min: 3 },
 			play_stacks: [0, 3, 0, 0, 1],
 			starting: PLAYER.CATHY
 		});
@@ -152,7 +152,7 @@ describe('sarcastic discard', () => {
 			['r4', 'b4', 'y1', 'g4', 'p4'],
 			['g4', 'b2', 'y1', 'y2', 'p1']
 		], {
-			level: 3,
+			level: { min: 3 },
 			play_stacks: [0, 3, 0, 0, 5],
 			starting: PLAYER.BOB
 		});
@@ -176,7 +176,7 @@ describe('sarcastic discard', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p4', 'g2', 'b2', 'r4', 'p2'],
 		], {
-			level: 7,
+			level: { min: 7 },
 			play_stacks: [1, 1, 0, 1, 0],
 			clue_tokens: 6
 		});
@@ -199,7 +199,7 @@ describe('fix clues', () => {
 			['y3', 'p3', 'y4', 'r2'],
 			['p4', 'r3', 'y4', 'r5']
 		], {
-			level: 3,
+			level: { min: 3 },
 			play_stacks: [1, 1, 1, 0, 0],
 			starting: PLAYER.BOB
 		});

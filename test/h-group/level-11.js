@@ -18,7 +18,7 @@ describe('bluff clues', () => {
 			['p1', 'y5', 'b1', 'g5', 'p2'],
 			['b3', 'r1', 'b5', 'b2', 'y4']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [2, 2, 2, 2, 2],
 			starting: PLAYER.BOB
 		});
@@ -43,7 +43,7 @@ describe('bluff clues', () => {
 			['p1', 'r3', 'g1', 'y4'],
 			['p2', 'b5', 'b1', 'y1']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [0, 0, 0, 0, 0],
 			starting: PLAYER.BOB
 		});
@@ -62,7 +62,7 @@ describe('bluff clues', () => {
 			['p4', 'r3', 'g1', 'y4'],
 			['p2', 'b5', 'b1', 'y1']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [0, 0, 0, 0, 0],
 			starting: PLAYER.DONALD
 		});
@@ -78,7 +78,7 @@ describe('bluff clues', () => {
 			['b3', 'r1', 'b1', 'g5', 'p2'],
 			['p1', 'r3', 'b5', 'b2', 'y4']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [2, 2, 2, 2, 2]
 		});
 		takeTurn(game, 'Alice clues red to Cathy');
@@ -100,7 +100,7 @@ describe('bluff clues', () => {
 			['b3', 'r1', 'b1', 'g5', 'p2'],
 			['p1', 'r4', 'b5', 'b2', 'y4']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [2, 2, 2, 2, 2]
 		});
 		takeTurn(game, 'Alice clues red to Cathy');
@@ -124,7 +124,7 @@ describe('bluff clues', () => {
 			['y1', 'r4', 'p4', 'r4'],
 			['b2', 'g1', 'p3', 'r3'],
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [1, 0, 0, 0, 0]
 		});
 		takeTurn(game, 'Alice clues 2 to Bob');
@@ -156,7 +156,7 @@ describe('bluff clues', () => {
 			['b4', 'r1', 'y1', 'g5', 'p2'],
 			['p1', 'r4', 'b5', 'b2', 'y4']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [2, 2, 2, 2, 2],
 			starting: PLAYER.CATHY
 		});
@@ -181,7 +181,7 @@ describe('bluff clues', () => {
 			['r2', 'b1', 'p5', 'p1'],
 			['p2', 'r1', 'b2', 'y1']
 		], {
-			level: 11,
+			level: { min: 11 },
 			starting: PLAYER.CATHY
 		});
 		takeTurn(game, 'Cathy clues 2 to Donald');
@@ -194,7 +194,7 @@ describe('bluff clues', () => {
 			['b4', 'r1', 'y1', 'g5', 'g3'],
 			['p1', 'r4', 'b5', 'b2', 'y3'],
 		], {
-			level: 11,
+			level: { min: 11 },
 			starting: PLAYER.BOB
 		});
 		takeTurn(game, 'Bob clues red to Alice (slot 4)');
@@ -218,7 +218,7 @@ describe('bluff clues', () => {
 			['p1', 'r4', 'b5', 'b2'],
 			['g4', 'r4', 'r5', 'g3']
 		], {
-			level: 11,
+			level: { min: 11 },
 			starting: PLAYER.DONALD
 		});
 		takeTurn(game, 'Donald clues red to Alice (slots 3,4)');
@@ -238,7 +238,7 @@ describe('bluff clues', () => {
 			['p1', 'r4', 'b5', 'b2'],
 			['g4', 'b2', 'r3', 'r1']
 		], {
-			level: 11,
+			level: { min: 11 },
 			starting: PLAYER.CATHY
 		});
 		takeTurn(game, 'Cathy clues red to Donald');
@@ -261,7 +261,7 @@ describe('bluff clues', () => {
 			['r4', 'b1', 'g5', 'r2'],
 			['p2', 'r4', 'r1', 'b3']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [1, 1, 0, 0, 1],
 			starting: PLAYER.DONALD
 		});
@@ -285,7 +285,7 @@ describe('bluff clues', () => {
 			['b4', 'r1', 'y1', 'g5', 'p2'],
 			['p1', 'r4', 'b5', 'b2', 'y4']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [1, 2, 1, 0, 0],
 			starting: PLAYER.BOB
 		});
@@ -308,7 +308,7 @@ describe('bluff clues', () => {
 			['b3', 'w1', 'w1', 'w5', 'w2'],
 			['p1', 'r4', 'b5', 'b2', 'y4']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [2, 2, 2, 2, 2],
 			starting: PLAYER.DONALD
 		});
@@ -328,7 +328,7 @@ describe('bluff clues', () => {
 			['p3', 'r4', 'p1', 'b2', 'y4'],
 			['y2', 'y3', 'y5', 'p1', 'g4']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [0, 1, 0, 0, 1],
 			starting: PLAYER.BOB
 		});
@@ -356,7 +356,7 @@ describe('bluff clues', () => {
 			['y4', 'p1', 'g3', 'g4'],
 			['y3', 'g1', 'g3', 'r1']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [1, 0, 0, 1, 2],
 			starting: PLAYER.CATHY
 		});
@@ -378,7 +378,7 @@ describe('bluff clues', () => {
 			['b4', 'g4', 'y4', 'r4'],
 			['y3', 'r1', 'g3', 'p3']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [0, 1, 0, 0, 1],
 			starting: PLAYER.CATHY
 		});
@@ -397,7 +397,7 @@ describe('bluff clues', () => {
 			['y1', 'b5', 'y1', 'r4', 'y4'],
 			['p2', 'p3', 'g3', 'g4', 'y5'],
 		], {
-			level: 11
+			level: { min: 11 }
 		});
 
 		const { play_clues } = find_clues(game);
@@ -413,7 +413,7 @@ describe('bluff clues', () => {
 			['y1', 'b5', 'y1', 'r4', 'y4'],
 			['p2', 'r2', 'b2', 'g4', 'y5'],
 		], {
-			level: 11
+			level: { min: 11 }
 		});
 
 		const { play_clues } = find_clues(game);
@@ -430,7 +430,7 @@ describe('bluff clues', () => {
 			['p2', 'b2', 'r3', 'y5', 'y4'],
 			['g1', 'g2', 'g3', 'g5', 'p4'],
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [1, 0, 0, 0, 0],
 			starting: PLAYER.DONALD
 		});
@@ -451,7 +451,7 @@ describe('bluff clues', () => {
 			['g5', 'b2', 'r3', 'y5', 'y4'],
 			['g1', 'g2', 'g3', 'g5', 'p4'],
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [0, 0, 0, 0, 0],
 			starting: PLAYER.DONALD
 		});
@@ -467,7 +467,7 @@ describe('bluff clues', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r4', 'y1', 'y1', 'y5'],
 			['p4', 'b2', 'r3', 'y5', 'y4'],
-		], { level: 11 });
+		], { level: { min: 11 } });
 
 		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r1', 'g1');
@@ -486,7 +486,7 @@ describe('bluff clues', () => {
 			['y2', 'r2', 'y1', 'y1', 'y5'],
 			['g4', 'b2', 'p3', 'y5', 'y4'],
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [0, 1, 0, 0, 1]
 		});
 
@@ -508,7 +508,7 @@ describe('bluff clues', () => {
 			['p1', 'r4', 'b5', 'b2'],
 			['r2', 'b2', 'g1', 'y3']
 		], {
-			level: 11,
+			level: { min: 11 },
 			starting: PLAYER.DONALD
 		});
 		takeTurn(game, 'Donald clues 2 to Cathy');    // 2 save
@@ -531,7 +531,7 @@ describe('bluff clues', () => {
 			['y1', 'y2', 'p2', 'p4'],
 			['b1', 'y5', 'g2', 'r4']
 		], {
-			level: 11,
+			level: { min: 11 },
 			starting: PLAYER.DONALD,
 			play_stacks: [3, 4, 1, 1, 3],
 			discarded: ['r1', 'y3', 'g3']
@@ -552,7 +552,7 @@ describe('bluff clues', () => {
 			['g5', 'b2', 'r3', 'y5'],
 			['b4', 'p2', 'g3', 'r5'],
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [0, 0, 1, 0, 2],
 			starting: PLAYER.DONALD
 		});
@@ -570,7 +570,7 @@ describe('bluff clues', () => {
 			['p2', 'b2', 'r3', 'y5', 'y4'],
 			['g1', 'g2', 'g3', 'g5', 'p4'],
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [1, 0, 0, 0, 0],
 			starting: PLAYER.DONALD
 		});
@@ -590,7 +590,7 @@ describe('bluff clues', () => {
 			['y2', 'r1', 'r2', 'y4'], // After play b1, y2, r2*, y4
 			['y3', 'p2', 'y1', 'r4'],
 			['g5', 'y1', 'p4', 'b5']
-		], { level: 11 });
+		], { level: { min: 11 } });
 
 		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r1', 'b1');
@@ -609,7 +609,7 @@ describe('bluff clues', () => {
 			['g1', 'b1', 'y4', 'y3'], // After play b1, y2, r1, r2
 			['g4', 'r5', 'b2', 'p4'],
 			['r1', 'r1', 'r3', 'y1']
-		], { level: 11 });
+		], { level: { min: 11 } });
 
 		takeTurn(game, 'Alice clues blue to Cathy');
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['r1', 'y1', 'g1', 'b1', 'p1']);
@@ -625,7 +625,7 @@ describe('bluff clues', () => {
 			['p1', 'y5', 'b4', 'g5', 'p3'],
 			['b3', 'r2', 'b2', 'b4', 'y4']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [0, 0, 5, 3, 0],
 			starting: PLAYER.ALICE
 		});
@@ -640,7 +640,7 @@ describe('bluff clues', () => {
 			['p3', 'p4', 'b2', 'p2'],
 			['y2', 'p3', 'g3', 'p2']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [4, 1, 1, 3, 0],
 			starting: PLAYER.ALICE
 		});
@@ -655,7 +655,7 @@ describe('bluff clues', () => {
 			['g3', 'g3', 'b2', 'b1'],
 			['g1', 'r1', 'r3', 'y2']
 		], {
-			level: 11,
+			level: { min: 11 },
 			starting: PLAYER.CATHY
 		});
 
@@ -675,7 +675,7 @@ describe('bluff clues', () => {
 			['b3', 'y2', 'g4', 'r5']
 		], {
 			starting: PLAYER.DONALD,
-			level: 11
+			level: { min: 11 }
 		});
 
 		takeTurn(game, 'Donald clues 2 to Alice (slot 3)');
@@ -692,7 +692,7 @@ describe('bluff clues', () => {
 			['r5', 'y5', 'g4', 'r1'],
 			['r3', 'g1', 'p2', 'r3']
 		], {
-			level: 11,
+			level: { min: 11 },
 			play_stacks: [2, 0, 0, 0, 0],
 			starting: PLAYER.CATHY,
 			init: (game) => {
