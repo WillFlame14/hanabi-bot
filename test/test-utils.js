@@ -170,7 +170,7 @@ export function setup(GameClass, hands, test_options = {}) {
 	testShortForms = shortForms.toSpliced(0, 0, 'x');
 
 	const state = new State(playerNames, 0, variant, {});
-	const [minLevel, maxLevel] = [test_options?.level?.min || 1, test_options?.level?.max || MAX_H_LEVEL];
+	const [minLevel, maxLevel] = [test_options?.level?.min ?? 1, test_options?.level?.max ?? MAX_H_LEVEL];
 	const game = new GameClass(-1, state, false, Math.min(Math.max(minLevel, DEFAULT_LEVEL), maxLevel));
 	Utils.globalModify({ game });
 
