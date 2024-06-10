@@ -26,3 +26,5 @@ export const END_CONDITION = /** @type {const} */ ({
 });
 
 export const HAND_SIZE = [-1, -1, 5, 5, 4, 4, 3];
+
+export const HANABI_HOSTNAME = process.env['HANABI_HOSTNAME'] || 'hanab.live';
