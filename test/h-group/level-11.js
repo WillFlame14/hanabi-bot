@@ -423,7 +423,7 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
-	it(`doesn't bluff when bluff can't be known by a later player not to play`, () => {
+	it(`doesn't bluff when bluff can't be known not to connect to focus`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r2', 'r1', 'p2', 'r4'],

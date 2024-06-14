@@ -162,8 +162,8 @@ export function finalize_bluff_connections(game, giver, target, connections) {
 		conn.connections.length > 0 && (
 			// If there's a visible connection outside of the bluff seat, expect them to play.
 			conn.connections[0].reacting !== bluff_seat && (bluff_seat == state.ourPlayerIndex || target !== state.ourPlayerIndex) ||
-			// If there's a non-bluff non-finesse connection following this play, it could be accidentally played making this an invalid bluff
-			conn.connections[0].reacting == bluff_seat && !conn.connections[0].bluff && (conn.connections.length == 1 || conn.connections[1].reacting !== bluff_seat && conn.connections[1].type != 'finesse')));
+			// If there's a non-bluff interpretation playing a different card, it would be simpler than a bluff interpretation
+			conn.connections[0].reacting == bluff_seat && !conn.connections[0].bluff && conn.connections[0].type != 'finesse'));
 
 	if (no_bluff_connections) {
 		// Convert possible bluff connections to non-bluff connections.
