@@ -325,14 +325,14 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 	const card = me.thoughts[finesse.order];
 	const reacting = state.ourPlayerIndex;
 
+	const bluff = game.level >= LEVEL.BLUFFS && firstPlay && state.ourPlayerIndex == bluff_seat;
 	if (card.rewinded && finesse.suitIndex !== identity.suitIndex && state.isPlayable(finesse)) {
 		if (game.level < LEVEL.INTERMEDIATE_FINESSES)
 			throw new IllegalInterpretation(`blocked layered finesse at level ${game.level}`);
 
-		return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, identities: [finesse.raw()] }];
+		return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, bluff, identities: [finesse.raw()] }];
 	}
 
-	const bluff = game.level >= LEVEL.BLUFFS && firstPlay && state.ourPlayerIndex == bluff_seat;
 	if (card.inferred.has(identity) && card.matches(identity, { assume: true }) ||
 		bluff && card.inferred.some(id => state.isPlayable(id))) {
 		if (game.level === 1 && connected.length >= 1)
