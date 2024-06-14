@@ -143,7 +143,7 @@ describe('save clue', () => {
 
 		// 5 to Bob is unsafe.
 		const clue = { type: CLUE.RANK, value: 5, target: PLAYER.BOB };
-		assert.equal(clue_safe(game, game.me, clue), false);
+		assert.equal(clue_safe(game, game.me, clue).safe, false);
 
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });

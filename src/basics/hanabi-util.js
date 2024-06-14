@@ -28,15 +28,15 @@ export function visibleFind(state, player, identity, options = {}) {
 	if (player.playerIndex === state.ourPlayerIndex)
 		options.infer = options.infer ?? true;
 
-	return Array.from(state.hands.reduce((cards, hand, index) => {
+	return Array.from(state.hands.flatMap((hand, index) => {
 		if (options.ignore?.includes(index))
-			return cards;
+			return [];
 
 		const symmetric = options.symmetric ?? index === player.playerIndex;
 
-		return cards.concat(hand.filter(c =>
-			player.thoughts[c.order].matches(identity, Object.assign({}, options, { symmetric } ))));
-	}, []));
+		return hand.filter(c =>
+			player.thoughts[c.order].matches(identity, Object.assign({}, options, { symmetric } )));
+	}));
 }
 
 /**

@@ -178,6 +178,25 @@ describe('self-finesse', () => {
 		// y3 is the simplest possibility.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y3']);
 	});
+
+	it(`doesn't give self-finesses that are not symmetrically the simplest interpretation`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g1', 'p3', 'r3', 'g3'],
+			['p3', 'g5', 'p4', 'g2'],
+			['b1', 'b2', 'p1', 'g4']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 2 to Cathy');
+
+		const { play_clues } = find_clues(game);
+
+		// 3 to Bob is not a valid clue (looks like blue 3).
+		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 3));
+	});
 });
 
 describe('direct clues', () => {
@@ -486,6 +505,33 @@ describe('safe clues', () => {
 
 		// Green to Bob is not a safe play clue, since it may look g2.
 		const clue = { target: PLAYER.BOB, type: CLUE.COLOUR, value: COLOUR.GREEN };
-		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue), false);
+		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue).safe, false);
+	});
+});
+
+describe(`occam's razor`, () => {
+	it('correctly identifies the simplest connection when a prompt makes the difference', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b3', 'y3', 'p4', 'g1'],
+			['r3', 'p3', 'b1', 'r5'],
+			['b1', 'g3', 'y2', 'p4'],
+		], {
+			level: { min: 2 },
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Cathy');
+		takeTurn(game, 'Cathy plays b1', 'g1');
+		takeTurn(game, 'Donald clues 2 to Alice (slots 1,3)');		// g1 reverse finesse on Cathy
+		takeTurn(game, 'Alice clues 5 to Cathy');
+
+		takeTurn(game, 'Bob clues 3 to Donald');			// g3 delayed play (could look like b3 if we have b2 clued)
+		takeTurn(game, 'Cathy plays g1', 'b1');
+		takeTurn(game, 'Donald clues 4 to Alice (slot 2)');
+
+		// Even if Donald has [g3,b3], Alice's slot 2 should be g4 (g3 self-finesse) rather than b4 (b2 prompt + b3 finesse on Bob)
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g4']);
+		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].inferred.length > 1);
 	});
 });

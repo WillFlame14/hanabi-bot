@@ -85,7 +85,7 @@ function hash_state(game) {
  * 
  * @param {Game} game
  * @param {number} playerTurn
- * @param {(game: Game) => Clue[]} find_clues
+ * @param {(game: Game, giver: number) => Clue[]} find_clues
  * @param {Map<string, WinnableResult>} cache
  * @returns {WinnableResult}
  */
@@ -129,7 +129,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], cache =
 	}
 
 	if (best_winrate < 1 && state.clue_tokens > 0) {
-		const clues = find_clues(game).filter(c => c.target !== playerTurn);
+		const clues = find_clues(game, playerTurn).filter(c => c.target !== playerTurn);
 
 		if (clues.length === 0) {
 			const clue_game = game.shallowCopy();

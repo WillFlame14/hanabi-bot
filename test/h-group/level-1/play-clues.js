@@ -230,4 +230,33 @@ describe('play clue', () => {
 		// Bob's y2 is unknown playable.
 		assert.ok(game.common.unknown_plays.has(game.state.hands[PLAYER.BOB][1].order));
 	});
+
+	it('correctly undoes a prompt after proven false', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'y2', 'r2', 'b3'],
+			['y4', 'b3', 'g4', 'g3'],
+			['r4', 'y2', 'r3', 'r1']
+		], {
+			level: { min: 1 },
+			play_stacks: [3, 0, 2, 0, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 5 to Alice (slot 4)');
+		takeTurn(game, 'Alice clues green to Cathy');
+		takeTurn(game, 'Bob clues 5 to Alice (slot 4)');
+
+		// Alice's slot 4 can be r5 (finesse on Donald) or g5 (prompt on Cathy).
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r5', 'g5']);
+
+		takeTurn(game, 'Cathy plays g3', 'p1');
+		takeTurn(game, 'Donald plays r4', 'y3');
+
+		// Alice's slot 4 should be exactly r5.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r5']);
+
+		// Cathy's slot 4 (used to be slot 3) can still be g4,g5.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][3].order], ['g4', 'g5']);
+	});
 });
