@@ -195,9 +195,10 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
  * @param {Connection[]} connections	The complete connections leading to the play of a card.
  * @param {ActualCard} focusedCard		The focused card.
  * @param {Identity} focusIdentity		The expected identity of the focus.
+ * @param {import('../../../types.js').ClueAction} clue
  * @returns {Connection[]}
  */
-export function resolve_bluff(game, connections, focusedCard, focusIdentity) {
+export function resolve_bluff(game, connections, focusedCard, focusIdentity, clue) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
 
@@ -209,8 +210,12 @@ export function resolve_bluff(game, connections, focusedCard, focusIdentity) {
 	// Determine the next play if this is a bluff.
 	const next_play = connections.findIndex(connection => connection.card.order == promised[0].order) + 1;
 
+	// Disallow self-colour bluffs: https://hanabi.github.io/extras/special-bluffs#self-color-bluffs-1-for-1-form-scb
+	if ((clue.giver + 1) % game.state.numPlayers == clue.target && clue.clue.type == CLUE.COLOUR && state.hands[clue.target].find(c => c.order == connections[0].card.order))
+		bluff_fail_reason = `self-colour bluff disallowed at level ${game.level}`;
+
 	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
-	if (connections.some((conn, index) => index >= next_play && (conn.hidden || conn.type === 'finesse')))
+	if (!bluff_fail_reason && connections.some((conn, index) => index >= next_play && (conn.hidden || conn.type === 'finesse')))
 		bluff_fail_reason = `requires additional finesses [${connections.map(logConnection)}]`;
 
 	if (!bluff_fail_reason) {

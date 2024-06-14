@@ -55,22 +55,22 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['p3']);
 	});
 
-	it(`understands a self color bluff`, () => {
+	it(`doesn't give a self colour bluff`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['g5', 'y2', 'b3', 'y5', 'y3'],
-			['p4', 'r3', 'g1', 'y4', 'b3'],
+			['r1', 'y2', 'g2', 'p2', 'b2'],
+			['p4', 'r3', 'g1', 'y4', 'y3'],
 		], {
 			level: { min: 11 },
 			play_stacks: [0, 0, 0, 0, 0],
-			starting: PLAYER.BOB
+			starting: PLAYER.CATHY
 		});
-		takeTurn(game, 'Bob clues 2 to Alice (slot 5)');
-		takeTurn(game, 'Cathy clues red to Alice (slot 5)');
+		takeTurn(game, 'Cathy clues 2 to Bob');
 
-		// Cathy's slot 1 could be any playable 1.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y1', 'g1', 'b1', 'p1']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		// Alice should not give a self colour bluff to Bob.
+		const { play_clues } = find_clues(game);
+		assert.ok(!play_clues[PLAYER.BOB].some(clue =>
+			clue.type === CLUE.COLOUR && clue.value === COLOUR.BLUE));
 	});
 
 	it(`understands a self finesse that's too long to be a bluff`, () => {
