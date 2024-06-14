@@ -126,7 +126,16 @@ export class Player {
 			return !unsafe_linked &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
-				((options?.assume ?? true) || !this.waiting_connections.some(conn => conn.connections.length > 0 && conn.focused_card.order == c.order)) &&
+				((options?.assume ?? true) || !this.waiting_connections.some((wc, i1) =>
+					// Unplayable target of possible waiting connection
+					(wc.focused_card.order === c.order && !state.isPlayable(wc.inference) && card.possible.has(wc.inference)) ||
+					wc.connections.some((conn, ci) => ci >= wc.conn_index && conn.card.order === c.order && (
+						// Unplayable connecting card
+						conn.identities.some(i => !state.isPlayable(i) && card.possible.has(i)) ||
+						// A different connection on the same focus doesn't use this connecting card
+						this.waiting_connections.some((wc2, i2) =>
+							i1 !== i2 && wc2.focused_card.order === wc.focused_card.order && wc2.connections.every(conn2 => conn2.card.order !== c.order))))
+				)) &&
 				state.hasConsistentInferences(card);
 		}));
 	}

@@ -1,8 +1,9 @@
+import { CLUE_INTERP } from '../h-constants.js';
 import { bad_touch_result, cm_result, elim_result, playables_result } from '../../../basics/clue-result.js';
-import { cardValue, isTrash } from '../../../basics/hanabi-util.js';
+import { isTrash } from '../../../basics/hanabi-util.js';
+
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
-import { CLUE_INTERP } from '../h-constants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -130,9 +131,5 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
 
-	const new_chop = hypo_game.common.chop(hand, { afterClue: true });
-	const remainder = (new_chop !== undefined) ? cardValue(hypo_state, hypo_game.me, game.me.thoughts[new_chop.order], new_chop.order) :
-						hypo_common.thinksLoaded(hypo_state, target) ? 0 : 4;
-
-	return { elim: fill, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved, remainder };
+	return { elim: fill, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved, remainder: 0 };
 }

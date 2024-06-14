@@ -61,9 +61,12 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 				return old_chop_value - new_chop_value;
 			}, -0.1) ?? 0;
 
-			if (best_ocm_index !== 0)
+			if (best_ocm_index !== 0) {
 				logger.highlight('yellow', `performing ocm by playing ${best_ocm_index + 1}'th 1`);
 
+				// Artificially increase priority of doing an OCM
+				priority = 2;
+			}
 			best_playable_card = ordered_1s[best_ocm_index];
 		}
 	}
@@ -139,7 +142,7 @@ export function take_action(game) {
 
 	// Look for playables, trash and important discards in own hand
 	let playable_cards = me.thinksPlayables(state, state.ourPlayerIndex).map(({ order }) => me.thoughts[order]);
-	let trash_cards = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued).map(({ order }) => me.thoughts[order]);
+	let trash_cards = me.thinksTrash(state, state.ourPlayerIndex).filter(c => common.thoughts[c.order].saved).map(({ order }) => me.thoughts[order]);
 
 	// Discards must be inferred, playable, trash, not duplicated in our hand and not part of a connection
 	const discards = playable_cards.filter(card => {

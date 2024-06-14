@@ -1,10 +1,10 @@
 import { LEVEL } from './h-constants.js';
 import { reset_superpositions, team_elim } from '../../basics/helper.js';
 import { visibleFind } from '../../basics/hanabi-util.js';
+import { inBetween, older_queued_finesse } from './hanabi-logic.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logConnection } from '../../tools/log.js';
-import { older_queued_finesse } from './hanabi-logic.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -38,7 +38,7 @@ export function remove_finesse(game, waiting_connection) {
 		if (symmetric)
 			continue;
 
-		if (connection.type === 'finesse') {
+		if (connection.type === 'finesse' || connection.type === 'prompt') {
 			if (card.hidden)
 				card.inferred.value = 0;
 			else
@@ -87,8 +87,8 @@ function stomped_finesse(game, reacting, order) {
  */
 function resolve_card_retained(game, waiting_connection) {
 	const { common, state, me } = game;
-	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback } = waiting_connection;
-	const { type, reacting, hidden, ambiguous, bluff } = connections[conn_index];
+	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback, focused_card } = waiting_connection;
+	const { type, reacting, ambiguous, bluff, identities } = connections[conn_index];
 	const { order } = connections[conn_index].card;
 
 	// Card may have been updated, so need to find it again
@@ -121,6 +121,7 @@ function resolve_card_retained(game, waiting_connection) {
 		}
 
 		if (last_reacting_action?.type === 'clue') {
+			// TODO: Maybe it's good to force demonstrating the connection immediately anyways; this can be confusing.
 			if (stomped_finesse(game, reacting, order)) {
 				logger.warn(`finesse was stomped on, ${state.playerNames[reacting]} no longer needs to demonstrate connection immediately`);
 				return { remove: false };
@@ -150,27 +151,37 @@ function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		let next_reacting_index  = connections.findIndex((conn, i) => i > conn_index && !conn.hidden);
+		// Didn't play into a self-connection
+		if (!bluff && reacting === target) {
+			const alternate_conn = game.common.waiting_connections.find(wc =>
+				wc.focused_card.order === focused_card.order && wc.connections.every(conn => conn.card.order !== order));
 
-		// If the current connection is hidden, then we need to find the next-next non-hidden connection.
-		if (hidden)
-			next_reacting_index = connections.findIndex((conn, i) => i > next_reacting_index && !conn.hidden);
+			if (alternate_conn !== undefined) {
+				logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but alternate conn [${alternate_conn.connections.map(logConnection).join(' -> ')}] exists not using this card`);
+				return { remove: false };
+			}
 
-		// If we've reached the end of the connections, then the target of the clue is the final reacting player
-		const next_reacting = (next_reacting_index === -1) ? target : connections[next_reacting_index].reacting;
+			if (!inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
+				const our_finesse = common.find_finesse(state.hands[state.ourPlayerIndex]);
 
-		if (!bluff && next_reacting === reacting && giver !== state.ourPlayerIndex && !selfPassback) {
-			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but it was a self-component, waiting`);
-			waiting_connection.selfPassback = true;
-			return { remove: false };
+				if (our_finesse !== undefined && identities.some(i => common.thoughts[our_finesse.order].inferred.has(i))) {
+					logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but we could have ${identities.map(logCard)} on finesse position`);
+					waiting_connection.selfPassback = true;
+					return { remove: false };
+				}
+			}
 		}
 
 		if (last_reacting_action?.type === 'play') {
 			const { card: reacting_card } = last_reacting_action;
 
-			if (type === 'finesse' && reacting_card && common.thoughts[reacting_card.order].finessed) {
-				logger.warn(`${state.playerNames[reacting]} played into other finesse, continuing to wait`);
-				return { remove: false };
+			if (type === 'finesse' && reacting_card) {
+				const play = common.thoughts[reacting_card.order];
+
+				if (play.finessed && play.finesse_index < common.thoughts[order].finesse_index) {
+					logger.warn(`${state.playerNames[reacting]} played into older finesse, continuing to wait`);
+					return { remove: false };
+				}
 			}
 			else if (type === 'prompt') {
 				logger.warn(`${state.playerNames[reacting]} played into something else, continuing to wait`);

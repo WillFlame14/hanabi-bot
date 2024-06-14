@@ -159,27 +159,25 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
 			return;
 		}
 
-		// This may be a bluff even if it matches. resolve_bluff will rule out a bluff if it doesn't
-		// look like it could lead to the following plays.
-		const bluff = game.level >= LEVEL.BLUFFS &&
-			firstPlay &&
-			((giver + 1) % state.numPlayers) == reacting &&
-			!state.hands[reacting].some(c => {
-				const card = game.players[reacting].thoughts[c.order];
-				return card.finessed && card.possible.has(identity);
-			});
-
 		if (finesse.matches(identity)) {
 			// At level 1, only forward finesses are allowed.
 			if (game.level === 1 && !inBetween(state.numPlayers, reacting, giver, target)) {
 				logger.warn(`found finesse ${logCard(finesse)} in ${state.playerNames[reacting]}'s hand, but not between giver and target`);
 				return;
 			}
-			return { type: 'finesse', reacting, card: finesse, bluff, identities: [identity] };
+			return { type: 'finesse', reacting, card: finesse, bluff: false, identities: [identity] };
 		}
 
 		// Finessed card is delayed playable
 		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
+			const bluff = game.level >= LEVEL.BLUFFS &&
+				firstPlay &&
+				((giver + 1) % state.numPlayers) == reacting &&
+				!state.hands[reacting].some(c => {
+					const card = game.players[reacting].thoughts[c.order];
+					return card.finessed && card.possible.has(identity);
+				});
+
 			// Could be duplicated in giver's hand - disallow hidden finesse unless it could be a bluff.
 			if (!bluff && giver === state.ourPlayerIndex && state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);

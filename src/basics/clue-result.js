@@ -84,11 +84,23 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 		if (!card.newly_clued)
 			continue;
 
-		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order, { infer: true })))
+		// Known trash from empathy
+		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order, { infer: true }))) {
 			trash++;
+			continue;
+		}
 
-		// TODO: Don't double count bad touch when cluing two of the same card
-		else if (isTrash(state, me, me.thoughts[card.order], card.order))
+		if (state.isBasicTrash(card)) {
+			bad_touch++;
+			continue;
+		}
+
+		const duplicates = state.hands.flatMap(hand => hand.filter(c => {
+			const thoughts = me.thoughts[c.order];
+			return thoughts.matches(card, { infer: true }) && thoughts.touched && c.order !== card.order;
+		}));
+
+		if (duplicates.length > 0 && !(duplicates.every(c => c.newly_clued) && card.order < Math.min(...duplicates.map(c => c.order))))
 			bad_touch++;
 	}
 

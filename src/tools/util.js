@@ -406,3 +406,22 @@ export function setUnion(set1, set2) {
 	for (const item of smallerSet)
 		result.add(item);
 }
+
+/**
+ * Groups the items in the array by the function provided.
+ * @template T1
+ * @template {string | number} T2
+ * @param {T1[]} arr
+ * @param {(arg: T1) => T2} func
+ */
+export function groupBy(arr, func) {
+	const grouped = /** @type {Record<T2, T1[]>} */({});
+
+	for (const item of arr) {
+		const hash = func(item);
+		grouped[hash] ??= [];
+		grouped[hash].push(item);
+	}
+
+	return grouped;
+}
