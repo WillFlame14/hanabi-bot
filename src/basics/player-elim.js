@@ -1,6 +1,5 @@
 import { cardCount } from '../variants.js';
 import { unknownIdentities } from './hanabi-util.js';
-import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
@@ -179,6 +178,27 @@ export function good_touch_elim(state, only_self = false) {
 			hard_match_map.set(id_hash, (hard_match_map.get(id_hash) ?? new Set()).add(order));
 
 		match_map.set(id_hash, (match_map.get(id_hash) ?? new Set()).add(order));
+
+		const matches = match_map.get(id_hash);
+		const hard_matches = hard_match_map.get(id_hash);
+
+		if (matches && hard_matches && (state.baseCount(id) + matches.size + hard_matches.size > cardCount(state.variant, id))) {
+			const visibles = Array.from(matches).concat(Array.from(hard_matches)).filter(o => state.deck[o].matches(id));
+
+			if (visibles.length > 0) {
+				for (const v of visibles) {
+					const holder = state.hands.findIndex(hand => hand.findOrder(v));
+
+					// This player can see the identity, so their card must be trash - the player with the identity can see the trash
+					for (const hard_match of hard_matches) {
+						if (state.hands.findIndex(hand => hand.findOrder(hard_match)) !== holder)
+							hard_matches.delete(hard_match);
+					}
+				}
+				hard_match_map.delete(id_hash);
+				return;
+			}
+		}
 	};
 
 	/** @type {{ order: number, playerIndex: number }[]} */
@@ -229,14 +249,6 @@ export function good_touch_elim(state, only_self = false) {
 					this.thoughts[o].possibilities.length > 1
 				)));
 
-			Utils.range(0, state.numPlayers).some(index =>
-				card.clues.every(c => c.giver === index) &&
-				matches.size > 0 &&
-				Array.from(matches).every(o =>
-					state.hands[index].some(c => c.order === o) &&
-					this.thoughts[o].possibilities.length > 1
-				));
-
 			if (asymmetric_gt)
 				continue;
 
@@ -253,7 +265,9 @@ export function good_touch_elim(state, only_self = false) {
 
 			if (this.playerIndex === -1) {
 				this.elims[id_hash] ??= [];
-				this.elims[id_hash].push(order);
+
+				if (!this.elims[id_hash].includes(order))
+					this.elims[id_hash].push(order);
 			}
 
 			if (card.inferred.length === 0 && !card.reset) {

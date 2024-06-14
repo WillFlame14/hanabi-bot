@@ -227,12 +227,12 @@ describe('guide principle', () => {
 	it('does not give a finesse leaving a critical on chop', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['r1', 'r2', 'g4', 'r5', 'b4'],
+			['r1', 'r2', 'g4', 'p2', 'b4'],
 			['r4', 'r3', 'b3', 'y3', 'b5']
 		], { level: { min: 5 } });
 
 		// Giving 3 to Cathy should be unsafe since b5 will be discarded.
-		assert.equal(clue_safe(game, game.me, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }), false);
+		assert.equal(clue_safe(game, game.me, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }).safe, false);
 	});
 
 	it('does not expect a play when it could be deferring playing into a finesse', () => {
@@ -249,7 +249,7 @@ describe('guide principle', () => {
 		// 4 to Bob is not a safe clue, since Bob may see it as a b4 finesse, and
 		// may be waiting on Alice to not play their g1.
 		const clue = { target: PLAYER.BOB, type: CLUE.RANK, value: 4 };
-		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue), false);
+		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue).safe, false);
 	});
 
 	it(`gives a critical save even when it is finessed`, () => {
@@ -257,7 +257,7 @@ describe('guide principle', () => {
 			['xx', 'xx', 'xx', 'xx'],
 			['p4', 'g2', 'g4', 'p5'],
 			['p4', 'b2', 'b3', 'y4'],
-			['b5', 'y2', 'b3', 'r4']
+			['b4', 'y2', 'b3', 'r4']
 		], { level: { min: 5, max: 10 }, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
 		takeTurn(game, 'Donald clues blue to Cathy');
 		const action = take_action(game);

@@ -224,7 +224,7 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Cathy plays r1', 'g1');
 
 		// Green to Cathy is not safe, Bob cannot play into the r3 layer.
-		assert.equal(clue_safe(game, game.me, { type: CLUE.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN }), false);
+		assert.equal(clue_safe(game, game.me, { type: CLUE.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN }).safe, false);
 	});
 
 	it(`doesn't give finesses to a player who may need to demonstrate a finesse to us`, () => {

@@ -10,6 +10,7 @@ import * as Utils from '../../../tools/util.js';
  * @typedef {import('../../h-group.js').default} Game
  * @typedef {import('../../h-player.js').HGroup_Player} Player
  * @typedef {import('../../../basics/State.js').State} State
+ * @typedef {import('../../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').Identity} Identity
  */
@@ -78,13 +79,16 @@ function getNextDiscard(game, player, startIndex, zero_clues) {
 	let next_discard = state.nextPlayerIndex(startIndex);
 	let potential_cluers = 0;
 
-	while (game.common.thinksPlayables(state, next_discard, { assume: false }).length > 0 && next_discard !== state.ourPlayerIndex) {
+	while (game.players[next_discard].thinksLoaded(state, next_discard, { assume: false }) && next_discard !== state.ourPlayerIndex) {
 		const finessed_card = getFinessedCard(game, next_discard);
 
 		if (finessed_card === undefined && state.clue_tokens > potential_cluers)
 			potential_cluers++;
 
-		logger.debug(`intermediate player ${state.playerNames[next_discard]} has playables [${game.common.thinksPlayables(state, next_discard, { assume: false }).map(logCard)}]${finessed_card !== undefined ? ' (finesse!)' : ''}`);
+		if (game.common.thinksTrash(state, next_discard) && game.common.thinksPlayables(state, next_discard, { assume: false }))
+			zero_clues = false;
+
+		logger.info(`intermediate player ${state.playerNames[next_discard]} is loaded ${finessed_card !== undefined ? ' (finesse!)' : ''}`);
 
 		next_discard = state.nextPlayerIndex(next_discard);
 	}
@@ -103,6 +107,7 @@ function getNextDiscard(game, player, startIndex, zero_clues) {
  * @param {Game} game
  * @param {Player} player
  * @param {Clue} clue
+ * @returns {{ safe: boolean, discard: ActualCard | undefined }}
  */
 export function clue_safe(game, player, clue) {
 	const { state } = game;
@@ -116,31 +121,33 @@ export function clue_safe(game, player, clue) {
 	let { next_discard, potential_cluers } = getNextDiscard(hypo_game, hypo_player, state.ourPlayerIndex, hypo_state.clue_tokens === 0);
 
 	if (next_discard === state.ourPlayerIndex)
-		return true;
+		return { safe: true, discard: undefined };
 
-	const safe = !chopUnsafe(hypo_state, hypo_player, next_discard) || early_game_clue(hypo_game, next_discard);
+	const has_early_clue = (state.early_game && early_game_clue(hypo_game, next_discard));
+	const safe = !chopUnsafe(hypo_state, hypo_player, next_discard) || has_early_clue;
+	const possible_discard = hypo_player.chop(state.hands[next_discard], { afterClue: true });
 
-	logger.info(`next discard may come from ${state.playerNames[next_discard]}, chop ${safe ? 'safe' : 'unsafe'}, ${potential_cluers} potential cluers`);
+	logger.info(`next discard may come from ${state.playerNames[next_discard]}, chop ${safe ? 'safe' : 'unsafe'} ${possible_discard ? logCard(possible_discard) : '(locked)'}, ${potential_cluers} potential cluers`);
 
 	if (safe || potential_cluers >= 1)
-		return true;
+		return { safe: true, discard: has_early_clue ? undefined : possible_discard };
 
 	if (connectable(hypo_game, state.nextPlayerIndex(state.ourPlayerIndex), next_discard)) {
 		logger.info('can connect to this player! searching again');
 		({ next_discard, potential_cluers } = getNextDiscard(hypo_game, hypo_player, next_discard, hypo_state.clue_tokens === 0));
 	}
 	else {
-		return false;
+		return { safe: false, discard: possible_discard };
 	}
 
 	if (next_discard === state.ourPlayerIndex)
-		return true;
+		return { safe: true, discard: undefined };
 
 	const safe2 = !chopUnsafe(hypo_state, hypo_player, next_discard);
 
 	logger.info(`next discard may come from ${state.playerNames[next_discard]}, chop ${safe2 ? 'safe' : 'unsafe'}, ${potential_cluers} potential cluers`);
 
-	return safe2 || potential_cluers >= 1;
+	return { safe: safe2 || potential_cluers >= 1, discard: hypo_player.chop(state.hands[next_discard], { afterClue: true }) };
 }
 
 /**

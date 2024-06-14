@@ -162,7 +162,7 @@ function find_rank_focus(game, rank, action) {
 				continue;
 
 			// Critical save or 2 save
-			if (state.isCritical(identity) || rank === 2) {
+			if (state.isCritical(identity) || (rank === 2 && !state.isBasicTrash({ suitIndex, rank }))) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [], interp: CLUE_INTERP.SAVE });
 				looksSave = true;
 			}
@@ -256,7 +256,7 @@ function find_rank_focus(game, rank, action) {
 		connections = resolve_bluff(game, target, connections, focused_card, next_identity);
 
 		if (connections.length == 0)
-			continue;
+			next_rank = old_play_stacks[suitIndex] + 1;
 
 		logger.info('found connections:', logConnections(connections, next_identity));
 

@@ -1,5 +1,5 @@
 import { ACTION } from '../../constants.js';
-import { ACTION_PRIORITY as PRIORITY, LEVEL } from './h-constants.js';
+import { ACTION_PRIORITY as PRIORITY, LEVEL, CLUE_INTERP } from './h-constants.js';
 import { clue_safe } from './clue-finder/clue-safe.js';
 import { get_result } from './clue-finder/determine-clue.js';
 import { determine_focus, valuable_tempo_clue } from './hanabi-logic.js';
@@ -55,14 +55,13 @@ export function find_unlock(game, target) {
  * @param {number} target 				The index of the player that needs a save clue.
  * @param {Clue[]} all_play_clues 		An array of all valid play clues that can be currently given.
  * @param {boolean} locked 				Whether the target is locked
- * @param {number} remainder_boost		The value of the new chop after the save clue.
  * @returns {PerformAction | undefined}	The play clue to give if it exists, otherwise undefined.
  */
-function find_play_over_save(game, target, all_play_clues, locked, remainder_boost) {
+function find_play_over_save(game, target, all_play_clues, locked) {
 	const { common, state, tableID } = game;
 
 	const play_clues = all_play_clues.filter(clue => {
-		const clue_value = find_clue_value(clue.result) + remainder_boost;
+		const clue_value = find_clue_value(clue.result);
 
 		// Locked reduces needed clue value
 		if (clue_value < (locked ? 0 : 1))
@@ -124,6 +123,29 @@ function find_play_over_save(game, target, all_play_clues, locked, remainder_boo
 
 /**
  * @param {Game} game
+ * @param {Clue} clue
+ * @param {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} interp
+ */
+function expected_early_game_clue(game, clue, interp) {
+	switch(interp) {
+		case CLUE_INTERP.STALL_5:
+			return game.level >= 2 && !game.stalled_5;
+
+		case CLUE_INTERP.PLAY:
+			return clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch === 0;
+
+		case CLUE_INTERP.SAVE: {
+			const save_clue = /** @type {SaveClue} */(clue);
+			return save_clue.cm === undefined || save_clue.cm.length === 0;
+		}
+
+		default:
+			return false;
+	}
+}
+
+/**
+ * @param {Game} game
  * @param {number} playerIndex
  */
 export function early_game_clue(game, playerIndex) {
@@ -133,12 +155,12 @@ export function early_game_clue(game, playerIndex) {
 		return false;
 
 	logger.collect();
-	const { play_clues, save_clues, stall_clues } = find_clues(game, playerIndex);
+	const { play_clues, save_clues, stall_clues } = find_clues(game, playerIndex, expected_early_game_clue);
 	logger.flush(false);
 
-	const expected_clue = play_clues.flat().find(clue => clue.result.playables.some(({ card }) => card.newly_clued)) ||
+	const expected_clue = play_clues.flat().find(clue => clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch === 0) ||
 		save_clues.find(clue => clue !== undefined && (clue.cm === undefined || clue.cm.length === 0)) ||
-		((game.level >= 2 && game.stalled_5 && stall_clues[0][0]) || undefined);
+		((game.level >= 2 && !game.stalled_5 && stall_clues[0][0]) || undefined);
 
 	if (expected_clue !== undefined)
 		logger.highlight('yellow', `expecting ${state.playerNames[playerIndex]} to give ${logClue(expected_clue)} in early game`);
@@ -188,7 +210,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				continue;
 			}
 
-			const play_over_save = find_play_over_save(game, target, play_clues.flat(), true, 0);
+			const play_over_save = find_play_over_save(game, target, play_clues.flat(), true);
 			if (play_over_save !== undefined) {
 				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
 				continue;
@@ -294,7 +316,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 					const { focused_card } = determine_focus(hand, common, list, { beforeClue: true });
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focused_card);
 
-					if (tempo && !valuable && clue_safe(game, me, clue)) {
+					if (tempo && !valuable && clue_safe(game, me, clue).safe) {
 						urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(Utils.clueToAction(clue, tableID));
 						tccm = true;
 						break;
@@ -315,8 +337,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				all_play_clues.push(Object.assign({}, save, { result: get_result(game, hypo_game, save, state.ourPlayerIndex )}));
 
 			// Try to give a play clue involving them
-			// If we're going to give a save clue, we shouldn't penalize the play clue's remainder if the save clue's remainder is also bad
-			const play_over_save = find_play_over_save(game, target, all_play_clues, false, hypo_me.chopValue(hypo_state, target, { afterClue: true }));
+			const play_over_save = find_play_over_save(game, target, all_play_clues, false);
 			if (play_over_save !== undefined) {
 				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
 				continue;

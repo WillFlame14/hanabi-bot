@@ -266,3 +266,54 @@ export function assign_connections(game, connections, giver) {
 		}
 	}
 }
+
+/**
+ * @param {FocusPossibility} focus_possibility
+ * @param {number} playerIndex
+ */
+function connection_score(focus_possibility, playerIndex) {
+	const { connections } = focus_possibility;
+
+	// Starts on someone else
+	if (connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.reacting !== playerIndex)
+		return 0;
+
+	let blind_plays = 0, bluffs = 0, prompts = 0;
+
+	for (const conn of connections) {
+		if (conn.type === 'finesse')
+			blind_plays++;
+
+		if (conn.bluff && !conn.self)
+			bluffs++;
+
+		if (conn.type === 'prompt')
+			prompts++;
+	}
+
+	return 10*blind_plays + 1*bluffs + 0.1*prompts;
+}
+
+/**
+ * @param {Game} game
+ * @param {FocusPossibility[]} focus_possibilities
+ * @param {number} [playerIndex]
+ */
+export function occams_razor(game, focus_possibilities, playerIndex = game.state.ourPlayerIndex) {
+	let min_score = Infinity;
+	let simplest_conns = [];
+
+	for (const fp of focus_possibilities) {
+		const score = connection_score(fp, playerIndex);
+
+		if (score < min_score) {
+			simplest_conns = [];
+			min_score = score;
+		}
+
+		if (score === min_score)
+			simplest_conns.push(fp);
+	}
+
+	return simplest_conns;
+}

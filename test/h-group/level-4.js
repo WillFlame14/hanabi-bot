@@ -125,7 +125,44 @@ describe('trash chop move', () => {
 		});
 
 		const clue = { type: CLUE.RANK, value: 1, target: PLAYER.BOB };
-		assert.equal(clue_safe(game, game.me, clue), false);
+		assert.equal(clue_safe(game, game.me, clue).safe, false);
+	});
+
+	it('recognizes a delayed tcm on other', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g3', 'y4', 'y1', 'r3', 'y3'],
+			['b4', 'b4', 'g4', 'r1', 'b3'],
+		], {
+			level: { min: 4 },
+			play_stacks: [3, 0, 0, 0, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues red to Alice (slots 2,3)');
+		takeTurn(game, 'Alice plays r4 (slot 2)');
+		takeTurn(game, 'Bob clues red to Cathy');
+
+		// Cathy's slot 5 should be chop moved.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4].order].chop_moved, true);
+	});
+
+	it('recognizes a delayed tcm on self', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'b4', 'g4', 'r5', 'r4'],
+			['g3', 'y4', 'y1', 'y5', 'b3'],
+		], {
+			level: { min: 4 },
+			play_stacks: [3, 0, 0, 0, 0]
+		});
+
+		takeTurn(game, 'Alice clues red to Bob');
+		takeTurn(game, 'Bob plays r4', 'g1');
+		takeTurn(game, 'Cathy clues red to Alice (slot 4)');
+
+		// Alice's slot 5 should be chop moved.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].chop_moved, true);
 	});
 });
 

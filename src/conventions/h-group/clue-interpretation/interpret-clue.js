@@ -5,15 +5,15 @@ import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
-import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections } from './connection-helper.js';
+import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor } from './connection-helper.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
+import { remove_finesse } from '../update-turn.js';
 import * as Basics from '../../../basics.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection, logConnections, logHand } from '../../../tools/log.js';
-import { remove_finesse } from '../update-turn.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -357,9 +357,20 @@ export function interpret_clue(game, action) {
 	// Card matches an inference and not a save/stall
 	// If we know the identity of the card, one of the matched inferences must also be correct before we can give this clue.
 	if (matched_inferences.length >= 1 && matched_inferences.find(p => focused_card.matches(p))) {
-		focus_thoughts.inferred = focus_thoughts.inferred.intersect(focus_possible);
+		if (giver === state.ourPlayerIndex) {
+			const simplest_symmetric_connections = occams_razor(game, focus_possible, target);
 
-		resolve_clue(game, old_game, action, matched_inferences, focused_card);
+			focus_thoughts.inferred = focus_thoughts.inferred.intersect(simplest_symmetric_connections);
+
+			if (!simplest_symmetric_connections.some(fp => focused_card.matches(fp)))
+				game.interpretMove(CLUE_INTERP.NONE);
+			else
+				resolve_clue(game, old_game, action, matched_inferences, focused_card);
+		}
+		else {
+			focus_thoughts.inferred = focus_thoughts.inferred.intersect(focus_possible);
+			resolve_clue(game, old_game, action, matched_inferences, focused_card);
+		}
 	}
 	else if (action.hypothetical) {
 		game.interpretMove(CLUE_INTERP.NONE);
@@ -384,12 +395,6 @@ export function interpret_clue(game, action) {
 					all_connections.push(fp);
 			}
 
-			/** @type {FocusPossibility[]} */
-			let self_connections = [];
-			let min_blind_plays = Math.min(...all_connections.map(fp => fp.connections.filter(conn => conn.type === 'finesse').length),
-				state.hands[state.ourPlayerIndex].length + 1);
-			let self = all_connections.every(fp => fp.connections[0]?.self);
-
 			for (const id of focus_thoughts.inferred) {
 				if (isTrash(state, game.players[giver], id, focused_card.order, { ignoreCM: true }))
 					continue;
@@ -400,29 +405,9 @@ export function interpret_clue(game, action) {
 
 				try {
 					const connections = find_own_finesses(game, action, id, looksDirect);
-					const blind_plays = connections.filter(conn => conn.type === 'finesse').length;
 					logger.info('found connections:', logConnections(connections, id));
 
-					const focus_poss = { connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections), interp: CLUE_INTERP.PLAY };
-
-					// Skipping knowns/playables, starts with self-finesse or self-prompt
-					if (connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.self) {
-						// If a connection with no self-component exists, don't consider any connection with a self-component
-						if (!self || blind_plays > min_blind_plays)
-							continue;
-
-						if (blind_plays < min_blind_plays) {
-							self_connections = [];
-							min_blind_plays = blind_plays;
-						}
-
-						self_connections.push(focus_poss);
-					}
-					// Doesn't start with self
-					else {
-						self = false;
-						all_connections.push(focus_poss);
-					}
+					all_connections.push({ connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections), interp: CLUE_INTERP.PLAY });
 				}
 				catch (error) {
 					if (error instanceof IllegalInterpretation)
@@ -432,10 +417,7 @@ export function interpret_clue(game, action) {
 				}
 			}
 
-			if (self && self_connections.length > 0) {
-				for (const connection of self_connections)
-					all_connections.push(connection);
-			}
+			all_connections = occams_razor(game, all_connections);
 		}
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!state.isBasicTrash(focused_card)) {
@@ -489,6 +471,21 @@ export function interpret_clue(game, action) {
 
 	if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2)
 		interpret_tccm(game, oldCommon, target, list, focused_card);
+
+	// Advance connections if a speed-up clue was given
+	for (const wc of common.dependentConnections(focused_card.order)) {
+		let index = wc.connections.findIndex(conn => conn.card.order === focused_card.order) - 1;
+		let modified = false;
+
+		while (wc.connections[index]?.hidden && index >= wc.conn_index) {
+			wc.connections.splice(index, 1);
+			index--;
+			modified = true;
+		}
+
+		if (modified)
+			logger.info(`advanced waiting connection due to speed-up clue: [${wc.connections.map(logConnection).join(' -> ')}]`);
+	}
 
 	try {
 		logger.debug('hand state after clue', logHand(state.hands[target]));
