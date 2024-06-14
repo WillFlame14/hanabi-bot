@@ -203,7 +203,6 @@ export function resolve_bluff(game, target, connections, focusedCard, focusIdent
 		return connections;
 
 	const firstPlay = connections.findIndex(conn => !conn.hidden);
-	const { state } = game;
 	const bluffCard = connections[0].card;
 	let bluff_fail_reason = undefined;
 
