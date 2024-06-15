@@ -196,9 +196,10 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
  * @param {Connection[]} connections	The complete connections leading to the play of a card.
  * @param {ActualCard} focusedCard		The focused card.
  * @param {Identity} focusIdentity		The expected identity of the focus.
+ * @param {import('../../../types.js').ClueAction} clue
  * @returns {Connection[]}
  */
-export function resolve_bluff(game, target, connections, focusedCard, focusIdentity) {
+export function resolve_bluff(game, target, connections, focusedCard, focusIdentity, clue) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
 
@@ -206,8 +207,12 @@ export function resolve_bluff(game, target, connections, focusedCard, focusIdent
 	const bluffCard = connections[0].card;
 	let bluff_fail_reason = undefined;
 
+	// Disallow self-colour bluffs: https://hanabi.github.io/extras/special-bluffs#self-color-bluffs-1-for-1-form-scb
+	if ((clue.giver + 1) % game.state.numPlayers == clue.target && clue.clue.type == CLUE.COLOUR && connections[0].reacting == clue.target)
+		bluff_fail_reason = `self-colour bluff disallowed at level ${game.level}`;
+	
 	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
-	if (connections.some((conn, index) => index > firstPlay && (conn.hidden || conn.type === 'finesse')))
+	if (!bluff_fail_reason && connections.some((conn, index) => index > firstPlay && (conn.hidden || conn.type === 'finesse')))
 		bluff_fail_reason = `requires additional finesses [${connections.map(logConnection)}]`;
 
 	if (!bluff_fail_reason && bluffCard.identity() !== undefined && game.players[target].thoughts[focusedCard.order].inferred.has({suitIndex: bluffCard.suitIndex, rank: bluffCard.rank + 1}))

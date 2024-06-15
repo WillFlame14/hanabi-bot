@@ -55,6 +55,24 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['p3']);
 	});
 
+	it(`doesn't give a self colour bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'y2', 'g2', 'p2', 'b2'],
+			['p4', 'r3', 'g1', 'y4', 'y3'],
+		], {
+			level: { min: 11 },
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.CATHY
+		});
+		takeTurn(game, 'Cathy clues 2 to Bob');
+
+		// Alice should not give a self colour bluff to Bob.
+		const { play_clues } = find_clues(game);
+		assert.ok(!play_clues[PLAYER.BOB].some(clue =>
+			clue.type === CLUE.COLOUR && clue.value === COLOUR.BLUE));
+	});
+
 	it(`understands a self finesse that's too long to be a bluff`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
@@ -70,6 +88,26 @@ describe('bluff clues', () => {
 
 		// Cathy's slot 1 could be any of the next 1's.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r1', 'y1', 'g1', 'b1', 'p1']);
+	});
+
+	it(`understands a known bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'y2', 'g2', 'g2', 'b2'],
+			['p4', 'b1', 'b1', 'b1', 'y3'],
+		], {
+			level: { min: 11 },
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.CATHY
+		});
+		takeTurn(game, 'Cathy clues blue to Bob');
+
+		// Despite knowing that it can't be b1, the bluff is still recognized.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r1', 'y1', 'g1', 'b1', 'p1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+
+		// Alice knows it can't be b1.
+		ExAsserts.cardHasInferences(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r1', 'y1', 'g1', 'p1']);
 	});
 
 	it('understands giving a direct play through a bluff opportunity', () => {
