@@ -210,13 +210,18 @@ export function resolve_bluff(game, target, connections, focusedCard, focusIdent
 	// Disallow self-colour bluffs: https://hanabi.github.io/extras/special-bluffs#self-color-bluffs-1-for-1-form-scb
 	if ((clue.giver + 1) % game.state.numPlayers == clue.target && clue.clue.type == CLUE.COLOUR && connections[0].reacting == clue.target)
 		bluff_fail_reason = `self-colour bluff disallowed at level ${game.level}`;
-	
+
 	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
 	if (!bluff_fail_reason && connections.some((conn, index) => index > firstPlay && (conn.hidden || conn.type === 'finesse')))
 		bluff_fail_reason = `requires additional finesses [${connections.map(logConnection)}]`;
 
-	if (!bluff_fail_reason && bluffCard.identity() !== undefined && game.players[target].thoughts[focusedCard.order].inferred.has({suitIndex: bluffCard.suitIndex, rank: bluffCard.rank + 1}))
-		bluff_fail_reason = `blind play ${logCard(bluffCard)} connects to inference on focused card`;
+	// A bluff must not connect to the finesse card.
+	if (!bluff_fail_reason && bluffCard.identity() !== undefined) {
+		const nextCard = {suitIndex: bluffCard.suitIndex, rank: bluffCard.rank + 1};
+		if ((clue.clue.type != CLUE.RANK || clue.clue.value == nextCard.rank) &&
+			game.players[target].thoughts[focusedCard.order].inferred.has(nextCard))
+			bluff_fail_reason = `blind play ${logCard(bluffCard)} connects to clue and inference on focused card`;
+	}
 
 	if (bluff_fail_reason) {
 		// If a bluff is not possible, we only have a valid connection if a real matching card was found,

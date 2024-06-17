@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
@@ -108,6 +108,25 @@ describe('bluff clues', () => {
 
 		// Alice knows it can't be b1.
 		ExAsserts.cardHasInferences(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r1', 'y1', 'g1', 'p1']);
+	});
+
+	it(`understands a bluff with a rank clue disconnect (pink suit)`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'y2', 'g2', 'g2', 'b2'],
+			['i1', 'b4', 'r4', 'g3', 'y3'],
+		], {
+			level: { min: 11 },
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.BOB,
+			variant: VARIANTS.PINK
+		});
+		takeTurn(game, 'Bob clues 3 to Alice (slot 3)');
+		ExAsserts.cardHasInferences(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r3', 'i2']);
+
+		// After the play, Alice still assumes a bluff since the rank does not connect to the play.
+		takeTurn(game, 'Cathy plays i1', 'b5');
+		ExAsserts.cardHasInferences(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r3', 'i2']);
 	});
 
 	it('understands giving a direct play through a bluff opportunity', () => {
