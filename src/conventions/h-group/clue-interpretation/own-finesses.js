@@ -74,7 +74,7 @@ function connect(game, giver, target, focusedCard, identity, looksDirect, connec
 
 	// First, see if someone else has the connecting card
 	const connections = find_connecting(game, giver, target, identity, looksDirect, firstPlay, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
-	const other_connecting = resolve_bluff(game, connections, focusedCard, identity, action);
+	const other_connecting = resolve_bluff(game, target, connections, focusedCard, identity, action);
 	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate' && (other_connecting.at(-1).reacting != state.ourPlayerIndex || other_connecting.at(-1).card.matches(identity, {assume: true})))
 		return other_connecting;
 
@@ -238,7 +238,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		if (allHidden)
 			next_rank--;
 	}
-	return resolve_bluff(game, connections, focused_card, { suitIndex, rank }, action);
+	return resolve_bluff(game, target, connections, focused_card, { suitIndex, rank }, action);
 }
 
 /**
