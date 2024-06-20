@@ -49,7 +49,7 @@ export class ActualCard extends BasicCard {
 	 * @param {number} [drawn_index]
 	 * @param {boolean} [clued]
 	 * @param {boolean} [newly_clued]
-	 * @param {(BaseClue & { giver: number })[]} [clues]	List of clues that have touched this card
+	 * @param {(BaseClue & { giver: number, turn: number })[]} [clues]	List of clues that have touched this card
 	 */
 	constructor(suitIndex, rank, order = -1, drawn_index = -1, clued = false, newly_clued = false, clues = []) {
 		super(suitIndex, rank);

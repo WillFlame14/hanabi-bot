@@ -111,6 +111,37 @@ describe('play clue', () => {
 		ExAsserts.cardHasInferences(common.thoughts[targetOrder], ['r2']);
 	});
 
+	it('correctly undoes a prompt after proven false', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'y2', 'r2', 'b3'],
+			['y4', 'b3', 'g4', 'g3'],
+			['r4', 'y2', 'r3', 'r1']
+		], {
+			level: { min: 1 },
+			play_stacks: [3, 0, 2, 0, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 5 to Alice (slot 4)');
+		takeTurn(game, 'Alice clues green to Cathy');
+		takeTurn(game, 'Bob clues 5 to Alice (slot 4)');
+
+		// Alice's slot 4 can be r5 (finesse on Donald) or g5 (prompt on Cathy).
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r5', 'g5']);
+
+		takeTurn(game, 'Cathy plays g3', 'p1');
+		takeTurn(game, 'Donald plays r4', 'y3');
+
+		// Alice's slot 4 should be exactly r5.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r5']);
+
+		// Cathy's slot 4 (used to be slot 3) can still be g4,g5.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][3].order], ['g4', 'g5']);
+	});
+});
+
+describe('counting playables', () => {
 	it('considers ambiguous play clues to still be plays', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -231,32 +262,24 @@ describe('play clue', () => {
 		assert.ok(game.common.unknown_plays.has(game.state.hands[PLAYER.BOB][1].order));
 	});
 
-	it('correctly undoes a prompt after proven false', () => {
+	it('correctly counts the number of playables when fake connecting on unknown plays', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['b4', 'y2', 'r2', 'b3'],
-			['y4', 'b3', 'g4', 'g3'],
-			['r4', 'y2', 'r3', 'r1']
+			['b4', 'y2', 'g1', 'b3'],
+			['r3', 'r2', 'p3', 'p1'],
+			['y4', 'b5', 'b2', 'y2']
 		], {
 			level: { min: 1 },
-			play_stacks: [3, 0, 2, 0, 0],
-			starting: PLAYER.DONALD
+			starting: PLAYER.DONALD,
+			play_stacks: [1, 0, 0, 0, 0]
 		});
 
-		takeTurn(game, 'Donald clues 5 to Alice (slot 4)');
-		takeTurn(game, 'Alice clues green to Cathy');
-		takeTurn(game, 'Bob clues 5 to Alice (slot 4)');
+		takeTurn(game, 'Donald clues 1 to Bob');
 
-		// Alice's slot 4 can be r5 (finesse on Donald) or g5 (prompt on Cathy).
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r5', 'g5']);
+		const { play_clues } = find_clues(game);
+		const clue = play_clues[PLAYER.CATHY].find(clue => clue.type === CLUE.RANK && clue.value === 2);
 
-		takeTurn(game, 'Cathy plays g3', 'p1');
-		takeTurn(game, 'Donald plays r4', 'y3');
-
-		// Alice's slot 4 should be exactly r5.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r5']);
-
-		// Cathy's slot 4 (used to be slot 3) can still be g4,g5.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][3].order], ['g4', 'g5']);
+		assert.ok(clue !== undefined);
+		assert.equal(clue.result.playables.length, 1);
 	});
 });

@@ -74,9 +74,9 @@ function find_colour_focus(game, suitIndex, action) {
 				break;
 			}
 
-			// Even if a finesse is possible, it might not be a finesse
+			// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
 			const possible_connections = resolve_bluff(game, target, connections, focused_card, { suitIndex, rank: next_rank }, action);
-			if (connections.length == 0 || possible_connections.length > 0)
+			if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
 				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
 		}
 		state.play_stacks[suitIndex]++;
@@ -121,7 +121,8 @@ function find_colour_focus(game, suitIndex, action) {
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
 				const fill_ins = state.hands[target].filter(c =>
 					list.includes(c.order) &&
-					(c.newly_clued || c.clues.some((clue, i) => i !== c.clues.length - 1 && !Utils.objEquals(clue, c.clues.at(-1))))).length;
+					(c.newly_clued || c.clues.some((clue, i) =>
+						i !== c.clues.length - 1 && !(c.clues.at(-1).type === clue.type && c.clues.at(-1).value === clue.value)))).length;
 
 				// Only touched/filled in 1 new card
 				if (fill_ins < 2)
@@ -234,8 +235,8 @@ function find_rank_focus(game, rank, action) {
 
 				if (rank === next_rank) {
 					const possible_connections = resolve_bluff(game, target, connections, focused_card, identity, action);
-					// Even if a finesse is possible, it might not be a finesse
-					if (connections.length == 0 || possible_connections.length > 0)
+					// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
+					if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
 						focus_possible.push({ suitIndex, rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
 				}
 			}

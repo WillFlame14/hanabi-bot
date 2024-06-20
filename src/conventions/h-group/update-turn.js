@@ -72,12 +72,13 @@ export function remove_finesse(game, waiting_connection) {
  * @param {Game} game
  * @param {number} reacting
  * @param {number} order
+ * @param {WaitingConnection} waiting_connection
  */
-function stomped_finesse(game, reacting, order) {
+function stomped_finesse(game, reacting, order, waiting_connection) {
 	const { common, state } = game;
 	const thoughts = common.thoughts[order];
 
-	return thoughts.clued && (thoughts.focused ||
+	return thoughts.clued && thoughts.clues.at(-1).turn > waiting_connection.turn && (thoughts.focused ||
 		(common.thinksPlayables(state, reacting).length === 0 && thoughts.inferred.every(i => state.isPlayable(i) || thoughts.matches(i, { assume: true }))));
 }
 
@@ -122,7 +123,7 @@ function resolve_card_retained(game, waiting_connection) {
 
 		if (last_reacting_action?.type === 'clue') {
 			// TODO: Maybe it's good to force demonstrating the connection immediately anyways; this can be confusing.
-			if (stomped_finesse(game, reacting, order)) {
+			if (stomped_finesse(game, reacting, order, waiting_connection)) {
 				logger.warn(`finesse was stomped on, ${state.playerNames[reacting]} no longer needs to demonstrate connection immediately`);
 				return { remove: false };
 			}
@@ -191,14 +192,17 @@ function resolve_card_retained(game, waiting_connection) {
 
 		// Check if the card could be superpositioned on a finesse that is not yet playable.
 		const unplayable_connections = common.waiting_connections.filter(wc =>
-			wc !== waiting_connection && wc.connections.some((conn, index) =>
-				index >= conn_index && conn.card.order === order && conn.identities.some(i => state.playableAway(i) > 0)));
+			wc !== waiting_connection &&
+			wc.connections.some((conn, index) =>
+				index >= conn_index && conn.card.order === order && conn.identities.some(i => state.playableAway(i) > 0)) &&
+			// The reacting player has to wait for someone else, or they already tried to play
+			(wc.connections[wc.conn_index].reacting !== reacting || last_reacting_action?.type === 'play'));
 
 		if (unplayable_connections.length > 0) {
 			logger.warn('not all possibilities playable', unplayable_connections.map(wc =>
-				wc.connections.find((conn, index) =>
+				`${wc.connections.map(logConnection).join(' -> ')}  (${wc.connections.find((conn, index) =>
 					index >= conn_index && conn.card.order === order && conn.identities.some(i => state.playableAway(i) > 0)
-				).identities.map(logCard)));
+				).identities.map(logCard).join()})`));
 			return { remove: false };
 		}
 
@@ -244,7 +248,7 @@ function resolve_card_played(game, waiting_connection) {
 		const thoughts = common.thoughts[connection.order];
 
 		// Consider a stomped finesse if the played card was focused or they didn't choose to play it first
-		if (type === 'finesse' && stomped_finesse(game, reacting, connection.order)) {
+		if (type === 'finesse' && stomped_finesse(game, reacting, connection.order, waiting_connection)) {
 			logger.warn(`connecting card was focused/known playable with a clue (stomped on), not confirming ${logCard(inference)} finesse`);
 
 			if (connections[conn_index + 1]?.self) {

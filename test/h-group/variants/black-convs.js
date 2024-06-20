@@ -75,7 +75,7 @@ describe('save clue interpretation', () => {
 		});
 
 		game.state.hands[PLAYER.ALICE][0].clued = true;
-		game.state.hands[PLAYER.ALICE][0].clues.push({ type: CLUE.COLOUR, value: 4, giver: PLAYER.BOB });
+		game.state.hands[PLAYER.ALICE][0].clues.push({ type: CLUE.COLOUR, value: 4, giver: PLAYER.BOB, turn: -1 });
 
 		takeTurn(game, 'Bob clues black to Alice (slot 1,5)');
 

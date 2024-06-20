@@ -1,5 +1,6 @@
 import { unknownIdentities } from './hanabi-util.js';
 import { IdentitySet } from './IdentitySet.js';
+import { cardCount } from '../variants.js';
 import * as Utils from '../tools/util.js';
 import * as Elim from './player-elim.js';
 
@@ -121,7 +122,9 @@ export class Player {
 		return Array.from(state.hands[playerIndex].filter(c => {
 			const card = this.thoughts[c.order];
 			const unsafe_linked = linked_orders.has(c.order) &&
-				(state.strikes === 2 || card.possible.some(p => state.play_stacks[p.suitIndex] + 1 < p.rank && p.rank <= state.max_ranks[p.suitIndex]));
+				(state.strikes === 2 ||
+					card.possible.some(p => state.play_stacks[p.suitIndex] + 1 < p.rank && p.rank <= state.max_ranks[p.suitIndex]) ||
+					Array.from(linked_orders).some(o => this.thoughts[o].focused && o !== c.order));
 
 			return !unsafe_linked &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
@@ -277,6 +280,7 @@ export class Player {
 
 				// Do not allow false updating of hypo stacks
 				if (this.playerIndex === -1 && (
+					(id && state.deck.filter(c => c?.matches(id) && c.order !== order).length === cardCount(state.variant, id)) ||
 					(actual_id &&
 						(!card.inferred.has(actual_id) ||		// None of the inferences match
 						state.hands.flat().some(c => unknown_plays.has(c.order) && c.matches(actual_id))))	||	// Duping playable

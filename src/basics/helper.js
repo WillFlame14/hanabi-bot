@@ -88,7 +88,25 @@ export function checkFix(game, oldThoughts, clueAction) {
 		}
 
 		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
-		const infs_to_recheck = Array.from(all_resets).map(order => oldThoughts[order].identity({ infer: true })).filter(id => id !== undefined);
+		const infs_to_recheck = [];
+
+		for (const order of all_resets) {
+			const old_id = oldThoughts[order].identity({ infer: true });
+
+			if (old_id !== undefined) {
+				infs_to_recheck.push(old_id);
+
+				common.hypo_stacks[old_id.suitIndex] = old_id.rank - 1;
+				logger.info('setting hypo stacks to', common.hypo_stacks);
+
+				const id_hash = logCard(old_id);
+				const elims = common.elims[id_hash];
+
+				// Don't allow the card being reset to regain this inference
+				if (elims && elims.includes(order))
+					elims.splice(elims.indexOf(order), 1);
+			}
+		}
 
 		for (const inf of infs_to_recheck)
 			common.restore_elim(inf);

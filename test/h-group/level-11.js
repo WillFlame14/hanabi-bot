@@ -780,7 +780,7 @@ describe('bluff clues', () => {
 				const d_slot3 = game.common.thoughts[game.state.hands[PLAYER.DONALD][2].order];
 				d_slot3.inferred = d_slot3.inferred.intersect(expandShortCard('p2'));
 				d_slot3.possible = d_slot3.possible.intersect(['p2', 'p3', 'p4', 'p5'].map(expandShortCard));
-				d_slot3.clues.push({ type: CLUE.COLOUR, value: COLOUR.PURPLE, giver: PLAYER.ALICE});
+				d_slot3.clues.push({ type: CLUE.COLOUR, value: COLOUR.PURPLE, giver: PLAYER.ALICE, turn: -1 });
 				d_slot3.clued = true;
 			}
 		});

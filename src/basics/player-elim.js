@@ -201,7 +201,7 @@ export function good_touch_elim(state, only_self = false) {
 		}
 	};
 
-	/** @type {{ order: number, playerIndex: number }[]} */
+	/** @type {{ order: number, playerIndex: number, cm: boolean }[]} */
 	const elim_candidates = [];
 
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -212,11 +212,16 @@ export function good_touch_elim(state, only_self = false) {
 			addToMaps(order);
 
 			const card = this.thoughts[order];
-			const can_elim = card.touched ||					// Touched cards always elim
-				(this.playerIndex !== -1 && card.chop_moved);	// Chop moved cards can asymmetric elim
 
-			if (can_elim && card.inferred.length > 0 && card.inferred.some(inf => !state.isBasicTrash(inf)) && !card.certain_finessed)
-				elim_candidates.push({ order, playerIndex: i });
+			if (card.inferred.length > 0 && card.inferred.some(inf => !state.isBasicTrash(inf)) && !card.certain_finessed) {
+				// Touched cards always elim
+				if (card.touched)
+					elim_candidates.push({ order, playerIndex: i, cm: false });
+
+				// Chop moved cards can asymmetric/visible elim
+				else if (card.chop_moved)
+					elim_candidates.push({ order, playerIndex: i, cm: this.playerIndex === -1 });
+			}
 		}
 	}
 
@@ -233,19 +238,27 @@ export function good_touch_elim(state, only_self = false) {
 
 		const hard_matches = hard_match_map.get(logCard(identity));
 		const matches = hard_matches ?? soft_matches ?? new Set();
+		const matches_arr = Array.from(matches);
 
-		for (const { order, playerIndex } of elim_candidates) {
+		for (const { order, playerIndex, cm } of elim_candidates) {
 			const card = this.thoughts[order];
 
 			if (matches.has(order) || card.inferred.length === 0 || !card.inferred.has(identity))
 				continue;
 
-			const original_clue_giver = card.clues[0]?.giver;
+			const visible_elim = matches_arr.some(o => state.hands.flat().find(c => c.order === o).matches(identity) &&
+				state.baseCount(identity) + matches.size >= cardCount(state.variant, identity));
+
+			const original_clue = card.clues[0];
 
 			// Check if every match was from the clue giver (or vice versa)
-			const asymmetric_gt = matches.size > 0 && (Array.from(matches).every(o => this.thoughts[o].clues[0]?.giver === playerIndex) ||
-				(original_clue_giver && Array.from(matches).every(o =>
-					state.hands[original_clue_giver].some(c => c.order === o) &&
+			const asymmetric_gt = !(cm && visible_elim) && matches.size > 0 &&
+				(matches_arr.every(o => {
+					const match_orig_clue = this.thoughts[o].clues[0];
+					return match_orig_clue?.giver === playerIndex && match_orig_clue.turn > (original_clue?.turn ?? 0);
+				}) ||
+				(original_clue?.giver && matches_arr.every(o =>
+					state.hands[original_clue?.giver].some(c => c.order === o) &&
 					this.thoughts[o].possibilities.length > 1
 				)));
 
@@ -259,6 +272,10 @@ export function good_touch_elim(state, only_self = false) {
 				elim_candidates.splice(elim_candidates.findIndex(c => c.order === order), 1);
 				continue;
 			}
+
+			// Check if can't visible elim on cm card (not visible, or same hand)
+			if (cm && !visible_elim)
+				continue;
 
 			const pre_inferences = card.inferred.length;
 			card.inferred = card.inferred.subtract(identity);
@@ -434,7 +451,7 @@ export function restore_elim(identity) {
 	const id = logCard(identity);
 	const elims = this.elims[id];
 
-	if (elims) {
+	if (elims?.length > 0) {
 		logger.warn('adding back inference', id, 'which was falsely eliminated from', elims);
 
 		for (const order of elims) {

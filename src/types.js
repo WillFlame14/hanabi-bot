@@ -114,6 +114,7 @@
  * @property {number} giver
  * @property {number} target
  * @property {number} conn_index
+ * @property {number} turn
  * @property {ActualCard} focused_card
  * @property {{suitIndex: number, rank: number}} inference
  * @property {number} action_index

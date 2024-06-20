@@ -26,7 +26,7 @@ export function onClue(game, action) {
 				c.newly_clued = true;
 				c.clued = true;
 			}
-			c.clues.push(Object.assign({}, clue, { giver }));
+			c.clues.push(Object.assign({}, clue, { giver, turn: state.turn_count }));
 		}
 
 		for (const player of game.allPlayers) {

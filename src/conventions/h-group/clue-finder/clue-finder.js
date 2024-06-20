@@ -39,9 +39,8 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	if (chop_moved.length === 0)
 		return Math.max(find_clue_value(result), state.isCritical(old_chop) ? 0.1 : -Infinity);
 
-	// TODO: Should visible (but not saved, possibly on chop?) cards be included as trash?
 	const saved_trash = chop_moved.filter(card =>
-		isTrash(state, me, card, card.order, { infer: true }) ||			// Saving a trash card
+		state.hands.some(hand => hand.some(c => c.matches(card) && c.order !== card.order)) ||		// Saving a duplicated card
 		chop_moved.some(c => card.matches(c) && card.order > c.order)		// Saving 2 of the same card
 	);
 
@@ -215,7 +214,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 				}
 			}
 			// Stall clues
-			else if (stall_severity(state, common, giver) > 0) {
+			else if (stall_severity(state, common, giver) > 0 && safe) {
 				if (clue.type === CLUE.RANK && clue.value === 5 && !focused_card.clued) {
 					logger.info('5 stall', logClue(clue));
 					stall_clues[0].push(clue);

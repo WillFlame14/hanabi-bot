@@ -111,8 +111,19 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			assign_connections(game, connections, giver);
 
 		// Multiple possible sets, we need to wait for connections
-		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type)))
-			common.waiting_connections.push({ connections, conn_index: 0, focused_card, inference, giver, target, action_index: state.actionList.length - 1, symmetric: !matches });
+		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
+			common.waiting_connections.push({
+				connections,
+				conn_index: 0,
+				focused_card,
+				inference,
+				giver,
+				target,
+				action_index: state.actionList.length - 1,
+				turn: state.turn_count,
+				symmetric: !matches
+			});
+		}
 	}
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
@@ -127,7 +138,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver, target);
 
 		for (const conn of symmetric_fps.concat(inf_possibilities).flatMap(fp => fp.connections)) {
-			if (conn.type === 'playable' && conn.linked.length > 1) {
+			if (conn.type === 'playable') {
 				const orders = Array.from(conn.linked.map(c => c.order));
 				const existing_link = common.play_links.find(pl => Utils.setEquals(new Set(pl.orders), new Set(orders)) && pl.connected === focused_card.order);
 

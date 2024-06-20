@@ -74,6 +74,7 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
 			giver,
 			target,
 			action_index: state.actionList.length - 1,
+			turn: state.turn_count,
 			symmetric: true
 		});
 	}
@@ -274,13 +275,20 @@ export function assign_connections(game, connections, giver) {
 function connection_score(focus_possibility, playerIndex) {
 	const { connections } = focus_possibility;
 
+	const first_self = connections.findIndex(conn => conn.type !== 'known' && conn.type !== 'playable');
+
 	// Starts on someone else
-	if (connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.reacting !== playerIndex)
+	if (connections[first_self]?.reacting !== playerIndex)
 		return 0;
 
-	let blind_plays = 0, bluffs = 0, prompts = 0;
+	let blind_plays = 0, bluffs = 0, prompts = 0, self = 0;
 
-	for (const conn of connections) {
+	for (let i = first_self; i < connections.length; i++) {
+		const conn = connections[i];
+
+		if (conn.reacting === playerIndex)
+			self++;
+
 		if (conn.type === 'finesse')
 			blind_plays++;
 
@@ -291,7 +299,7 @@ function connection_score(focus_possibility, playerIndex) {
 			prompts++;
 	}
 
-	return 10*blind_plays + 1*bluffs + 0.1*prompts;
+	return 10*blind_plays + 1*bluffs + 0.1*prompts + 0.01*self;
 }
 
 /**

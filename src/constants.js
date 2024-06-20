@@ -1,5 +1,5 @@
 export const MAX_H_LEVEL = 11;
-export const BOT_VERSION = '1.4.10';
+export const BOT_VERSION = '1.4.11';
 
 export const ACTION =  /** @type {const} */ ({
 	PLAY: 0,

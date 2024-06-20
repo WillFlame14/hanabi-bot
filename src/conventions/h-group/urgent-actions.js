@@ -308,23 +308,23 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			// Check if TCCM is available
 			if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && (!save.playable || state.clue_tokens === 1)) {
-				let tccm = false;
-				for (const clue of stall_clues[1].filter(clue => clue.target === target)) {
+				const tccm = Utils.maxOn(stall_clues[1].filter(clue => clue.target === target), clue => {
 					const { playables } = clue.result;
 
 					const list = hand.clueTouched(clue, state.variant).map(c => c.order);
 					const { focused_card } = determine_focus(hand, common, list, { beforeClue: true });
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focused_card);
 
-					if (tempo && !valuable && clue_safe(game, me, clue).safe) {
-						urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(Utils.clueToAction(clue, tableID));
-						tccm = true;
-						break;
-					}
-				}
+					if (tempo && !valuable && clue_safe(game, me, clue).safe)
+						return find_clue_value(clue.result);
+					else
+						return -1;
+				}, 0);
 
-				if (tccm)
+				if (tccm) {
+					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(Utils.clueToAction(tccm, tableID));
 					continue;
+				}
 			}
 
 			const hypo_game = game.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, list, clue: save, target });

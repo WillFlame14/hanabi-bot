@@ -168,7 +168,7 @@ describe('tempo clue chop moves', () => {
 				const a_slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
 				a_slot1.inferred = a_slot1.inferred.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
 				a_slot1.possible = a_slot1.possible.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
-				a_slot1.clues = [{ type: CLUE.COLOUR, value: COLOUR.BLUE, giver: PLAYER.BOB }];
+				a_slot1.clues = [{ type: CLUE.COLOUR, value: COLOUR.BLUE, giver: PLAYER.BOB, turn: -1 }];
 				a_slot1.clued = true;
 			}
 		});

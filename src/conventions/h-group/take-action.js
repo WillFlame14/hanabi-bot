@@ -238,7 +238,6 @@ export function take_action(game) {
 		}
 	}
 
-	// Get a high value play clue involving next player (otherwise, next player can give it)
 	let best_play_clue, clue_value;
 	if (state.clue_tokens > 0) {
 		const all_play_clues = play_clues.flat();
@@ -271,6 +270,7 @@ export function take_action(game) {
 		}
 	}
 
+	// Get a high value play clue involving next player (otherwise, next player can give it)
 	if (best_play_clue?.result.finesses.length > 0 && best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex))
 		return Utils.clueToAction(best_play_clue, tableID);
 
@@ -327,14 +327,14 @@ export function take_action(game) {
 
 	// Give TCCM on a valuable card that moves chop to trash
 	if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && state.clue_tokens > 0) {
-		for (const clue of stall_clues[1]) {
+		const best_tempo_clue = Utils.maxOn(stall_clues[1], clue => {
 			const { target } = clue;
 
 			const chop = common.chop(state.hands[target]);
 
 			// Chop doesn't exist or is playable/trash, ignore
 			if (chop === undefined || cardValue(state, me, chop) === 0 || state.isPlayable(chop))
-				continue;
+				return -1;
 
 			// Temporarily chop move their chop
 			me.thoughts[chop.order].chop_moved = true;
@@ -343,15 +343,18 @@ export function take_action(game) {
 			// Undo chop move
 			me.thoughts[chop.order].chop_moved = false;
 
-			if (new_chop_value === 0) {
-				logger.highlight('yellow', `performing tccm on ${logCard(chop)}`);
-				return Utils.clueToAction(clue, tableID);
-			}
+			return new_chop_value === 0 ? find_clue_value(clue.result) : -1;
+		}, 0);
+
+		if (best_tempo_clue !== undefined) {
+			logger.highlight('yellow', `performing tccm on valuable card moving chop to trash ${logClue(best_tempo_clue)}`);
+			return Utils.clueToAction(best_tempo_clue, tableID);
 		}
 	}
 
 	const play_clue_2p = best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result));
 
+	/** @param {Clue} clue */
 	const not_selfish = (clue) => {
 		const list = state.hands[nextPlayerIndex].clueTouched(clue, state.variant).map(c => c.order);
 		const { focused_card } = determine_focus(state.hands[nextPlayerIndex], common, list, { beforeClue: true });

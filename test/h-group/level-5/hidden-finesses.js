@@ -126,15 +126,15 @@ describe('hidden finesse', () => {
 		g2.clued = true;
 		g2.possible = g2.possible.intersect([expandShortCard('g2')]);
 		g2.inferred = g2.inferred.intersect([expandShortCard('g2')]);
-		g2.clues.push({ type: CLUE.RANK, value: 2, giver: PLAYER.ALICE });
-		g2.clues.push({ type: CLUE.COLOUR, value: COLOUR.GREEN, giver: PLAYER.ALICE });
+		g2.clues.push({ type: CLUE.RANK, value: 2, giver: PLAYER.ALICE, turn: -1 });
+		g2.clues.push({ type: CLUE.COLOUR, value: COLOUR.GREEN, giver: PLAYER.ALICE, turn: -1 });
 
 		// Bob's b1 is clued with 1.
 		const b1 = game.common.thoughts[game.state.hands[PLAYER.BOB][2].order];
 		b1.clued = true;
 		b1.possible = b1.possible.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
 		b1.possible = b1.inferred.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
-		b1.clues.push({ type: CLUE.RANK, value: 1, giver: PLAYER.ALICE });
+		b1.clues.push({ type: CLUE.RANK, value: 1, giver: PLAYER.ALICE, turn: -1 });
 
 		team_elim(game);
 
