@@ -480,6 +480,22 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
+	it(`doesn't bluff when bluff can't be recognized by all players`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y1', 'b5', 'y2', 'y2', 'y4'],
+			['p2', 'r2', 'b2', 'g4', 'y5'],
+		], {
+			level: { min: 11 }
+		});
+
+		const { play_clues } = find_clues(game);
+		const bluff_clues = play_clues[2].filter(clue => {
+			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2;
+		});
+		assert.equal(bluff_clues.length, 0);
+	});
+
 	it(`doesn't bluff when bluff can't be known not to connect to focus`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],

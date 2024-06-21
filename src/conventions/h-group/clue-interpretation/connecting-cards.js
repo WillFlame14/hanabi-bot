@@ -219,7 +219,7 @@ export function resolve_bluff(game, target, connections, focusedCard, focusIdent
 	if (!bluff_fail_reason && bluffCard.identity() !== undefined) {
 		const nextCard = {suitIndex: bluffCard.suitIndex, rank: bluffCard.rank + 1};
 		if ((clue.clue.type != CLUE.RANK || clue.clue.value == nextCard.rank) &&
-			game.players[target].thoughts[focusedCard.order].inferred.has(nextCard))
+			game.common.thoughts[focusedCard.order].inferred.has(nextCard))
 			bluff_fail_reason = `blind play ${logCard(bluffCard)} connects to clue and inference on focused card`;
 	}
 
