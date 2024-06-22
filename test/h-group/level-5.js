@@ -263,6 +263,22 @@ describe('guide principle', () => {
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 1, value: 5 });
 	});
+
+	it(`understands a critical save while finessed when other potential givers are finessed`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p1', 'p2', 'p3', 'g3'],
+			['p4', 'y5', 'b3', 'p5'],
+			['b4', 'y2', 'p4', 'r4']
+		], { level: { min: 5, max: 10 }, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Cathy clues purple to Donald'); // finesses p1, p2, p3
+		takeTurn(game, 'Donald clues blue to Cathy'); // finesses b1, b2 in our hand
+		takeTurn(game, 'Alice clues 5 to Cathy');
+
+		// Understands that Alice may have been deferring the finesse to save the 5 and allow Bob to play.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
+	});
 });
 
 describe('mistake recovery', () => {

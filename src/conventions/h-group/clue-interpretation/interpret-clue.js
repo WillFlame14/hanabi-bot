@@ -250,9 +250,23 @@ export function interpret_clue(game, action) {
 	if (chop) {
 		focus_thoughts.chop_when_first_clued = true;
 
-		// A save is important if no one else could have given the save.
-		if (!old_focus_thoughts.saved && focus_thoughts.saved && (giver + 1) % state.numPlayers == target && !common.thinksLoaded(state, target, {assume: false}))
-			action.important = true;
+		// Check whether this is an urgent save.
+		if (!old_focus_thoughts.saved && focus_thoughts.saved && !common.thinksLoaded(state, target, {assume: false})) {
+			// If there is at least one non-finessed player between us and target, the save was not urgent.
+			let urgent = true;
+			let playerIndex = (giver + 1) % state.numPlayers;
+
+			while (playerIndex !== target) {
+				if (!state.hands[playerIndex].some(c => common.thoughts[c.order].finessed && state.isPlayable(c))) {
+					urgent = false;
+					break;
+				}
+				playerIndex = (playerIndex + 1) % state.numPlayers;
+			}
+
+			if (urgent)
+				action.important = true;
+		}
 	}
 
 	if (focus_thoughts.inferred.length === 0 && oldCommon.thoughts[focused_card.order].possible.length > 1) {
