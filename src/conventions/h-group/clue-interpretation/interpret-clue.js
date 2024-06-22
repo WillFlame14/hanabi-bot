@@ -14,6 +14,7 @@ import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection, logConnections, logHand } from '../../../tools/log.js';
+import { IdentitySet } from '../../../basics/IdentitySet.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -254,11 +255,12 @@ export function interpret_clue(game, action) {
 		if (!old_focus_thoughts.saved && focus_thoughts.saved && !common.thinksLoaded(state, target, {assume: false})) {
 			const hypo_game = game.minimalCopy();
 			const hypo_state = hypo_game.state;
+			let played = new IdentitySet(state.variant.suits.length);
 
 			const get_finessed_card = (index) => hypo_state.hands[index].find(c => {
 				const card = hypo_game.common.thoughts[c.order];
 
-				if (!card.finessed || card.inferred.some(id => !hypo_state.isPlayable(id)))
+				if (!card.finessed || card.inferred.some(id => !played.has(id) && !hypo_state.isPlayable(id)))
 					return false;
 
 				return true;
@@ -278,8 +280,10 @@ export function interpret_clue(game, action) {
 				// If we know what the card is, update the play stacks. If we don't, then
 				// we can't know if playing it would make someone else's cards playable.
 				const card = hypo_game.common.thoughts[finessed_play.order].identity({infer: true});
-				if (card !== undefined)
+				if (card !== undefined) {
+					played = played.union(card);
 					hypo_state.play_stacks[card.suitIndex]++;
+				}
 
 				playerIndex = (playerIndex + 1) % state.numPlayers;
 			}
