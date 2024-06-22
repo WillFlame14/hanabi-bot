@@ -206,13 +206,9 @@ export function take_action(game) {
 			return action;
 	}
 
-	// If we have a finesse and there were no actions urgent enough to delay a finesse, play into the finesse.
-	if (is_finessed)
-		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
-
 	const discardable = trash_cards[0] ?? common.chop(state.hands[state.ourPlayerIndex]);
 
-	if (state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
+	if (!is_finessed && state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
 		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
 
 		// Generate for next next player
@@ -238,7 +234,7 @@ export function take_action(game) {
 	}
 
 	// Attempt to solve endgame
-	if (state.inEndgame() && state.cardsLeft > 0) {
+	if (!is_finessed && state.inEndgame() && state.cardsLeft > 0) {
 		try {
 			const action = solve_game(game, state.ourPlayerIndex, find_all_clues);
 
@@ -264,8 +260,13 @@ export function take_action(game) {
 	}
 
 	// Get a high value play clue involving next player (otherwise, next player can give it)
-	if (best_play_clue?.result.finesses.length > 0 && best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex))
+	// TODO: We should probably require a higher value to be worth cluing while finessed.
+	if (best_play_clue?.result.finesses.length > 0 && (best_play_clue.target == nextPlayerIndex || best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex)))
 		return Utils.clueToAction(best_play_clue, tableID);
+
+	// If we have a finesse and no urgent high value clues to give, play into the finesse.
+	if (is_finessed)
+		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
 	// Sarcastic discard to someone else
 	if (game.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {
