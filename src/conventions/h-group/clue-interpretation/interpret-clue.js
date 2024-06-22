@@ -252,15 +252,35 @@ export function interpret_clue(game, action) {
 
 		// Check whether this is an urgent save.
 		if (!old_focus_thoughts.saved && focus_thoughts.saved && !common.thinksLoaded(state, target, {assume: false})) {
-			// If there is at least one non-finessed player between us and target, the save was not urgent.
+			const hypo_game = game.minimalCopy();
+			const hypo_state = hypo_game.state;
+
+			const get_finessed_card = (index) => hypo_state.hands[index].find(c => {
+				const card = hypo_game.common.thoughts[c.order];
+
+				if (!card.finessed || card.inferred.some(id => !hypo_state.isPlayable(id)))
+					return false;
+
+				return true;
+			});
+
+			// If there is at least one player without a finessed play between the giver and target, the save was not urgent.
 			let urgent = true;
-			let playerIndex = (giver + 1) % state.numPlayers;
+			let playerIndex = giver;
 
 			while (playerIndex !== target) {
-				if (!state.hands[playerIndex].some(c => common.thoughts[c.order].finessed && state.isPlayable(c))) {
+				const finessed_play = get_finessed_card(playerIndex);
+				if (!finessed_play) {
 					urgent = false;
 					break;
 				}
+
+				// If we know what the card is, update the play stacks. If we don't, then
+				// we can't know if playing it would make someone else's cards playable.
+				const card = hypo_game.common.thoughts[finessed_play.order].identity({infer: true});
+				if (card !== undefined)
+					hypo_state.play_stacks[card.suitIndex]++;
+
 				playerIndex = (playerIndex + 1) % state.numPlayers;
 			}
 

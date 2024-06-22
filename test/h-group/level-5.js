@@ -270,7 +270,7 @@ describe('guide principle', () => {
 			['p1', 'p2', 'p3', 'g3'],
 			['p4', 'y5', 'b3', 'p5'],
 			['b4', 'y2', 'p4', 'r4']
-		], { level: { min: 5, max: 10 }, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 0] });
+		], { level: { min: 5 }, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 0] });
 		takeTurn(game, 'Cathy clues purple to Donald'); // finesses p1, p2, p3
 		takeTurn(game, 'Donald clues blue to Cathy'); // finesses b1, b2 in our hand
 		takeTurn(game, 'Alice clues 5 to Cathy');
@@ -278,6 +278,24 @@ describe('guide principle', () => {
 		// Understands that Alice may have been deferring the finesse to save the 5 and allow Bob to play.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
+	});
+
+	it(`understands a critical save where other players only have a play if we play`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b1', 'p2', 'g4', 'g2'],
+			['y4', 'y5', 'p3', 'b5'],
+			['b4', 'y2', 'p4', 'r4']
+		], { level: { min: 5 }, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Donald clues purple to Cathy'); // finesses p1 (Alice), b1 (Bob), p2 (Bob)
+
+		// Bob may think playing gives Cathy a play, but Alice can see that it doesn't,
+		// and should save Cathy's 5.
+		takeTurn(game, 'Alice clues 5 to Cathy');
+
+		// Understands that Alice may have been deferring the finesse to save the 5 and allow Bob to play.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['p1']);
 	});
 });
 
