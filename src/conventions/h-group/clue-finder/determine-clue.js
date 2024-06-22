@@ -33,10 +33,13 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 	logger.highlight('green', `------- ENTERING HYPO ${logClue(clue)} --------`);
 
 	const hypo_game = game.simulate_clue(action, { enableLogs: true });
+	// This is emulating and undoing the needed side effects of handle_action for a clue action.
+	// It might be simpler to call handle_action on the hypo_game.
 	hypo_game.last_actions = game.last_actions.slice();
 	hypo_game.last_actions[action.giver] = action;
 	hypo_game.handle_action({ type: 'turn', num: hypo_game.state.turn_count, currentPlayerIndex: hypo_game.state.nextPlayerIndex(hypo_game.state.ourPlayerIndex) }, true);
 	hypo_game.last_actions = game.last_actions;
+	hypo_game.state.actionList.pop();
 
 	logger.highlight('green', '------- EXITING HYPO --------');
 
