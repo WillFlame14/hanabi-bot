@@ -6,6 +6,7 @@ import * as Basics from '../../basics.js';
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
 import { LEVEL } from './h-constants.js';
+import { cardCount } from '../../variants.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -97,15 +98,26 @@ export function interpret_discard(game, action, card) {
 	// Discarding a useful card
 	// Note: we aren't including chop moved and finessed cards here since those can be asymmetric.
 	// Discarding with a finesse will trigger the waiting connection to resolve.
-	if (card.clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
-		logger.warn('discarded useful card!');
-		common.restore_elim(card);
+	if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
+		if (card.clued) {
+			logger.warn('discarded useful clued card!');
+			common.restore_elim(card);
 
-		// Card was bombed
-		if (failed)
-			undo_hypo_stacks(game, identity);
-		else
-			interpret_sarcastic(game, action);
+			// Card was bombed
+			if (failed)
+				undo_hypo_stacks(game, identity);
+			else
+				interpret_sarcastic(game, action);
+		} else if (game.level >= LEVEL.STALLING) {
+			// If there is only one of this card left and it could be in the next player's chop,
+			// they are to be treated as in double discard avoidance.
+			const remaining = cardCount(state.variant, { suitIndex, rank }) - state.discard_stacks[suitIndex][rank - 1];
+			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
+			const chop = common.chop(state.hands[nextPlayerIndex]);
+			if (remaining == 1 && chop !== undefined && common.thoughts[chop.order].inferred.has(card)) {
+				state.dda = true;
+			}
+		}
 	}
 
 	if (game.level >= LEVEL.LAST_RESORTS && !action.failed) {

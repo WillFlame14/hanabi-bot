@@ -60,7 +60,7 @@ export function stall_severity(state, player, giver) {
 	if (player.thinksLocked(state, giver))
 		return 3;
 
-	if (state.screamed_at)
+	if (state.screamed_at || (state.dda && !player.thinksLoaded(state, giver, { assume: false })))
 		return 2;
 
 	if (state.early_game)
