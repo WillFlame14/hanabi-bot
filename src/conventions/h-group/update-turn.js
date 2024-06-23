@@ -134,8 +134,12 @@ function resolve_card_retained(game, waiting_connection) {
 			}
 
 			if (game.level >= LEVEL.INTERMEDIATE_FINESSES && type === 'finesse' && last_reacting_action.important) {
-				logger.warn(`allowing ${state.playerNames[reacting]} to defer a finesse for an important clue`);
-				return { remove: false };
+				if (bluff) {
+					logger.warn(`${state.playerNames[reacting]} not allowed to defer a potential bluff`);
+				} else {
+					logger.warn(`allowing ${state.playerNames[reacting]} to defer a finesse for an important clue`);
+					return { remove: false };
+				}
 			}
 		}
 
