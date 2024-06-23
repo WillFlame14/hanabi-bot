@@ -1,13 +1,9 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../test-utils.js';
-import * as ExAsserts from '../extra-asserts.js';
+import { PLAYER, setup, takeTurn } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
-import { ACTION, CLUE } from '../../src/constants.js';
 import logger from '../../src/tools/logger.js';
-import { take_action } from '../../src/conventions/h-group/take-action.js';
-import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -33,6 +29,7 @@ describe('double discard avoidance', () => {
 
 		// No one should be finessed by this as Alice was simply stalling.
 		const finessed = state.hands.map((hand, idx) => idx).filter(idx => state.hands[idx].some(c => game.common.thoughts[c.order].finessed));
+		assert.equal(finessed.length, 0);
 		assert.equal(game.common.waiting_connections.length, 0);
 	});
 

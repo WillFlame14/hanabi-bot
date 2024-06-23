@@ -114,9 +114,8 @@ export function interpret_discard(game, action, card) {
 			const remaining = cardCount(state.variant, { suitIndex, rank }) - state.discard_stacks[suitIndex][rank - 1];
 			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
 			const chop = common.chop(state.hands[nextPlayerIndex]);
-			if (remaining == 1 && chop !== undefined && common.thoughts[chop.order].inferred.has(card)) {
+			if (remaining == 1 && chop !== undefined && common.thoughts[chop.order].inferred.has(card))
 				state.dda = true;
-			}
 		}
 	}
 
