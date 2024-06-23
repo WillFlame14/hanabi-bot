@@ -541,6 +541,23 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
+	it(`doesn't bluff when bluff out a card that it may have clued in hand`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y1', 'b5', 'y1', 'r4', 'y4'],
+			['p2', 'r4', 'b2', 'g4', 'y4'],
+		], {
+			level: { min: 11 },
+			starting: PLAYER.CATHY
+		});
+		takeTurn(game, 'Cathy clues 1 to Alice (slot 4)');
+		const { play_clues } = find_clues(game);
+		const bluff_clues = play_clues[2].filter(clue => {
+			return clue.type == CLUE.COLOUR && clue.target == 2 && clue.value == COLOUR.BLUE;
+		});
+		assert.equal(bluff_clues.length, 0);
+	});
+
 	it(`understands a bluff on top of known queued plays`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
