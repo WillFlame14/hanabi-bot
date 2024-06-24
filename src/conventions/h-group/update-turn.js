@@ -180,7 +180,7 @@ function resolve_card_retained(game, waiting_connection) {
 				const play = common.thoughts[reacting_card.order];
 
 				if (play.finessed && play.finesse_index < common.thoughts[order].finesse_index) {
-					logger.warn(`${state.playerNames[reacting]} played into older finesse, continuing to wait`);
+					logger.warn(`${state.playerNames[reacting]} played into older finesse ${play.finesse_index} < ${common.thoughts[order].finesse_index}, continuing to wait`);
 					return { remove: false };
 				}
 			}
@@ -404,6 +404,8 @@ export function update_turn(game, action) {
 					({ remove } = resolve_giver_play(game, waiting_connection));
 			}
 		}
+
+		logger.info('remove', remove, 'finesses', remove_finesse);
 
 		if (quit)
 			return;

@@ -211,6 +211,9 @@ export function good_touch_elim(state, only_self = false) {
 		for (const { order } of state.hands[i]) {
 			addToMaps(order);
 
+			if (this.thoughts[order].trash)
+				continue;
+
 			const card = this.thoughts[order];
 
 			if (card.inferred.length > 0 && card.inferred.some(inf => !state.isBasicTrash(inf)) && !card.certain_finessed) {

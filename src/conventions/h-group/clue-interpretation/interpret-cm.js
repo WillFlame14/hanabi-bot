@@ -51,7 +51,12 @@ export function interpret_tcm(game, target, focus_order) {
 		}
 	}
 	logger.warn(cm_cards.length === 0 ? 'no cards to tcm' : `trash chop move on ${cm_cards.join(',')}`);
-	return cm_cards.length > 0;
+
+	if (cm_cards.length === 0)
+		return false;
+
+	focus_thoughts.trash = true;
+	return true;
 }
 
 /**

@@ -36,7 +36,7 @@ export function interpret_discard(game, action, card) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;
-		game.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, thoughts.finessed);
+		game.rewind(action_index, { type: 'identify', order, playerIndex, identities: [identity] }, thoughts.finessed);
 		return;
 	}
 

@@ -14,6 +14,7 @@ import { ActualCard } from '../../../basics/Card.js';
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').Connection} Connection
  * @typedef {import('../../../types.js').Identity} Identity
+ * @typedef {import('../../../types.js').Link} Link
  */
 
 /**
@@ -71,6 +72,23 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 
 		if (globally_known)
 			return { type: 'known', reacting: playerIndex, card: globally_known, identities: [identity] };
+
+		/** @type {Link} */
+		let known_link;
+
+		const known_linked = state.hands[playerIndex].find(({ order }) => {
+			if (ignoreOrders.includes(order))
+				return false;
+
+			known_link = common.links.find(link =>
+				link.promised &&
+				link.identities.some(i => i.suitIndex === identity.suitIndex && i.rank === identity.rank) &&
+				link.cards.some(c => c.order === order));
+			return known_link !== undefined;
+		});
+
+		if (known_linked)
+			return { type: 'playable', reacting: playerIndex, card: known_linked, linked: known_link.cards, identities: [identity] };
 	}
 
 	// Visible and already going to be played (excluding giver)
@@ -157,7 +175,8 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
 			const card = common.thoughts[order];
 
 			return card.touched && !card.newly_clued &&
-				common.dependentConnections(order).every(wc => !wc.symmetric && wc.focused_card.matches(wc.inference, { assume: true }));
+				(state.deck[order].identity() !== undefined || common.dependentConnections(order).every(wc =>
+					!wc.symmetric && wc.focused_card.matches(wc.inference, { assume: true })));
 		};
 
 		if (state.hands.some((hand, index) => index !== giver && hand.some(c => order_touched(c.order) && c.matches(finesse)))) {
