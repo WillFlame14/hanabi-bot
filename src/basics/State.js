@@ -26,7 +26,7 @@ export class State {
 	strikes = 0;
 	early_game = true;
 	screamed_at = false;
-	dda = false;
+	dda = undefined;
 
 	hands = /** @type {Hand[]} */ ([]);
 	deck = /** @type {ActualCard[]} */ ([]);

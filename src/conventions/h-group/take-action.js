@@ -407,11 +407,12 @@ export function take_action(game) {
 	if (state.clue_tokens > 0 && urgent_actions[actionPrioritySize * 2].length > 0)
 		return urgent_actions[actionPrioritySize * 2][0];
 
-	const severity = stall_severity(state, common, state.ourPlayerIndex);
+	const common_severity = stall_severity(state, common, state.ourPlayerIndex);
+	const actual_severity = stall_severity(state, game.players[state.ourPlayerIndex], state.ourPlayerIndex);
 
 	// Stalling situations
-	if (state.clue_tokens > 0 && severity > 0) {
-		const validStall = best_stall_clue(stall_clues, severity);
+	if (state.clue_tokens > 0 && actual_severity > 0) {
+		const validStall = best_stall_clue(stall_clues, common_severity);
 
 		// 8 clues, must stall
 		if (state.clue_tokens === 8) {
@@ -422,7 +423,7 @@ export function take_action(game) {
 		if (validStall)
 			return Utils.clueToAction(validStall, tableID);
 
-		logger.info('no valid stall! severity', severity);
+		logger.info('no valid stall! severity', common_severity);
 	}
 
 	return take_discard(game, state.ourPlayerIndex, trash_cards);

@@ -52,6 +52,7 @@ export function determine_focus(hand, player, list, options = {}) {
  * @param {State} state
  * @param {Player} player
  * @param {number} giver
+ * @param {boolean} asymmetric
  */
 export function stall_severity(state, player, giver) {
 	if (state.clue_tokens === 8 && state.turn_count !== 1)
@@ -60,7 +61,7 @@ export function stall_severity(state, player, giver) {
 	if (player.thinksLocked(state, giver))
 		return 3;
 
-	if (state.screamed_at || (state.dda && !player.thinksLoaded(state, giver, { assume: false })))
+	if (state.screamed_at || (state.dda !== undefined && !player.thinksLoaded(state, giver, { assume: false }) && player.thoughts[player.chop(state.hands[giver]).order].inferred.has(state.dda)))
 		return 2;
 
 	if (state.early_game)

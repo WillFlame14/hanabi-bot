@@ -34,7 +34,8 @@ export function handle_action(action, catchup = false) {
 			this.interpret_clue(this, action);
 			this.last_actions[giver] = action;
 
-			state.dda = state.screamed_at = false;
+			state.dda = undefined;
+			state.screamed_at = false;
 
 			// Remove the newly_clued flag
 			for (const order of list) {
@@ -59,7 +60,8 @@ export function handle_action(action, catchup = false) {
 			logger.highlight('yellowb', `Turn ${state.turn_count}: ${logAction(action)}`);
 
 			// Assume one cannot SDCM after being screamed at
-			state.dda = state.screamed_at = false;
+			state.dda = undefined;
+			state.screamed_at = false;
 
 			this.interpret_discard(this, action, card);
 			this.last_actions[playerIndex] = Object.assign(action, { card });
@@ -134,7 +136,8 @@ export function handle_action(action, catchup = false) {
 
 			this.interpret_play(this, action);
 			this.last_actions[playerIndex] = Object.assign(action, { card });
-			state.dda = state.screamed_at = false;
+			state.dda = undefined;
+			state.screamed_at = false;
 			break;
 		}
 		case 'identify': {
