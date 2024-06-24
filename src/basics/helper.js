@@ -37,7 +37,7 @@ export function team_elim(game) {
 
 			card.old_inferred = ccard.old_inferred;
 
-			for (const property of ['focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'hidden', 'called_to_discard', 'finesse_index', 'rewinded', 'certain_finessed'])
+			for (const property of ['rewind_ids', 'focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'hidden', 'called_to_discard', 'finesse_index', 'rewinded', 'certain_finessed', 'trash'])
 				card[property] = ccard[property];
 
 			card.reasoning = ccard.reasoning.slice();
@@ -82,8 +82,7 @@ export function checkFix(game, oldThoughts, clueAction) {
 		// There is a waiting connection that depends on this card
 		if (reset_order !== undefined) {
 			const reset_card = common.thoughts[reset_order];
-			const { suitIndex, rank } = reset_card.possible.array[0];
-			game.rewind(reset_card.drawn_index, { type: 'identify', order: reset_card.order, playerIndex: target, suitIndex, rank });
+			game.rewind(reset_card.drawn_index, { type: 'identify', order: reset_card.order, playerIndex: target, identities: [reset_card.possible.array[0].raw()] });
 			return;
 		}
 
@@ -96,7 +95,7 @@ export function checkFix(game, oldThoughts, clueAction) {
 			if (old_id !== undefined) {
 				infs_to_recheck.push(old_id);
 
-				common.hypo_stacks[old_id.suitIndex] = old_id.rank - 1;
+				common.hypo_stacks[old_id.suitIndex] = Math.min(common.hypo_stacks[old_id.suitIndex], old_id.rank - 1);
 				logger.info('setting hypo stacks to', common.hypo_stacks);
 
 				const id_hash = logCard(old_id);

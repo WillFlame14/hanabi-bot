@@ -2,14 +2,57 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
+import { ACTION, CLUE } from '../../src/constants.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
-import { CLUE } from '../../src/constants.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
-import logger from '../../src/tools/logger.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
+import { take_action } from '../../src/conventions/h-group/take-action.js';
+
+import logger from '../../src/tools/logger.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
+
+describe('reverse finesse', () => {
+	it('prefers play over save when saved cards could be touched', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g5', 'b1', 'r2', 'r3', 'g2'],
+			['b2', 'p1', 'p2', 'y4', 'b3']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.CATHY,
+			clue_tokens: 0
+		});
+
+		takeTurn(game, 'Cathy discards b3', 'g1');
+
+		const action = take_action(game);
+
+		// Alice should give green to Bob to finesse over save
+		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN });
+	});
+
+	it('understands a continuing finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y5', 'r5', 'b1', 'p3'],
+			['p4', 'b3', 'r2', 'p1'],
+			['r3', 'r1', 'y4', 'p1']
+		], {
+			level: { min: 2 }
+		});
+
+		takeTurn(game, 'Alice clues 1 to Donald');
+		takeTurn(game, 'Bob clues red to Cathy');				// r2 connection
+		takeTurn(game, 'Cathy clues 4 to Alice (slots 2,3)');	// r4, finessing Donald's r3
+		takeTurn(game, 'Donald clues red to Bob');				// r5
+
+		// We don't need to finesse anything.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(game.common.hypo_stacks[COLOUR.RED], 5);
+	});
+});
 
 describe('self-finesse', () => {
 	it('does not give bad self-finesses', () => {
@@ -196,6 +239,28 @@ describe('self-finesse', () => {
 
 		// 3 to Bob is not a valid clue (looks like blue 3).
 		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 3));
+	});
+
+	it('prefers the simplest connection even when needing to self-finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'y2', 'y3', 'g4'],
+			['p3', 'g5', 'p4', 'g3'],
+			['p1', 'b4', 'g1', 'b2']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.CATHY,
+			play_stacks: [1, 1, 1, 0, 1]
+		});
+
+		takeTurn(game, 'Cathy clues yellow to Bob');			// getting y2, touching y3
+		takeTurn(game, 'Donald clues 1 to Alice (slot 3)');		// getting b1
+		takeTurn(game, 'Alice clues 2 to Donald');				// 2 Save
+		takeTurn(game, 'Bob plays y2', 'b1');
+		takeTurn(game, 'Cathy clues 4 to Alice (slot 1)');		// y3 (prompt) -> y4 is simpler than b2 (playable) -> b3 (self-finesse) -> b4
+
+		// y4 is the simplest possibility.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y4']);
 	});
 });
 

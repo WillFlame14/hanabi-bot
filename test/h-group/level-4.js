@@ -164,6 +164,27 @@ describe('trash chop move', () => {
 		// Alice's slot 5 should be chop moved.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].chop_moved, true);
 	});
+
+	it('assumes trash on the tcm focus', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r1', 'b4', 'g4', 'r1'],
+			['g3', 'y1', 'r4', 'b1'],
+			['g1', 'b3', 'y4', 'y5']
+		], {
+			level: { min: 4 },
+			play_stacks: [0, 3, 0, 0, 0],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 5 to Donald');
+		takeTurn(game, 'Cathy clues yellow to Donald');
+		takeTurn(game, 'Donald clues yellow to Alice (slot 3)');
+
+		// Alice's slot 4 should be chop moved, and slot 3 should not (necessarily) be playable.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order].chop_moved, true);
+		assert.equal(game.common.thinksPlayables(game.state, PLAYER.ALICE).length, 0);
+	});
 });
 
 describe('giving order chop move', () => {
