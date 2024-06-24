@@ -257,14 +257,22 @@ export function interpret_clue(game, action) {
 			const hypo_state = hypo_game.state;
 			let played = new IdentitySet(state.variant.suits.length);
 
-			const get_finessed_card = (index) => hypo_state.hands[index].find(c => {
-				const card = hypo_game.common.thoughts[c.order];
+			const get_finessed_card = (index) => {
+				let result = undefined;
+				for (const c of hypo_state.hands[index]) {
+					const card = hypo_game.common.thoughts[c.order];
 
-				if (!card.finessed || card.inferred.some(id => !played.has(id) && !hypo_state.isPlayable(id)))
-					return false;
+					if (!card.finessed || card.inferred.some(id => !played.has(id) && !hypo_state.isPlayable(id)))
+						continue;
 
-				return true;
-			});
+					// Find the finessed card with the lowest finesse_index.
+					if (result !== undefined && card.finesse_index > result.finesse_index)
+						continue;
+
+					result = card;
+				}
+				return result;
+			};
 
 			// If there is at least one player without a finessed play between the giver and target, the save was not urgent.
 			let urgent = true;
