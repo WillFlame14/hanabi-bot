@@ -51,10 +51,10 @@ describe('double discard avoidance', () => {
 		takeTurn(game, 'Donald discards r3', 'p3'); // Ends early game
 
 		// A discard of a useful card means common knowledge is Alice is in a DDA situation.
-		ExAsserts.objHasProperties(game.state.dda, {suitIndex: COLOUR.RED, rank: 3});
+		ExAsserts.objHasProperties(state.dda, {suitIndex: COLOUR.RED, rank: 3});
 
 		// However, since Alice can see the other r3, Alice can discard.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][3].order });
 	});
 });

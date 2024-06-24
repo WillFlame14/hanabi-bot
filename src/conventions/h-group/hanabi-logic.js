@@ -52,7 +52,6 @@ export function determine_focus(hand, player, list, options = {}) {
  * @param {State} state
  * @param {Player} player
  * @param {number} giver
- * @param {boolean} asymmetric
  */
 export function stall_severity(state, player, giver) {
 	if (state.clue_tokens === 8 && state.turn_count !== 1)
