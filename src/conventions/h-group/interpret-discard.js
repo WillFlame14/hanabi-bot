@@ -90,7 +90,7 @@ export function interpret_discard(game, action, card) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;
-		game.rewind(action_index, { type: 'identify', order, playerIndex, suitIndex, rank }, thoughts.finessed);
+		game.rewind(action_index, { type: 'identify', order, playerIndex, identities: [{ suitIndex, rank }] }, thoughts.finessed);
 		return;
 	}
 
@@ -151,7 +151,9 @@ function check_sdcm(game, action, before_trash, old_chop) {
 	const scream = state.clue_tokens === 1 && old_chop &&
 		(common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 || before_trash.length > 0) && order === old_chop.order;
 
-	const shout = common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 && before_trash.some(c => c.order === order) && isTrash(state, common, { suitIndex, rank }, order, { infer: true });
+	const shout = common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 &&
+		before_trash.some(c => c.order === order) &&
+		isTrash(state, common, { suitIndex, rank }, order, { infer: true });
 
 	if (!scream && !shout)
 		return;

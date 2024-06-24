@@ -1,7 +1,7 @@
 import { CLUE } from '../../../constants.js';
 import { IdentitySet } from '../../../basics/IdentitySet.js';
 import { determine_focus } from '../hanabi-logic.js';
-import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
+import { IllegalInterpretation, RewindEscape, find_own_finesses } from './own-finesses.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection, logConnections } from '../../../tools/log.js';
@@ -145,11 +145,17 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 				non_self_connections.push({ id, connections, fake });
 		}
 		catch (error) {
-			if (error instanceof IllegalInterpretation)
+			if (error instanceof IllegalInterpretation) {
 				// Will probably never be seen
 				logger.warn(error.message);
-			else
+			}
+			else if (error instanceof RewindEscape) {
+				logger.flush(false);
+				return [];
+			}
+			else {
 				throw error;
+			}
 		}
 		logger.flush(false);
 	}
@@ -216,6 +222,9 @@ export function assign_connections(game, connections, giver) {
 			if (certain)
 				card.certain_finessed = true;
 		}
+
+		if (connections.some(conn => conn.type === 'finesse'))
+			card.finesse_index = card.finesse_index ?? state.actionList.length;
 
 		if (bluff || hidden) {
 			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 })).filter(id => id.rank <= state.max_ranks[id.suitIndex]);

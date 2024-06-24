@@ -34,7 +34,7 @@ export function solve_game(game, playerTurn, find_clues = () => []) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= state.max_ranks[suitIndex]; rank++) {
 			const identity = { suitIndex, rank };
 
-			if ((state.baseCount(identity) + visibleFind(state, me, identity, { infer: true, symmetric: false }).length) === 0)
+			if (visibleFind(state, me, identity, { infer: true, symmetric: false }).length === 0)
 				throw new UnsolvedGame(`couldn't find any ${logCard(identity)}!`);
 		}
 	}

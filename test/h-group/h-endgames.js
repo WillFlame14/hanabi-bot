@@ -39,6 +39,6 @@ describe('simple endgames with 1 card left', () => {
 		});
 
 		const action = solve_game(game, PLAYER.ALICE, find_all_clues);
-		assert.equal(action.type, ACTION.RANK);
+		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 	});
 });

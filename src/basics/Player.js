@@ -126,7 +126,7 @@ export class Player {
 					card.possible.some(p => state.play_stacks[p.suitIndex] + 1 < p.rank && p.rank <= state.max_ranks[p.suitIndex]) ||
 					Array.from(linked_orders).some(o => this.thoughts[o].focused && o !== c.order));
 
-			return !unsafe_linked &&
+			return !card.trash && !unsafe_linked &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
 				((options?.assume ?? true) || !this.waiting_connections.some((wc, i1) =>
@@ -161,6 +161,9 @@ export class Player {
 			});
 
 		return Array.from(state.hands[playerIndex].filter(c => {
+			if (this.thoughts[c.order].trash)
+				return true;
+
 			const poss = this.thoughts[c.order].possibilities;
 
 			// Every possibility is trash or duplicated somewhere
