@@ -1,10 +1,9 @@
-import { CLUE } from '../../../constants.js';
 import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
 import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue, get_result } from './determine-clue.js';
-import { determine_focus, stall_severity, valuable_tempo_clue } from '../hanabi-logic.js';
+import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
 import { cardValue, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 
@@ -160,9 +159,6 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 			};
 			logger.info('result,', JSON.stringify(result_log), find_clue_value(Object.assign(result, { remainder })));
 
-			/** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */
-			let clue_interp;
-
 			if ((/** @type {any} */ ([CLUE_INTERP.SAVE, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TRASH]).includes(hypo_game.moveHistory.at(-1).move))) {
 				if (chop && focused_card.rank === 2) {
 					const copies = visibleFind(state, player, focused_card);
@@ -174,72 +170,55 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 					}
 				}
 
-				if (game.level < LEVEL.CONTEXT || clue.result.avoidable_dupe == 0) {
+				if (game.level < LEVEL.CONTEXT || clue.result.avoidable_dupe == 0)
 					saves.push(Object.assign(clue, { game: hypo_game, playable: playables.length > 0, cm: chop_moved, safe }));
-					clue_interp = CLUE_INTERP.SAVE;
-				}
-				else {
+				else
 					logger.highlight('yellow', `${logClue(clue)} save results in avoidable potential duplication`);
-				}
 			}
 
-			const focus_known_bluff = hypo_game.common.waiting_connections.some(c => {
-				return c.connections[0].bluff && c.focused_card.order == focused_card.order;
-			});
-			// Clues where the focus isn't playable but may be assumed playable or that cause chop moves aren't plays/stalls
-			if ((playables.length > 0 && !playables.some(({ card }) => card.order === focused_card.order) && !focus_known_bluff) ||
-				(playables.length === 0 && chop_moved.length > 0) ||
-				isTrash(state, player, focused_card, focused_card.order)) {
-				logger.highlight('yellow', 'invalid play clue');
+			if (!safe)
 				continue;
-			}
 
-			if (playables.length > 0) {
-				if (safe) {
-					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focused_card);
+			switch (hypo_game.moveHistory.at(-1).move) {
+				case CLUE_INTERP.CM_TEMPO: {
+					const { tempo, valuable } = valuable_tempo_clue(game, clue, clue.result.playables, focused_card);
+
 					if (tempo && !valuable) {
+						logger.info('tempo clue chop move', logClue(clue));
 						stall_clues[1].push(clue);
-						clue_interp = CLUE_INTERP.CM_TEMPO;
-					}
-					else if (game.level < LEVEL.CONTEXT || clue.result.avoidable_dupe == 0) {
-						play_clues[target].push(clue);
-						clue_interp = CLUE_INTERP.PLAY;
 					}
 					else {
-						logger.highlight('yellow', `${logClue(clue)} results in avoidable potential duplication`);
+						logger.info('clue', logClue(clue), tempo, valuable);
 					}
+					break;
 				}
-				else {
-					logger.highlight('yellow', `${logClue(clue)} is an unsafe play clue`);
-				}
-			}
-			// Stall clues
-			else if (stall_severity(state, common, giver) > 0 && safe) {
-				if (clue.type === CLUE.RANK && clue.value === 5 && !focused_card.clued) {
+				case CLUE_INTERP.PLAY:
+					if (clue.result.playables.length === 0)
+						continue;
+
+					if (game.level < LEVEL.CONTEXT || clue.result.avoidable_dupe == 0)
+						play_clues[target].push(clue);
+					else
+						logger.highlight('yellow', `${logClue(clue)} results in avoidable potential duplication`);
+					break;
+
+				case CLUE_INTERP.STALL_5:
 					logger.info('5 stall', logClue(clue));
 					stall_clues[0].push(clue);
-					clue_interp = CLUE_INTERP.STALL_5;
-				}
-				else if (player.thinksLocked(state, giver) && chop) {
+					break;
+
+				case CLUE_INTERP.STALL_LOCKED:
 					logger.info('locked hand save', logClue(clue));
 					stall_clues[3].push(clue);
-					clue_interp = CLUE_INTERP.STALL_LOCKED;
-				}
-				else if (new_touched.length === 0) {
-					if (elim > 0) {
-						logger.info('fill in', logClue(clue));
-						stall_clues[2].push(clue);
-						clue_interp = CLUE_INTERP.STALL_FILLIN;
-					}
-					else {
-						logger.info('hard burn', logClue(clue));
-						stall_clues[5].push(clue);
-						clue_interp = CLUE_INTERP.STALL_BURN;
-					}
-				}
+					break;
+
+				case CLUE_INTERP.STALL_BURN:
+					logger.info('hard burn', logClue(clue));
+					stall_clues[5].push(clue);
+					break;
 			}
 
-			if (clue_interp !== undefined && early_exits(game, clue, clue_interp)) {
+			if (early_exits(game, clue, /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.moveHistory.at(-1).move))) {
 				early_exit = true;
 				break;
 			}

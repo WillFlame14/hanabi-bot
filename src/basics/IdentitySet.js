@@ -96,6 +96,10 @@ export class IdentitySet {
 		return this.#array;
 	}
 
+	clone() {
+		return new IdentitySet(this.numSuits, this.value);
+	}
+
 	/**
 	 * @template T
 	 * @param {(i: BasicCard) => T} func

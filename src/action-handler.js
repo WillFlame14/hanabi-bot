@@ -141,22 +141,27 @@ export function handle_action(action, catchup = false) {
 			break;
 		}
 		case 'identify': {
-			const { order, playerIndex, suitIndex, rank, infer = false } = action;
+			const { order, playerIndex, identities, infer = false } = action;
 			const card = this.common.thoughts[order];
 
 			if (state.hands[playerIndex].findOrder(order) === undefined)
 				throw new Error('Could not find card to rewrite!');
 
-			logger.info(`identifying card with order ${order} as ${logCard({ suitIndex, rank })}, infer? ${infer}`);
+			logger.info(`identifying card with order ${order} as ${identities.map(logCard)}, infer? ${infer}`);
 
 			if (!infer) {
-				Object.assign(card, { suitIndex, rank });
-				Object.assign(this.me.thoughts[order], { suitIndex, rank });
-				Object.assign(state.hands[playerIndex].findOrder(order), { suitIndex, rank });
-				Object.assign(state.deck[order], { suitIndex, rank });
+				if (identities.length === 1) {
+					Object.assign(card, identities[0]);
+					Object.assign(this.me.thoughts[order], identities[0]);
+					Object.assign(state.hands[playerIndex].findOrder(order), identities[0]);
+					Object.assign(state.deck[order], identities[0]);
+				}
+				else {
+					card.rewind_ids = identities;
+				}
 			}
 			else {
-				card.inferred = card.inferred.intersect({ suitIndex, rank });
+				card.inferred = card.inferred.intersect(identities);
 			}
 			card.rewinded = true;
 			team_elim(this);
