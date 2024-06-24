@@ -1,13 +1,21 @@
-import { LEVEL } from '../h-constants.js';
+import { CLUE } from '../../../constants.js';
+import { CLUE_INTERP, LEVEL } from '../h-constants.js';
+import { determine_focus, getIgnoreOrders } from '../hanabi-logic.js';
 import { find_connecting, find_known_connecting, resolve_bluff } from './connecting-cards.js';
 import { cardTouched, find_possibilities } from '../../../variants.js';
+import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection } from '../../../tools/log.js';
-import { CLUE } from '../../../constants.js';
-import { determine_focus, getIgnoreOrders } from '../hanabi-logic.js';
 
 export class IllegalInterpretation extends Error {
+	/** @param {string} message */
+	constructor(message) {
+		super(message);
+	}
+}
+
+export class RewindEscape extends Error {
 	/** @param {string} message */
 	constructor(message) {
 		super(message);
@@ -200,6 +208,11 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		if (curr_connections.length === 0)
 			throw new IllegalInterpretation(`no connecting cards found for identity ${logCard(next_identity)}`);
 
+		if (curr_connections[0].type === 'terminate') {
+			Object.assign(game, hypo_game);
+			throw new RewindEscape('successfully found self-finesse!');
+		}
+
 		let allHidden = true;
 		for (const connection of curr_connections) {
 			connections.push(connection);
@@ -237,6 +250,8 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		// Hidden connection, need to look for this rank again
 		if (allHidden)
 			next_rank--;
+		else
+			hypo_state.play_stacks[suitIndex]++;
 	}
 	return resolve_bluff(game, target, connections, focused_card, { suitIndex, rank }, action);
 }
@@ -326,11 +341,12 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 	const reacting = state.ourPlayerIndex;
 
 	const bluff = game.level >= LEVEL.BLUFFS && firstPlay && state.ourPlayerIndex == bluff_seat;
-	if (card.rewinded && finesse.suitIndex !== identity.suitIndex && state.isPlayable(finesse)) {
+	if (card.rewinded) {
 		if (game.level < LEVEL.INTERMEDIATE_FINESSES)
 			throw new IllegalInterpretation(`blocked layered finesse at level ${game.level}`);
 
-		return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, bluff, identities: [finesse.raw()] }];
+		if (finesse.suitIndex !== identity.suitIndex && state.isPlayable(finesse))
+			return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, bluff, identities: [finesse.raw()] }];
 	}
 
 	if (card.inferred.has(identity) && card.matches(identity, { assume: true }) ||
@@ -356,6 +372,36 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 		});
 
 		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff, identities: [identity], certain, ambiguous }];
+	}
+
+	const first_finesse = common.thoughts[our_hand.find(c => !c.clued)?.order];
+
+	// Try to reinterpret an earlier clue as a hidden finesse
+	if (first_finesse?.finessed) {
+		const saved_game = game.minimalCopy();
+
+		try {
+			logger.highlight('yellow', 'trying rewind on', first_finesse.order, 'to fulfill finesse');
+			game.rewind(first_finesse.drawn_index, {
+				type: 'identify',
+				order: first_finesse.order,
+				playerIndex: state.ourPlayerIndex,
+				identities: [identity]
+			}, false, true);
+		}
+		catch (err) {
+			logger.warn(err.message);
+		}
+
+		if (game.moveHistory.at(-1).move !== CLUE_INTERP.NONE) {
+			logger.highlight('yellow', 'successfully connected!');
+			return [{ type: 'terminate', reacting: -1, card: null, identities: [] }];
+		}
+		else {
+			// Reset the game
+			Object.assign(game, saved_game);
+			Utils.globalModify({ game: saved_game });
+		}
 	}
 
 	throw new IllegalInterpretation('self-finesse not found');

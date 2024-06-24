@@ -107,6 +107,12 @@ export class Card extends BasicCard {
 	inferred;
 
 	/**
+	 * All possibilities of the card (from future information)
+	 * @type {Identity[] | undefined}
+	 */
+	rewind_ids;
+
+	/**
 	 * Only used when undoing a finesse.
 	 * @type {IdentitySet | undefined}
 	 */
@@ -123,6 +129,7 @@ export class Card extends BasicCard {
 	hidden = false;
 	called_to_discard = false;
 	certain_finessed = false;
+	trash = false;
 
 	finesse_index = -1;	// Action index of when the card was finessed
 	reasoning = /** @type {number[]} */ ([]);		// The action indexes of when the card's possibilities/inferences were updated
@@ -148,9 +155,9 @@ export class Card extends BasicCard {
 			rank: this.rank
 		});
 
-		for (const field of ['inferred', 'possible', 'old_inferred', 'focused',
+		for (const field of ['inferred', 'possible', 'rewind_ids', 'old_inferred', 'focused',
 			'finessed', 'bluffed', 'chop_moved', 'reset', 'chop_when_first_clued', 'superposition',
-			'hidden', 'called_to_discard', 'certain_finessed','finesse_index', 'rewinded'])
+			'hidden', 'called_to_discard', 'certain_finessed', 'trash', 'finesse_index', 'rewinded'])
 			new_card[field] = this[field];
 
 		for (const field of ['reasoning', 'reasoning_turn'])
