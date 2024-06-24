@@ -5,8 +5,9 @@ import { get_result } from './clue-finder/determine-clue.js';
 import { determine_focus, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
-import * as Utils from '../../tools/util.js';
 import { find_clues } from './clue-finder/clue-finder.js';
+import { cardTouched } from '../../variants.js';
+import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logClue } from '../../tools/log.js';
@@ -54,17 +55,27 @@ export function find_unlock(game, target) {
  * @param {Game} game
  * @param {number} target 				The index of the player that needs a save clue.
  * @param {Clue[]} all_play_clues 		An array of all valid play clues that can be currently given.
- * @param {boolean} locked 				Whether the target is locked
+ * @param {SaveClue} [save_clue]		The save clue that may need to be given (undefined if the target is simply locked).
  * @returns {PerformAction | undefined}	The play clue to give if it exists, otherwise undefined.
  */
-function find_play_over_save(game, target, all_play_clues, locked) {
+function find_play_over_save(game, target, all_play_clues, save_clue) {
 	const { common, state, tableID } = game;
 
 	const play_clues = all_play_clues.filter(clue => {
-		const clue_value = find_clue_value(clue.result);
+		// Check if the play clue touches all the cards that need to be saved
+		if (save_clue !== undefined) {
+			if (save_clue.cm?.length > 0) {
+				if (save_clue.cm.every(c => cardTouched(c, state.variant, clue)))
+					return true;
+			}
+			else {
+				if (cardTouched(common.chop(state.hands[target]), state.variant, clue))
+					return true;
+			}
+		}
 
 		// Locked reduces needed clue value
-		if (clue_value < (locked ? 0 : 1))
+		if (find_clue_value(clue.result) < (save_clue === undefined ? 0 : 1))
 			return false;
 
 		// Unsafe play clue
@@ -210,7 +221,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				continue;
 			}
 
-			const play_over_save = find_play_over_save(game, target, play_clues.flat(), true);
+			const play_over_save = find_play_over_save(game, target, play_clues.flat());
 			if (play_over_save !== undefined) {
 				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
 				continue;
@@ -291,7 +302,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			// Check if Scream/Shout Discard is available (only to next player)
 			if (game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0) && target === state.nextPlayerIndex(state.ourPlayerIndex)) {
-				const trash = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued);
+				const trash = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued && me.thoughts[c.order].inferred.every(i => state.isBasicTrash(i)));
 
 				if (trash.length > 0) {
 					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push({ tableID, type: ACTION.DISCARD, target: trash[0].order });
@@ -337,7 +348,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				all_play_clues.push(Object.assign({}, save, { result: get_result(game, hypo_game, save, state.ourPlayerIndex )}));
 
 			// Try to give a play clue involving them
-			const play_over_save = find_play_over_save(game, target, all_play_clues, false);
+			const play_over_save = find_play_over_save(game, target, all_play_clues, save_clues[target]);
 			if (play_over_save !== undefined) {
 				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
 				continue;
