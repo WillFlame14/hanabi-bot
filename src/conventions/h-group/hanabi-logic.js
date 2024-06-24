@@ -27,10 +27,11 @@ import { logHand } from '../../tools/log.js';
  */
 export function determine_focus(hand, player, list, options = {}) {
 	const chop = player.chop(hand);
+	const finesse_card = player.find_finesse(hand, [], []);
 
 	// Chop card exists, check for chop focus
 	if (chop && list.includes(chop.order))
-		return { focused_card: chop, chop: true };
+		return { focused_card: chop, chop: true, finesse: finesse_card?.order === chop.order };
 
 	const touch = hand.filter(c => list.includes(c.order));
 
@@ -44,7 +45,7 @@ export function determine_focus(hand, player, list, options = {}) {
 		throw new Error('No focus found!');
 	}
 
-	return { focused_card, chop: false };
+	return { focused_card, chop: false, finesse: finesse_card?.order === focused_card.order };
 }
 
 /**

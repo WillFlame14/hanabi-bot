@@ -34,6 +34,7 @@
  * @property {{playerIndex: number, card: Card}[]} playables
  * @property {{playerIndex: number, card: Card}[]} finesses
  * @property {ActualCard[]} chop_moved
+ * @property {number} giver
  */
 /**
  * @typedef StatusAction
@@ -56,6 +57,7 @@
  * @property {boolean}  [mistake]
  * @property {boolean}	[lock]
  * @property {boolean}  [important]
+ * @property {number}   [bestGiver]
  * @property {boolean}  [hypothetical]
  * 
  * @typedef CardAction
