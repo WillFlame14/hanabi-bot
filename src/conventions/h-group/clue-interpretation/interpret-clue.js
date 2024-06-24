@@ -4,7 +4,7 @@ import { interpret_tcm, interpret_5cm, interpret_tccm } from './interpret-cm.js'
 import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
-import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
+import { IllegalInterpretation, RewindEscape, find_own_finesses } from './own-finesses.js';
 import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor } from './connection-helper.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
@@ -278,8 +278,7 @@ export function interpret_clue(game, action) {
 
 		// There is a waiting connection that depends on this card
 		if (focus_thoughts.possible.length === 1 && common.dependentConnections(focused_card.order).length > 0) {
-			const { suitIndex, rank } = focus_thoughts.possible.array[0];
-			game.rewind(focused_card.drawn_index, { type: 'identify', order: focused_card.order, playerIndex: target, suitIndex, rank });
+			game.rewind(focused_card.drawn_index, { type: 'identify', order: focused_card.order, playerIndex: target, identities: [focus_thoughts.possible.array[0].raw()] });
 			return;
 		}
 	}
@@ -318,8 +317,7 @@ export function interpret_clue(game, action) {
 		const rewind_identity = common.thoughts[rewind_card.order]?.identity();
 
 		if (rewind_identity !== undefined && wc_target === state.ourPlayerIndex) {
-			const { suitIndex, rank } = rewind_identity;
-			game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, suitIndex, rank });
+			game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] });
 			return;
 		}
 
@@ -440,6 +438,8 @@ export function interpret_clue(game, action) {
 				catch (error) {
 					if (error instanceof IllegalInterpretation)
 						logger.warn(error.message);
+					else if (error instanceof RewindEscape)
+						return;
 					else
 						throw error;
 				}
@@ -458,6 +458,8 @@ export function interpret_clue(game, action) {
 			catch (error) {
 				if (error instanceof IllegalInterpretation)
 					logger.warn(error.message);
+				else if (error instanceof RewindEscape)
+					return;
 				else
 					throw error;
 			}

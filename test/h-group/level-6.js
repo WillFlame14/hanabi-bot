@@ -135,7 +135,7 @@ describe('tempo clue chop moves', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][3].order].chop_moved, false);
 	});
 
-	it(`doesn't tccm if the card was already playing (asymmetrically)`, () => {
+	it(`doesn't tccm if the card was already playing asymmetrically`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b2', 'r5', 'p4', 'p3'],

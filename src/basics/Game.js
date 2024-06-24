@@ -181,8 +181,9 @@ export class Game {
 	 * @param {number} action_index
 	 * @param {Action} rewind_action	The rewind action to insert before the target action
 	 * @param {boolean} [mistake] 		Whether the target action was a mistake
+	 * @param {boolean} [ephemeral]		Whether the action should be saved in the action list
 	 */
-	rewind(action_index, rewind_action, mistake = false) {
+	rewind(action_index, rewind_action, mistake = false, ephemeral = false) {
 		const { actionList } = this.state;
 
 		this.rewinds++;
@@ -257,6 +258,8 @@ export class Game {
 
 		// Rewrite and save as a rewind action
 		newGame.handle_action(rewind_action, true);
+		if (ephemeral)
+			newGame.state.actionList.pop();
 		newGame.handle_action(pivotal_action, true);
 
 		// Redo all the following actions

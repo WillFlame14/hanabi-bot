@@ -124,7 +124,7 @@ function init_game(game, options) {
 
 /**
  * Injects extra statements into state functions for ease of testing.
- * @this {State}
+ * @this {Game}
  * @param {Partial<SetupOptions>} options
  */
 function injectFuncs(options) {
@@ -135,6 +135,16 @@ function injectFuncs(options) {
 		const new_game = this.createBlankDefault();
 
 		init_game(new_game, options);
+		injectFuncs.bind(new_game)(options);
+		return new_game;
+	};
+
+	// @ts-ignore
+	this.minimalCopyDefault = this.minimalCopy;
+	this.minimalCopy = function () {
+		// @ts-ignore
+		const new_game = this.minimalCopyDefault();
+
 		injectFuncs.bind(new_game)(options);
 		return new_game;
 	};

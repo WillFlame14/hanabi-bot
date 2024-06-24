@@ -66,7 +66,7 @@ export function interpret_play(game, action) {
 		const card = common.thoughts[order];
 		if ((card.inferred.length !== 1 || !card.inferred.array[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
-			if (game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, suitIndex, rank }))
+			if (game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, identities: [identity] }))
 				return;
 		}
 	}

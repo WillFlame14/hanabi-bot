@@ -98,7 +98,7 @@ export function order_1s(state, player, cards) {
  * @param {ActualCard[]} playable_cards
  */
 export function determine_playable_card(game, playable_cards) {
-	const { state } = game;
+	const { common, state } = game;
 
 	/** @type {Card[][]} */
 	const priorities = [[], [], [], [], [], []];
@@ -108,7 +108,7 @@ export function determine_playable_card(game, playable_cards) {
 		const card = game.me.thoughts[order];
 
 		// Part of a finesse
-		if (card.finessed) {
+		if (card.finessed || common.dependentConnections(order).some(wc => wc.connections.some((conn, i) => i >= wc.conn_index && conn.type === 'finesse'))) {
 			priorities[state.numPlayers > 2 ? 0 : 1].push(card);
 			continue;
 		}
