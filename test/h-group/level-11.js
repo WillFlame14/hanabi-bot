@@ -827,3 +827,43 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(slot1, ['p1']);
 	});
 });
+
+describe('guide principle', () => {
+	it(`understands a bluff is not deferred by another bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'p2', 'b5', 'b3'],
+			['y1', 'g2', 'b5', 'b2'],
+			['g1', 'y5', 'b1', 'g5']
+		], {
+			level: { min: 11 },
+			starting: PLAYER.BOB
+		});
+		takeTurn(game, 'Bob clues red to Alice (slot 2)'); // Could be a bluff
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r1', 'r2']);
+
+		takeTurn(game, 'Cathy clues purple to Bob'); // Cathy did not play and clued another bluff or finesse.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r1']);
+	});
+
+	it(`understands a bluff is not deferred by a finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'p2', 'b5', 'b3'],
+			['y1', 'g2', 'b5', 'b2'],
+			['p1', 'y5', 'b1', 'g5']
+		], {
+			level: { min: 11 },
+			starting: PLAYER.BOB
+		});
+		takeTurn(game, 'Bob clues red to Alice (slot 2)'); // Could be a bluff
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r1', 'r2']);
+
+		// A bluff can be deferred to perform a finesse per
+		// https://hanabi.github.io/level-15#a-table-for-deferring-bluffs
+		// but the circumstances would need to preclude anyone else accidentally playing into it.
+		// For now, this is not allowed.
+		takeTurn(game, 'Cathy clues purple to Bob'); // Cathy did not play and clued another bluff or finesse.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r1']);
+	});
+});
