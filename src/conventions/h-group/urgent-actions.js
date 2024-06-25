@@ -265,7 +265,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			// Give them a fix clue with known trash if possible (TODO: Re-examine if this should only be urgent fixes)
 			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
-			if (trash_fixes.length > 0) {
+			if (!finessed_card && trash_fixes.length > 0) {
 				const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
 				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, tableID));
 				continue;
