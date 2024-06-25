@@ -258,19 +258,17 @@ export function interpret_clue(game, action) {
 			let played = new IdentitySet(state.variant.suits.length);
 
 			const get_finessed_card = (index) => {
+				// Find the finessed card with the lowest finesse_index.
 				let result = undefined;
 				for (const c of hypo_state.hands[index]) {
 					const card = hypo_game.common.thoughts[c.order];
-
-					if (!card.finessed || card.inferred.some(id => !played.has(id) && !hypo_state.isPlayable(id)))
+					if (!card.finessed || result !== undefined && card.finesse_index > result.finesse_index)
 						continue;
-
-					// Find the finessed card with the lowest finesse_index.
-					if (result !== undefined && card.finesse_index > result.finesse_index)
-						continue;
-
 					result = card;
 				}
+				// Only return the card if it is thought to currently be playable.
+				if (!result || result.inferred.some(id => !played.has(id) && !hypo_state.isPlayable(id)))
+					return undefined;
 				return result;
 			};
 
