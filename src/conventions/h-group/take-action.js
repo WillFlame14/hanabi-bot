@@ -178,32 +178,21 @@ export function take_action(game) {
 		logger.info('discards', logHand(discards));
 
 	const playable_priorities = determine_playable_card(game, playable_cards);
-	const urgent_actions = find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
-
-	if (urgent_actions.some(actions => actions.length > 0))
-		logger.info('all urgent actions', urgent_actions.flatMap((actions, index) => actions.map(action => ({ [index]: logPerformAction(action) }))));
 
 	const actionPrioritySize = Object.keys(ACTION_PRIORITY).length;
 	const { priority, best_playable_card } = playable_priorities.some(playables => playables.length > 0) ?
 		find_best_playable(game, playable_cards, playable_priorities) :
 		{ priority: -1, best_playable_card: undefined };
+	const is_finessed = playable_cards.length > 0 && priority === 0;
 
-	// If we have a finesse
-	if (playable_cards.length > 0 && priority === 0) {
-		// Bluffs should never be deferred as they can lead to significant desync with human players
-		if (playable_cards.some(c => common.thoughts[c.order].bluffed))
-			return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
-
-		// Before playing a finesse, look for any urgent saves.
-		// TODO: We should be able to delay a finesse for any urgent action. This will require
-		// the other players being able to recognize the urgent action in update-turn.js.
-		const save_action = urgent_actions[ACTION_PRIORITY.ONLY_SAVE].find(action => (action.type === ACTION.RANK || action.type === ACTION.COLOUR) && action.target == nextPlayerIndex);
-		if (save_action)
-			return save_action;
-
-		// If no urgent saves, play into the finesse
+	// Bluffs should never be deferred as they can lead to significant desync with human players
+	if (is_finessed && playable_cards.some(c => common.thoughts[c.order].bluffed))
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
-	}
+
+	const urgent_actions = find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities, is_finessed ? best_playable_card : undefined);
+
+	if (urgent_actions.some(actions => actions.length > 0))
+		logger.info('all urgent actions', urgent_actions.flatMap((actions, index) => actions.map(action => ({ [index]: logPerformAction(action) }))));
 
 	// Unlock next player
 	if (urgent_actions[ACTION_PRIORITY.UNLOCK].length > 0)
@@ -216,6 +205,10 @@ export function take_action(game) {
 		if (action)
 			return action;
 	}
+
+	// If we have a finesse and there were no actions urgent enough to delay a finesse, play into the finesse.
+	if (is_finessed)
+		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
 	const discardable = trash_cards[0] ?? common.chop(state.hands[state.ourPlayerIndex]);
 

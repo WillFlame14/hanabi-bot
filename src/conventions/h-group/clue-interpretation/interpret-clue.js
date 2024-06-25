@@ -14,6 +14,7 @@ import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection, logConnections, logHand } from '../../../tools/log.js';
+import { IdentitySet } from '../../../basics/IdentitySet.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -250,9 +251,52 @@ export function interpret_clue(game, action) {
 	if (chop) {
 		focus_thoughts.chop_when_first_clued = true;
 
-		// A save is important if no one else could have given the save.
-		if (!old_focus_thoughts.saved && focus_thoughts.saved && (giver + 1) % state.numPlayers == target && !common.thinksLoaded(state, target, {assume: false}))
-			action.important = true;
+		// Check whether this is an urgent save.
+		if (!old_focus_thoughts.saved && focus_thoughts.saved && !common.thinksLoaded(state, target, {assume: false})) {
+			const hypo_game = game.minimalCopy();
+			const hypo_state = hypo_game.state;
+			let played = new IdentitySet(state.variant.suits.length);
+
+			const get_finessed_card = (index) => {
+				// Find the finessed card with the lowest finesse_index.
+				let result = undefined;
+				for (const c of hypo_state.hands[index]) {
+					const card = hypo_game.common.thoughts[c.order];
+					if (!card.finessed || result !== undefined && card.finesse_index > result.finesse_index)
+						continue;
+					result = card;
+				}
+				// Only return the card if it is thought to currently be playable.
+				if (!result || result.inferred.some(id => !played.has(id) && !hypo_state.isPlayable(id)))
+					return undefined;
+				return result;
+			};
+
+			// If there is at least one player without a finessed play between the giver and target, the save was not urgent.
+			let urgent = true;
+			let playerIndex = giver;
+
+			while (playerIndex !== target) {
+				const finessed_play = get_finessed_card(playerIndex);
+				if (!finessed_play) {
+					urgent = false;
+					break;
+				}
+
+				// If we know what the card is, update the play stacks. If we don't, then
+				// we can't know if playing it would make someone else's cards playable.
+				const card = hypo_game.common.thoughts[finessed_play.order].identity({infer: true});
+				if (card !== undefined) {
+					played = played.union(card);
+					hypo_state.play_stacks[card.suitIndex]++;
+				}
+
+				playerIndex = (playerIndex + 1) % state.numPlayers;
+			}
+
+			if (urgent)
+				action.important = true;
+		}
 	}
 
 	if (focus_thoughts.inferred.length === 0 && oldCommon.thoughts[focused_card.order].possible.length > 1) {
