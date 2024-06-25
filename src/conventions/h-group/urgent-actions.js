@@ -216,21 +216,21 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 		const nextPriority = high_priority ? 0 : prioritySize;
 
 		// They are locked, we should try to unlock
-		if (!finessed_card && common.thinksLocked(state, target)) {
+		if (common.thinksLocked(state, target)) {
 			const unlock_order = find_unlock(game, target);
-			if (unlock_order !== undefined) {
+			if (unlock_order !== undefined && (!finessed_card || finessed_card.order == unlock_order)) {
 				urgent_actions[PRIORITY.UNLOCK + nextPriority].push({ tableID, type: ACTION.PLAY, target: unlock_order });
 				continue;
 			}
 
 			const play_over_save = find_play_over_save(game, target, play_clues.flat());
-			if (play_over_save !== undefined) {
+			if (!finessed_card && play_over_save !== undefined) {
 				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
 				continue;
 			}
 
 			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
-			if (trash_fixes.length > 0) {
+			if (!finessed_card && trash_fixes.length > 0) {
 				const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
 				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, tableID));
 				continue;
