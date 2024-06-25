@@ -263,6 +263,59 @@ describe('guide principle', () => {
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 1, value: 5 });
 	});
+
+	it(`understands a critical save while finessed when other potential givers are finessed`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p1', 'p2', 'p3', 'g3'],
+			['p4', 'y5', 'b3', 'p5'],
+			['b4', 'y2', 'p4', 'r4']
+		], { level: { min: 5 }, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Cathy clues purple to Donald'); // finesses p1, p2, p3
+		takeTurn(game, 'Donald clues blue to Cathy'); // finesses b1, b2 in our hand
+		takeTurn(game, 'Alice clues 5 to Cathy');
+
+		// Understands that Alice may have been deferring the finesse to save the 5 and allow Bob to play.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
+	});
+
+	it(`understands a critical save where other players only have a play if we play`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b1', 'p2', 'g4', 'g3'],
+			['y5', 'p3', 'b5', 'r4'],
+			['b4', 'y2', 'p4', 'r4']
+		], { level: { min: 5 }, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 0] });
+		// End early game.
+		// TODO: The 5 save should still be urgent without ending the early game in case Cathy has nothing else to do.
+		takeTurn(game, 'Cathy discards r4', 'y4');
+		takeTurn(game, 'Donald clues purple to Cathy'); // finesses p1 (Alice), b1 (Bob), p2 (Bob)
+
+		// Bob may think playing gives Cathy a play, but Alice can see that it doesn't,
+		// and should save Cathy's 5.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 2, value: 5 });
+		takeTurn(game, 'Alice clues 5 to Cathy');
+
+		// Understands that Alice may have been deferring the finesse to save the 5 and allow Bob to play.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['p1']);
+	});
+
+	it(`plays rather than saves if it believes a save will become playable`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p2', 'b4', 'g4', 'g3'],
+			['y4', 'y5', 'p3', 'b5'],
+			['b4', 'y2', 'p4', 'r4']
+		], { level: { min: 5 }, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Donald clues purple to Cathy'); // finesses p1 (Alice), b1 (Bob), p2 (Bob)
+
+		// Bob plays rather than saving Cathy's b5 since the play should make the p3 playable.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
+	});
 });
 
 describe('mistake recovery', () => {

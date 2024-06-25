@@ -107,7 +107,7 @@ describe('trash chop move', () => {
 
 		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
 		const playable_priorities = determine_playable_card(game, game.me.thinksPlayables(game.state, PLAYER.ALICE));
-		const urgent_actions = find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
+		const urgent_actions = find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities, undefined);
 
 		assert.deepEqual(urgent_actions[PRIORITY.ONLY_SAVE], []);
 		ExAsserts.objHasProperties(urgent_actions[PRIORITY.PLAY_OVER_SAVE][0], { type: ACTION.COLOUR, value: 1 });

@@ -11,6 +11,7 @@ import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logClue } from '../../tools/log.js';
+import { ActualCard } from '../../basics/Card.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -187,8 +188,9 @@ export function early_game_clue(game, playerIndex) {
  * @param {FixClue[][]} fix_clues
  * @param {Clue[][]} stall_clues
  * @param {Card[][]} playable_priorities
+ * @param {ActualCard} finessed_card
  */
-export function find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities) {
+export function find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities, finessed_card) {
 	const { common, me, state, tableID } = game;
 	const prioritySize = Object.keys(PRIORITY).length;
 	const urgent_actions = /** @type {PerformAction[][]} */ (Array.from({ length: prioritySize * 2 + 1 }, _ => []));
@@ -216,19 +218,19 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 		// They are locked, we should try to unlock
 		if (common.thinksLocked(state, target)) {
 			const unlock_order = find_unlock(game, target);
-			if (unlock_order !== undefined) {
+			if (unlock_order !== undefined && (!finessed_card || finessed_card.order == unlock_order)) {
 				urgent_actions[PRIORITY.UNLOCK + nextPriority].push({ tableID, type: ACTION.PLAY, target: unlock_order });
 				continue;
 			}
 
 			const play_over_save = find_play_over_save(game, target, play_clues.flat());
-			if (play_over_save !== undefined) {
+			if (!finessed_card && play_over_save !== undefined) {
 				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
 				continue;
 			}
 
 			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
-			if (trash_fixes.length > 0) {
+			if (!finessed_card && trash_fixes.length > 0) {
 				const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
 				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, tableID));
 				continue;
@@ -254,7 +256,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			// Try to see if they have a playable card that connects directly through our hand
 			// Although this is only optimal for the next player, it is often a "good enough" action for future players.
 			const unlock_order = find_unlock(game, target);
-			if (unlock_order !== undefined) {
+			if (unlock_order !== undefined && (!finessed_card || finessed_card.order == unlock_order)) {
 				urgent_actions[PRIORITY.UNLOCK + nextPriority].push({ tableID, type: ACTION.PLAY, target: unlock_order });
 				continue;
 			}
@@ -263,14 +265,14 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			// Give them a fix clue with known trash if possible (TODO: Re-examine if this should only be urgent fixes)
 			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
-			if (trash_fixes.length > 0) {
+			if (!finessed_card && trash_fixes.length > 0) {
 				const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
 				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, tableID));
 				continue;
 			}
 
 			// Check if Order Chop Move is available - 4 (unknown card) must be highest priority, they must be 1s, and this cannot be a playable save
-			if (game.level >= LEVEL.BASIC_CM &&
+			if (!finessed_card && game.level >= LEVEL.BASIC_CM &&
 				playable_priorities.every((cards, priority) => priority >= 4 || cards.length === 0) &&
 				!save.playable
 			) {
@@ -301,7 +303,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			}
 
 			// Check if Scream/Shout Discard is available (only to next player)
-			if (game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0) && target === state.nextPlayerIndex(state.ourPlayerIndex)) {
+			if (!finessed_card && game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0) && target === state.nextPlayerIndex(state.ourPlayerIndex)) {
 				const trash = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued && me.thoughts[c.order].inferred.every(i => state.isBasicTrash(i)));
 
 				if (trash.length > 0) {
@@ -371,7 +373,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 		}
 
 		// They require a fix clue
-		if (fix_clues[target].length > 0) {
+		if (!finessed_card && fix_clues[target].length > 0) {
 			const urgent_fixes = fix_clues[target].filter(clue => clue.urgent);
 
 			// Urgent fix on the next player is particularly urgent, but we should prioritize urgent fixes for others too
