@@ -30,7 +30,7 @@ describe('double discard avoidance', () => {
 		takeTurn(game, 'Alice clues 5 to Bob');
 
 		// No one should be finessed by this as Alice was simply stalling.
-		const finessed = state.hands.map((hand, idx) => idx).filter(idx => state.hands[idx].some(c => game.common.thoughts[c.order].finessed));
+		const finessed = state.hands.filter(hand => hand.some(c => game.common.thoughts[c.order].finessed));
 		assert.equal(finessed.length, 0);
 		assert.equal(game.common.waiting_connections.length, 0);
 	});

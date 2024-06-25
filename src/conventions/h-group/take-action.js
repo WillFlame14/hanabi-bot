@@ -401,7 +401,7 @@ export function take_action(game) {
 		return urgent_actions[actionPrioritySize * 2][0];
 
 	const common_severity = stall_severity(state, common, state.ourPlayerIndex);
-	const actual_severity = stall_severity(state, game.players[state.ourPlayerIndex], state.ourPlayerIndex);
+	const actual_severity = stall_severity(state, game.me, state.ourPlayerIndex);
 
 	// Stalling situations
 	if (state.clue_tokens > 0 && actual_severity > 0) {
