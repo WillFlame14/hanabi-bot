@@ -197,6 +197,12 @@ function find_unknown_connecting(game, giver, target, reacting, identity, looksD
 					return card.finessed && card.possible.has(identity);
 				});
 
+			// Don't bluff out cards that are likely to create bad touch in our own hand.
+			if (bluff && giver === state.ourPlayerIndex && state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.length <= 2 && game.players[giver].thoughts[c.order].inferred.has(finesse))) {
+				logger.warn(`disallowed bluff on ${logCard(finesse)} ${finesse.order}, likely duplicated in giver's hand`);
+				return;
+			}
+
 			// Could be duplicated in giver's hand - disallow hidden finesse unless it could be a bluff.
 			if (!bluff && giver === state.ourPlayerIndex && state.hands[giver].some(c => c.clued && game.players[giver].thoughts[c.order].inferred.has(identity))) {
 				logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
