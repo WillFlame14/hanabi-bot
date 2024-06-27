@@ -60,7 +60,8 @@ export function stall_severity(state, player, giver) {
 	if (player.thinksLocked(state, giver))
 		return 3;
 
-	if (state.screamed_at)
+	const chop = player.chop(state.hands[giver]);
+	if (state.screamed_at || (state.dda !== undefined && !player.thinksLoaded(state, giver, { assume: false }) && chop !== undefined && player.thoughts[chop.order].possible.has(state.dda)))
 		return 2;
 
 	if (state.early_game)

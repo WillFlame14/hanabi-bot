@@ -34,6 +34,7 @@ export function handle_action(action, catchup = false) {
 			this.interpret_clue(this, action);
 			this.last_actions[giver] = action;
 
+			state.dda = undefined;
 			state.screamed_at = false;
 
 			// Remove the newly_clued flag
@@ -59,6 +60,7 @@ export function handle_action(action, catchup = false) {
 			logger.highlight('yellowb', `Turn ${state.turn_count}: ${logAction(action)}`);
 
 			// Assume one cannot SDCM after being screamed at
+			state.dda = undefined;
 			state.screamed_at = false;
 
 			this.interpret_discard(this, action, card);
@@ -134,6 +136,7 @@ export function handle_action(action, catchup = false) {
 
 			this.interpret_play(this, action);
 			this.last_actions[playerIndex] = Object.assign(action, { card });
+			state.dda = undefined;
 			state.screamed_at = false;
 			break;
 		}
