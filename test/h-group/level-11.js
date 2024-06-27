@@ -541,6 +541,48 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
+	it(`doesn't bluff when bluff out a card that it is likely to have clued in hand`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y2', 'b5', 'y1', 'r4'],
+			['p2', 'r4', 'b4', 'g4'],
+			['g2', 'r1', 'y1', 'g4'],
+		], {
+			level: { min: 11 },
+			starting: PLAYER.BOB,
+			play_stacks: [0, 0, 2, 2, 2]
+		});
+		takeTurn(game, 'Bob clues 2 to Alice (slot 4)'); // r2 or y2
+		takeTurn(game, 'Cathy clues 1 to Donald');
+		takeTurn(game, 'Donald plays y1', 'p1');
+		const { play_clues } = find_clues(game);
+		const bluff_clues = play_clues[2].filter(clue => {
+			return clue.type == CLUE.COLOUR && clue.target == 2 && clue.value == COLOUR.BLUE;
+		});
+		assert.equal(bluff_clues.length, 0);
+	});
+
+	it(`doesn't assume it can give a layered finess when bluff target is likely a duplicate`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y2', 'b3', 'y1', 'r4'],
+			['p2', 'r4', 'b4', 'g4'],
+			['g2', 'r1', 'y1', 'g4'],
+		], {
+			level: { min: 11 },
+			starting: PLAYER.BOB,
+			play_stacks: [0, 0, 2, 2, 2]
+		});
+		takeTurn(game, 'Bob clues 2 to Alice (slot 4)'); // r2 or y2
+		takeTurn(game, 'Cathy clues 1 to Donald');
+		takeTurn(game, 'Donald plays y1', 'p1');
+		const { play_clues } = find_clues(game);
+		const finesse = play_clues[2].filter(clue => {
+			return clue.type == CLUE.COLOUR && clue.target == 2 && clue.value == COLOUR.BLUE;
+		});
+		assert.equal(finesse.length, 0);
+	});
+
 	it(`understands a bluff on top of known queued plays`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
