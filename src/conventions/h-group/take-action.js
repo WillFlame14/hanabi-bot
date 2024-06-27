@@ -260,11 +260,12 @@ export function take_action(game) {
 	}
 
 	// Consider finesses while finessed if we are only waited on to play one card,
-	// it's not a selfish finesse, and doesn't require more than one play from our own hand.
+	// it's not a selfish finesse, doesn't require more than one play from our own hand,
+	// and we're not in the end-game.
 	const waiting_self_connections = game.common.waiting_connections.filter(c => c.connections[0]?.reacting === state.ourPlayerIndex).length;
 	const is_selfish = best_play_clue?.result.playables[0]?.playerIndex === state.ourPlayerIndex;
 	const self_rounds = best_play_clue?.result.playables.filter(play => play.playerIndex === state.ourPlayerIndex).length;
-	const consider_finesse = !is_finessed || waiting_self_connections < 2 && !is_selfish && self_rounds <= 1;
+	const consider_finesse = !is_finessed || waiting_self_connections < 2 && !is_selfish && self_rounds <= 1 && !state.inEndgame();
 
 	// Get a high value play clue involving next player (otherwise, next player can give it)
 	if (consider_finesse && best_play_clue?.result.finesses.length > 0 && (best_play_clue.target == nextPlayerIndex || best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex)))
