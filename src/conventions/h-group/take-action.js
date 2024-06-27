@@ -4,7 +4,7 @@ import { select_play_clue, determine_playable_card, order_1s, find_clue_value } 
 import { UnsolvedGame, solve_game } from '../shared/endgame.js';
 import { find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { determine_focus, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
+import { determine_focus, inBetween, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
 import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
@@ -274,8 +274,9 @@ export function take_action(game) {
 	// it's not a selfish finesse, doesn't require more than one play from our own hand,
 	// and we're not in the end-game.
 	const waiting_self_connections = game.common.waiting_connections.filter(c => c.connections[0]?.reacting === state.ourPlayerIndex);
-	const waiting_cards = waiting_self_connections.reduce((sum, conn) => sum + conn.connections.length - 1, 0);
-	const consider_finesse = !is_finessed || best_play_clue && waiting_cards < 3 && not_selfish(best_play_clue) && !state.inEndgame();
+	const waiting_cards = waiting_self_connections.reduce((sum, conn) => sum + conn.connections.length, 0);
+	const waiting_out_of_order = waiting_self_connections.some(c => c.connections.length >= 2 && !inBetween(state.numPlayers, c.connections[1].reacting, state.ourPlayerIndex, c.connections[2]?.reacting ?? c.target));
+	const consider_finesse = !is_finessed || best_play_clue && waiting_cards < 3 && !waiting_out_of_order && not_selfish(best_play_clue) && !state.inEndgame();
 
 	// Get a high value play clue involving next player (otherwise, next player can give it)
 	if (consider_finesse && best_play_clue?.result.finesses.length > 0 && (best_play_clue.target == nextPlayerIndex || best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex)))
