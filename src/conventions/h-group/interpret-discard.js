@@ -99,6 +99,7 @@ export function interpret_discard(game, action, card) {
 	// Note: we aren't including chop moved and finessed cards here since those can be asymmetric.
 	// Discarding with a finesse will trigger the waiting connection to resolve.
 	if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
+		let sarcastic_targets;
 		if (card.clued) {
 			logger.warn('discarded useful clued card!');
 			common.restore_elim(card);
@@ -107,9 +108,9 @@ export function interpret_discard(game, action, card) {
 			if (failed)
 				undo_hypo_stacks(game, identity);
 			else
-				interpret_sarcastic(game, action);
+				sarcastic_targets = interpret_sarcastic(game, action);
 		}
-		if (game.level >= LEVEL.STALLING) {
+		if (!(sarcastic_targets?.length > 0) && game.level >= LEVEL.STALLING) {
 			// If there is only one of this card left and it could be in the next player's chop,
 			// they are to be treated as in double discard avoidance.
 			const remaining = cardCount(state.variant, { suitIndex, rank }) - state.discard_stacks[suitIndex][rank - 1];

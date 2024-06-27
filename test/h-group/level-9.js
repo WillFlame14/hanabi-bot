@@ -57,4 +57,27 @@ describe('double discard avoidance', () => {
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][3].order });
 	});
+
+	it(`doesn't treat a sarcastic discard as triggering DDA`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'y5', 'b2', 'g4'],
+			['b3', 'b1', 'g1', 'b3'],
+			['b1', 'b4', 'r4', 'r3']
+		], {
+			level: { min: 9 },
+			play_stacks: [0, 0, 0, 0, 0],
+			starting: PLAYER.BOB,
+			clue_tokens: 0,
+			discarded: ['b1']
+		});
+		const { state } = game;
+		takeTurn(game, 'Bob clues 1 to Cathy');
+		takeTurn(game, 'Cathy clues blue to Donald')
+		takeTurn(game, 'Donald discards b1', 'p3'); // Ends early game
+
+		// The sarcastic discard doesn't trigger dda.
+		assert.equal(state.dda, undefined);
+	});
+
 });
