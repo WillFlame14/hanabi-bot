@@ -73,7 +73,7 @@ describe('double discard avoidance', () => {
 		});
 		const { state } = game;
 		takeTurn(game, 'Bob clues 1 to Cathy');
-		takeTurn(game, 'Cathy clues blue to Donald')
+		takeTurn(game, 'Cathy clues blue to Donald');
 		takeTurn(game, 'Donald discards b1', 'p3'); // Ends early game
 
 		// The sarcastic discard doesn't trigger dda.
