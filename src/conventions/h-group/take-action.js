@@ -259,13 +259,23 @@ export function take_action(game) {
 		}
 	}
 
+	/** @param {Clue} clue */
+	const not_selfish = (clue) => {
+		const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
+		const { focused_card } = determine_focus(state.hands[clue.target], common, list, { beforeClue: true });
+		const { suitIndex } = focused_card;
+
+		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
+			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
+				!state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches({ suitIndex, rank })));
+	};
+
 	// Consider finesses while finessed if we are only waited on to play one card,
 	// it's not a selfish finesse, doesn't require more than one play from our own hand,
 	// and we're not in the end-game.
-	const waiting_self_connections = game.common.waiting_connections.filter(c => c.connections[0]?.reacting === state.ourPlayerIndex).length;
-	const is_selfish = best_play_clue?.result.playables[0]?.playerIndex === state.ourPlayerIndex;
-	const self_rounds = best_play_clue?.result.playables.filter(play => play.playerIndex === state.ourPlayerIndex).length;
-	const consider_finesse = !is_finessed || waiting_self_connections < 2 && !is_selfish && self_rounds <= 1 && !state.inEndgame();
+	const waiting_self_connections = game.common.waiting_connections.filter(c => c.connections[0]?.reacting === state.ourPlayerIndex);
+	const waiting_cards = waiting_self_connections.reduce((sum, conn) => sum + conn.connections.length - 1, 0);
+	const consider_finesse = !is_finessed || best_play_clue && waiting_cards < 3 && not_selfish(best_play_clue) && !state.inEndgame();
 
 	// Get a high value play clue involving next player (otherwise, next player can give it)
 	if (consider_finesse && best_play_clue?.result.finesses.length > 0 && (best_play_clue.target == nextPlayerIndex || best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex)))
@@ -354,17 +364,6 @@ export function take_action(game) {
 	}
 
 	const play_clue_2p = best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result));
-
-	/** @param {Clue} clue */
-	const not_selfish = (clue) => {
-		const list = state.hands[nextPlayerIndex].clueTouched(clue, state.variant).map(c => c.order);
-		const { focused_card } = determine_focus(state.hands[nextPlayerIndex], common, list, { beforeClue: true });
-		const { suitIndex } = focused_card;
-
-		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
-			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
-				!state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches({ suitIndex, rank })));
-	};
 
 	// Play clue in 2 players while partner is not loaded and not selfish
 	if (state.numPlayers === 2 && state.clue_tokens > 0 && play_clue_2p &&
