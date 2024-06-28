@@ -235,6 +235,22 @@ describe('guide principle', () => {
 		assert.equal(clue_safe(game, game.me, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }).safe, false);
 	});
 
+	it('gives high value finesses while finessed', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r2', 'g2', 'g3', 'p4'],
+			['p1', 'b2', 'p3', 'y4'],
+			['p2', 'y2', 'b3', 'r4']
+		], { level: { min: 5, max: 10 }, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
+		takeTurn(game, 'Donald clues blue to Cathy');
+		const action = take_action(game);
+		assert(action.type == ACTION.COLOUR || action.type == ACTION.RANK);
+		if (action.type == ACTION.COLOUR)
+			ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: 1, value: 5 });
+		else
+			ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 1, value: 4 });
+	});
+
 	it('does not expect a play when it could be deferring playing into a finesse', () => {
 		// From https://github.com/WillFlame14/hanabi-bot/pull/224#issuecomment-2118885427
 		const game = setup(HGroup, [
