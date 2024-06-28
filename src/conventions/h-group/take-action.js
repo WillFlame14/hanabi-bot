@@ -273,9 +273,9 @@ export function take_action(game) {
 	// Consider finesses while finessed if we are only waited on to play one card,
 	// it's not a selfish finesse, doesn't require more than one play from our own hand,
 	// and we're not in the end-game.
-	const waiting_self_connections = game.common.waiting_connections.filter(c => c.connections[0]?.reacting === state.ourPlayerIndex);
-	const waiting_cards = waiting_self_connections.reduce((sum, conn) => sum + conn.connections.length, 0);
-	const waiting_out_of_order = waiting_self_connections.some(c => c.connections.length >= 2 && !inBetween(state.numPlayers, c.connections[1].reacting, state.ourPlayerIndex, c.connections[2]?.reacting ?? c.target));
+	const waiting_self_connections = game.common.waiting_connections.filter(c => c.connections[c.conn_index]?.reacting === state.ourPlayerIndex);
+	const waiting_cards = waiting_self_connections.reduce((sum, c) => sum + c.connections.length - c.conn_index, 0);
+	const waiting_out_of_order = waiting_self_connections.some(c => c.connections.length >= c.conn_index + 2 && !inBetween(state.numPlayers, c.connections[c.conn_index + 1].reacting, state.ourPlayerIndex, c.connections[c.conn_index + 2]?.reacting ?? c.target));
 	const consider_finesse = !is_finessed || best_play_clue && waiting_cards < 3 && !waiting_out_of_order && not_selfish(best_play_clue) && !state.inEndgame();
 
 	// Get a high value play clue involving next player (otherwise, next player can give it)
