@@ -4,7 +4,7 @@ import { select_play_clue, determine_playable_card, order_1s, find_clue_value } 
 import { UnsolvedGame, solve_game } from '../shared/endgame.js';
 import { find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { determine_focus, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
+import { determine_focus, inBetween, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
 import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
@@ -206,13 +206,9 @@ export function take_action(game) {
 			return action;
 	}
 
-	// If we have a finesse and there were no actions urgent enough to delay a finesse, play into the finesse.
-	if (is_finessed)
-		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
-
 	const discardable = trash_cards[0] ?? common.chop(state.hands[state.ourPlayerIndex]);
 
-	if (state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
+	if (!is_finessed && state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
 		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
 
 		// Generate for next next player
@@ -238,7 +234,7 @@ export function take_action(game) {
 	}
 
 	// Attempt to solve endgame
-	if (state.inEndgame() && state.cardsLeft > 0) {
+	if (!is_finessed && state.inEndgame() && state.cardsLeft > 0) {
 		try {
 			const action = solve_game(game, state.ourPlayerIndex, find_all_clues);
 
@@ -263,9 +259,32 @@ export function take_action(game) {
 		}
 	}
 
+	/** @param {Clue} clue */
+	const not_selfish = (clue) => {
+		const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
+		const { focused_card } = determine_focus(state.hands[clue.target], common, list, { beforeClue: true });
+		const { suitIndex } = focused_card;
+
+		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
+			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
+				!state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches({ suitIndex, rank })));
+	};
+
+	// Consider finesses while finessed if we are only waited on to play one card,
+	// it's not a selfish finesse, doesn't require more than one play from our own hand,
+	// and we're not in the end-game.
+	const waiting_self_connections = game.common.waiting_connections.filter(c => c.connections[c.conn_index]?.reacting === state.ourPlayerIndex);
+	const waiting_cards = waiting_self_connections.reduce((sum, c) => sum + c.connections.length - c.conn_index, 0);
+	const waiting_out_of_order = waiting_self_connections.some(c => c.connections.length >= c.conn_index + 2 && !inBetween(state.numPlayers, c.connections[c.conn_index + 1].reacting, state.ourPlayerIndex, c.connections[c.conn_index + 2]?.reacting ?? c.target));
+	const consider_finesse = !is_finessed || best_play_clue && waiting_cards < 3 && !waiting_out_of_order && not_selfish(best_play_clue) && !state.inEndgame();
+
 	// Get a high value play clue involving next player (otherwise, next player can give it)
-	if (best_play_clue?.result.finesses.length > 0 && best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex))
+	if (consider_finesse && best_play_clue?.result.finesses.length > 0 && (best_play_clue.target == nextPlayerIndex || best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex)))
 		return Utils.clueToAction(best_play_clue, tableID);
+
+	// If we have a finesse and no urgent high value clues to give, play into the finesse.
+	if (is_finessed)
+		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
 	// Sarcastic discard to someone else
 	if (game.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {
@@ -346,17 +365,6 @@ export function take_action(game) {
 	}
 
 	const play_clue_2p = best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result));
-
-	/** @param {Clue} clue */
-	const not_selfish = (clue) => {
-		const list = state.hands[nextPlayerIndex].clueTouched(clue, state.variant).map(c => c.order);
-		const { focused_card } = determine_focus(state.hands[nextPlayerIndex], common, list, { beforeClue: true });
-		const { suitIndex } = focused_card;
-
-		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
-			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
-				!state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches({ suitIndex, rank })));
-	};
 
 	// Play clue in 2 players while partner is not loaded and not selfish
 	if (state.numPlayers === 2 && state.clue_tokens > 0 && play_clue_2p &&
