@@ -59,7 +59,7 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 				card.inferred = card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
 
 				// If a waiting connection will reveal this card, assume it will be known in time.
-				const connection = common.waiting_connections.find(conn => conn.focused_card.order == card.order);
+				const connection = common.waiting_connections.find(conn => !conn.symmetric && conn.focused_card.order == card.order);
 				if (connection !== undefined)
 					card.inferred = card.inferred.intersect(connection.inference);
 			}

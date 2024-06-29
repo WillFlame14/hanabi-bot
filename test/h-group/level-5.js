@@ -332,6 +332,21 @@ describe('guide principle', () => {
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
 	});
+
+	it(`understands a finesse on top of an in progress connection`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p4', 'r3', 'g3', 'b3'],
+			['p1', 'r3', 'p1', 'y2'],
+			['b2', 'y3', 'b5', 'r4']
+		], { level: { min: 5 }, play_stacks: [1, 1, 1, 1, 0]});
+		takeTurn(game, 'Alice clues 3 to Bob'); // Finesses b2 -> b3.
+		takeTurn(game, 'Bob clues 5 to Donald'); // 5 save.
+		takeTurn(game, 'Cathy clues 5 to Donald'); // Should finesse b4 out of Alice's hand.
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b4']);
+	})
 });
 
 describe('mistake recovery', () => {
