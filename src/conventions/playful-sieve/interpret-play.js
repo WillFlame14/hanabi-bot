@@ -2,6 +2,7 @@ import { CLUE } from '../../constants.js';
 import { IdentitySet } from '../../basics/IdentitySet.js';
 import { team_elim } from '../../basics/helper.js';
 import * as Basics from '../../basics.js';
+import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
@@ -101,8 +102,12 @@ export function interpret_play(game, action) {
 	if (playerIndex === state.ourPlayerIndex) {
 		if ((card.inferred.length !== 1 || !card.inferred.array[0].matches(identity)) && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
-			if (game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, identities: [identity] }))
+			const new_game = game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, identities: [identity] });
+			if (new_game) {
+				Object.assign(game, new_game);
+				Utils.globalModify({ game: new_game });
 				return;
+			}
 		}
 	}
 

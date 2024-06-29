@@ -1,4 +1,5 @@
 import { visibleFind } from './hanabi-util.js';
+import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
@@ -82,7 +83,9 @@ export function checkFix(game, oldThoughts, clueAction) {
 		// There is a waiting connection that depends on this card
 		if (reset_order !== undefined) {
 			const reset_card = common.thoughts[reset_order];
-			game.rewind(reset_card.drawn_index, { type: 'identify', order: reset_card.order, playerIndex: target, identities: [reset_card.possible.array[0].raw()] });
+			const new_game = game.rewind(reset_card.drawn_index, { type: 'identify', order: reset_card.order, playerIndex: target, identities: [reset_card.possible.array[0].raw()] });
+			Object.assign(game, new_game);
+			Utils.globalModify({ game: new_game });
 			return;
 		}
 

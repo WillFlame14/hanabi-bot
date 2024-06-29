@@ -90,7 +90,9 @@ export function initConsole() {
 							break;
 						}
 
-						game.navigate(turn);
+						const new_game = game.navigate(turn);
+						Object.assign(game, new_game);
+						Utils.globalModify({ game: new_game });
 						break;
 					}
 					case 'spectate':

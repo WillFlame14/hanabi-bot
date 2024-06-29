@@ -106,7 +106,7 @@ function connect(game, giver, target, focusedCard, identity, looksDirect, connec
 		}
 		else if (!selfRanks.includes(identity.rank)) {
 			try {
-				return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay);
+				return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay, ignorePlayer === -1);
 			}
 			catch (error) {
 				if (error instanceof IllegalInterpretation)
@@ -148,7 +148,7 @@ function connect(game, giver, target, focusedCard, identity, looksDirect, connec
 		// Try finesse in our hand again (if we skipped it earlier to prefer ignoring player)
 		if (giver !== state.ourPlayerIndex && !(target === state.ourPlayerIndex && looksDirect) && selfRanks.includes(identity.rank)) {
 			try {
-				return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay);
+				return find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay, ignorePlayer === -1);
 			}
 			catch (error) {
 				if (error instanceof IllegalInterpretation)
@@ -323,9 +323,10 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
  * @param {number[]} ignoreOrders
  * @param {number} finesses
  * @param {boolean} firstPlay
+ * @param {boolean} allow_rewind
  * @returns {Connection[]}
  */
-function find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay) {
+function find_self_finesse(game, giver, identity, connected, ignoreOrders, finesses, firstPlay, allow_rewind) {
 	const { common, state, me } = game;
 	const { suitIndex, rank } = identity;
 	const bluff_seat = (giver + 1) % state.numPlayers;
@@ -377,30 +378,29 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 	const first_finesse = common.thoughts[our_hand.find(c => !c.clued)?.order];
 
 	// Try to reinterpret an earlier clue as a hidden finesse
-	if (first_finesse?.finessed) {
-		const saved_game = game.minimalCopy();
-
+	if (allow_rewind && first_finesse?.finessed && !game.ephemeral_rewind) {
 		try {
 			logger.highlight('yellow', 'trying rewind on', first_finesse.order, 'to fulfill finesse');
-			game.rewind(first_finesse.drawn_index, {
+			const new_game = game.rewind(first_finesse.drawn_index, {
 				type: 'identify',
 				order: first_finesse.order,
 				playerIndex: state.ourPlayerIndex,
 				identities: [identity]
 			}, false, true);
+
+			if (new_game) {
+				new_game.ephemeral_rewind = false;
+
+				if (new_game.moveHistory.at(-1).move !== CLUE_INTERP.NONE) {
+					logger.highlight('yellow', 'successfully connected!');
+					Object.assign(game, new_game);
+					Utils.globalModify({ game: new_game });
+					return [{ type: 'terminate', reacting: -1, card: null, identities: [] }];
+				}
+			}
 		}
 		catch (err) {
 			logger.warn(err.message);
-		}
-
-		if (game.moveHistory.at(-1).move !== CLUE_INTERP.NONE) {
-			logger.highlight('yellow', 'successfully connected!');
-			return [{ type: 'terminate', reacting: -1, card: null, identities: [] }];
-		}
-		else {
-			// Reset the game
-			Object.assign(game, saved_game);
-			Utils.globalModify({ game: saved_game });
 		}
 	}
 
