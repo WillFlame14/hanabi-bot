@@ -135,15 +135,15 @@ export function find_all_clues(game) {
  * @param {Game} game
  * @param {Clue} clue
  * @returns {number[]}
- **/
+ */
 export function find_clue_givers(game, clue) {
 	const { state } = game;
 	const { result } = clue;
 
-	let givers = [state.ourPlayerIndex];
+	const givers = [state.ourPlayerIndex];
 	for (let playerIndex = state.nextPlayerIndex(state.ourPlayerIndex);
-		 playerIndex != state.ourPlayerIndex;
-		 playerIndex = state.nextPlayerIndex(playerIndex)) {
+		playerIndex != state.ourPlayerIndex;
+		playerIndex = state.nextPlayerIndex(playerIndex)) {
 		// Once we reach a finessed play, any players after would no longer
 		// be able to give this clue.
 		if (result.finesses.some(f => f.playerIndex == playerIndex))
@@ -296,7 +296,7 @@ export function take_action(game) {
 				let saved_for = [];
 				consider_clues = consider_clues.filter(clue => {
 					const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
-					const { focused_card, finesse } = determine_focus(state.hands[clue.target], common, list, {beforeClue: true});
+					const { finesse } = determine_focus(state.hands[clue.target], common, list, {beforeClue: true});
 					if (!finesse)
 						return true;
 
@@ -311,12 +311,11 @@ export function take_action(game) {
 					}
 					return false;
 				});
-				if (saved_clue !== undefined) {
+				if (saved_clue !== undefined)
 					logger.info(`saved clue ${logClue(saved_clue)} for ${saved_for.map(playerIndex => state.playerNames[playerIndex]).join(', ')}`);
-				}
 			}
 		}
-		
+
 		({ clue: best_play_clue, clue_value } = select_play_clue(consider_clues));
 		if (saved_clue !== undefined && saved_clue_value > clue_value && state.clue_tokens < 2)
 			best_play_clue = clue_value = undefined;
