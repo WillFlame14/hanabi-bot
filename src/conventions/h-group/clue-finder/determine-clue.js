@@ -128,11 +128,10 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
  * @param  {Game} hypo_game
  * @param  {Clue} clue
  * @param  {number} giver
- * @param  {ClueAction} action
  * @param  {{touch?: ActualCard[], list?: number[]}} provisions 	Provided 'touch' and 'list' variables if clued in our hand.
  * @returns {ClueResult}
  */
-export function get_result(game, hypo_game, clue, giver, action = undefined, provisions = {}) {
+export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const { common, state } = game;
 	const { common: hypo_common, state: hypo_state } = hypo_game;
 
@@ -141,12 +140,11 @@ export function get_result(game, hypo_game, clue, giver, action = undefined, pro
 
 	const touch = provisions.touch ?? hand.clueTouched(clue, state.variant);
 	const list = provisions.list ?? touch.map(c => c.order);
-	const giverScore = action?.bestGiver !== undefined && action.bestGiver != giver ? -1 : 0;
 
 	const { new_touched, fill } = elim_result(hypo_state, common, hypo_common, hand, list);
 	const { bad_touch, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target);
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
 
-	return { elim: fill, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved, giver: giverScore, remainder: 0 };
+	return { elim: fill, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved, remainder: 0 };
 }

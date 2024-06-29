@@ -35,7 +35,7 @@ function isStall(game, action, giver, severity, prev_game) {
 	}
 
 	const provisions = { touch: list.map(order => hand.findOrder(order)), list };
-	const clue_result = get_result(prev_game, game, Object.assign({}, action.clue, { target }), giver, action, provisions);
+	const clue_result = get_result(prev_game, game, Object.assign({}, action.clue, { target }), giver, provisions);
 	const { new_touched, playables, elim } = clue_result;
 
 	if (severity >= 2) {

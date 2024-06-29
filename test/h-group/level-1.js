@@ -228,11 +228,12 @@ describe('strategy', () => {
 	it('does not give clues that may be better given by someone else', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['b3', 'g2', 'y2', 'b4'],
-			['p3', 'g3', 'p4', 'p3'],
+			['b3', 'g3', 'y3', 'b4'],
+			['p5', 'g3', 'p4', 'p3'],
 			['r3', 'p4', 'b3', 'y4']
 		], {
 			level: { min: 1 },
+			play_stacks: [0, 1, 1, 1, 1],
 			starting: PLAYER.DONALD,
 			clue_tokens: 0
 		});

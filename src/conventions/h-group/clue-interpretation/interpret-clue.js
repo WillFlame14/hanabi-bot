@@ -68,9 +68,8 @@ function apply_good_touch(game, action) {
  * @param {ClueAction} action
  * @param {FocusPossibility[]} inf_possibilities
  * @param {ActualCard} focused_card
- * @param {boolean} finesse
  */
-function resolve_clue(game, old_game, action, inf_possibilities, focused_card, finesse) {
+function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 	const { common, state } = game;
 	const { giver, target } = action;
 	const focus_thoughts = common.thoughts[focused_card.order];
@@ -81,20 +80,15 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card, f
 	for (const { connections, suitIndex, rank, save, interp } of inf_possibilities) {
 		const inference = { suitIndex, rank };
 
-		if (connections.some(connection => connection.type == 'finesse') || finesse) {
-			// Gives a score (lower is better) for who should give a clue touching the finesse slot.
-			// Primarly values least loaded player. In a tie, prefers delaying to improve chances of getting a finesse.
-			// TODO: Consider
-			// - avoiding ambiguous finesses,
-			// - allowing early clues when multiple non-overlapping clues are needed.
-			// - whether we can see cards on chop that would be valuable to save (e.g. defer clue to)
-			// - improving logic for whether the clue can get better, e.g. is there a card that follows this one?
-			const giverScore = (playerIndex) => -0.1 * (playerIndex + state.numPlayers - giver) + state.hands[playerIndex].filter(c => game.players[playerIndex].thoughts[c.order].inferred.every(id => state.isPlayable(id))).length;
-			const givers = [{score: giverScore(giver), giver}];
+		// A finesse is considered important if it could only have been given by this player.
+		// A finesse must be given before the first finessed player (card indices would shift after)
+		// and only by someone who knows or can see all of the cards in the connections.
+		if (connections.some(connection => connection.type == 'finesse')) {
 			for (let i = (giver + 1) % state.numPlayers; i != giver; i = (i + 1) % state.numPlayers) {
 				if (connections.some(connection => connection.type == 'finesse' && connection.reacting == i)) {
 					// The clue must be given before the first finessed player,
 					// as otherwise the finesse position may change.
+					action.important = true;
 					break;
 				}
 				// The target cannot clue themselves.
@@ -106,19 +100,8 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card, f
 					continue;
 
 				// This player could give the finesse, don't mark the action as important.
-				givers.push({score: giverScore(i), giver: i});
+				break;
 			}
-			// A finesse is considered important if it could only have been given by this player.
-			// A finesse must be given before the first finessed player (card indices would shift after)
-			// and only by someone who knows or can see all of the cards in the connections.
-			if (connections.some(connection => connection.type == 'finesse') && givers.length === 1)
-				action.important = true;
-
-			givers.sort((a, b) => a.score - b.score);
-
-			// If the focus of this clue is the finesse card, determine if someone later could give the clue.
-			if (finesse)
-				action.bestGiver = givers[0].giver;
 		}
 
 		game.interpretMove(interp);
@@ -253,7 +236,7 @@ export function interpret_clue(game, action) {
 	const oldCommon = common.clone();
 
 	const { clue, giver, list, target, mistake = false } = action;
-	const { focused_card, chop, finesse } = determine_focus(state.hands[target], common, list, { beforeClue: true });
+	const { focused_card, chop } = determine_focus(state.hands[target], common, list, { beforeClue: true });
 
 	const old_focus_thoughts = oldCommon.thoughts[focused_card.order];
 	const focus_thoughts = common.thoughts[focused_card.order];
@@ -435,11 +418,11 @@ export function interpret_clue(game, action) {
 			if (!simplest_symmetric_connections.some(fp => focused_card.matches(fp)))
 				game.interpretMove(CLUE_INTERP.NONE);
 			else
-				resolve_clue(game, old_game, action, matched_inferences, focused_card, finesse);
+				resolve_clue(game, old_game, action, matched_inferences, focused_card);
 		}
 		else {
 			focus_thoughts.inferred = focus_thoughts.inferred.intersect(focus_possible);
-			resolve_clue(game, old_game, action, matched_inferences, focused_card, finesse);
+			resolve_clue(game, old_game, action, matched_inferences, focused_card);
 		}
 	}
 	else if (action.hypothetical) {
@@ -535,7 +518,7 @@ export function interpret_clue(game, action) {
 			focus_thoughts.inferred = focus_thoughts.possible;
 			logger.info('selecting inferences', all_connections.map(conns => logCard(conns)));
 
-			resolve_clue(game, old_game, action, all_connections, focused_card, finesse);
+			resolve_clue(game, old_game, action, all_connections, focused_card);
 		}
 	}
 	logger.highlight('blue', 'final inference on focused card', focus_thoughts.inferred.map(logCard).join(','));

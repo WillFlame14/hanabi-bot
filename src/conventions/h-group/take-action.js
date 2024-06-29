@@ -131,6 +131,44 @@ export function find_all_clues(game) {
 }
 
 /**
+ * Returns the list of players who could give the given clue.
+ * @param {Game} game
+ * @param {Clue} clue
+ * @returns {number[]}
+ **/
+export function find_clue_givers(game, clue) {
+	const { state } = game;
+	const { result } = clue;
+
+	let givers = [state.ourPlayerIndex];
+	for (let playerIndex = state.nextPlayerIndex(state.ourPlayerIndex);
+		 playerIndex != state.ourPlayerIndex;
+		 playerIndex = state.nextPlayerIndex(playerIndex)) {
+		// Once we reach a finessed play, any players after would no longer
+		// be able to give this clue.
+		if (result.finesses.some(f => f.playerIndex == playerIndex))
+			return givers;
+
+		// The targeted player can't clue themselves.
+		if (playerIndex == clue.target) {
+			const playerChop = game.players[playerIndex].chop(state.hands[playerIndex]).order;
+			// If the play was on chop, the clue has to be given before this player.
+			// TODO: This is also true if the clue focus would change after the chop discard.
+			if (result.playables.some(p => p.playerIndex == playerIndex && p.card.order == playerChop))
+				return givers;
+			continue;
+		}
+
+		// A player can't give a clue if it involves playing a previously unknown card in its own hand.
+		if (result.playables.some(p => p.playerIndex == playerIndex && game.players[playerIndex].thoughts[p.card.order].identity() === undefined))
+			continue;
+
+		givers.push(playerIndex);
+	}
+	return givers;
+}
+
+/**
  * Performs the most appropriate action given the current state.
  * @param {Game} game
  * @returns {PerformAction}
@@ -230,7 +268,58 @@ export function take_action(game) {
 	let best_play_clue, clue_value;
 	if (state.clue_tokens > 0) {
 		const all_play_clues = play_clues.flat();
-		({ clue: best_play_clue, clue_value } = select_play_clue(all_play_clues));
+		let consider_clues = all_play_clues;
+		const chop = game.me.chop(state.hands[state.ourPlayerIndex]);
+		let saved_clue;
+		let saved_clue_value = -99;
+
+		// Consider saving clues to finesse positions for players who likely have
+		// better cards on chop.
+		if (!state.inEndgame() && !state.early_game && state.clue_tokens < 4 && chop !== undefined) {
+			const our_chop_value = cardValue(state, game.me, chop, chop.order);
+			const better_givers = [];
+			for (let i = 0; i < state.numPlayers; ++i) {
+				if (i == state.ourPlayerIndex)
+					continue;
+				const player = game.players[i];
+				const hand = state.hands[i];
+				if (player.thinksLoaded(state, i, {assume: false}))
+					continue;
+				const otherChop = player.chop(hand);
+				// Saves clue for locked players or players who likely have a better chop.
+				if (otherChop === undefined && player.thinksLocked(state, i))
+					better_givers.push(i);
+				else if (otherChop !== undefined && cardValue(state, player, otherChop, otherChop.order) >= our_chop_value)
+					better_givers.push(i);
+			}
+			if (better_givers.length > 0) {
+				let saved_for = [];
+				consider_clues = consider_clues.filter(clue => {
+					const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
+					const { focused_card, finesse } = determine_focus(state.hands[clue.target], common, list, {beforeClue: true});
+					if (!finesse)
+						return true;
+
+					const save_for = find_clue_givers(game, clue).filter(playerIndex => better_givers.includes(playerIndex));
+					if (save_for.length == 0)
+						return true;
+					const value = find_clue_value(clue.result);
+					if (saved_clue === undefined || value > saved_clue_value) {
+						saved_for = save_for;
+						saved_clue = clue;
+						saved_clue_value = value;
+					}
+					return false;
+				});
+				if (saved_clue !== undefined) {
+					logger.info(`saved clue ${logClue(saved_clue)} for ${saved_for.map(playerIndex => state.playerNames[playerIndex]).join(', ')}`);
+				}
+			}
+		}
+		
+		({ clue: best_play_clue, clue_value } = select_play_clue(consider_clues));
+		if (saved_clue !== undefined && saved_clue_value > clue_value && state.clue_tokens < 2)
+			best_play_clue = clue_value = undefined;
 	}
 
 	// Attempt to solve endgame

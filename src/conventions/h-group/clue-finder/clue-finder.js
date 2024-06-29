@@ -136,7 +136,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 				continue;
 
 			const interpret = hypo_game.common.thoughts[focused_card.order].inferred;
-			const result = get_result(game, hypo_game, clue, giver, action);
+			const result = get_result(game, hypo_game, clue, giver);
 			Object.assign(clue, { result });
 
 			const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game, player, clue);
@@ -155,7 +155,6 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 				finesses: finesses.length,
 				playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
 				chop_moved: chop_moved.map(c => `${logCard(state.deck[c.order])} ${c.order}`),
-				giver,
 				remainder
 			};
 			logger.info('result,', JSON.stringify(result_log), find_clue_value(Object.assign(result, { remainder })));
