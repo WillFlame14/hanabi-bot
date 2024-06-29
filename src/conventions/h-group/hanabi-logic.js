@@ -171,7 +171,7 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 export function inBetween(numPlayers, playerIndex, giver, target) {
 	const gap = (target - giver + numPlayers) % numPlayers;
 
-	return Utils.range(1, gap).some(inc => ((giver + inc) % numPlayers) === playerIndex);
+	return Utils.range(1, Math.max(gap, 1)).some(inc => ((giver + inc) % numPlayers) === playerIndex);
 }
 
 /**
