@@ -36,6 +36,25 @@ describe('scream discard chop moves', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4].order].chop_moved, true);
 	});
 
+	it(`only scream discards if critical`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r2', 'g4', 'b4', 'y2'],
+			['g1', 'b3', 'r2', 'y3', 'p3']
+		], {
+			level: { min: 7 },
+			clue_tokens: 1,
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues red to Alice (slot 5)');
+
+		const action = take_action(game);
+
+		// Alice should discard slot 4 as a SDCM.
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
+	});
+
 	it(`stalls after a scream discard`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
