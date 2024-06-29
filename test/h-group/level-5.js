@@ -346,7 +346,23 @@ describe('guide principle', () => {
 
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b4']);
-	})
+	});
+
+	it(`understands a finesse on top of an in progress connection on us`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p1', 'r3', 'p1', 'y2'],
+			['b2', 'y3', 'b5', 'r4'],
+			['y2', 'b4', 'b3', 'g4'],
+		], { level: { min: 5 }, starting: PLAYER.DONALD, play_stacks: [1, 1, 1, 1, 0]});
+		takeTurn(game, 'Donald clues 3 to Alice (slots 2,3,4)'); // Finesses b2 -> b3.
+		takeTurn(game, 'Alice clues 5 to Cathy'); // 5 save.
+		takeTurn(game, 'Bob clues 5 to Cathy'); // Should finesse y2, b4 out of Donald's hand.
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.DONALD][0].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.DONALD][1].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][1].order], ['b4']);
+	});
 });
 
 describe('mistake recovery', () => {
