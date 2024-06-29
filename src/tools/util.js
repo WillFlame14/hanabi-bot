@@ -94,6 +94,8 @@ function emptyCmdQueue() {
  * @param {number} end
  */
 export function range(start, end) {
+	if (end <= start)
+		return [];
 	return [...new Array(end - start).keys()].map(num => num + start);
 }
 
