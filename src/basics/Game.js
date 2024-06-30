@@ -60,6 +60,8 @@ export class Game {
 	 */
 	hookAfterDraws = (_game) => {};
 
+	ephemeral_rewind = false;
+
 	/**
 	 * @param {number} tableID
 	 * @param {State} state
@@ -112,7 +114,7 @@ export class Game {
 		if (this.copyDepth > 100)
 			throw new Error('Maximum recursive depth reached.');
 
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory'];
+		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory', 'ephemeral_rewind'];
 
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);
@@ -182,6 +184,7 @@ export class Game {
 	 * @param {Action} rewind_action	The rewind action to insert before the target action
 	 * @param {boolean} [mistake] 		Whether the target action was a mistake
 	 * @param {boolean} [ephemeral]		Whether the action should be saved in the action list
+	 * @returns {this | undefined}
 	 */
 	rewind(action_index, rewind_action, mistake = false, ephemeral = false) {
 		const { actionList } = this.state;
@@ -195,7 +198,7 @@ export class Game {
 
 		if (action_index === undefined || (typeof action_index !== 'number') || action_index < 0 || action_index >= actionList.length) {
 			logger.error(`Attempted to rewind to an invalid action index (${JSON.stringify(action_index)})!`);
-			return false;
+			return;
 		}
 		this.rewindDepth++;
 
@@ -204,7 +207,7 @@ export class Game {
 		logger.highlight('cyan', `Rewinding to insert ${JSON.stringify(rewind_action)}`);
 		if ([-1, 0].some(offset => Utils.objEquals(actionList[action_index + offset], rewind_action))) {
 			logger.error(`Attempted to rewind ${JSON.stringify(rewind_action)} that was already rewinded!`);
-			return false;
+			return;
 		}
 
 		if (pivotal_action.type === 'clue')
@@ -258,8 +261,10 @@ export class Game {
 
 		// Rewrite and save as a rewind action
 		newGame.handle_action(rewind_action, true);
-		if (ephemeral)
+		if (ephemeral) {
 			newGame.state.actionList.pop();
+			newGame.ephemeral_rewind = true;
+		}
 		newGame.handle_action(pivotal_action, true);
 
 		// Redo all the following actions
@@ -270,13 +275,9 @@ export class Game {
 		logger.highlight('green', '------- REWIND COMPLETE -------');
 
 		newGame.handle_action(actionList.at(-1));
-
-		// Overwrite state
-		Object.assign(this, newGame);
 		Utils.globalModify({ game: this });
 
-		this.rewindDepth = 0;
-		return true;
+		return /** @type {this} */ (newGame);
 	}
 
 	/**
@@ -335,9 +336,9 @@ export class Game {
 
 		// Copy over the full game history
 		new_game.state.actionList = actionList;
-		Object.assign(this, new_game);
-
 		Utils.globalModify({ game: this });
+
+		return new_game;
 	}
 
 	/**

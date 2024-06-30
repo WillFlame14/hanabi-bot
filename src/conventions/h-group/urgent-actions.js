@@ -188,7 +188,7 @@ export function early_game_clue(game, playerIndex) {
  * @param {FixClue[][]} fix_clues
  * @param {Clue[][]} stall_clues
  * @param {Card[][]} playable_priorities
- * @param {ActualCard} finessed_card
+ * @param {ActualCard} [finessed_card]
  */
 export function find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities, finessed_card) {
 	const { common, me, state, tableID } = game;

@@ -49,12 +49,14 @@ function apply_good_touch(game, action) {
 			if (card.finessed && oldThoughts[order].inferred.length >= 1 && card.inferred.length === 0) {
 				// TODO: Possibly try rewinding older reasoning until rewind works?
 				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
-				if (game.rewind(action_index, { type: 'finesse', list, clue: action.clue }))
-					return { layered_reveal: true };
+				const new_game = game.rewind(action_index, { type: 'finesse', list, clue: action.clue }) ??
+					game.rewind(action_index, { type: 'ignore', order, conn_index: 0 });		// Rewinding the layered finesse doesn't work, just ignore us then.
 
-				// Rewinding the layered finesse doesn't work, just ignore us then.
-				if (game.rewind(action_index, { type: 'ignore', order, conn_index: 0 }))
+				if (new_game) {
+					Object.assign(game, new_game);
+					Utils.globalModify({ game: new_game });
 					return { layered_reveal: true };
+				}
 			}
 		}
 	}
@@ -106,7 +108,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 		game.interpretMove(interp);
 
-		const matches = focused_card.matches(inference, { assume: true });
+		const matches = focused_card.matches(inference, { assume: true }) && game.players[target].thoughts[focused_card.order].possible.has(inference);
 		// Don't assign save connections or known false connections
 		if (!save && matches)
 			assign_connections(game, connections, giver);
@@ -135,7 +137,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			).map(conn => conn.identities[0].rank))
 		));
 		const ownBlindPlays = correct_match?.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length || 0;
-		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities, selfRanks, ownBlindPlays);
+		const symmetric_fps = find_symmetric_connections(game, old_game, action, inf_possibilities, selfRanks, ownBlindPlays);
 		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver, target);
 
 		for (const conn of symmetric_fps.concat(inf_possibilities).flatMap(fp => fp.connections)) {
@@ -226,6 +228,62 @@ export function finalize_bluff_connections(game, giver, target, connections) {
 }
 
 /**
+ * @param {Game} game
+ * @param {ClueAction} action
+ * @param {number} focused_order
+ * @param {Player} oldCommon
+ */
+function urgent_save(game, action, focused_order, oldCommon) {
+	const { common, state } = game;
+	const { giver, target } = action;
+	const old_focus_thoughts = oldCommon.thoughts[focused_order];
+	const focus_thoughts = common.thoughts[focused_order];
+
+	if (old_focus_thoughts.saved || !focus_thoughts.saved || common.thinksLoaded(state, target, { assume: false }))
+		return false;
+
+	const old_play_stacks = game.state.play_stacks.slice();
+	let played = new IdentitySet(state.variant.suits.length, 0);
+
+	/**
+	 * @param {number} index
+	 * @param {boolean} includeHidden
+	 */
+	const get_finessed_card = (index, includeHidden) =>
+		Utils.maxOn(state.hands[index], ({ order }) => {
+			const card = game.common.thoughts[order];
+
+			if (card.finessed && (includeHidden || !card.hidden) && card.inferred.every(id => played.has(id) || state.isPlayable(id)))
+				return -card.finesse_index;
+
+			return -10000;
+		}, -9999);
+
+	// If there is at least one player without a finessed play between the giver and target, the save was not urgent.
+	let urgent = true;
+	let playerIndex = giver;
+
+	while (playerIndex !== target) {
+		const finessed_play = get_finessed_card(playerIndex, false);
+		if (!finessed_play) {
+			urgent = false;
+			break;
+		}
+
+		// If we know what the card is, update the play stacks. If we don't, then
+		// we can't know if playing it would make someone else's cards playable.
+		const card = game.common.thoughts[get_finessed_card(playerIndex, true).order].identity({ infer: true });
+		if (card !== undefined) {
+			played = played.union(card);
+			state.play_stacks[card.suitIndex]++;
+		}
+		playerIndex = (playerIndex + 1) % state.numPlayers;
+	}
+	game.state.play_stacks = old_play_stacks;
+	return urgent;
+}
+
+/**
  * Interprets the given clue. First tries to look for inferred connecting cards, then attempts to find prompts/finesses.
  * @param {Game} game
  * @param {ClueAction} action
@@ -238,7 +296,6 @@ export function interpret_clue(game, action) {
 	const { clue, giver, list, target, mistake = false } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], common, list, { beforeClue: true });
 
-	const old_focus_thoughts = oldCommon.thoughts[focused_card.order];
 	const focus_thoughts = common.thoughts[focused_card.order];
 	focus_thoughts.focused = true;
 
@@ -250,53 +307,7 @@ export function interpret_clue(game, action) {
 
 	if (chop) {
 		focus_thoughts.chop_when_first_clued = true;
-
-		// Check whether this is an urgent save.
-		if (!old_focus_thoughts.saved && focus_thoughts.saved && !common.thinksLoaded(state, target, {assume: false})) {
-			const hypo_game = game.minimalCopy();
-			const hypo_state = hypo_game.state;
-			let played = new IdentitySet(state.variant.suits.length);
-
-			const get_finessed_card = (index) => {
-				// Find the finessed card with the lowest finesse_index.
-				let result = undefined;
-				for (const c of hypo_state.hands[index]) {
-					const card = hypo_game.common.thoughts[c.order];
-					if (!card.finessed || result !== undefined && card.finesse_index > result.finesse_index)
-						continue;
-					result = card;
-				}
-				// Only return the card if it is thought to currently be playable.
-				if (!result || result.inferred.some(id => !played.has(id) && !hypo_state.isPlayable(id)))
-					return undefined;
-				return result;
-			};
-
-			// If there is at least one player without a finessed play between the giver and target, the save was not urgent.
-			let urgent = true;
-			let playerIndex = giver;
-
-			while (playerIndex !== target) {
-				const finessed_play = get_finessed_card(playerIndex);
-				if (!finessed_play) {
-					urgent = false;
-					break;
-				}
-
-				// If we know what the card is, update the play stacks. If we don't, then
-				// we can't know if playing it would make someone else's cards playable.
-				const card = hypo_game.common.thoughts[finessed_play.order].identity({infer: true});
-				if (card !== undefined) {
-					played = played.union(card);
-					hypo_state.play_stacks[card.suitIndex]++;
-				}
-
-				playerIndex = (playerIndex + 1) % state.numPlayers;
-			}
-
-			if (urgent)
-				action.important = true;
-		}
+		action.important = urgent_save(game, action, focused_card.order, oldCommon);
 	}
 
 	if (focus_thoughts.inferred.length === 0 && oldCommon.thoughts[focused_card.order].possible.length > 1) {
@@ -305,8 +316,12 @@ export function interpret_clue(game, action) {
 
 		// There is a waiting connection that depends on this card
 		if (focus_thoughts.possible.length === 1 && common.dependentConnections(focused_card.order).length > 0) {
-			game.rewind(focused_card.drawn_index, { type: 'identify', order: focused_card.order, playerIndex: target, identities: [focus_thoughts.possible.array[0].raw()] });
-			return;
+			const new_game = game.rewind(focused_card.drawn_index, { type: 'identify', order: focused_card.order, playerIndex: target, identities: [focus_thoughts.possible.array[0].raw()] });
+			if (new_game) {
+				Object.assign(game, new_game);
+				Utils.globalModify({ game: new_game });
+				return;
+			}
 		}
 	}
 
@@ -344,8 +359,12 @@ export function interpret_clue(game, action) {
 		const rewind_identity = common.thoughts[rewind_card.order]?.identity();
 
 		if (rewind_identity !== undefined && wc_target === state.ourPlayerIndex) {
-			game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] });
-			return;
+			const new_game = game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] });
+			if (new_game) {
+				Object.assign(game, new_game);
+				Utils.globalModify({ game: new_game });
+				return;
+			}
 		}
 
 		to_remove.add(i);
@@ -411,7 +430,7 @@ export function interpret_clue(game, action) {
 	// If we know the identity of the card, one of the matched inferences must also be correct before we can give this clue.
 	if (matched_inferences.length >= 1 && matched_inferences.find(p => focused_card.matches(p))) {
 		if (giver === state.ourPlayerIndex) {
-			const simplest_symmetric_connections = occams_razor(game, focus_possible, target);
+			const simplest_symmetric_connections = occams_razor(game, focus_possible, target, focused_card.order);
 
 			focus_thoughts.inferred = focus_thoughts.inferred.intersect(simplest_symmetric_connections);
 
@@ -439,7 +458,7 @@ export function interpret_clue(game, action) {
 		const looksDirect = focus_thoughts.identity() === undefined && (	// Focused card must be unknown AND
 			action.clue.type === CLUE.COLOUR ||											// Colour clue always looks direct
 			rankLooksPlayable(game, action.clue.value, giver, target, focused_card.order) ||			// Looks like a play
-			focus_possible.some(fp => fp.save));										// Looks like a save
+			focus_possible.some(fp => fp.save && game.players[target].thoughts[focused_card.order].possible.has(fp)));										// Looks like a save
 
 		// We are the clue target, so we need to consider all the (sensible) possibilities of the card
 		if (target === state.ourPlayerIndex) {
@@ -472,7 +491,7 @@ export function interpret_clue(game, action) {
 				}
 			}
 
-			all_connections = occams_razor(game, all_connections);
+			all_connections = occams_razor(game, all_connections, state.ourPlayerIndex, focused_card.order);
 		}
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!state.isBasicTrash(focused_card)) {

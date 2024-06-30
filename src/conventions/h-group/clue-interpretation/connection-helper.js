@@ -84,6 +84,7 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
 
 /**
  * Returns all focus possibilities that the receiver could interpret from the clue.
+ * @param {Game} new_game
  * @param {Game} game
  * @param {ClueAction} action
  * @param {FocusPossibility[]} inf_possibilities
@@ -91,7 +92,7 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
  * @param {number} ownBlindPlays 	The number of blind plays we need to make in the actual connection.
  * @returns {SymFocusPossibility[]}
  */
-export function find_symmetric_connections(game, action, inf_possibilities, selfRanks, ownBlindPlays) {
+export function find_symmetric_connections(new_game, game, action, inf_possibilities, selfRanks, ownBlindPlays) {
 	const { common, state } = game;
 
 	const { giver, list, target } = action;
@@ -150,6 +151,7 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 				logger.warn(error.message);
 			}
 			else if (error instanceof RewindEscape) {
+				Object.assign(new_game, game);
 				logger.flush(false);
 				return [];
 			}
@@ -203,7 +205,7 @@ export function assign_connections(game, connections, giver) {
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
 
-		logger.debug('assigning connection', logConnection(connections[i]));
+		logger.info('assigning connection', logConnection(connections[i]));
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		if (card.old_inferred === undefined)
@@ -227,8 +229,11 @@ export function assign_connections(game, connections, giver) {
 			card.finesse_index = card.finesse_index ?? state.actionList.length;
 
 		if (bluff || hidden) {
-			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 })).filter(id => id.rank <= state.max_ranks[id.suitIndex]);
+			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }))
+				.filter(id => id.rank <= state.max_ranks[id.suitIndex] && !isTrash(state, common, id, card.order, { infer: true }));
+
 			card.inferred = card.inferred.intersect(playable_identities);
+
 			if (bluff) {
 				const currently_playable_identities = state.play_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 })).filter(id => id.rank <= state.max_ranks[id.suitIndex]);
 				card.inferred = card.inferred.intersect(currently_playable_identities);
@@ -314,23 +319,20 @@ function connection_score(focus_possibility, playerIndex) {
 /**
  * @param {Game} game
  * @param {FocusPossibility[]} focus_possibilities
- * @param {number} [playerIndex]
+ * @param {number} playerIndex
+ * @param {number} focused_order
  */
-export function occams_razor(game, focus_possibilities, playerIndex = game.state.ourPlayerIndex) {
-	let min_score = Infinity;
-	let simplest_conns = [];
+export function occams_razor(game, focus_possibilities, playerIndex, focused_order) {
+	const connection_scores = focus_possibilities.map(fp => connection_score(fp, playerIndex));
 
-	for (const fp of focus_possibilities) {
-		const score = connection_score(fp, playerIndex);
+	const min_score = connection_scores.reduce((min, curr, i) => {
+		const fp = focus_possibilities[i];
 
-		if (score < min_score) {
-			simplest_conns = [];
-			min_score = score;
-		}
+		if (!game.players[playerIndex].thoughts[focused_order].possible.has(fp))
+			return min;
 
-		if (score === min_score)
-			simplest_conns.push(fp);
-	}
+		return Math.min(min, curr);
+	}, Infinity);
 
-	return simplest_conns;
+	return focus_possibilities.filter((_, i) => connection_scores[i] <= min_score);
 }
