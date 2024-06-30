@@ -125,4 +125,28 @@ describe('ambiguous finesse', () => {
 		// There should be 2 playables: g1 (Bob) and g2 (Donald).
 		assert.equal(playables.length, 2);
 	});
+
+	it('recognizes an ambiguous self-finesse when a direct clue is impossible', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g3', 'r4', 'g4', 'r3'],
+			['y2', 'y3', 'r4', 'p2'],
+			['g2', 'y5', 'g5', 'b2']
+		], {
+			level: { min: 5 },
+			play_stacks: [0, 1, 0, 0, 0],
+			discarded: ['y2'],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 2 to Alice (slot 2)');
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2','y2','g2','b2','p2']);
+		ExAsserts.cardHasInferences(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2','g2','b2','p2']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+
+		takeTurn(game, 'Alice plays r1 (slot 1)');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2']);
+
+	});
 });

@@ -2,6 +2,7 @@ import { LEVEL } from './h-constants.js';
 import { reset_superpositions, team_elim } from '../../basics/helper.js';
 import { visibleFind } from '../../basics/hanabi-util.js';
 import { inBetween, older_queued_finesse } from './hanabi-logic.js';
+import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logConnection } from '../../tools/log.js';
@@ -40,7 +41,7 @@ export function remove_finesse(game, waiting_connection) {
 
 		if (connection.type === 'finesse' || connection.type === 'prompt') {
 			if (card.hidden)
-				card.inferred.value = 0;
+				card.inferred = card.inferred.intersect([]);
 			else
 				card.inferred = card.inferred.subtract(connection.identities);
 		}
@@ -116,7 +117,7 @@ function resolve_card_retained(game, waiting_connection) {
 
 	// Didn't play into finesse
 	if (type === 'finesse' || type === 'prompt' || new_finesse_queued) {
-		if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 !== card.rank) {
+		if (card.suitIndex !== -1 && state.play_stacks[card.suitIndex] + 1 < card.rank) {
 			logger.warn(`${state.playerNames[reacting]} didn't play into unplayable ${type}`);
 			return { remove: false };
 		}
@@ -166,7 +167,7 @@ function resolve_card_retained(game, waiting_connection) {
 				return { remove: false };
 			}
 
-			if (!inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
+			if (giver !== state.ourPlayerIndex && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
 				const our_finesse = common.find_finesse(state.hands[state.ourPlayerIndex]);
 
 				if (our_finesse !== undefined && identities.some(i => common.thoughts[our_finesse.order].inferred.has(i))) {
@@ -214,8 +215,12 @@ function resolve_card_retained(game, waiting_connection) {
 
 		if (reacting !== state.ourPlayerIndex) {
 			const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
-			game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
-			return { quit: true };
+			const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
+			if (new_game) {
+				Object.assign(game, new_game);
+				Utils.globalModify({ game: new_game });
+				return { quit: true };
+			}
 		}
 
 		// Can't remove finesses if we allow ourselves to "defer" an ambiguous finesse the first time around.
@@ -408,8 +413,6 @@ export function update_turn(game, action) {
 					({ remove } = resolve_giver_play(game, waiting_connection));
 			}
 		}
-
-		logger.info('remove', remove, 'finesses', remove_finesse);
 
 		if (quit)
 			return;
