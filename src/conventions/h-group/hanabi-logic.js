@@ -115,7 +115,7 @@ export function rankLooksPlayable(game, rank, giver, target, order) {
 		const playable_identity = stack + 1 === rank;
 		const other_visibles = state.baseCount(identity) +
 			visibleFind(state, common, identity).filter(c => c.order !== order).length;
-		const matching_inference = common.thoughts[order].inferred.has(identity);
+		const matching_inference = game.players[target].thoughts[order].inferred.has(identity);
 
 		return playable_identity && other_visibles < cardCount(state.variant, identity) && matching_inference;
 	});
@@ -171,7 +171,7 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 export function inBetween(numPlayers, playerIndex, giver, target) {
 	const gap = (target - giver + numPlayers) % numPlayers;
 
-	return Utils.range(1, gap).some(inc => ((giver + inc) % numPlayers) === playerIndex);
+	return gap > 0 && Utils.range(1, gap).some(inc => ((giver + inc) % numPlayers) === playerIndex);
 }
 
 /**

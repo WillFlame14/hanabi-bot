@@ -49,6 +49,7 @@ function apply_unknown_sarcastic(game, sarcastic, identity) {
 	for (const { order } of sarcastic) {
 		const card = common.thoughts[order];
 		card.inferred = card.inferred.union(identity);
+		card.trash = false;
 	}
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
@@ -99,6 +100,7 @@ export function interpret_sarcastic(game, discardAction) {
 			logger.info('writing sarcastic on slot', state.hands[state.ourPlayerIndex].findIndex(c => c.order === sarcastics[0].order) + 1);
 			const common_sarcastic = common.thoughts[sarcastics[0].order];
 			common_sarcastic.inferred = common_sarcastic.inferred.intersect(identity);
+			common_sarcastic.trash = false;
 		}
 		else {
 			apply_unknown_sarcastic(game, sarcastics, identity);

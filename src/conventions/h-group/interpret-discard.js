@@ -2,6 +2,7 @@ import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 import { team_elim, undo_hypo_stacks } from '../../basics/helper.js';
 import { interpret_sarcastic } from '../shared/sarcastic.js';
 import * as Basics from '../../basics.js';
+import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
@@ -73,8 +74,12 @@ export function interpret_discard(game, action, card) {
 		}
 
 		const real_connects = connections.filter((conn, index) => index < dc_conn_index && !conn.hidden).length;
-		game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
-		return;
+		const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
+		if (new_game) {
+			Object.assign(game, new_game);
+			Utils.globalModify({ game: new_game });
+			return;
+		}
 	}
 
 	if (to_remove.length > 0)
@@ -91,8 +96,12 @@ export function interpret_discard(game, action, card) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;
-		game.rewind(action_index, { type: 'identify', order, playerIndex, identities: [{ suitIndex, rank }] }, thoughts.finessed);
-		return;
+		const new_game = game.rewind(action_index, { type: 'identify', order, playerIndex, identities: [{ suitIndex, rank }] }, thoughts.finessed);
+		if (new_game) {
+			Object.assign(game, new_game);
+			Utils.globalModify({ game: new_game });
+			return;
+		}
 	}
 
 	// Discarding a useful card

@@ -8,6 +8,7 @@ import { ACTION, CLUE } from '../../src/constants.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 import logger from '../../src/tools/logger.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
+import { logPerformAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -311,7 +312,7 @@ describe('guide principle', () => {
 		// Bob may think playing gives Cathy a play, but Alice can see that it doesn't,
 		// and should save Cathy's 5.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 2, value: 5 });
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 2, value: 5 }, `Expected (5 to Cathy), got (${logPerformAction(action)})`);
 		takeTurn(game, 'Alice clues 5 to Cathy');
 
 		// Understands that Alice may have been deferring the finesse to save the 5 and allow Bob to play.
@@ -362,6 +363,26 @@ describe('guide principle', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.DONALD][0].order].finessed, true);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.DONALD][1].order].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][1].order], ['b4']);
+	});
+
+	it(`understands a layered finesse player will not play if their promised card is unplayable`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p2', 'p3', 'g4', 'g3'],
+			['y1', 'p4', 'b5', 'r3'],
+			['b4', 'y5', 'p5', 'r4'],
+			['y3', 'r1', 'r3', 'g4']
+		], { level: { min: 5 }, starting: PLAYER.DONALD });
+		// End early game.
+		takeTurn(game, 'Donald discards r4', 'y4');
+		takeTurn(game, 'Emily clues purple to Donald'); // finesses p1 (Alice), p2 (Bob), p3 (Bob), y1 (Cathy), p4 (Cathy)
+
+		// Alice doesn't need to save Donald's 5, since Cathy will not play on her turn (this action isn't urgent).
+		takeTurn(game, 'Alice clues 5 to Donald');
+
+		const last_action = game.last_actions[PLAYER.ALICE];
+		// @ts-ignore
+		assert.ok(!last_action.important);
 	});
 });
 

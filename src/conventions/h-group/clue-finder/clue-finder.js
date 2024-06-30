@@ -1,6 +1,6 @@
 import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
-import { clue_safe } from './clue-safe.js';
+import { clue_safe, safe_situation } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue, get_result } from './determine-clue.js';
 import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
@@ -142,7 +142,16 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 			const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game, player, clue);
 
 			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = result;
-			const remainder = discard === undefined ? 0 : cardValue(state, hypo_game.me, discard, discard.order);
+			let remainder = 0;
+
+			if (discard !== undefined) {
+				const { safe: default_safe, discard: default_discard } = safe_situation(game, player);
+
+				if (default_safe && default_discard !== undefined) {
+					const [d_value, dd_value] = [discard, default_discard].map(c => cardValue(state, hypo_game.me, c, c.order));
+					remainder = Math.max(0, d_value - dd_value);
+				}
+			}
 
 			const result_log = {
 				clue: logClue(clue),
