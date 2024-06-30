@@ -55,8 +55,14 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 
 			// Remove inferences that will be proven false (i.e. after someone plays the card with such identity)
 			// Except the giver, who can't eliminate from their own hand
-			if (giver !== playerIndex)
+			if (giver !== playerIndex) {
 				card.inferred = card.inferred.subtract(card.inferred.filter(inf => inf.playedBefore(identity)));
+
+				// If a waiting connection will reveal this card, assume it will be known in time.
+				const connection = common.waiting_connections.find(conn => !conn.symmetric && conn.focused_card.order == card.order && conn.target !== state.ourPlayerIndex);
+				if (connection !== undefined)
+					card.inferred = card.inferred.intersect(connection.inference);
+			}
 
 			return card.matches(identity, { infer: true, symmetric: true }) &&
 				state.deck[order].matches(identity, { assume: true }) &&
