@@ -131,18 +131,19 @@ export function find_all_clues(game) {
 }
 
 /**
- * Returns the list of players who could give the given clue.
+ * Returns the list of players who could give the given clue originally considered for giver.
  * @param {Game} game
  * @param {Clue} clue
+ * @param {number} giver
  * @returns {number[]}
  */
-export function find_clue_givers(game, clue) {
+export function find_clue_givers(game, clue, giver) {
 	const { state } = game;
 	const { result } = clue;
 
-	const givers = [state.ourPlayerIndex];
-	for (let playerIndex = state.nextPlayerIndex(state.ourPlayerIndex);
-		playerIndex != state.ourPlayerIndex;
+	const givers = [giver];
+	for (let playerIndex = state.nextPlayerIndex(giver);
+		playerIndex != giver;
 		playerIndex = state.nextPlayerIndex(playerIndex)) {
 		// Once we reach a finessed play, any players after would no longer
 		// be able to give this clue.
@@ -300,7 +301,7 @@ export function take_action(game) {
 					if (!finesse)
 						return true;
 
-					const save_for = find_clue_givers(game, clue).filter(playerIndex => better_givers.includes(playerIndex));
+					const save_for = find_clue_givers(game, clue, state.ourPlayerIndex).filter(playerIndex => better_givers.includes(playerIndex));
 					if (save_for.length == 0)
 						return true;
 					const value = find_clue_value(clue.result);
