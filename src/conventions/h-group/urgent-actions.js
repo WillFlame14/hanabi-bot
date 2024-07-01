@@ -6,7 +6,7 @@ import { determine_focus, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { cardCount, cardTouched } from '../../variants.js';
+import { cardTouched } from '../../variants.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
@@ -315,8 +315,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 				// As a last resort, only scream discard if it is critical.
 				const save_card = game.players[target].chop(state.hands[target]);
-				const remaining = cardCount(state.variant, save_card) - state.discard_stacks[save_card.suitIndex][save_card.rank - 1];
-				if (remaining === 1 && state.clue_tokens === 0 && chop !== undefined) {
+				if ((state.isCritical(save_card) || state.isPlayable(save_card)) && state.clue_tokens === 0 && chop !== undefined) {
 					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push({ tableID, type: ACTION.DISCARD, target: chop.order });
 					continue;
 				}
