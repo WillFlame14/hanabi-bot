@@ -216,6 +216,11 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 					stall_clues[0].push(clue);
 					break;
 
+				case CLUE_INTERP.STALL_FILLIN:
+					logger.info('fill-in stall', logClue(clue));
+					stall_clues[2].push(clue);
+					break;
+
 				case CLUE_INTERP.STALL_LOCKED:
 					logger.info('locked hand save', logClue(clue));
 					stall_clues[3].push(clue);
