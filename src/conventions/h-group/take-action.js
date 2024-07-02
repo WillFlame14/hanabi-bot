@@ -412,7 +412,7 @@ export function take_action(game) {
 	const actual_severity = stall_severity(state, game.me, state.ourPlayerIndex);
 
 	// Stalling situations
-	if (state.clue_tokens > 0 && actual_severity > 0) {
+	if (state.clue_tokens > 0 && actual_severity > 0 && common_severity > 0) {
 		const validStall = best_stall_clue(stall_clues, common_severity);
 
 		// 8 clues, must stall

@@ -32,7 +32,7 @@ import { IdentitySet } from '../../../basics/IdentitySet.js';
  * Given a clue, recursively applies good touch principle to the target's hand.
  * @param {Game} game
  * @param {ClueAction} action
- * @returns {{fix?: boolean, layered_reveal?: boolean}} Possible results of the clue.
+ * @returns {{fix?: boolean, rewinded?: boolean}} Possible results of the clue.
  */
 function apply_good_touch(game, action) {
 	const { common, state } = game;
@@ -55,13 +55,13 @@ function apply_good_touch(game, action) {
 				if (new_game) {
 					Object.assign(game, new_game);
 					Utils.globalModify({ game: new_game });
-					return { layered_reveal: true };
+					return { rewinded: true };
 				}
 			}
 		}
 	}
 
-	return { fix: checkFix(game, oldThoughts, action) };
+	return checkFix(game, oldThoughts, action);
 }
 
 /**
@@ -299,10 +299,10 @@ export function interpret_clue(game, action) {
 	const focus_thoughts = common.thoughts[focused_card.order];
 	focus_thoughts.focused = true;
 
-	const { fix, layered_reveal } = apply_good_touch(game, action);
+	const { fix, rewinded } = apply_good_touch(game, action);
 
 	// Rewind occurred, this action will be completed as a result of it
-	if (layered_reveal)
+	if (rewinded)
 		return;
 
 	if (chop) {
@@ -358,7 +358,7 @@ export function interpret_clue(game, action) {
 		const rewind_card = impossible_conn?.card ?? wc_focus;
 		const rewind_identity = common.thoughts[rewind_card.order]?.identity();
 
-		if (rewind_identity !== undefined && wc_target === state.ourPlayerIndex) {
+		if (rewind_identity !== undefined && !common.thoughts[rewind_card.order].rewinded && wc_target === state.ourPlayerIndex && state.hands[state.ourPlayerIndex].findOrder(rewind_card.order)) {
 			const new_game = game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] });
 			if (new_game) {
 				Object.assign(game, new_game);
