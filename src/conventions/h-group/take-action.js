@@ -282,7 +282,7 @@ export function take_action(game) {
 			const better_givers = Utils.range(0, state.numPlayers).filter(i => {
 				const player = game.players[i];
 				const otherChop = player.chop(state.hands[i]);
-			
+
 				return i !== state.ourPlayerIndex && !player.thinksLoaded(state, i, {assume: false}) &&
 					(otherChop === undefined && player.thinksLocked(state, i) || cardValue(state, player, otherChop, otherChop.order) >= our_chop_value);
 			});
