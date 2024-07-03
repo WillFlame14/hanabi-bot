@@ -284,7 +284,7 @@ export function take_action(game) {
 				const otherChop = player.chop(state.hands[i]);
 
 				return i !== state.ourPlayerIndex && !player.thinksLoaded(state, i, {assume: false}) &&
-					(otherChop === undefined && player.thinksLocked(state, i) || cardValue(state, player, otherChop, otherChop.order) >= our_chop_value);
+					(player.thinksLocked(state, i) || otherChop && cardValue(state, player, otherChop, otherChop.order) >= our_chop_value);
 			});
 			if (better_givers.length > 0) {
 				let saved_for = [];
