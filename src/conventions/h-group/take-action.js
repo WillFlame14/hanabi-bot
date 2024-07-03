@@ -278,27 +278,21 @@ export function take_action(game) {
 		// better cards on chop.
 		if (!state.inEndgame() && !state.early_game && state.clue_tokens < 4 && chop !== undefined) {
 			const our_chop_value = cardValue(state, game.me, chop, chop.order);
-			const better_givers = [];
-			for (let i = 0; i < state.numPlayers; ++i) {
-				if (i == state.ourPlayerIndex)
-					continue;
+			// Saves clue for locked players or players who likely have a better chop than ours.
+			const better_givers = Utils.range(0, state.numPlayers).filter(i => {
 				const player = game.players[i];
-				const hand = state.hands[i];
-				if (player.thinksLoaded(state, i, {assume: false}))
-					continue;
-				const otherChop = player.chop(hand);
-				// Saves clue for locked players or players who likely have a better chop.
-				if (otherChop === undefined && player.thinksLocked(state, i))
-					better_givers.push(i);
-				else if (otherChop !== undefined && cardValue(state, player, otherChop, otherChop.order) >= our_chop_value)
-					better_givers.push(i);
-			}
+				const otherChop = player.chop(state.hands[i]);
+			
+				return i !== state.ourPlayerIndex && !player.thinksLoaded(state, i, {assume: false}) &&
+					(otherChop === undefined && player.thinksLocked(state, i) || cardValue(state, player, otherChop, otherChop.order) >= our_chop_value);
+			});
 			if (better_givers.length > 0) {
 				let saved_for = [];
 				consider_clues = consider_clues.filter(clue => {
-					const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
-					const { finesse } = determine_focus(state.hands[clue.target], common, list, {beforeClue: true});
-					if (!finesse)
+					const hand = state.hands[clue.target];
+					const list = hand.clueTouched(clue, state.variant).map(c => c.order);
+					const finesse_order = game.players[clue.target].find_finesse(hand)?.order;
+					if (finesse_order !== determine_focus(state.hands[clue.target], common, list, {beforeClue: true}).focused_card.order)
 						return true;
 
 					const save_for = find_clue_givers(game, clue, state.ourPlayerIndex).filter(playerIndex => better_givers.includes(playerIndex));
