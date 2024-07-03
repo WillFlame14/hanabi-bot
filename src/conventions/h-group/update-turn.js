@@ -482,6 +482,8 @@ export function update_turn(game, action) {
 	// Note that good_touch_elim() can remove waiting_connections; it is probably better to do this first.
 	common.waiting_connections = common.waiting_connections.filter((_, i) => !to_remove.has(i));
 
+	logger.debug('remaining wcs', game.common.waiting_connections.map(wc => wc.connections.map(logConnection).join(' -> ')));
+
 	common.update_hypo_stacks(state);
 
 	reset_superpositions(game);
