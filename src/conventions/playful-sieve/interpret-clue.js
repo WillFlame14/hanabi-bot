@@ -106,7 +106,7 @@ export function interpret_clue(game, action) {
 
 	Basics.onClue(game, action);
 
-	let fix = checkFix(game, oldCommon.thoughts, action);
+	let { fix } = checkFix(game, oldCommon.thoughts, action);
 
 	for (const { order } of hand) {
 		const card = common.thoughts[order];

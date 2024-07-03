@@ -86,7 +86,7 @@ export function checkFix(game, oldThoughts, clueAction) {
 			const new_game = game.rewind(reset_card.drawn_index, { type: 'identify', order: reset_card.order, playerIndex: target, identities: [reset_card.possible.array[0].raw()] });
 			Object.assign(game, new_game);
 			Utils.globalModify({ game: new_game });
-			return;
+			return { rewinded: true };
 		}
 
 		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
@@ -125,7 +125,7 @@ export function checkFix(game, oldThoughts, clueAction) {
 			visibleFind(state, common, card.identity(), { ignore: [giver], infer: true }).some(c => common.thoughts[c.order].touched && c.order !== order);
 	});
 
-	return clued_reset || duplicate_reveal;
+	return { fix: clued_reset || duplicate_reveal };
 }
 
 /**
