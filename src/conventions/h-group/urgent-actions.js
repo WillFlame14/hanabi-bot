@@ -313,7 +313,9 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 				const chop = common.chop(state.hands[state.ourPlayerIndex]);
 
-				if (state.clue_tokens === 0 && chop !== undefined) {
+				// As a last resort, only scream discard if it is critical.
+				const save_card = game.players[target].chop(state.hands[target]);
+				if ((state.isCritical(save_card) || game.me.hypo_stacks[save_card.suitIndex] + 1 === save_card.rank) && state.clue_tokens === 0 && chop !== undefined) {
 					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push({ tableID, type: ACTION.DISCARD, target: chop.order });
 					continue;
 				}
