@@ -83,7 +83,7 @@ export function handle_action(action, catchup = false) {
 			state.currentPlayerIndex = currentPlayerIndex;
 			state.turn_count = num + 1;
 
-			if (!catchup && !state.options.speedrun) {
+			if (!state.options.speedrun) {
 				// Update notes on cards
 				for (const { order } of state.hands.flat()) {
 					const card = this.common.thoughts[order];
@@ -103,7 +103,7 @@ export function handle_action(action, catchup = false) {
 
 							this.notes[order].full += `t${state.turn_count}: ${note}`;
 
-							if (this.in_progress)
+							if (!catchup && this.in_progress)
 								Utils.sendCmd('note', { tableID: this.tableID, order, note: this.notes[order].full });
 						}
 					}

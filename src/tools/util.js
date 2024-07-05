@@ -245,6 +245,25 @@ export function clueToAction(clue, tableID) {
 }
 
 /**
+ * Cleans up an action so that it doesn't contain any extra information.
+ * @param {Action} action
+ */
+export function cleanAction(action) {
+	switch (action.type) {
+		case 'clue':
+			action.mistake = false;
+			action.lock = false;
+			action.important = false;
+			action.hypothetical = false;
+			break;
+		case 'discard':
+			action.intentional = false;
+			break;
+	}
+	return action;
+}
+
+/**
  * Returns the visible hand of the owning player (since it is typically unknown).
  * @param  {State} state
  * @param  {Identity[]} deck

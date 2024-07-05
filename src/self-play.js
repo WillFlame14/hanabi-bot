@@ -114,20 +114,16 @@ async function main() {
  * @param {Variant} variant
  */
 function simulate_game(playerNames, deck, convention, level, variant) {
-	const games = playerNames.map((_, index) => {
-		const state = new State(playerNames, index, variant, {});
-		return new conventions[convention](-1, state, false, level);
-	});
+	const games = playerNames.map((_, index) =>
+		new conventions[convention](-1, new State(playerNames, index, variant, {}), false, level));
 
 	Utils.globalModify({ game: games[0] });
 
-	for (let gameIndex = 0; gameIndex < playerNames.length; gameIndex++) {
-		const game = games[gameIndex];
-
+	for (const game of games) {
 		// Draw cards in starting hands
 		for (let playerIndex = 0; playerIndex < playerNames.length; playerIndex++) {
-			for (let j = 0; j < game.state.handSize; j++) {
-				const order = games[gameIndex].state.cardOrder + 1;
+			for (let i = 0; i < game.state.handSize; i++) {
+				const order = game.state.cardOrder + 1;
 				const { suitIndex, rank } = playerIndex !== game.state.ourPlayerIndex ? deck[order] : { suitIndex: -1, rank: -1 };
 
 				game.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank }, true);
@@ -143,11 +139,12 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 	try {
 		while (games[0].state.endgameTurns !== 0 && games[0].state.strikes !== 3 && games[0].state.score !== games[0].state.maxScore) {
 			if (turn !== 0) {
-				games.forEach((game, index) => {
-					logger.debug('Turn for', game.state.playerNames[index]);
+				for (let i = 0; i < games.length; i++) {
+					const game = games[i];
+					logger.debug('Turn for', game.state.playerNames[i]);
 					Utils.globalModify({ game });
-					game.handle_action({ type: 'turn', num: turn, currentPlayerIndex });
-				}, true);
+					game.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
+				}
 			}
 
 			const currentPlayerGame = games[currentPlayerIndex];
@@ -165,8 +162,6 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 
 				logger.debug('Action for', state.playerNames[gameIndex]);
 
-				// logger.setLevel(currentPlayerIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
-
 				Utils.globalModify({ game });
 				game.handle_action(action, true);
 
@@ -180,7 +175,6 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 			}
 
 			currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.length;
-			// logger.setLevel(currentPlayerIndex === 1 ? logger.LEVELS.INFO : logger.LEVELS.ERROR);
 			turn++;
 		}
 

@@ -135,6 +135,21 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 			if (hypo_game === undefined)
 				continue;
 
+			const stomped_finesse = common.waiting_connections.some(w_conn => {
+				const { focused_card: wc_focus, connections, conn_index, inference } = w_conn;
+				const matches = player.thoughts[wc_focus.order].matches(inference, { assume: true });
+
+				return matches && list.some(o => {
+					const card = hypo_game.common.thoughts[o];
+					return connections.some((conn, i) => i >= conn_index && conn.card.order === o && card.inferred.every(i => hypo_game.state.isPlayable(i)));
+				});
+			});
+
+			if (stomped_finesse) {
+				logger.warn('indirectly stomps on finesse, not giving');
+				continue;
+			}
+
 			const interpret = hypo_game.common.thoughts[focused_card.order].inferred;
 			const result = get_result(game, hypo_game, clue, giver);
 			Object.assign(clue, { result });

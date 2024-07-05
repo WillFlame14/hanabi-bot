@@ -89,7 +89,7 @@ function getNextDiscard(game, player, startIndex, clue_tokens) {
 		if (common.thinksTrash(state, next_discard) && common.thinksPlayables(state, next_discard, { assume: false }))
 			clue_tokens++;
 
-		logger.info(`intermediate player ${state.playerNames[next_discard]} is loaded ${finessed_card !== undefined ? ' (finesse!)' : ''}`);
+		logger.debug(`intermediate player ${state.playerNames[next_discard]} is loaded ${finessed_card !== undefined ? ' (finesse!)' : ''}`);
 
 		next_discard = state.nextPlayerIndex(next_discard);
 

@@ -187,7 +187,7 @@ export class Game {
 	 * @returns {this | undefined}
 	 */
 	rewind(action_index, rewind_action, mistake = false, ephemeral = false) {
-		const { actionList } = this.state;
+		const actionList = this.state.actionList.map(Utils.cleanAction);
 
 		this.rewinds++;
 		if (this.rewinds > 100)
@@ -291,7 +291,7 @@ export class Game {
 		Utils.globalModify({ game: new_game });
 
 		// Remove special actions from the action list (they will be added back in when rewinding)
-		const actionList = this.state.actionList.filter(action => !['identify', 'ignore', 'finesse'].includes(action.type));
+		const actionList = this.state.actionList.filter(action => !['identify', 'ignore', 'finesse'].includes(action.type)).map(Utils.cleanAction);
 
 		let action_index = 0;
 
@@ -312,24 +312,14 @@ export class Game {
 			// Don't log history
 			logger.wrapLevel(logger.LEVELS.ERROR, () => {
 				while (new_game.state.turn_count < turn - 1) {
-					const action = actionList[action_index];
-
-					if (action.type === 'clue' && action.mistake)
-						action.mistake = false;
-
-					new_game.handle_action(action, true);
+					new_game.handle_action(actionList[action_index], true);
 					action_index++;
 				}
 			});
 
 			// Log the previous turn and the 'turn' action leading to the desired turn
 			while (new_game.state.turn_count < turn && actionList[action_index] !== undefined) {
-				const action = actionList[action_index];
-
-				if (action.type === 'clue' && action.mistake)
-					action.mistake = false;
-
-				new_game.handle_action(action);
+				new_game.handle_action(actionList[action_index]);
 				action_index++;
 			}
 		}

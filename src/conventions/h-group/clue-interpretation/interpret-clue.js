@@ -155,7 +155,9 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		}
 
 		common.waiting_connections = common.waiting_connections.concat(symmetric_connections);
-		focus_thoughts.inferred = focus_thoughts.inferred.union(old_inferred.filter(inf => symmetric_fps.some(fp => !fp.fake && inf.matches(fp))));
+		focus_thoughts.inferred = focus_thoughts.inferred
+			.union(old_inferred.filter(inf => symmetric_fps.some(fp => !fp.fake && inf.matches(fp))))
+			.intersect(focus_thoughts.possible);
 	}
 	reset_superpositions(game);
 }
@@ -182,7 +184,7 @@ export function finalize_bluff_connections(game, giver, target, connections) {
 	if (no_bluff_connections) {
 		// Convert possible bluff connections to non-bluff connections.
 		logger.info('removing bluffs due to visible non-bluff connection');
-		connections = connections.reduce((acc, conn) => {
+		return connections.reduce((acc, conn) => {
 			if (!conn.connections[0]?.bluff)
 				return acc.concat(conn);
 
@@ -196,35 +198,34 @@ export function finalize_bluff_connections(game, giver, target, connections) {
 			return acc.concat(conn);
 		}, []);
 	}
-	else {
-		const bluff_connections = connections.some(connection =>
-			connection.connections.length > 0 && connection.connections[0].bluff);
 
-		let removed = 0;
-		// Filter plays after hidden bluff connection,
-		connections = connections.reduce((acc, conn) => {
-			if (!conn.connections[0]?.bluff || !conn.connections[0].hidden) {
-				// A non-bluff connection is invalid if it requires a self finesse after a potential bluff play.
-				// E.g. if we could be bluffed for a 3 in one suit, we can't assume we have the connecting 2 in another suit.
-				if (bluff_connections && conn.connections[1]?.type == 'finesse' && conn.connections[1]?.self) {
-					removed++;
-					return acc;
-				}
-				return acc.concat(conn);
+	const bluff_connections = connections.some(connection =>
+		connection.connections.length > 0 && connection.connections[0].bluff);
+
+	let removed = 0;
+	// Filter plays after hidden bluff connection,
+	const filtered_connections = connections.reduce((acc, conn) => {
+		if (!conn.connections[0]?.bluff || !conn.connections[0].hidden) {
+			// A non-bluff connection is invalid if it requires a self finesse after a potential bluff play.
+			// E.g. if we could be bluffed for a 3 in one suit, we can't assume we have the connecting 2 in another suit.
+			if (bluff_connections && conn.connections[1]?.type == 'finesse' && conn.connections[1]?.self) {
+				removed++;
+				return acc;
 			}
-			// Remove everything after the bluff play to the non-hidden play as they won't
-			// play after the bluff play.
-			const next_visible_connection = conn.connections.findIndex(c => !c.bluff && !c.hidden);
-			conn.connections.splice(1, next_visible_connection);
-
 			return acc.concat(conn);
-		}, []);
+		}
+		// Remove everything after the bluff play to the non-hidden play as they won't
+		// play after the bluff play.
+		const next_visible_connection = conn.connections.findIndex(c => !c.bluff && !c.hidden);
+		conn.connections.splice(1, next_visible_connection);
 
-		if (removed)
-			logger.info(`Removing ${removed} self finesses due to possible bluff interpretation`);
-	}
+		return acc.concat(conn);
+	}, []);
 
-	return connections;
+	if (removed)
+		logger.info(`Removing ${removed} self finesses due to possible bluff interpretation`);
+
+	return filtered_connections;
 }
 
 /**

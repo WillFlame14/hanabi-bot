@@ -167,7 +167,7 @@ function resolve_card_retained(game, waiting_connection) {
 				return { remove: false };
 			}
 
-			if (giver !== state.ourPlayerIndex && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
+			if (giver !== state.ourPlayerIndex && reacting !== state.ourPlayerIndex && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
 				const our_finesse = common.find_finesse(state.hands[state.ourPlayerIndex]);
 
 				if (our_finesse !== undefined && identities.some(i => common.thoughts[our_finesse.order].inferred.has(i))) {
