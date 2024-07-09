@@ -230,7 +230,7 @@ export function takeTurn(game, rawAction, draw = 'xx') {
 
 	game.handle_action(action, true);
 
-	if (action.atype === 'play' || action.type === 'discard') {
+	if (action.type === 'play' || action.type === 'discard') {
 		if (draw === 'xx' && state.currentPlayerIndex !== state.ourPlayerIndex)
 			throw new Error(`Missing draw for ${state.playerNames[state.currentPlayerIndex]}'s action (${logAction(action)}).`);
 
