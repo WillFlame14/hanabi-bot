@@ -217,7 +217,7 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 		for (const connection of curr_connections) {
 			connections.push(connection);
 
-			const { reacting, card, hidden, type } = connection;
+			const { reacting, card, hidden, bluff, type } = connection;
 
 			if (type === 'finesse') {
 				finesses++;
@@ -235,6 +235,9 @@ export function find_own_finesses(game, action, { suitIndex, rank }, looksDirect
 					hypo_state.play_stacks[id.suitIndex]++;
 					hypo_common.hypo_stacks[id.suitIndex]++;		// Everyone knows this card is playing
 				}
+
+				if (bluff)
+					allHidden = false;
 			}
 			else {
 				allHidden = false;
@@ -341,17 +344,16 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 	const card = me.thoughts[finesse.order];
 	const reacting = state.ourPlayerIndex;
 
-	const bluff = game.level >= LEVEL.BLUFFS && firstPlay && state.ourPlayerIndex == bluff_seat;
+	const possibly_bluff = game.level >= LEVEL.BLUFFS && firstPlay && state.ourPlayerIndex == bluff_seat;
 	if (card.rewinded) {
 		if (game.level < LEVEL.INTERMEDIATE_FINESSES)
 			throw new IllegalInterpretation(`blocked layered finesse at level ${game.level}`);
 
 		if (finesse.suitIndex !== identity.suitIndex && state.isPlayable(finesse))
-			return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, bluff, identities: [finesse.raw()] }];
+			return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, bluff: possibly_bluff, identities: [finesse.raw()] }];
 	}
 
-	if (card.inferred.has(identity) && card.matches(identity, { assume: true }) ||
-		bluff && card.inferred.some(id => state.isPlayable(id))) {
+	if ((card.inferred.has(identity) && card.matches(identity, { assume: true })) || (possibly_bluff && card.inferred.some(id => state.isPlayable(id)))) {
 		if (game.level === 1 && connected.length >= 1)
 			throw new IllegalInterpretation(`blocked ${finesses >= 1 ? 'double finesse' : 'prompt + finesse'} at level 1`);
 
@@ -372,7 +374,7 @@ function find_self_finesse(game, giver, identity, connected, ignoreOrders, fines
 			return state.hands.flat().find(c => c.order === ignored_order).matches(identity);
 		});
 
-		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff, identities: [identity], certain, ambiguous }];
+		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff: !card.possible.has(identity), possibly_bluff, identities: [identity], certain, ambiguous }];
 	}
 
 	const first_finesse = common.thoughts[our_hand.find(c => !c.clued)?.order];

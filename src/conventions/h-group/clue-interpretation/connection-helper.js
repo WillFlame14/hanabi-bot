@@ -201,28 +201,26 @@ export function assign_connections(game, connections, giver) {
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
 	for (let i = 0; i < connections.length; i++) {
-		const { type, bluff, hidden, card: conn_card, linked, identities, certain } = connections[i];
+		const { type, bluff, possibly_bluff, hidden, card: conn_card, linked, identities, certain } = connections[i];
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
 
-		logger.info('assigning connection', logConnection(connections[i]));
+		logger.debug('assigning connection', logConnection(connections[i]));
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
-		if (card.old_inferred === undefined)
-			card.old_inferred = card.inferred;
+		card.old_inferred ??= card.inferred;
 
 		if (type === 'finesse') {
 			card.finessed = true;
-			if (bluff)
-				card.bluffed = true;
+			card.bluffed ||= bluff;
+			card.possibly_bluffed ||= possibly_bluff;
 			card.finesse_index = state.actionList.length;
 			card.hidden = hidden;
 
 			if (state.hands[giver].some(c => common.thoughts[c.order].finessed))
 				game.finesses_while_finessed[giver].push(state.deck[card.order]);
 
-			if (certain)
-				card.certain_finessed = true;
+			card.certain_finessed ||= certain;
 		}
 
 		if (connections.some(conn => conn.type === 'finesse'))
@@ -283,10 +281,10 @@ export function assign_connections(game, connections, giver) {
 }
 
 /**
- * @param {FocusPossibility} focus_possibility
+ * @param {Pick<FocusPossibility, 'connections'>} focus_possibility
  * @param {number} playerIndex
  */
-function connection_score(focus_possibility, playerIndex) {
+export function connection_score(focus_possibility, playerIndex) {
 	const { connections } = focus_possibility;
 
 	const first_self = connections.findIndex(conn => conn.type !== 'known' && conn.type !== 'playable');

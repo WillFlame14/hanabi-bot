@@ -225,7 +225,7 @@ export function take_action(game) {
 	const is_finessed = playable_cards.length > 0 && priority === 0;
 
 	// Bluffs should never be deferred as they can lead to significant desync with human players
-	if (is_finessed && playable_cards.some(c => common.thoughts[c.order].bluffed))
+	if (is_finessed && playable_cards.some(c => common.thoughts[c.order].bluffed || common.thoughts[c.order].possibly_bluffed))
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
 	const urgent_actions = find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities, is_finessed ? best_playable_card : undefined);
@@ -406,7 +406,14 @@ export function take_action(game) {
 
 	// Shout Discard on a valuable card that moves chop to trash
 	const next_chop = me.chop(state.hands[nextPlayerIndex]);
-	if (game.level >= LEVEL.LAST_RESORTS && best_playable_card !== undefined && trash_cards.length > 0 && next_chop !== undefined && state.clue_tokens <= 2) {
+	const should_shout = game.level >= LEVEL.LAST_RESORTS &&
+		best_playable_card !== undefined &&
+		!me.thinksLoaded(state, nextPlayerIndex, { assume: true }) &&
+		trash_cards.length > 0 &&
+		next_chop !== undefined &&
+		state.clue_tokens <= 2;
+
+	if (should_shout) {
 		// Temporarily chop move their chop
 		me.thoughts[next_chop.order].chop_moved = true;
 		const new_chop_value = me.chopValue(state, nextPlayerIndex);

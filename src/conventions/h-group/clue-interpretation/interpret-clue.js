@@ -5,7 +5,7 @@ import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { IllegalInterpretation, RewindEscape, find_own_finesses } from './own-finesses.js';
-import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor } from './connection-helper.js';
+import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor, connection_score } from './connection-helper.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 import { remove_finesse } from '../update-turn.js';
@@ -139,6 +139,20 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		const ownBlindPlays = correct_match?.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length || 0;
 		const symmetric_fps = find_symmetric_connections(game, old_game, action, inf_possibilities, selfRanks, ownBlindPlays);
 		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver, target);
+
+		if (correct_match?.connections[0]?.bluff) {
+			const { reacting } = correct_match.connections[0];
+			const delay_needed = symmetric_fps.filter(fp =>
+				fp.connections.length > 0 &&
+				fp.connections[0]?.reacting !== reacting &&
+				connection_score(fp, reacting) <= connection_score(correct_match, reacting));
+
+			if (delay_needed.length > 0) {
+				logger.warn('invalid bluff, symmetrically needs to delay for', delay_needed.map(logCard).join(), 'possibilities');
+				game.interpretMove(CLUE_INTERP.NONE);
+				return;
+			}
+		}
 
 		for (const conn of symmetric_fps.concat(inf_possibilities).flatMap(fp => fp.connections)) {
 			if (conn.type === 'playable') {
