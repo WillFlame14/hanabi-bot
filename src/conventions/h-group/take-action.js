@@ -152,10 +152,10 @@ export function find_clue_givers(game, clue, giver) {
 
 		// The targeted player can't clue themselves.
 		if (playerIndex == clue.target) {
-			const playerChop = game.players[playerIndex].chop(state.hands[playerIndex]).order;
+			const playerChop = game.players[playerIndex].chop(state.hands[playerIndex]);
 			// If the play was on chop, the clue has to be given before this player.
 			// TODO: This is also true if the clue focus would change after the chop discard.
-			if (result.playables.some(p => p.playerIndex == playerIndex && p.card.order == playerChop))
+			if (playerChop !== undefined && result.playables.some(p => p.playerIndex == playerIndex && p.card.order === playerChop.order))
 				return givers;
 			continue;
 		}
