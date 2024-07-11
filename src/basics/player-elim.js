@@ -182,7 +182,7 @@ export function good_touch_elim(state, only_self = false) {
 		const matches = match_map.get(id_hash);
 		const hard_matches = hard_match_map.get(id_hash);
 
-		if (matches && hard_matches && (state.baseCount(id) + matches.size + hard_matches.size > cardCount(state.variant, id))) {
+		if (matches && hard_matches && (state.baseCount(id) + matches.size > cardCount(state.variant, id))) {
 			const visibles = Array.from(matches).concat(Array.from(hard_matches)).filter(o => state.deck[o].matches(id));
 
 			if (visibles.length > 0) {

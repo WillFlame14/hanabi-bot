@@ -95,6 +95,7 @@
  * @property {boolean} [self]
  * @property {boolean} [hidden]
  * @property {boolean} [bluff]
+ * @property {boolean} [possibly_bluff]
  * @property {ActualCard[]} [linked]
  * @property {boolean} [certain]
  * @property {boolean} [ambiguous]

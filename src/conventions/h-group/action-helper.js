@@ -107,8 +107,10 @@ export function determine_playable_card(game, playable_cards) {
 	for (const { order } of playable_cards) {
 		const card = game.me.thoughts[order];
 
-		// Part of a finesse
-		if (card.finessed || common.dependentConnections(order).some(wc => wc.connections.some((conn, i) => i >= wc.conn_index && conn.type === 'finesse'))) {
+		const in_finesse = card.finessed || common.dependentConnections(order).some(wc =>
+			!wc.symmetric && wc.connections.some((conn, i) => i >= wc.conn_index && conn.type === 'finesse'));
+
+		if (in_finesse) {
 			priorities[state.numPlayers > 2 ? 0 : 1].push(card);
 			continue;
 		}

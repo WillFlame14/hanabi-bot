@@ -272,12 +272,6 @@ export function resolve_bluff(game, target, connections, focusedCard, focusIdent
 		return hidden_connections;
 	}
 
-	if (firstPlay > 0) {
-		logger.warn(`bluff is possible, removing ${firstPlay} layered finesse connections`);
-		// Remove hidden connections following bluff play.
-		return connections.toSpliced(1, firstPlay);
-	}
-
 	return connections;
 }
 
