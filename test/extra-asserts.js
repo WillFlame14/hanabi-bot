@@ -1,5 +1,4 @@
 import { strict as assert } from 'node:assert';
-import { inspect } from 'node:util';
 import { expandShortCard } from './test-utils.js';
 import * as Utils from '../src/tools/util.js';
 import { logCard } from '../src/tools/log.js';
@@ -39,7 +38,7 @@ export function cardHasPossibilities(card, possibilities, message) {
  * @param  {string | Error} 		 [message]		The error message if the assertion fails.
  */
 export function objHasProperties(obj, properties, message) {
-	assert.ok(typeof obj === 'object', `Object (${inspect(obj)}) is not of type 'object'.`);
+	assert.ok(typeof obj === 'object', `Object (${JSON.stringify(obj)}) is not of type 'object'.`);
 	assert.ok(typeof properties === 'object', `Properties (${JSON.stringify(properties)} is not of type 'object'.`);
 
 	assert.deepEqual(Utils.objPick(obj, Object.keys(properties)), properties, message);
