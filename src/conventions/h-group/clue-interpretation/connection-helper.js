@@ -7,6 +7,7 @@ import logger from '../../../tools/logger.js';
 import { logCard, logConnection, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
+import { LEVEL } from '../h-constants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -40,6 +41,30 @@ export function inference_known(all_connections) {
  */
 export function inference_rank(state, suitIndex, connections) {
 	return state.play_stacks[suitIndex] + 1 + connections.filter(conn => !conn.hidden).length;
+}
+
+/**
+ * Returns whether playing an identity would be a valid bluff.
+ * @param {Game} game
+ * @param {ClueAction} action
+ * @param {Identity} identity
+ * @param {number} reacting
+ * @param {number[]} connected
+ */
+export function valid_bluff(game, action, identity, reacting, connected) {
+	const nextCard = { suitIndex: identity.suitIndex, rank: identity.rank + 1 };
+	const { giver, target, clue } = action;
+
+	return game.level >= LEVEL.BLUFFS &&
+		game.state.nextPlayerIndex(giver) === reacting &&					// must be bluff seat
+		connected.length === 1 &&											// must not be delayed
+		((clue.type === CLUE.RANK && clue.value !== nextCard.rank) ||
+			!game.common.thoughts[connected[0]].inferred.has(nextCard)) &&	// must disconnect
+		!(clue.type === CLUE.COLOUR && reacting === target) &&				// must not be self-colour bluff
+		!game.state.hands[reacting].some(c => {								// must not be confused with an existing finesse
+			const card = game.players[reacting].thoughts[c.order];
+			return card.finessed && card.possible.has(identity);
+		});
 }
 
 /**

@@ -12,6 +12,7 @@ import { CLUE_INTERP } from '../h-constants.js';
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
  * @typedef {import('../../../types.js').FocusPossibility} FocusPossibility
+ * @typedef {import('../../../types.js').Identity} Identity
  */
 
 /**
@@ -22,7 +23,7 @@ import { CLUE_INTERP } from '../h-constants.js';
  */
 function find_colour_focus(game, suitIndex, action) {
 	const { common, state } = game;
-	const { giver, list, target } = action;
+	const { list, target } = action;
 	const { focused_card, chop } = determine_focus(state.hands[target], common, list);
 
 	/** @type {FocusPossibility[]} */
@@ -40,7 +41,6 @@ function find_colour_focus(game, suitIndex, action) {
 	const old_play_stacks = state.play_stacks;
 	let already_connected = [focused_card.order];
 
-	let firstPlay = true;
 	let finesses = 0;
 
 	while (next_rank < state.max_ranks[suitIndex]) {
@@ -52,8 +52,7 @@ function find_colour_focus(game, suitIndex, action) {
 		const looksDirect = common.thoughts[focused_card.order].identity() === undefined;
 
 		const connect_options = action.hypothetical ? { knownOnly: [state.ourPlayerIndex] } : {};
-		const connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, already_connected, ignoreOrders, connect_options);
-		firstPlay = false;
+		const connecting = find_connecting(game, action, identity, looksDirect, already_connected, ignoreOrders, connect_options);
 
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
@@ -192,15 +191,13 @@ function find_rank_focus(game, rank, action) {
 
 		state.play_stacks = old_play_stacks.slice();
 		let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focused_card.order));
-		let firstPlay = true;
 
 		// Try looking for all connecting cards
 		while (next_rank <= rank) {
 			const identity = { suitIndex, rank: next_rank };
 			const ignoreOrders = getIgnoreOrders(game, next_rank - old_play_stacks[suitIndex] - 1, suitIndex);
 			const connect_options = action.hypothetical ? { knownOnly: [state.ourPlayerIndex] } : {};
-			const connecting = find_connecting(game, giver, target, identity, looksDirect, firstPlay, already_connected, ignoreOrders, connect_options);
-			firstPlay = false;
+			const connecting = find_connecting(game, action, identity, looksDirect, already_connected, ignoreOrders, connect_options);
 
 			if (connecting.length === 0)
 				break;

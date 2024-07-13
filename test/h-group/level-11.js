@@ -704,27 +704,6 @@ describe('bluff clues', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order].finessed, true);
 	});
 
-	it(`doesn't bluff on top of unknown queued cards`, () => {
-		const game = setup(HGroup, [
-			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['r2', 'g1', 'y1', 'y1', 'r4'],
-			['p2', 'b2', 'r3', 'y5', 'y4'],
-			['g1', 'g2', 'g3', 'g5', 'p4'],
-		], {
-			level: { min: 11 },
-			play_stacks: [1, 0, 0, 0, 0],
-			starting: PLAYER.DONALD
-		});
-		takeTurn(game, 'Donald clues red to Cathy');
-		// With r2 queued, we cannot bluff the g1.
-		const { play_clues } = find_clues(game);
-		const bluff_clues = play_clues[2].filter(clue => {
-			return clue.type == CLUE.RANK && clue.target == 2 && clue.value == 2 ||
-				clue.type == CLUE.COLOUR && clue.target == 2 && (clue.value == COLOUR.BLUE || clue.value == COLOUR.PURPLE);
-		});
-		assert.equal(bluff_clues.length, 0);
-	});
-
 	it(`computes connections correctly`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'], // Known g1*

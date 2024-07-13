@@ -155,7 +155,7 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 		return { tempo: false, valuable: false };
 
 	const valuable = playables.length > 1 ||
-		prompt.order !== focused_card.order ||
+		(focused_card.rank !== 5 && prompt.order !== focused_card.order) ||
 		playables.some(({ card }) => card.chop_moved && card.newly_clued);
 
 	return { tempo: true, valuable };

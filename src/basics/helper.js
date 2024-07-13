@@ -121,7 +121,7 @@ export function checkFix(game, oldThoughts, clueAction) {
 		const card = common.thoughts[order];
 
 		// The fix can be in anyone's hand except the giver's
-		return game.common.thoughts[order].identity() !== undefined &&
+		return list.includes(order) && game.common.thoughts[order].identity() !== undefined &&
 			visibleFind(state, common, card.identity(), { ignore: [giver], infer: true }).some(c => common.thoughts[c.order].touched && c.order !== order);
 	});
 
