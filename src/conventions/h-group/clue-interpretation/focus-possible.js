@@ -1,11 +1,13 @@
 import { CLUE } from '../../../constants.js';
+import { CLUE_INTERP } from '../h-constants.js';
 import { determine_focus, getIgnoreOrders, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_connecting, resolve_bluff } from './connecting-cards.js';
+import { cardTouched, colourableSuits, variantRegexes } from '../../../variants.js';
+import { finalize_connections } from './interpret-clue.js';
+import * as Utils from '../../../tools/util.js';
+
 import logger from '../../../tools/logger.js';
 import { logCard, logConnections } from '../../../tools/log.js';
-import * as Utils from '../../../tools/util.js';
-import { cardTouched, colourableSuits, variantRegexes } from '../../../variants.js';
-import { CLUE_INTERP } from '../h-constants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -74,7 +76,7 @@ function find_colour_focus(game, suitIndex, action) {
 			}
 
 			// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
-			const possible_connections = resolve_bluff(game, target, connections, focused_card, { suitIndex, rank: next_rank }, action);
+			const possible_connections = resolve_bluff(connections);
 			if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
 				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
 		}
@@ -85,7 +87,7 @@ function find_colour_focus(game, suitIndex, action) {
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
 
-	connections = resolve_bluff(game, target, connections, focused_card, { suitIndex, rank: next_rank }, action);
+	connections = resolve_bluff(connections);
 	if (connections.length == 0) {
 		// Undo plays invalidated by a false bluff.
 		next_rank = old_play_stacks[suitIndex] + 1;
@@ -231,7 +233,7 @@ function find_rank_focus(game, rank, action) {
 				looksDirect = focus_thoughts.identity() === undefined && looksSave;
 
 				if (rank === next_rank) {
-					const possible_connections = resolve_bluff(game, target, connections, focused_card, identity, action);
+					const possible_connections = resolve_bluff(connections);
 					// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
 					if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
 						focus_possible.push({ suitIndex, rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
@@ -251,7 +253,7 @@ function find_rank_focus(game, rank, action) {
 			continue;
 		}
 
-		connections = resolve_bluff(game, target, connections, focused_card, next_identity, action);
+		connections = resolve_bluff(connections);
 
 		if (connections.length == 0)
 			next_rank = old_play_stacks[suitIndex] + 1;
@@ -294,7 +296,9 @@ export function find_focus_possible(game, action) {
 		find_rank_focus(game, clue.value, action);
 
 	// Remove play duplicates (since save overrides play)
-	return focus_possible.filter((p1, index1) => {
+	const filtered_fps = focus_possible.filter((p1, index1) => {
 		return !focus_possible.some((p2, index2) => index2 !== index1 && p1.suitIndex === p2.suitIndex && p1.rank === p2.rank && p2.save);
 	});
+
+	return finalize_connections(filtered_fps);
 }

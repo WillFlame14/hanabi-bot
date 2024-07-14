@@ -3,13 +3,11 @@ import { cardCount } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
 import { order_1s } from '../action-helper.js';
 import { inBetween } from '../hanabi-logic.js';
-
-import { ActualCard } from '../../../basics/Card.js';
 import { valid_bluff } from './connection-helper.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logConnection } from '../../../tools/log.js';
+import { logCard } from '../../../tools/log.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -198,8 +196,6 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse.suitIndex] + 1 === finesse.rank) {
 			const bluff = valid_bluff(game, action, finesse, reacting, connected);
 
-			// logger.info('valid bluff?', bluff);
-
 			if (giver === state.ourPlayerIndex) {
 				// Don't bluff out cards that are likely to create bad touch in our own hand.
 				if (bluff && state.hands[giver].some(c => c.clued && me.thoughts[c.order].inferred.length <= 2 && me.thoughts[c.order].inferred.has(finesse))) {
@@ -221,55 +217,31 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 
 /**
  * Determines whether a bluff connection is a valid bluff, and updates the connection accordingly.
- * @param {Game} game
- * @param {number} target
  * @param {Connection[]} connections	The complete connections leading to the play of a card.
- * @param {ActualCard} focusedCard		The focused card.
- * @param {Identity} focusIdentity		The expected identity of the focus.
- * @param {import('../../../types.js').ClueAction} clue
  * @returns {Connection[]}
  */
-export function resolve_bluff(game, target, connections, focusedCard, focusIdentity, clue) {
+export function resolve_bluff(connections) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
 
-	const firstPlay = connections.findIndex(conn => !conn.hidden);
-	const bluffCard = connections[0].card;
-	let bluff_fail_reason = undefined;
-
-	// Disallow self-colour bluffs: https://hanabi.github.io/extras/special-bluffs#self-color-bluffs-1-for-1-form-scb
-	if ((clue.giver + 1) % game.state.numPlayers == clue.target && clue.clue.type == CLUE.COLOUR && connections[0].reacting == clue.target)
-		bluff_fail_reason = `self-colour bluff disallowed at level ${game.level}`;
+	const next_visible = connections.findIndex(conn => !(conn.type === 'finesse' && conn.reacting === connections[0].reacting));
+	const index = next_visible === -1 ? connections.length : next_visible;
 
 	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
-	if (!bluff_fail_reason && connections.some((conn, index) => index > firstPlay && (conn.hidden || conn.type === 'finesse')))
-		bluff_fail_reason = `requires additional finesses [${connections.map(logConnection)}]`;
-
-	// A bluff must not connect to the finesse card.
-	if (!bluff_fail_reason && bluffCard.identity() !== undefined) {
-		const nextCard = {suitIndex: bluffCard.suitIndex, rank: bluffCard.rank + 1};
-		if ((clue.clue.type != CLUE.RANK || clue.clue.value == nextCard.rank) &&
-			game.common.thoughts[focusedCard.order].inferred.has(nextCard))
-			bluff_fail_reason = `blind play ${logCard(bluffCard)} connects to clue and inference on focused card`;
-	}
-
-	if (bluff_fail_reason) {
-		// If a bluff is not possible, we only have a valid connection if a real matching card was found,
-		// or the bluff card matches the target,
-		// and the second play is not a finesse on ourselves
-		if (firstPlay == 0 &&
-			![-1, focusIdentity.suitIndex].includes(connections[0].card.suitIndex)) {
-			logger.warn(`bluff invalid and connecting card not found or focus doesn't match expected identity: ${bluff_fail_reason}`);
-			return [];
+	if (connections.some((conn, i) => i >= index && (conn.hidden || conn.type === 'finesse'))) {
+		// If a bluff is not possible, we only have a valid connection if a real matching card was found
+		if (next_visible > 1) {
+			logger.warn('bluff invalid but connection still exists');
+			return connections.with(0, Object.assign(Utils.objClone(connections[0]), { bluff: false }));
 		}
 
-		logger.warn(`bluff invalid but connection still exists: ${bluff_fail_reason}`);
-
-		const hidden_connections = connections.slice();
-		hidden_connections[0] = Utils.objClone(connections[0]);
-		hidden_connections[0].bluff = false;
-		return hidden_connections;
+		logger.warn('bluff invalid, followed by hidden/finesse connections');
+		return [];
 	}
+
+	// Remove extra hidden finesse connections if the bluff is valid
+	if (connections.length > 1 && connections[1].reacting === connections[0].reacting)
+		return connections.toSpliced(1, index - 1);
 
 	return connections;
 }

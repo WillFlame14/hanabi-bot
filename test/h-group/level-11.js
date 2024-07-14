@@ -289,6 +289,11 @@ describe('bluff clues', () => {
 		takeTurn(game, 'Bob clues red to Donald');
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3']);
+
+		takeTurn(game, 'Cathy plays p1', 'g1');
+
+		// Alice's slot 4 should still be r3.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3']);
 	});
 
 	it('infers the identity of bluff prompts through other people', () => {
@@ -564,7 +569,7 @@ describe('bluff clues', () => {
 		assert.equal(bluff_clues.length, 0);
 	});
 
-	it(`doesn't assume it can give a layered finess when bluff target is likely a duplicate`, () => {
+	it(`doesn't assume it can give a layered finesse when bluff target is likely a duplicate`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['y2', 'b3', 'y1', 'r4'],

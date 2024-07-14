@@ -81,9 +81,8 @@ function connect(game, action, focusedCard, identity, looksDirect, connected, ig
 	const our_hand = state.hands[state.ourPlayerIndex];
 
 	// First, see if someone else has the connecting card
-	const connections = find_connecting(game, action, identity, looksDirect, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
-	const other_connecting = resolve_bluff(game, target, connections, focusedCard, identity, action);
-	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate' && (other_connecting.at(-1).reacting != state.ourPlayerIndex || other_connecting.at(-1).card.matches(identity, {assume: true})))
+	const other_connecting = find_connecting(game, action, identity, looksDirect, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
+	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate')
 		return other_connecting;
 
 	// See if the giver knows about their own card
@@ -255,7 +254,7 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 		else
 			hypo_state.play_stacks[suitIndex]++;
 	}
-	return resolve_bluff(game, target, connections, focused_card, { suitIndex, rank }, action);
+	return resolve_bluff(connections);
 }
 
 /**

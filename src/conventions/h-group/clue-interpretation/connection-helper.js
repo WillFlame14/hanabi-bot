@@ -40,7 +40,7 @@ export function inference_known(all_connections) {
  * @param {Connection[]} connections
  */
 export function inference_rank(state, suitIndex, connections) {
-	return state.play_stacks[suitIndex] + 1 + connections.filter(conn => !conn.hidden).length;
+	return state.play_stacks[suitIndex] + 1 + connections.filter(conn => !conn.hidden || conn.bluff).length;
 }
 
 /**

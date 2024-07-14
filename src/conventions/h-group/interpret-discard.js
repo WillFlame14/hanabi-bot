@@ -177,8 +177,6 @@ function check_sdcm(game, action, before_trash, old_chop) {
 		before_trash.some(c => c.order === order) &&
 		isTrash(state, common, { suitIndex, rank }, order, { infer: true });
 
-	logger.info('scream shout', scream, shout, common.thinksPlayables(state, playerIndex, {assume: true}));
-
 	if (!scream && !shout)
 		return;
 
