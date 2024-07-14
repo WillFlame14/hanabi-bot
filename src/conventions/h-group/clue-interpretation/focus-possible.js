@@ -76,7 +76,7 @@ function find_colour_focus(game, suitIndex, action) {
 			}
 
 			// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
-			const possible_connections = resolve_bluff(connections);
+			const possible_connections = resolve_bluff(game, connections);
 			if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
 				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
 		}
@@ -87,7 +87,7 @@ function find_colour_focus(game, suitIndex, action) {
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
 
-	connections = resolve_bluff(connections);
+	connections = resolve_bluff(game, connections);
 	if (connections.length == 0) {
 		// Undo plays invalidated by a false bluff.
 		next_rank = old_play_stacks[suitIndex] + 1;
@@ -233,7 +233,7 @@ function find_rank_focus(game, rank, action) {
 				looksDirect = focus_thoughts.identity() === undefined && looksSave;
 
 				if (rank === next_rank) {
-					const possible_connections = resolve_bluff(connections);
+					const possible_connections = resolve_bluff(game, connections);
 					// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
 					if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
 						focus_possible.push({ suitIndex, rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
@@ -253,7 +253,7 @@ function find_rank_focus(game, rank, action) {
 			continue;
 		}
 
-		connections = resolve_bluff(connections);
+		connections = resolve_bluff(game, connections);
 
 		if (connections.length == 0)
 			next_rank = old_play_stacks[suitIndex] + 1;

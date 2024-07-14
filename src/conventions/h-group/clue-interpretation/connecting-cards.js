@@ -7,7 +7,7 @@ import { valid_bluff } from './connection-helper.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard } from '../../../tools/log.js';
+import { logCard, logConnection } from '../../../tools/log.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -217,14 +217,16 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 
 /**
  * Determines whether a bluff connection is a valid bluff, and updates the connection accordingly.
+ * @param {Game} game
  * @param {Connection[]} connections	The complete connections leading to the play of a card.
  * @returns {Connection[]}
  */
-export function resolve_bluff(connections) {
+export function resolve_bluff(game, connections) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
 
-	const next_visible = connections.findIndex(conn => !(conn.type === 'finesse' && conn.reacting === connections[0].reacting));
+	const next_visible = connections.findIndex(conn =>
+		!(conn.type === 'finesse' && conn.reacting === connections[0].reacting && (conn.card.identity() === undefined || game.state.isPlayable(conn.card))));
 	const index = next_visible === -1 ? connections.length : next_visible;
 
 	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
@@ -235,7 +237,7 @@ export function resolve_bluff(connections) {
 			return connections.with(0, Object.assign(Utils.objClone(connections[0]), { bluff: false }));
 		}
 
-		logger.warn('bluff invalid, followed by hidden/finesse connections');
+		logger.warn(`bluff invalid (${connections.map(logConnection).join(' -> ')}), followed by hidden/finesse connections`);
 		return [];
 	}
 

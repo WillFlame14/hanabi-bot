@@ -215,8 +215,8 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 		const nextPriority = high_priority ? 0 : prioritySize;
 
-		// They are locked, we should try to unlock
-		if (common.thinksLocked(state, target)) {
+		// They are locked (or will be locked), we should try to unlock
+		if (common.thinksLocked(state, target) || state.hands[target].every(c => common.thoughts[c.order].saved || state.isCritical(c))) {
 			const unlock_order = find_unlock(game, target);
 			if (unlock_order !== undefined && (!finessed_card || finessed_card.order == unlock_order)) {
 				urgent_actions[PRIORITY.UNLOCK + nextPriority].push({ tableID, type: ACTION.PLAY, target: unlock_order });

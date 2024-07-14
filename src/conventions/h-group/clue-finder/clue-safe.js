@@ -194,7 +194,7 @@ export function safe_situation(game, player) {
 	const safe2 = !chopUnsafe(state, player, next_discard) || has_early_clue;
 	const discard2 = possible_discard(game, player, state.hands[next_discard], potential_cluers >= 1);
 
-	logger.info(`next discard may come from ${state.playerNames[next_discard]}, chop ${safe2 ? 'safe' : 'unsafe'} ${discard2 ? logCard(discard2) : '(locked)'}, ${potential_cluers} potential cluers`);
+	logger.info(`next next discard may come from ${state.playerNames[next_discard]}, chop ${safe2 ? 'safe' : 'unsafe'} ${discard2 ? logCard(discard2) : '(locked)'}, ${potential_cluers} potential cluers`);
 
 	return { safe: safe2 || potential_cluers >= 1, discard: has_early_clue2 ? undefined : discard2 };
 }

@@ -219,7 +219,7 @@ export function logConnection(connection) {
 	const identity = identities.length === 1 ? logCard(identities[0]) : `[${identities.map(logCard)}]`;
 	const logType = type === 'finesse' ? (connection.bluff ? 'bluff' : 'finesse') : type;
 
-	return `${card.order} ${identity} ${logType} (${globals.game.state.playerNames[reacting]})${connection.certain ? ' (certain)' : ''}`;
+	return `${card.order} ${identity} ${logType} (${globals.game.state.playerNames[reacting]})${connection.certain ? ' (certain)' : connection.hidden ? ' (hidden)' : ''}`;
 }
 
 /**

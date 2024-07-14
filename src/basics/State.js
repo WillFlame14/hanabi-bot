@@ -173,11 +173,13 @@ export class State {
 	 * Returns whether the given suitIndex and rank is currently critical.
 	 * @param {Identity} identity
 	 */
-	isCritical({ suitIndex, rank }) {
+	isCritical(identity) {
+		const { suitIndex, rank } = identity;
+
 		if (suitIndex === -1 || rank === -1)
 			return false;
 
-		return this.discard_stacks[suitIndex][rank - 1] === (cardCount(this.variant, { suitIndex, rank }) - 1);
+		return !this.isBasicTrash(identity) && this.discard_stacks[suitIndex][rank - 1] === (cardCount(this.variant, identity) - 1);
 	}
 
 	/**

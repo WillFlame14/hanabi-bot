@@ -160,6 +160,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 			let remainder = 0;
 
 			if (discard !== undefined) {
+				logger.highlight('yellow', 'checking default discard');
 				const { safe: default_safe, discard: default_discard } = safe_situation(game, player);
 
 				if (default_safe && default_discard !== undefined) {
@@ -179,7 +180,8 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 				finesses: finesses.length,
 				playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
 				chop_moved: chop_moved.map(c => `${logCard(state.deck[c.order])} ${c.order}`),
-				remainder
+				remainder,
+				interp: hypo_game.moveHistory.at(-1).move
 			};
 			logger.info('result,', JSON.stringify(result_log), find_clue_value(Object.assign(result, { remainder })));
 

@@ -153,7 +153,7 @@ export function playables_result(state, player, hypo_player) {
 	}
 
 	for (const order of hypo_player.unknown_plays) {
-		if (player.unknown_plays.has(order))
+		if (player.unknown_plays.has(order) || Array.from(player.unknown_plays).some(o => state.deck[order].matches(state.deck[o])))
 			continue;
 
 		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));

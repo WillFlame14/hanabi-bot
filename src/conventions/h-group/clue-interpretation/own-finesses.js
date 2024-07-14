@@ -254,7 +254,7 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 		else
 			hypo_state.play_stacks[suitIndex]++;
 	}
-	return resolve_bluff(connections);
+	return resolve_bluff(game, connections);
 }
 
 /**
@@ -272,7 +272,10 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
 	const already_connected = connected.slice();
 
 	for (const action of game.next_finesse) {
-		const start_index = our_hand.findIndex(c => c.order === common.find_finesse(our_hand, already_connected, ignoreOrders).order);
+		const start_index = our_hand.findIndex(c => c.order === common.find_finesse(our_hand, already_connected, ignoreOrders)?.order);
+		if (start_index === -1)
+			return [];
+
 		const { list, clue } = action;
 
 		// Touching a matching card to the finesse - all untouched cards are layered

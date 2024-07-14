@@ -79,7 +79,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 	focus_thoughts.inferred = focus_thoughts.inferred.intersect(inf_possibilities);
 
-	for (const { connections, suitIndex, rank, save, interp } of inf_possibilities) {
+	for (const { connections, suitIndex, rank, save } of inf_possibilities) {
 		const inference = { suitIndex, rank };
 
 		// A finesse is considered important if it could only have been given by this player.
@@ -106,8 +106,6 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			}
 		}
 
-		game.interpretMove(interp);
-
 		const matches = focused_card.matches(inference, { assume: true }) && game.players[target].thoughts[focused_card.order].possible.has(inference);
 		// Don't assign save connections or known false connections
 		if (!save && matches)
@@ -130,6 +128,11 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 	}
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
+
+	if (correct_match)
+		game.interpretMove(correct_match.interp);
+	else
+		game.interpretMove(inf_possibilities.some(p => p.save) ? CLUE_INTERP.SAVE : CLUE_INTERP.PLAY);
 
 	if (target !== state.ourPlayerIndex && !correct_match?.save) {
 		const selfRanks = Array.from(new Set(inf_possibilities.flatMap(({ connections }) =>
@@ -354,7 +357,7 @@ export function interpret_clue(game, action) {
 
 		// Focus doesn't matter for a fix clue
 		focus_thoughts.focused = oldCommon.thoughts[focused_card.order].focused;
-		game.moveHistory.push({ turn: state.turn_count, move: CLUE_INTERP.FIX });
+		game.interpretMove(mistake ? CLUE_INTERP.MISTAKE : CLUE_INTERP.FIX);
 		return;
 	}
 
@@ -369,7 +372,7 @@ export function interpret_clue(game, action) {
 
 		common.update_hypo_stacks(state);
 		team_elim(game);
-		game.moveHistory.push({ turn: state.turn_count, move: stall });
+		game.interpretMove(stall);
 		return;
 	}
 
