@@ -14,6 +14,7 @@ import { cardCount } from '../../variants.js';
  * @typedef {import('../h-player.js').HGroup_Player} Player
  * @typedef {import('../../basics/Hand.js').Hand} Hand
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
+ * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').DiscardAction} DiscardAction
  */
@@ -29,8 +30,10 @@ export function interpret_discard(game, action, card) {
 	const { order, playerIndex, suitIndex, rank, failed } = action;
 	const identity = { suitIndex, rank };
 	const thoughts = common.thoughts[order];
+
 	const before_trash = common.thinksTrash(state, playerIndex);
 	const old_chop = common.chop(state.hands[playerIndex]);
+	const slot = state.hands[playerIndex].findIndex(c => c.order === order) + 1;
 
 	Basics.onDiscard(game, action);
 
@@ -150,7 +153,86 @@ export function interpret_discard(game, action, card) {
 		}
 	}
 
+	if (game.level >= LEVEL.ENDGAME && state.inEndgame())
+		check_positional_discard(game, action, before_trash, old_chop, slot);
+
 	team_elim(game);
+}
+
+/**
+ * @param {Game} game
+ * @param {DiscardAction} action
+ * @param {ActualCard[]} before_trash
+ * @param {ActualCard} old_chop
+ * @param {number} slot
+ */
+function check_positional_discard(game, action, before_trash, old_chop, slot) {
+	const { common, state, me } = game;
+	const { order, playerIndex } = action;
+	const expected_discard = before_trash[0] ?? old_chop;
+
+	if (!action.failed && order === expected_discard.order)
+		return;
+
+	const num_plays = action.failed && (before_trash.length > 0 || order !== old_chop?.order) ? 2 : 1;
+
+	const playable_possibilities = common.hypo_stacks
+		.map((rank, suitIndex) => ({ suitIndex, rank: rank + 1 }))
+		.filter(id => !isTrash(state, common, id, -1, { infer: true }));
+
+	let reacting = [];
+
+	for (let i = 1; i < state.numPlayers; i++) {
+		const index = (playerIndex + i) % state.numPlayers;
+		const target_card = state.hands[index][slot - 1];
+
+		if (target_card === undefined || index === state.ourPlayerIndex || game.next_ignore[0]?.some(({ order }) => order === target_card.order))
+			continue;
+
+		// Find the latest player with an unknown playable
+		if (playable_possibilities.some(i => target_card.matches(i)) && !common.thinksPlayables(state, index).some(c => c.order === target_card.order))
+			reacting.push(index);
+	}
+
+	// If we haven't found a target, check if we can be the target.
+	if (reacting.length < num_plays) {
+		if (state.hands[state.ourPlayerIndex].length >= slot &&
+			me.thoughts[state.hands[state.ourPlayerIndex][slot - 1].order].inferred.some(i => playable_possibilities.some(p => i.matches(p)))
+		)
+			reacting.push(state.ourPlayerIndex);
+
+		if (reacting.length !== num_plays) {
+			logger.warn(`weird discard detected, but not enough positional discard targets! (found [${reacting}], need ${num_plays})`);
+			return;
+		}
+	}
+
+	// Only take the last N reacting players.
+	reacting = reacting.slice(-num_plays);
+
+	/** @type {Connection[]} */
+	const connections = [];
+
+	for (const r of reacting) {
+		const target_card = common.thoughts[state.hands[r][slot - 1].order];
+		target_card.finessed = true;
+		target_card.focused = true;
+		target_card.inferred = target_card.inferred.intersect(playable_possibilities);
+
+		logger.info('interpreting pos on', state.playerNames[r], 'slot', slot);
+		connections.push({ type: 'positional', reacting: r, card: target_card, identities: target_card.inferred.array });
+	}
+
+	common.waiting_connections.push({
+		connections,
+		giver: playerIndex,
+		target: reacting.at(-1),
+		conn_index: 0,
+		turn: state.turn_count,
+		focused_card: connections.at(-1).card,
+		inference: connections.at(-1).card.raw(),
+		action_index: state.actionList.length - 1
+	});
 }
 
 /**

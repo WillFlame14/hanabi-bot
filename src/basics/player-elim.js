@@ -249,8 +249,8 @@ export function good_touch_elim(state, only_self = false) {
 			if (matches.has(order) || card.inferred.length === 0 || !card.inferred.has(identity))
 				continue;
 
-			const visible_elim = matches_arr.some(o => state.hands.flat().find(c => c.order === o).matches(identity) &&
-				state.baseCount(identity) + matches.size >= cardCount(state.variant, identity));
+			const visible_elim = state.hands.some(hand => hand.some(c => matches.has(c.order) && c.matches(identity, { assume: true }))) &&
+				state.baseCount(identity) + matches.size >= cardCount(state.variant, identity);
 
 			const original_clue = card.clues[0];
 
@@ -290,12 +290,12 @@ export function good_touch_elim(state, only_self = false) {
 					this.elims[id_hash].push(order);
 			}
 
-			if (card.inferred.length === 0 && !card.reset) {
+			if (!cm && card.inferred.length === 0 && !card.reset) {
 				this.reset_card(order);
 				resets.add(order);
 			}
 			// Newly eliminated
-			else if (card.inferred.length === 1 && pre_inferences > 1 && !state.isBasicTrash(card.inferred.array[0])) {
+			else if (!cm && card.inferred.length === 1 && pre_inferences > 1 && !state.isBasicTrash(card.inferred.array[0])) {
 				identities.push(card.inferred.array[0]);
 			}
 
@@ -436,6 +436,12 @@ export function refresh_links(state) {
 
 				const viable_card = this.thoughts[cards[0].order];
 				viable_card.inferred = viable_card.inferred.intersect(identities[0]);
+				remove_indices.push(i);
+			}
+
+			const lost_inference = identities.find(i => cards.every(c => !this.thoughts[c.order].inferred.has(i)));
+			if (lost_inference !== undefined) {
+				logger.info('linked cards', cards.map(c => c.order), 'lost inference', logCard(lost_inference));
 				remove_indices.push(i);
 			}
 		}

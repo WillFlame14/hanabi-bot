@@ -422,4 +422,30 @@ describe('interpreting chop moves', () => {
 		const action2 = take_action(game);
 		assert.ok(action2.type === ACTION.PLAY && action2.target === game.state.hands[PLAYER.ALICE][1].order);
 	});
+
+	it('asymmetrically eliminates against chop moved cards', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'b1', 'g1', 'r3', 'r2'],
+			['y4', 'b2', 'y1', 'p3', 'y4']
+		], {
+			level: { min: 4 },
+			play_stacks: [4, 5, 5, 5, 5],
+			clue_tokens: 1,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Cathy');		// Chop moving trash
+		takeTurn(game, 'Cathy clues red to Alice (slots 2,3)');
+
+		// Alice should have known r5.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r5']);
+
+		// Alice should play r5 on her turn.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1].order });
+
+		// Cathy shouldn't have any links.
+		assert.equal(game.players[PLAYER.CATHY].links.length, 0);
+	});
 });

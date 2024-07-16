@@ -5,6 +5,7 @@ export const LEVEL = /** @type {const} */ ({
 	INTERMEDIATE_FINESSES: 5,
 	TEMPO_CLUES: 6,
 	LAST_RESORTS: 7,
+	ENDGAME: 8,
 	STALLING: 9,
 	BLUFFS: 11,
 	CONTEXT: 12,
@@ -45,5 +46,7 @@ export const DISCARD_INTERP = /** @type {const} */ ({
 	SARCASTIC: 'sarcastic',
 	SCREAM: 'scream',
 	SHOUT: 'shout',
-	GENERATION: 'gen'
+	GENERATION: 'gen',
+	POS_DISCARD: 'pos dc',
+	POS_MISPLAY: 'pos misplay'
 });

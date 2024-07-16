@@ -231,6 +231,13 @@ function resolve_card_retained(game, waiting_connection) {
 	}
 	else if (last_reacting_action?.type === 'discard') {
 		logger.warn(`${state.playerNames[reacting]} discarded with a waiting connection, removing inference ${logCard(inference)}`);
+
+		const new_game = game.rewind(action_index, { type: 'ignore', conn_index: 0, order, inference });
+		if (new_game) {
+			Object.assign(game, new_game);
+			Utils.globalModify({ game: new_game });
+			return { quit: true };
+		}
 		return { remove: true, remove_finesse: true };
 	}
 	return { remove: false };
@@ -372,7 +379,7 @@ export function update_turn(game, action) {
 			remove_finesse = true;
 			remove = true;
 		}
-		else if (!common.thoughts[focused_card.order].possible.has(inference)) {
+		else if (connections[0]?.type !== 'positional' && !common.thoughts[focused_card.order].possible.has(inference)) {
 			logger.warn(`connection depends on focused card having identity ${logCard(inference)}, removing`);
 			remove_finesse = true;
 			remove = true;

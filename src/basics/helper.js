@@ -33,7 +33,7 @@ export function team_elim(game) {
 			card.inferred = ccard.inferred.intersect(card.possible);
 
 			// Reset to GTP if common interpretation doesn't make sense
-			if (card.inferred.length === 0)
+			if (card.inferred.length === 0 && !card.chop_moved)
 				card.inferred = card.possible;
 
 			card.old_inferred = ccard.old_inferred;

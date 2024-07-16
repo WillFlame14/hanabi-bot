@@ -41,11 +41,11 @@ function apply_good_touch(game, action) {
 
 	Basics.onClue(game, action);
 
-	// Check if a layered finesse was revealed on us
 	if (target === state.ourPlayerIndex) {
 		for (const { order } of state.hands[target]) {
 			const card = common.thoughts[order];
 
+			// Check if a layered finesse was revealed on us
 			if (card.finessed && oldThoughts[order].inferred.length >= 1 && card.inferred.length === 0) {
 				// TODO: Possibly try rewinding older reasoning until rewind works?
 				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
@@ -58,6 +58,10 @@ function apply_good_touch(game, action) {
 					return { rewinded: true };
 				}
 			}
+
+			// Fix incorrect trash labels
+			if (card.trash && card.possible.every(p => state.isCritical(p)))
+				card.trash = false;
 		}
 	}
 
@@ -377,7 +381,7 @@ export function interpret_clue(game, action) {
 	}
 
 	// Check for chop moves at level 4+
-	if (game.level >= LEVEL.BASIC_CM) {
+	if (game.level >= LEVEL.BASIC_CM && !state.inEndgame()) {
 		// Trash chop move
 		if (interpret_tcm(game, target, focused_card.order)) {
 			game.interpretMove(CLUE_INTERP.CM_TRASH);

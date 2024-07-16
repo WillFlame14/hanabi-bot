@@ -259,6 +259,11 @@ export class Game {
 				catchup_action(action);
 		});
 
+		if (!injected) {
+			newGame.hookAfterDraws(newGame);
+			injected = true;
+		}
+
 		// Rewrite and save as a rewind action
 		newGame.handle_action(rewind_action, true);
 		if (ephemeral) {

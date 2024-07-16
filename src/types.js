@@ -88,7 +88,7 @@
  */
 /**
  * @typedef Connection
- * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate'} type
+ * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate' | 'positional'} type
  * @property {number} reacting
  * @property {ActualCard} card
  * @property {Identity[]} identities
@@ -117,7 +117,7 @@
  * @property {number} conn_index
  * @property {number} turn
  * @property {ActualCard} focused_card
- * @property {{suitIndex: number, rank: number}} inference
+ * @property {Identity} inference
  * @property {number} action_index
  * @property {boolean} [ambiguousPassback]
  * @property {boolean} [selfPassback]

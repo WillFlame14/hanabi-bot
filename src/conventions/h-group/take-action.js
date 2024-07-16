@@ -490,6 +490,33 @@ export function take_action(game) {
 
 	// Either there are no clue tokens or the best play clue doesn't meet MCVP
 
+	// Perform a positional discard/misplay at <= 1 clue
+	if (game.level >= LEVEL.ENDGAME && state.inEndgame() && me.thinksTrash(state, state.ourPlayerIndex).length === state.hands[state.ourPlayerIndex].length && state.clue_tokens <= 1) {
+		/** @param {ActualCard} card */
+		const valid_target = (card) => card !== undefined && !isTrash(state, me, card, card.order) && me.hypo_stacks[card.suitIndex] + 1 === card.rank;
+
+		for (let i = 1; i < state.numPlayers; i++) {
+			const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
+			const hand = state.hands[playerIndex];
+
+			for (let j = 0; j < hand.length; j++) {
+				if (valid_target(hand[j])) {
+					const playerIndex2 = Utils.range(i + 1, state.numPlayers).find(j => valid_target(state.hands[(state.ourPlayerIndex + j) % state.numPlayers][j]));
+
+					if (playerIndex2 !== undefined) {
+						logger.info(`performing double positional misplay on ${[playerIndex, playerIndex2].map(p => state.playerNames[p])}, slot ${j + 1}`);
+						return { tableID, type: ACTION.PLAY, target: state.hands[state.ourPlayerIndex][j].order };
+					}
+
+					const type = state.hands[state.ourPlayerIndex][j].order === discardable.order ? ACTION.PLAY : ACTION.DISCARD;
+
+					logger.info(`performing positional ${type === ACTION.PLAY ? 'misplay' : 'discard' } on ${state.playerNames[playerIndex]}, slot ${j + 1}`);
+					return { tableID, type, target: state.hands[state.ourPlayerIndex][j].order };
+				}
+			}
+		}
+	}
+
 	// Discard known trash (no pace requirement)
 	if (trash_cards.length > 0 && !state.inEndgame() && state.clue_tokens < 8)
 		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
