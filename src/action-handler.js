@@ -16,9 +16,8 @@ import { team_elim } from './basics/helper.js';
 /**
  * @this Game
  * @param {Action} 	action
- * @param {boolean} [catchup]	Whether the bot should take an action or not as a result of this action.
  */
-export function handle_action(action, catchup = false) {
+export function handle_action(action) {
 	const { state } = this;
 	state.actionList.push(action);
 
@@ -103,7 +102,7 @@ export function handle_action(action, catchup = false) {
 
 							this.notes[order].full += `t${state.turn_count}: ${note}`;
 
-							if (!catchup && this.in_progress)
+							if (!this.catchup && this.in_progress)
 								Utils.sendCmd('note', { tableID: this.tableID, order, note: this.notes[order].full });
 						}
 					}
@@ -112,7 +111,7 @@ export function handle_action(action, catchup = false) {
 
 			this.update_turn(this, action);
 
-			if (currentPlayerIndex === state.ourPlayerIndex && !catchup) {
+			if (currentPlayerIndex === state.ourPlayerIndex && !this.catchup) {
 				if (this.in_progress) {
 					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), state.options.speedrun ? 0 : 2000);
 				}

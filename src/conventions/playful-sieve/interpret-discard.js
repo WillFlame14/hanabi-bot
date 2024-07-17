@@ -2,7 +2,6 @@ import { isTrash } from '../../basics/hanabi-util.js';
 import { undo_hypo_stacks } from '../../basics/helper.js';
 import { interpret_sarcastic } from '../shared/sarcastic.js';
 import * as Basics from '../../basics.js';
-import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
@@ -40,7 +39,6 @@ export function interpret_discard(game, action, card) {
 		const new_game = game.rewind(action_index, { type: 'identify', order, playerIndex, identities: [identity] }, thoughts.finessed);
 		if (new_game) {
 			Object.assign(game, new_game);
-			Utils.globalModify({ game: new_game });
 			return;
 		}
 	}

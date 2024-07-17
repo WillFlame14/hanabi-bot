@@ -114,8 +114,11 @@ async function main() {
  * @param {Variant} variant
  */
 function simulate_game(playerNames, deck, convention, level, variant) {
-	const games = playerNames.map((_, index) =>
-		new conventions[convention](-1, new State(playerNames, index, variant, {}), false, level));
+	const games = playerNames.map((_, index) => {
+		const game = new conventions[convention](-1, new State(playerNames, index, variant, {}), false, level);
+		game.catchup = true;
+		return game;
+	});
 
 	Utils.globalModify({ game: games[0] });
 
@@ -126,7 +129,7 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 				const order = game.state.cardOrder + 1;
 				const { suitIndex, rank } = playerIndex !== game.state.ourPlayerIndex ? deck[order] : { suitIndex: -1, rank: -1 };
 
-				game.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank }, true);
+				game.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank });
 			}
 		}
 	}
@@ -143,7 +146,7 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 					const game = games[i];
 					logger.debug('Turn for', game.state.playerNames[i]);
 					Utils.globalModify({ game });
-					game.handle_action({ type: 'turn', num: turn, currentPlayerIndex }, true);
+					game.handle_action({ type: 'turn', num: turn, currentPlayerIndex });
 				}
 			}
 
@@ -163,14 +166,14 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 				logger.debug('Action for', state.playerNames[gameIndex]);
 
 				Utils.globalModify({ game });
-				game.handle_action(action, true);
+				game.handle_action(action);
 
 				if (game.state.strikes === 3 || game.state.score === game.state.variant.suits.length * 5)
 					continue;
 
 				if ((action.type === 'play' || action.type === 'discard') && order < deck.length) {
 					const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
-					game.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank }, true);
+					game.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank });
 				}
 			}
 

@@ -4,7 +4,6 @@ import { determine_focus, getIgnoreOrders } from '../hanabi-logic.js';
 import { find_connecting, find_known_connecting, resolve_bluff } from './connecting-cards.js';
 import { cardTouched, find_possibilities } from '../../../variants.js';
 import { valid_bluff } from './connection-helper.js';
-import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection } from '../../../tools/log.js';
@@ -396,7 +395,6 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 				if (new_game.moveHistory.at(-1).move !== CLUE_INTERP.NONE) {
 					logger.highlight('yellow', 'successfully connected!');
 					Object.assign(game, new_game);
-					Utils.globalModify({ game: new_game });
 					return [{ type: 'terminate', reacting: -1, card: null, identities: [] }];
 				}
 			}

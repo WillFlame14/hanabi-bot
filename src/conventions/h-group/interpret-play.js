@@ -2,7 +2,6 @@ import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
 import { team_elim } from '../../basics/helper.js';
 import { order_1s } from './action-helper.js';
-import * as Utils from '../../tools/util.js';
 
 import * as Basics from '../../basics.js';
 import logger from '../../tools/logger.js';
@@ -70,7 +69,6 @@ export function interpret_play(game, action) {
 			const new_game = game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, identities: [identity] });
 			if (new_game) {
 				Object.assign(game, new_game);
-				Utils.globalModify({ game: new_game });
 				return;
 			}
 		}

@@ -92,7 +92,6 @@ export function initConsole() {
 
 						const new_game = game.navigate(turn);
 						Object.assign(game, new_game);
-						Utils.globalModify({ game: new_game });
 						break;
 					}
 					case 'spectate':

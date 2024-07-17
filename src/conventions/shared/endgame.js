@@ -1,4 +1,3 @@
-import { visibleFind } from '../../basics/hanabi-util.js';
 import { ACTION } from '../../constants.js';
 import { logCard, logClue, logObjectiveAction } from '../../tools/log.js';
 import logger from '../../tools/logger.js';
@@ -30,14 +29,10 @@ let timeout;
 export function solve_game(game, playerTurn, find_clues = () => []) {
 	const { state, me } = game;
 
-	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
-		for (let rank = state.play_stacks[suitIndex] + 1; rank <= state.max_ranks[suitIndex]; rank++) {
-			const identity = { suitIndex, rank };
+	const unseen_identities = find_unseen_identities(game);
 
-			if (visibleFind(state, me, identity, { infer: true, symmetric: false }).length === 0)
-				throw new UnsolvedGame(`couldn't find any ${logCard(identity)}!`);
-		}
-	}
+	if (unseen_identities.length > 0)
+		throw new UnsolvedGame(`couldn't find any ${unseen_identities.map(logCard).join()}!`);
 
 	const common_state = state.minimalCopy();
 
@@ -80,6 +75,46 @@ function hash_state(game) {
 	return `${hands},${clue_tokens},${endgameTurns}`;
 }
 
+/** @param {Game} game */
+function find_unseen_identities(game) {
+	const { state, me } = game;
+
+	/** @type {Record<string, number>} */
+	const seen_identities = state.hands.reduce((id_map, hand) => {
+		for (const c of hand) {
+			const id = me.thoughts[c.order].identity({ infer: true, symmetric: false });
+			if (id !== undefined) {
+				id_map[logCard(id)] ??= 0;
+				id_map[logCard(id)]++;
+			}
+		}
+		return id_map;
+	}, {});
+
+	return state.play_stacks.flatMap((stack, suitIndex) => stack >= state.max_ranks[suitIndex] ? [] :
+		Utils.range(stack + 1, state.max_ranks[suitIndex]).reduce((acc, rank) => {
+			const id = { suitIndex, rank };
+
+			if (seen_identities[logCard(id)] === undefined)
+				acc.push(id);
+
+			return acc;
+		}, []));
+}
+
+/** @param {Game} game */
+function unwinnable_state(game) {
+	const { state, me } = game;
+
+	if (state.ended || state.pace < 0 || (state.endgameTurns !== -1 && state.maxScore - state.score > state.endgameTurns))
+		return true;
+
+	const void_players = state.hands.filter((hand, i) => me.thinksTrash(state, i).length === hand.length);
+
+	if (void_players.length > state.pace)
+		return true;
+}
+
 /**
  * @typedef {{actions: (Omit<PerformAction, 'tableID'> & {playerIndex: number})[] | undefined, winrate: number}} WinnableResult
  * 
@@ -90,12 +125,12 @@ function hash_state(game) {
  * @returns {WinnableResult}
  */
 export function winnable_simple(game, playerTurn, find_clues = () => [], cache = new Map()) {
-	const { state, common } = game;
+	const { state } = game;
 
 	if (state.score === state.maxScore)
 		return { actions: [], winrate: 1 };
 
-	if (state.ended || state.pace < 0 || (state.endgameTurns !== -1 && state.maxScore - state.score > state.endgameTurns) || Date.now() > timeout)
+	if (Date.now() > timeout || unwinnable_state(game))
 		return { actions: [], winrate: 0 };
 
 	const cached_result = cache.get(hash_state(game));
@@ -103,7 +138,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], cache =
 		return cached_result;
 
 	const nextPlayerIndex = state.nextPlayerIndex(playerTurn);
-	const playables = common.thinksPlayables(state, playerTurn);
+	const playables = game.players[playerTurn].thinksPlayables(state, playerTurn);
 
 	let best_actions = [], best_winrate = 0;
 

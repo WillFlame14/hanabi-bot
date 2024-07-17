@@ -2,7 +2,6 @@ import { LEVEL } from './h-constants.js';
 import { reset_superpositions, team_elim } from '../../basics/helper.js';
 import { visibleFind } from '../../basics/hanabi-util.js';
 import { inBetween, older_queued_finesse } from './hanabi-logic.js';
-import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logConnection } from '../../tools/log.js';
@@ -218,7 +217,6 @@ function resolve_card_retained(game, waiting_connection) {
 			const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
 			if (new_game) {
 				Object.assign(game, new_game);
-				Utils.globalModify({ game: new_game });
 				return { quit: true };
 			}
 		}
@@ -235,7 +233,6 @@ function resolve_card_retained(game, waiting_connection) {
 		const new_game = game.rewind(action_index, { type: 'ignore', conn_index: 0, order, inference });
 		if (new_game) {
 			Object.assign(game, new_game);
-			Utils.globalModify({ game: new_game });
 			return { quit: true };
 		}
 		return { remove: true, remove_finesse: true };

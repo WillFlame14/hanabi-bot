@@ -152,13 +152,12 @@ export const handle = {
 	},
 	/**
 	 * @param {{tableID: number, action: Action}} data
-	 * @param {boolean} catchup								Whether this action occurred in the past or not.
 	 * 
 	 * Received when an action is taken in the current active game.
 	 */
-	gameAction: (data, catchup = false) => {
+	gameAction: (data) => {
 		const { action } = data;
-		game.handle_action(action, catchup);
+		game.handle_action(action);
 	},
 	/**
 	 * @param {{tableID: number, list: Action[]}} data
@@ -166,8 +165,11 @@ export const handle = {
 	 * Received at the beginning of the game, as a list of all actions that have happened so far.
 	 */
 	gameActionList: (data) => {
+		game.catchup = true;
 		for (let i = 0; i < data.list.length - 10; i++)
-			handle.gameAction({ action: data.list[i], tableID: data.tableID }, true);
+			handle.gameAction({ action: data.list[i], tableID: data.tableID });
+
+		game.catchup = false;
 
 		for (let i = data.list.length - 10; i < data.list.length - 1; i++)
 			handle.gameAction({ action: data.list[i], tableID: data.tableID });

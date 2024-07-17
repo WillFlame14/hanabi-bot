@@ -178,6 +178,12 @@ export function determine_playable_card(game, playable_cards) {
 
 	// Speed-up clues first, then oldest finesse to newest
 	priorities[0].sort((c1, c2) => {
+		if (c1.clued && !c2.clued)
+			return 1;
+
+		if (!c1.clued && c2.clued)
+			return -1;
+
 		if (c1.hidden && !c2.hidden)
 			return 1;
 

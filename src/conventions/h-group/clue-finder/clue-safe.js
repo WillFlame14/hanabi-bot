@@ -148,10 +148,12 @@ export function clue_safe(game, player, clue) {
 	const list = state.hands[target].clueTouched(clue, state.variant).map(c => c.order);
 	const clue_action = /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
 	const hypo_game = game.simulate_clue(clue_action);
+	hypo_game.catchup = true;
 
 	// Update waiting connections
 	hypo_game.last_actions[state.ourPlayerIndex] = clue_action;
-	hypo_game.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: state.nextPlayerIndex(state.ourPlayerIndex) }, true);
+	hypo_game.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: state.nextPlayerIndex(state.ourPlayerIndex) });
+	hypo_game.catchup = false;
 
 	return safe_situation(hypo_game, hypo_game.players[player.playerIndex]);
 }

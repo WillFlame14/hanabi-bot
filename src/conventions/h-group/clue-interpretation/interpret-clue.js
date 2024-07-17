@@ -54,7 +54,6 @@ function apply_good_touch(game, action) {
 
 				if (new_game) {
 					Object.assign(game, new_game);
-					Utils.globalModify({ game: new_game });
 					return { rewinded: true };
 				}
 			}
@@ -297,7 +296,6 @@ export function interpret_clue(game, action) {
 			const new_game = game.rewind(focused_card.drawn_index, { type: 'identify', order: focused_card.order, playerIndex: target, identities: [focus_thoughts.possible.array[0].raw()] });
 			if (new_game) {
 				Object.assign(game, new_game);
-				Utils.globalModify({ game: new_game });
 				return;
 			}
 		}
@@ -340,7 +338,6 @@ export function interpret_clue(game, action) {
 			const new_game = game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] });
 			if (new_game) {
 				Object.assign(game, new_game);
-				Utils.globalModify({ game: new_game });
 				return;
 			}
 		}

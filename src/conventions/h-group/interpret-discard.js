@@ -2,7 +2,6 @@ import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 import { team_elim, undo_hypo_stacks } from '../../basics/helper.js';
 import { interpret_sarcastic } from '../shared/sarcastic.js';
 import * as Basics from '../../basics.js';
-import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
@@ -80,7 +79,6 @@ export function interpret_discard(game, action, card) {
 		const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
 		if (new_game) {
 			Object.assign(game, new_game);
-			Utils.globalModify({ game: new_game });
 			return;
 		}
 	}
@@ -102,16 +100,16 @@ export function interpret_discard(game, action, card) {
 		const new_game = game.rewind(action_index, { type: 'identify', order, playerIndex, identities: [{ suitIndex, rank }] }, thoughts.finessed);
 		if (new_game) {
 			Object.assign(game, new_game);
-			Utils.globalModify({ game: new_game });
 			return;
 		}
 	}
+
+	let sarcastic_targets;
 
 	// Discarding a useful card
 	// Note: we aren't including chop moved and finessed cards here since those can be asymmetric.
 	// Discarding with a finesse will trigger the waiting connection to resolve.
 	if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
-		let sarcastic_targets;
 		if (card.clued) {
 			logger.warn('discarded useful clued card!');
 			common.restore_elim(card);
@@ -153,7 +151,7 @@ export function interpret_discard(game, action, card) {
 		}
 	}
 
-	if (game.level >= LEVEL.ENDGAME && state.inEndgame())
+	if (!(sarcastic_targets?.length > 0) && !state.screamed_at && game.level >= LEVEL.ENDGAME && state.inEndgame())
 		check_positional_discard(game, action, before_trash, old_chop, slot);
 
 	team_elim(game);

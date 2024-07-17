@@ -23,6 +23,7 @@ import { logPerformAction } from '../tools/log.js';
 export class Game {
 	convention_name = '';
 	in_progress = false;
+	catchup = false;
 
 	/** @type {State} */
 	state;
@@ -216,6 +217,7 @@ export class Game {
 		logger.highlight('green', '------- STARTING REWIND -------');
 
 		const newGame = this.createBlank();
+		newGame.catchup = true;
 		const history = actionList.slice(0, action_index);
 		Utils.globalModify({ game: newGame });
 
@@ -231,7 +233,7 @@ export class Game {
 			const our_action = action.type === 'clue' && action.giver === this.state.ourPlayerIndex;
 
 			if (!our_action) {
-				newGame.handle_action(action, true);
+				newGame.handle_action(action);
 				return;
 			}
 
@@ -240,12 +242,12 @@ export class Game {
 			newGame.state.hands[this.state.ourPlayerIndex] = this.handHistory[newGame.state.turn_count];
 			newGame.restoreCardBindings();
 
-			newGame.handle_action(action, true);
+			newGame.handle_action(action);
 
 			// Simulate the actual hand as well for replacement
 			logger.collect();
 			Utils.globalModify({ game: hypoGame });
-			hypoGame.handle_action(action, true);
+			hypoGame.handle_action(action);
 			Utils.globalModify({ game: newGame });
 			logger.flush(false);
 
@@ -265,12 +267,12 @@ export class Game {
 		}
 
 		// Rewrite and save as a rewind action
-		newGame.handle_action(rewind_action, true);
+		newGame.handle_action(rewind_action);
 		if (ephemeral) {
 			newGame.state.actionList.pop();
 			newGame.ephemeral_rewind = true;
 		}
-		newGame.handle_action(pivotal_action, true);
+		newGame.handle_action(pivotal_action);
 
 		// Redo all the following actions
 		const future = actionList.slice(action_index + 1, -1);
@@ -279,6 +281,7 @@ export class Game {
 
 		logger.highlight('green', '------- REWIND COMPLETE -------');
 
+		newGame.catchup = this.catchup;
 		newGame.handle_action(actionList.at(-1));
 		Utils.globalModify({ game: this });
 
@@ -293,6 +296,7 @@ export class Game {
 		logger.highlight('greenb', `------- NAVIGATING (turn ${turn}) -------`);
 
 		const new_game = this.createBlank();
+		new_game.catchup = true;
 		Utils.globalModify({ game: new_game });
 
 		// Remove special actions from the action list (they will be added back in when rewinding)
@@ -305,11 +309,12 @@ export class Game {
 			let action = actionList[action_index];
 
 			while(action.type === 'draw') {
-				new_game.handle_action(action, true);
+				new_game.handle_action(action);
 				action_index++;
 				action = actionList[action_index];
 			}
 
+			new_game.catchup = this.catchup;
 			const suggested_action = new_game.take_action(new_game);
 			logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
 		}
@@ -317,7 +322,7 @@ export class Game {
 			// Don't log history
 			logger.wrapLevel(logger.LEVELS.ERROR, () => {
 				while (new_game.state.turn_count < turn - 1) {
-					new_game.handle_action(actionList[action_index], true);
+					new_game.handle_action(actionList[action_index]);
 					action_index++;
 				}
 			});
@@ -327,6 +332,13 @@ export class Game {
 				new_game.handle_action(actionList[action_index]);
 				action_index++;
 			}
+		}
+
+		new_game.catchup = this.catchup;
+
+		if (!new_game.catchup && new_game.state.currentPlayerIndex === this.state.ourPlayerIndex) {
+			const suggested_action = new_game.take_action(new_game);
+			logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
 		}
 
 		// Copy over the full game history
@@ -347,6 +359,7 @@ export class Game {
 	 */
 	simulate_clue(action, options = {}) {
 		const hypo_game = /** @type {this} */ (this.minimalCopy());
+		hypo_game.catchup = true;
 
 		Utils.globalModify({ game: hypo_game });
 
@@ -356,6 +369,7 @@ export class Game {
 
 		Utils.globalModify({ game: this });
 
+		hypo_game.catchup = false;
 		return hypo_game;
 	}
 
@@ -369,25 +383,27 @@ export class Game {
 	 */
 	simulate_action(action, options = {}) {
 		const hypo_game = /** @type {this} */ (this.minimalCopy());
+		hypo_game.catchup = true;
 
 		Utils.globalModify({ game: hypo_game });
 
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
-			hypo_game.handle_action(action, true);
+			hypo_game.handle_action(action);
 
 			if (action.type === 'play' || action.type === 'discard') {
-				hypo_game.handle_action({ type: 'turn', num: hypo_game.state.turn_count, currentPlayerIndex: action.playerIndex }, true);
+				hypo_game.handle_action({ type: 'turn', num: hypo_game.state.turn_count, currentPlayerIndex: action.playerIndex });
 
 				if (hypo_game.state.cardsLeft > 0) {
 					const order = hypo_game.state.cardOrder + 1;
 					const { suitIndex, rank } = hypo_game.state.deck[order] ?? new ActualCard(-1, -1, order, hypo_game.state.actionList.length);
-					hypo_game.handle_action({ type: 'draw', playerIndex: action.playerIndex, order, suitIndex, rank }, true);
+					hypo_game.handle_action({ type: 'draw', playerIndex: action.playerIndex, order, suitIndex, rank });
 				}
 			}
 		});
 
 		Utils.globalModify({ game: this });
 
+		hypo_game.catchup = false;
 		return hypo_game;
 	}
 }

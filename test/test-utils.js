@@ -4,6 +4,7 @@ import { cardCount, shortForms } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
 
 import { logAction, logCard, logClue } from '../src/tools/log.js';
+import { team_elim } from '../src/basics/helper.js';
 
 /**
  * @typedef {import('../src/basics/Game.js').Game} Game
@@ -182,6 +183,7 @@ export function setup(GameClass, hands, test_options = {}) {
 	const state = new State(playerNames, 0, variant, {});
 	const [minLevel, maxLevel] = [test_options?.level?.min ?? 1, test_options?.level?.max ?? MAX_H_LEVEL];
 	const game = new GameClass(-1, state, false, Math.min(Math.max(minLevel, DEFAULT_LEVEL), maxLevel));
+	game.catchup = true;
 	Utils.globalModify({ game });
 
 	let orderCounter = 0;
@@ -204,6 +206,8 @@ export function setup(GameClass, hands, test_options = {}) {
 
 	for (const player of game.players)
 		player.card_elim(state);
+
+	team_elim(game);
 
 	return game;
 }
@@ -228,18 +232,21 @@ export function takeTurn(game, rawAction, draw = 'xx') {
 		throw new Error(`Expected ${expectedPlayer}'s turn for action (${logAction(action)}), test written incorrectly?`);
 	}
 
-	game.handle_action(action, true);
+	game.catchup = true;
+	game.handle_action(action);
 
 	if (action.type === 'play' || action.type === 'discard') {
 		if (draw === 'xx' && state.currentPlayerIndex !== state.ourPlayerIndex)
 			throw new Error(`Missing draw for ${state.playerNames[state.currentPlayerIndex]}'s action (${logAction(action)}).`);
 
 		const { suitIndex, rank } = expandShortCard(draw);
-		game.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank }, true);
+		game.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank });
 	}
 
 	const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.numPlayers;
-	game.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex }, true);
+	game.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex });
+
+	game.catchup = false;
 }
 
 /**
