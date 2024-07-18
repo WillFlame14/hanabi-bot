@@ -360,6 +360,7 @@ export class Game {
 	simulate_clue(action, options = {}) {
 		const hypo_game = /** @type {this} */ (this.minimalCopy());
 		hypo_game.catchup = true;
+		hypo_game.rewind = () => undefined;
 
 		Utils.globalModify({ game: hypo_game });
 
@@ -384,6 +385,7 @@ export class Game {
 	simulate_action(action, options = {}) {
 		const hypo_game = /** @type {this} */ (this.minimalCopy());
 		hypo_game.catchup = true;
+		hypo_game.rewind = () => undefined;
 
 		Utils.globalModify({ game: hypo_game });
 

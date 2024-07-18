@@ -1,6 +1,6 @@
 import { ACTION, CLUE } from '../../constants.js';
 import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
-import { select_play_clue, determine_playable_card, order_1s, find_clue_value } from './action-helper.js';
+import { select_play_clue, determine_playable_card, order_1s, find_clue_value, find_positional_discard } from './action-helper.js';
 import { UnsolvedGame, solve_game } from '../shared/endgame.js';
 import { find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
@@ -118,16 +118,33 @@ function best_stall_clue(stall_clues, severity) {
 	return stall_clues[5][0];
 }
 
-/** @param {Game} game */
-export function find_all_clues(game) {
+/**
+ * @param {Game} game
+ * @param {number} giver
+ */
+export function find_all_clues(game, giver) {
 	logger.collect();
-	const { play_clues, save_clues } = find_clues(game);
+	const { play_clues, save_clues } = find_clues(game, giver);
 	logger.flush(false);
 
 	return [
 		...play_clues.flatMap((clues, target) => clues.map(clue => Object.assign(clue, { target }))),
 		...Utils.range(0, game.state.numPlayers).reduce((acc, target) => (save_clues[target] ? acc.concat([Object.assign(save_clues[target], { target })]) : acc), []),
 	];
+}
+
+/**
+ * @param {Game} game
+ * @param {number} playerIndex
+ */
+export function find_all_discards(game, playerIndex) {
+	const { common, state, me } = game;
+
+	const trash_cards = me.thinksTrash(state, playerIndex).filter(c => common.thoughts[c.order].saved);
+	const discardable = trash_cards[0] ?? common.chop(state.hands[playerIndex]);
+	const positional = find_positional_discard(game, playerIndex, discardable?.order ?? -1);
+
+	return positional !== undefined ? [positional] : (discardable ? [{ misplay: false, order: discardable.order}] : []);
 }
 
 /**
@@ -319,7 +336,7 @@ export function take_action(game) {
 	// Attempt to solve endgame
 	if (!is_finessed && state.inEndgame() && state.cardsLeft > 0) {
 		try {
-			const action = solve_game(game, state.ourPlayerIndex, find_all_clues);
+			const action = solve_game(game, state.ourPlayerIndex, find_all_clues, find_all_discards);
 
 			if (action.type === ACTION.COLOUR || action.type === ACTION.RANK) {
 				const stall_clue = best_play_clue ?? best_stall_clue(stall_clues, 4) ??
@@ -328,11 +345,7 @@ export function take_action(game) {
 				return Utils.clueToAction(stall_clue, tableID);
 			}
 
-			if (action.type === ACTION.PLAY)
-				return { tableID, type: ACTION.PLAY, target: action.target };
-
-			if (action.type === ACTION.DISCARD)
-				return take_discard(game, state.ourPlayerIndex, trash_cards);
+			return { tableID, type: action.type, target: action.target };
 		}
 		catch (err) {
 			if (err instanceof UnsolvedGame)
@@ -491,29 +504,12 @@ export function take_action(game) {
 	// Either there are no clue tokens or the best play clue doesn't meet MCVP
 
 	// Perform a positional discard/misplay at <= 1 clue
-	if (game.level >= LEVEL.ENDGAME && state.inEndgame() && me.thinksTrash(state, state.ourPlayerIndex).length === state.hands[state.ourPlayerIndex].length && state.clue_tokens <= 1) {
-		/** @param {ActualCard} card */
-		const valid_target = (card) => card !== undefined && !isTrash(state, me, card, card.order) && me.hypo_stacks[card.suitIndex] + 1 === card.rank;
+	if (game.level >= LEVEL.ENDGAME) {
+		const positional = find_positional_discard(game, state.ourPlayerIndex, discardable?.order);
 
-		for (let i = 1; i < state.numPlayers; i++) {
-			const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
-			const hand = state.hands[playerIndex];
-
-			for (let j = 0; j < hand.length; j++) {
-				if (valid_target(hand[j])) {
-					const playerIndex2 = Utils.range(i + 1, state.numPlayers).find(j => valid_target(state.hands[(state.ourPlayerIndex + j) % state.numPlayers][j]));
-
-					if (playerIndex2 !== undefined) {
-						logger.info(`performing double positional misplay on ${[playerIndex, playerIndex2].map(p => state.playerNames[p])}, slot ${j + 1}`);
-						return { tableID, type: ACTION.PLAY, target: state.hands[state.ourPlayerIndex][j].order };
-					}
-
-					const type = state.hands[state.ourPlayerIndex][j].order === discardable.order ? ACTION.PLAY : ACTION.DISCARD;
-
-					logger.info(`performing positional ${type === ACTION.PLAY ? 'misplay' : 'discard' } on ${state.playerNames[playerIndex]}, slot ${j + 1}`);
-					return { tableID, type, target: state.hands[state.ourPlayerIndex][j].order };
-				}
-			}
+		if (positional !== undefined) {
+			const { misplay, order } = positional;
+			return { tableID, type: misplay ? ACTION.PLAY : ACTION.DISCARD, target: order };
 		}
 	}
 

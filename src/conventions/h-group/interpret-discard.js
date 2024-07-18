@@ -1,3 +1,5 @@
+import { LEVEL } from './h-constants.js';
+import { cardCount } from '../../variants.js';
 import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 import { team_elim, undo_hypo_stacks } from '../../basics/helper.js';
 import { interpret_sarcastic } from '../shared/sarcastic.js';
@@ -5,8 +7,6 @@ import * as Basics from '../../basics.js';
 
 import logger from '../../tools/logger.js';
 import { logCard } from '../../tools/log.js';
-import { LEVEL } from './h-constants.js';
-import { cardCount } from '../../variants.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -30,7 +30,7 @@ export function interpret_discard(game, action, card) {
 	const identity = { suitIndex, rank };
 	const thoughts = common.thoughts[order];
 
-	const before_trash = common.thinksTrash(state, playerIndex);
+	const before_trash = common.thinksTrash(state, playerIndex).filter(c => common.thoughts[c.order].saved);
 	const old_chop = common.chop(state.hands[playerIndex]);
 	const slot = state.hands[playerIndex].findIndex(c => c.order === order) + 1;
 
@@ -131,7 +131,7 @@ export function interpret_discard(game, action, card) {
 		}
 	}
 
-	if (game.level >= LEVEL.LAST_RESORTS && !action.failed) {
+	if (game.level >= LEVEL.LAST_RESORTS && !action.failed && !state.inEndgame()) {
 		const result = check_sdcm(game, action, before_trash, old_chop);
 
 		if (result !== undefined) {
@@ -169,12 +169,12 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 	const { order, playerIndex } = action;
 	const expected_discard = before_trash[0] ?? old_chop;
 
-	if (!action.failed && order === expected_discard.order)
+	if (!action.failed && (expected_discard === undefined || order === expected_discard.order))
 		return;
 
 	const num_plays = action.failed && (before_trash.length > 0 || order !== old_chop?.order) ? 2 : 1;
 
-	const playable_possibilities = common.hypo_stacks
+	const playable_possibilities = game.players[playerIndex].hypo_stacks
 		.map((rank, suitIndex) => ({ suitIndex, rank: rank + 1 }))
 		.filter(id => !isTrash(state, common, id, -1, { infer: true }));
 

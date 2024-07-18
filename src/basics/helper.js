@@ -144,3 +144,38 @@ export function reset_superpositions(game) {
 	for (const { order } of game.state.hands.flat())
 		game.common.thoughts[order].superposition = false;
 }
+
+/**
+ * @param {Game} game
+ * @param {number} start
+ * @param {number} target
+ * @param {Identity} [identity]		The identity we want to make playable (if undefined, any identity).
+ * @returns {boolean} 				Whether the target's hand becomes playable.
+ */
+export function connectable_simple(game, start, target, identity) {
+	if (identity !== undefined && game.state.isPlayable(identity))
+		return true;
+
+	if (start === target)
+		return game.players[target].thinksPlayables(game.state, target, { assume: false }).length > 0;
+
+	const playables = game.players[start].thinksPlayables(game.state, start, { assume: false });
+
+	for (const { order } of playables) {
+		const id = game.players[start].thoughts[order].identity({ infer: true });
+
+		if (id === undefined)
+			continue;
+
+		const new_state = game.state.shallowCopy();
+		new_state.play_stacks = new_state.play_stacks.slice();
+		new_state.play_stacks[id.suitIndex]++;
+
+		const new_game = game.shallowCopy();
+		new_game.state = new_state;
+
+		if (connectable_simple(new_game, game.state.nextPlayerIndex(start), target, identity))
+			return true;
+	}
+	return connectable_simple(game, game.state.nextPlayerIndex(start), target, identity);
+}

@@ -24,9 +24,10 @@ let timeout;
 /**
  * @param {Game} game
  * @param {number} playerTurn
- * @param {(game: Game) => Clue[]} find_clues
+ * @param {(game: Game, giver: number) => Clue[]} find_clues
+ * @param {(game: Game, playerIndex: number) => { misplay: boolean, order: number }[]} find_discards
  */
-export function solve_game(game, playerTurn, find_clues = () => []) {
+export function solve_game(game, playerTurn, find_clues = () => [], find_discards = () => []) {
 	const { state, me } = game;
 
 	const unseen_identities = find_unseen_identities(game);
@@ -51,9 +52,11 @@ export function solve_game(game, playerTurn, find_clues = () => []) {
 	new_game.state = common_state;
 
 	timeout = new Date();
-	timeout.setSeconds(timeout.getSeconds() + 10);
+	timeout.setSeconds(timeout.getSeconds() + 2);
 
-	const { actions, winrate } = winnable_simple(new_game, playerTurn, find_clues);
+	logger.collect();
+	const { actions, winrate } = winnable_simple(new_game, playerTurn, find_clues, find_discards);
+	logger.flush(false);
 
 	if (winrate === 0)
 		throw new UnsolvedGame(`couldn't find a winning strategy`);
@@ -102,17 +105,27 @@ function find_unseen_identities(game) {
 		}, []));
 }
 
-/** @param {Game} game */
-function unwinnable_state(game) {
+/**
+ * @param {Game} game
+ * @param {number} playerTurn
+ */
+function unwinnable_state(game, playerTurn) {
 	const { state, me } = game;
 
-	if (state.ended || state.pace < 0 || (state.endgameTurns !== -1 && state.maxScore - state.score > state.endgameTurns))
+	if (state.ended || state.pace < 0)
 		return true;
 
-	const void_players = state.hands.filter((hand, i) => me.thinksTrash(state, i).length === hand.length);
+	const void_players = Utils.range(0, state.numPlayers).filter(i => me.thinksTrash(state, i).length === state.hands[i].length);
 
 	if (void_players.length > state.pace)
 		return true;
+
+	if (state.endgameTurns !== -1) {
+		const possible_players = Utils.range(0, state.endgameTurns).filter(i => !void_players.includes((playerTurn + i) % state.numPlayers));
+
+		if (possible_players.length + state.score < state.maxScore)
+			return true;
+	}
 }
 
 /**
@@ -121,16 +134,17 @@ function unwinnable_state(game) {
  * @param {Game} game
  * @param {number} playerTurn
  * @param {(game: Game, giver: number) => Clue[]} find_clues
+ * @param {(game: Game, playerIndex: number) => { misplay: boolean, order: number }[]} find_discards
  * @param {Map<string, WinnableResult>} cache
  * @returns {WinnableResult}
  */
-export function winnable_simple(game, playerTurn, find_clues = () => [], cache = new Map()) {
+export function winnable_simple(game, playerTurn, find_clues = () => [], find_discards = () => [], cache = new Map()) {
 	const { state } = game;
 
 	if (state.score === state.maxScore)
 		return { actions: [], winrate: 1 };
 
-	if (Date.now() > timeout || unwinnable_state(game))
+	if (Date.now() > timeout || unwinnable_state(game, playerTurn))
 		return { actions: [], winrate: 0 };
 
 	const cached_result = cache.get(hash_state(game));
@@ -151,7 +165,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], cache =
 			logger.debug(state.playerNames[playerTurn], 'trying to play', logCard({ suitIndex, rank }));
 
 			const new_game = game.simulate_action({ type: 'play', order, suitIndex, rank, playerIndex: playerTurn });
-			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, cache);
+			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
 
 			if (winrate >= best_winrate) {
 				best_actions = actions.toSpliced(0, 0, { type: ACTION.PLAY, target: order, playerIndex: playerTurn });
@@ -173,7 +187,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], cache =
 			clue_game.state.endgameTurns = clue_game.state.endgameTurns === -1 ? -1 : (clue_game.state.endgameTurns - 1);
 
 			logger.debug(state.playerNames[playerTurn], 'trying to stall');
-			const { actions, winrate } = winnable_simple(clue_game, nextPlayerIndex, find_clues, cache);
+			const { actions, winrate } = winnable_simple(clue_game, nextPlayerIndex, find_clues, find_discards, cache);
 
 			if (winrate > best_winrate) {
 				best_actions = actions.toSpliced(0, 0, Object.assign({ type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn }));
@@ -187,7 +201,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], cache =
 			const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
 			const new_game = game.simulate_clue({ type: 'clue', clue, list, giver: playerTurn, target: clue.target });
 
-			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, cache);
+			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
 
 			if (winrate > best_winrate) {
 				best_actions = actions.toSpliced(0, 0, Object.assign(Utils.clueToAction(clue, -1), { playerIndex: playerTurn }));
@@ -201,16 +215,23 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], cache =
 
 	const not_useful = state.hands[playerTurn].find(c => state.isBasicTrash(c));
 
-	if (best_winrate < 1 && not_useful !== undefined) {
-		const { suitIndex, rank } = not_useful;
-		logger.debug(state.playerNames[playerTurn], 'trying to discard');
+	if (best_winrate < 1 && state.pace >= 0) {
+		const discards = find_discards(game, playerTurn);
 
-		const new_game = game.simulate_action({ type: 'discard', order: not_useful.order, playerIndex: playerTurn, suitIndex, rank, failed: false });
-		const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, cache);
+		if (discards.length === 0 && not_useful !== undefined)
+			discards.push({ misplay: false, order: not_useful.order });
 
-		if (winrate > best_winrate) {
-			best_actions = actions.toSpliced(0, 0, { type: ACTION.DISCARD, target: -1, playerIndex: playerTurn });
-			best_winrate = winrate;
+		for (const { misplay, order } of discards) {
+			const { suitIndex, rank } = state.hands[playerTurn].find(c => c.order === order);
+			logger.debug(state.playerNames[playerTurn], 'trying to discard slot', state.hands[playerTurn].findIndex(c => c.order === order) + 1);
+
+			const new_game = game.simulate_action({ type: 'discard', order, playerIndex: playerTurn, suitIndex, rank, failed: misplay }, { enableLogs: playerTurn === 1 && state.hands[playerTurn].findIndex(c => c.order === order) === 0});
+			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
+
+			if (winrate > best_winrate) {
+				best_actions = actions.toSpliced(0, 0, { type: ACTION.DISCARD, target: order, playerIndex: playerTurn });
+				best_winrate = winrate;
+			}
 		}
 	}
 

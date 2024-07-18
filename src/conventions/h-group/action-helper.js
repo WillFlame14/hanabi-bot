@@ -1,4 +1,7 @@
 import { CLUE } from '../../constants.js';
+import { isTrash } from '../../basics/hanabi-util.js';
+import { connectable_simple } from '../../basics/helper.js';
+import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logClue } from '../../tools/log.js';
@@ -194,4 +197,56 @@ export function determine_playable_card(game, playable_cards) {
 	});
 
 	return priorities;
+}
+
+/**
+ * @param {import('../../basics/Game.js').Game} game
+ * @param {number} discarder
+ * @param {number} expected_discard
+ * @returns {{misplay: boolean, order: number} | undefined}
+ */
+export function find_positional_discard(game, discarder, expected_discard) {
+	const { state, me } = game;
+	const trash = game.players[discarder].thinksTrash(state, discarder);
+
+	if (!state.inEndgame() || state.clue_tokens > 1)
+		return;
+
+	/**
+	 * @param {number} playerIndex
+	 * @param {ActualCard} card
+	 */
+	const valid_target = (playerIndex, card) =>
+		card !== undefined &&
+		!isTrash(state, me, card, card.order) &&
+		me.hypo_stacks[card.suitIndex] + 1 === card.rank &&
+		connectable_simple(game, state.ourPlayerIndex, playerIndex, card);
+
+	for (let i = 1; i < state.numPlayers; i++) {
+		const playerIndex = (discarder + i) % state.numPlayers;
+		const hand = state.hands[playerIndex];
+
+		for (let j = 0; j < hand.length; j++) {
+			// Not trash in discarder's slot, couldn't perform positional discard
+			if (!trash.some(c => c.order === state.hands[discarder][j].order))
+				continue;
+
+			if (valid_target(playerIndex, hand[j])) {
+				const playerIndex2 = Utils.range(i + 1, state.numPlayers).find(j => {
+					const pl = (discarder + j) % state.numPlayers;
+					return valid_target(pl, state.hands[pl][j]);
+				});
+
+				if (playerIndex2 !== undefined) {
+					logger.info(`performing double positional misplay on ${[playerIndex, playerIndex2].map(p => state.playerNames[p])}, slot ${j + 1}`);
+					return { misplay: true, order: state.hands[discarder][j].order };
+				}
+
+				const misplay = state.hands[discarder][j].order === expected_discard;
+
+				logger.info(`performing positional ${misplay ? 'misplay' : 'discard' } on ${state.playerNames[playerIndex]}, slot ${j + 1}`);
+				return { misplay, order: state.hands[discarder][j].order };
+			}
+		}
+	}
 }

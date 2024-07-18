@@ -40,14 +40,13 @@ function find_colour_focus(game, suitIndex, action) {
 	let connections = [];
 
 	// Try looking for a connecting card (other than itself)
-	const old_play_stacks = state.play_stacks;
+	const old_play_stacks = state.play_stacks.slice();
 	let already_connected = [focused_card.order];
 
 	let finesses = 0;
 
 	while (next_rank < state.max_ranks[suitIndex]) {
 		const identity = { suitIndex, rank: next_rank };
-		state.play_stacks = old_play_stacks.slice();
 
 		// Note that a colour clue always looks direct
 		const ignoreOrders = getIgnoreOrders(game, next_rank - old_play_stacks[suitIndex] - 1, suitIndex);
@@ -80,21 +79,23 @@ function find_colour_focus(game, suitIndex, action) {
 			if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
 				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
 		}
-		state.play_stacks[suitIndex]++;
+
+		for (const { card } of connecting)
+			state.play_stacks[card.suitIndex]++;
 		next_rank++;
 
 		connections = connections.concat(connecting);
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
 
+	// Restore play stacks
+	state.play_stacks = old_play_stacks;
+
 	connections = resolve_bluff(game, connections);
 	if (connections.length == 0) {
 		// Undo plays invalidated by a false bluff.
 		next_rank = old_play_stacks[suitIndex] + 1;
 	}
-
-	// Restore play stacks
-	state.play_stacks = old_play_stacks;
 
 	const next_identity = { suitIndex, rank: next_rank };
 	if (cardTouched(next_identity, game.state.variant, action.clue) && common.thoughts[focused_card.order].possible.has(next_identity)) {
@@ -244,8 +245,12 @@ function find_rank_focus(game, rank, action) {
 			already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 
 			next_rank++;
-			state.play_stacks[suitIndex]++;
+			for (const { card } of connecting)
+				state.play_stacks[card.suitIndex]++;
 		}
+
+		// Restore play stacks
+		state.play_stacks = old_play_stacks;
 
 		const next_identity = { suitIndex, rank: next_rank };
 		if (next_rank > rank) {
@@ -273,8 +278,6 @@ function find_rank_focus(game, rank, action) {
 		}
 	}
 
-	// Restore play stacks
-	state.play_stacks = old_play_stacks;
 	return focus_possible;
 }
 

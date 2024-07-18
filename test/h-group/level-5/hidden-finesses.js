@@ -3,10 +3,13 @@ import { strict as assert } from 'node:assert';
 
 import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
+
 import HGroup from '../../../src/conventions/h-group.js';
 import { CLUE } from '../../../src/constants.js';
-import logger from '../../../src/tools/logger.js';
 import { team_elim } from '../../../src/basics/helper.js';
+import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
+
+import logger from '../../../src/tools/logger.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -199,5 +202,22 @@ describe('hidden finesse', () => {
 
 		// Slot 1 should be hidden.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].hidden, true);
+	});
+
+	it(`doesn't give bad hidden finesses`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'y1', 'r1', 'y2', 'b5'],
+			['r1', 'b4', 'p4', 'y3', 'r2']
+		], {
+			level: { min: 5 },
+			starting: PLAYER.BOB
+		});
+
+		const { play_clues } = find_clues(game);
+
+		// 3 or yellow to Cathy aren't valid play clues.
+		assert.ok(!play_clues[PLAYER.CATHY].some(clue =>
+			clue.type === CLUE.RANK && clue.value === 3 || clue.type === CLUE.COLOUR && clue.value === COLOUR.YELLOW));
 	});
 });
