@@ -63,6 +63,10 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 	const { common, state, tableID } = game;
 
 	const play_clues = all_play_clues.filter(clue => {
+		// Locked reduces needed clue value
+		if (find_clue_value(clue.result) < (save_clue === undefined ? 0 : 1))
+			return false;
+
 		// Check if the play clue touches all the cards that need to be saved
 		if (save_clue !== undefined) {
 			if (save_clue.cm?.length > 0) {
@@ -74,10 +78,6 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 					return true;
 			}
 		}
-
-		// Locked reduces needed clue value
-		if (find_clue_value(clue.result) < (save_clue === undefined ? 0 : 1))
-			return false;
 
 		// Unsafe play clue
 		if (clue.result.trash === 0 && state.clue_tokens < (state.numPlayers > 2 ? 1 : 2))
@@ -235,7 +235,9 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, tableID));
 				continue;
 			}
-			continue;
+
+			if (common.thinksLocked(state, target))
+				continue;
 		}
 
 		// They require a save clue
@@ -367,8 +369,10 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				continue;
 
 			// Do not save if unsafe
-			if (!save.safe)
+			if (!save.safe) {
+				logger.info('save clue', logClue(save), 'is unsafe, not giving');
 				continue;
+			}
 
 			// No alternative, have to give save
 			urgent_actions[PRIORITY.ONLY_SAVE + nextPriority].push(Utils.clueToAction(save_clues[target], tableID));

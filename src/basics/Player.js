@@ -286,12 +286,7 @@ export class Player {
 					(id && state.deck.filter(c => c?.matches(id) && c.order !== order).length === cardCount(state.variant, id)) ||
 					(actual_id &&
 						(!card.inferred.has(actual_id) ||		// None of the inferences match
-						state.hands.flat().some(c => unknown_plays.has(c.order) && c.matches(actual_id))))	||	// Duping playable
-					(this.dependentConnections(order).some(wc =>				// Only part of a fake ambiguous connection
-						!state.deck[wc.focused_card.order].matches(wc.inference, { assume: true }))
-					&&
-						!this.dependentConnections(order).some(wc2 =>
-							state.deck[wc2.focused_card.order].matches(wc2.inference, { assume: true })))
+						state.hands.flat().some(c => unknown_plays.has(c.order) && c.matches(actual_id))))
 				))
 					continue;
 

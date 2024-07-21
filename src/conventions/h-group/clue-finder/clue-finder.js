@@ -202,12 +202,14 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 					logger.highlight('yellow', `${logClue(clue)} save results in avoidable potential duplication`);
 			}
 
-			if (!safe)
-				continue;
-
 			switch (hypo_game.moveHistory.at(-1).move) {
 				case CLUE_INTERP.CM_TEMPO: {
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, clue.result.playables, focused_card);
+
+					if (!safe) {
+						logger.highlight('yellow', 'unsafe!');
+						continue;
+					}
 
 					if (tempo && !valuable) {
 						logger.info('tempo clue chop move', logClue(clue));
@@ -219,8 +221,15 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 					break;
 				}
 				case CLUE_INTERP.PLAY:
-					if (clue.result.playables.length === 0)
+					if (clue.result.playables.length === 0) {
+						logger.warn('play clue with no playables!');
 						continue;
+					}
+
+					if (!safe) {
+						logger.highlight('yellow', 'unsafe!');
+						continue;
+					}
 
 					if (game.level < LEVEL.CONTEXT || clue.result.avoidable_dupe == 0)
 						play_clues[target].push(clue);
@@ -231,6 +240,11 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 				case CLUE_INTERP.STALL_5:
 					logger.info('5 stall', logClue(clue));
 					stall_clues[0].push(clue);
+					break;
+
+				case CLUE_INTERP.STALL_TEMPO:
+					logger.info('tempo clue stall', logClue(clue));
+					stall_clues[1].push(clue);
 					break;
 
 				case CLUE_INTERP.STALL_FILLIN:

@@ -358,7 +358,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 
 			return !ignoreOrders.includes(order) &&
 				!connected.includes(order) &&
-				card.inferred.has(identity) &&							// At least one inference must match
+				(card.inferred.has(identity) || (card.uncertain && card.possible.has(identity))) &&		// At least one inference must match
 				card.matches(identity, { assume: true }) &&				// If we know the card (from a rewind), it must match
 				((card.inferred.every(i => state.isPlayable(i)) && card.clued) || card.finessed);	// Must be playable
 		});
@@ -370,7 +370,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 			return [{
 				type: 'playable',
 				reacting: state.ourPlayerIndex,
-				card: (multiple_1s ? order_1s(state, common, playable_conns) : playable_conns)[0],	  // If necessary, reorder to oldest 1 to avoid prompting
+				card: multiple_1s ? order_1s(state, common, playable_conns)[0] : playable_conns.at(-1),	  // If necessary, reorder to oldest 1 to avoid prompting
 				linked: playable_conns,
 				identities: [identity]
 			}];

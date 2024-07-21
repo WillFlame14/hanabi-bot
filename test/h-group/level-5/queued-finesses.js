@@ -28,12 +28,14 @@ describe('queued finesse', () => {
 
 		takeTurn(game, 'Cathy clues 2 to Bob');			// r2 finesse on us
 
-		// Alice's slot 2 should be [r1].
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r1']);
-
 		// Alice should play slot 1 first.
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
+
+		takeTurn(game, 'Alice plays g1 (slot 1)');
+
+		// Alice's slot 2 should be [r1].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r1']);
 	});
 
 	it('waits for a queued finesse to resolve', () => {

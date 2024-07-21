@@ -226,7 +226,7 @@ export function assign_connections(game, connections, giver) {
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
 	for (let i = 0; i < connections.length; i++) {
-		const { type, bluff, possibly_bluff, hidden, card: conn_card, linked, identities, certain } = connections[i];
+		const { type, reacting, bluff, possibly_bluff, hidden, card: conn_card, linked, identities, certain } = connections[i];
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
 
@@ -273,8 +273,9 @@ export function assign_connections(game, connections, giver) {
 		}
 		else {
 			// There are multiple possible connections on this card
-			if (card.superposition) {
+			if (card.superposition || card.uncertain) {
 				card.inferred = card.inferred.union(identities);
+				logger.info('union', identities.map(logCard), card.inferred.map(logCard));
 			}
 			else {
 				if (type === 'playable' && linked.length > 1) {
@@ -294,6 +295,10 @@ export function assign_connections(game, connections, giver) {
 				card.superposition = true;
 			}
 		}
+
+		card.uncertain ||= reacting === state.ourPlayerIndex && type !== 'known';
+		if (card.uncertain)
+			logger.highlight('yellow', 'writing uncertain!');
 
 		// Updating notes not on our turn
 		// There might be multiple possible inferences on the same card from a self component

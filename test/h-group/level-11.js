@@ -319,7 +319,7 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][3].order], ['r3']);
 	});
 
-	it(`makes the correct inferrences on a received bluff`, () => {
+	it(`makes the correct inferences on a received bluff`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'], // y4 y2 y4 b5
 			['p2', 'y2', 'g3', 'b1'],

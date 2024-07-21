@@ -463,6 +463,7 @@ export function update_turn(game, action) {
 			else {
 				connecting_card.inferred = connecting_card.inferred.union(identities);
 			}
+			connecting_card.uncertain = false;
 		}
 
 		if (!thoughts.superposition) {
@@ -472,6 +473,7 @@ export function update_turn(game, action) {
 		else {
 			thoughts.inferred = thoughts.inferred.union(inferences);
 		}
+		thoughts.uncertain = false;
 	}
 
 	for (let i = 0; i < common.waiting_connections.length; i++) {

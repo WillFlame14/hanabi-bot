@@ -37,7 +37,7 @@ export function team_elim(game) {
 
 			card.old_inferred = ccard.old_inferred;
 
-			for (const property of ['rewind_ids', 'focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'hidden', 'called_to_discard', 'finesse_index', 'rewinded', 'certain_finessed', 'trash'])
+			for (const property of ['rewind_ids', 'focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'hidden', 'called_to_discard', 'finesse_index', 'rewinded', 'certain_finessed', 'trash', 'uncertain'])
 				card[property] = ccard[property];
 
 			card.reasoning = ccard.reasoning.slice();

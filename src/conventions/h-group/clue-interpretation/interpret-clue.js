@@ -132,10 +132,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
 
-	if (correct_match)
-		game.interpretMove(correct_match.interp);
-	else
-		game.interpretMove(inf_possibilities.some(p => p.save) ? CLUE_INTERP.SAVE : CLUE_INTERP.PLAY);
+	game.interpretMove(inf_possibilities.some(p => p.save) ? CLUE_INTERP.SAVE : CLUE_INTERP.PLAY);
 
 	if (target !== state.ourPlayerIndex && !correct_match?.save) {
 		const selfRanks = Array.from(new Set(inf_possibilities.flatMap(({ connections }) =>

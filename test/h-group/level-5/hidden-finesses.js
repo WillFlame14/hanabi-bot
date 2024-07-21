@@ -5,9 +5,10 @@ import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../../test-uti
 import * as ExAsserts from '../../extra-asserts.js';
 
 import HGroup from '../../../src/conventions/h-group.js';
-import { CLUE } from '../../../src/constants.js';
+import { ACTION, CLUE } from '../../../src/constants.js';
 import { team_elim } from '../../../src/basics/helper.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
+import { take_action } from '../../../src/conventions/h-group/take-action.js';
 
 import logger from '../../../src/tools/logger.js';
 
@@ -165,14 +166,19 @@ describe('hidden finesse', () => {
 		takeTurn(game, 'Cathy discards g4', 'p4');
 		takeTurn(game, 'Donald clues green to Bob');		// g1 needs to finesse from Alice, but slot 1 is [y2] and slot 2 is neg 1.
 
-		// Slots 1, 2 should be finessed
-		assert.equal([0, 1].every(i => game.common.thoughts[game.state.hands[PLAYER.ALICE][i].order].finessed), true);
+		const action = take_action(game);
 
-		// y2 should be in slot 2.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y2']);
+		// Alice should play slot 3.
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2].order });
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['y1', 'g1']);
 
-		// Slot 1 should be hidden.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].hidden, true);
+		// Slot 1 should be finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+
+		takeTurn(game, 'Alice plays y1 (slot 3)');
+
+		// Alice's slot 2 should still be finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
 	});
 
 	it('correctly realizes a layered finesse', () => {
@@ -192,16 +198,22 @@ describe('hidden finesse', () => {
 		takeTurn(game, 'Alice plays r1 (slot 4)');
 		takeTurn(game, 'Bob clues yellow to Cathy');		// Looks like y3 finesse from us
 		takeTurn(game, 'Cathy clues green to Bob');			// g1 needs to finesse from Alice, but slot 1 is [y3] and slot 2 is neg 1.
+		takeTurn(game, 'Donald discards b2', 'b5');
 
-		// Slots 1, 2 should be finessed
-		assert.equal([0, 1].every(i => game.common.thoughts[game.state.hands[PLAYER.ALICE][i].order].finessed), true);
+		// Slots 1 should be finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 
-		// Slot 1 must be g1, slot 2 must be y3
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g1']);
+		const action = take_action(game);
+
+		// Alice should play slot 1.
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y3', 'g1']);
+
+		takeTurn(game, 'Alice plays g1 (slot 1)');
+
+		// Alice's slot 2 should still be finessed as y3.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y3']);
-
-		// Slot 1 should be hidden.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].hidden, true);
 	});
 
 	it(`doesn't give bad hidden finesses`, () => {

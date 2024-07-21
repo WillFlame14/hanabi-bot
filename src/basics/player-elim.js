@@ -1,4 +1,5 @@
 import { cardCount } from '../variants.js';
+import { IdentitySet } from './IdentitySet.js';
 import { unknownIdentities } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
@@ -10,7 +11,6 @@ import { logCard } from '../tools/log.js';
  * @typedef {import('./Card.js').ActualCard} ActualCard
  * @typedef {import('./Player.js').Player} Player
  * @typedef {import('./State.js').State} State
- * @typedef {import('./IdentitySet.js').IdentitySet} IdentitySet
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Link} Link
  */
@@ -159,14 +159,27 @@ export function good_touch_elim(state, only_self = false) {
 
 	const match_map = /** @type {Map<string, Set<number>>} */ (new Map());
 	const hard_match_map = /** @type {Map<string, Set<number>>} */ (new Map());
+	const cross_map = /** @type {Map<number, Set<number>>} */ (new Map());
 
 	/** @type {(order: number) => void} */
 	const addToMaps = (order) => {
 		const card = this.thoughts[order];
 		const id = card.identity({ infer: true, symmetric: this.playerIndex === -1 });
 
-		if (!card.touched || id === undefined ||
-			(state.deck[order].identity() !== undefined && !state.deck[order].matches(id)) ||		// Card is visible and doesn't match
+		if (!card.touched)
+			return;
+
+		if (id === undefined) {
+			if (card.inferred.length < 5 && this.playerIndex === -1) {
+				const cross_set = cross_map.get(card.inferred.value) ?? new Set();
+				cross_set.add(order);
+				cross_map.set(card.inferred.value, cross_set);
+			}
+			return;
+		}
+
+		if ((state.deck[order].identity() !== undefined && !state.deck[order].matches(id)) ||		// Card is visible and doesn't match
+			(state.baseCount(id) + state.hands.flat().filter(c => c.matches(id) && c.order !== order).length === cardCount(state.variant, id)) ||	// Card cannot match
 			(!card.matches(id) && card.newly_clued && !card.focused) ||			// Unknown newly clued cards off focus?
 			unconfirmed.has(order)
 		)
@@ -201,6 +214,41 @@ export function good_touch_elim(state, only_self = false) {
 		}
 	};
 
+	const cross_elim = () => {
+		for (const [identities, orders] of cross_map) {
+			const identity_set = new IdentitySet(state.variant.suits.length, identities);
+
+			// There aren't the correct number of cards sharing this set of identities
+			if (orders.size !== identity_set.length)
+				continue;
+
+			const orders_arr = Array.from(orders);
+			const holders = orders_arr.map(o => state.hands.findIndex(hand => hand.findOrder(o)));
+			let change = false;
+
+			for (let i = 0; i < orders.size; i++) {
+				const card = this.thoughts[orders_arr[i]];
+
+				for (let j = 0; j < orders.size; j++) {
+					const other_card = state.deck[orders_arr[j]];
+
+					// Globally, a player can subtract identities others have, knowing others can see the identities they have.
+					if (i !== j && holders[i] !== holders[j] && card.inferred.has(other_card)) {
+						card.inferred = card.inferred.subtract(other_card);
+						change = true;
+					}
+				}
+			}
+
+			if (change) {
+				cross_map.delete(identities);
+
+				for (const order of orders)
+					addToMaps(order);
+			}
+		}
+	};
+
 	/** @type {{ order: number, playerIndex: number, cm: boolean }[]} */
 	const elim_candidates = [];
 
@@ -227,6 +275,8 @@ export function good_touch_elim(state, only_self = false) {
 			}
 		}
 	}
+
+	cross_elim();
 
 	const identities = this.all_possible.array.slice();
 	const resets = /** @type {Set<number>} */ (new Set());
@@ -290,16 +340,21 @@ export function good_touch_elim(state, only_self = false) {
 					this.elims[id_hash].push(order);
 			}
 
-			if (!cm && card.inferred.length === 0 && !card.reset) {
-				this.reset_card(order);
-				resets.add(order);
-			}
-			// Newly eliminated
-			else if (!cm && card.inferred.length === 1 && pre_inferences > 1 && !state.isBasicTrash(card.inferred.array[0])) {
-				identities.push(card.inferred.array[0]);
+			if (!cm) {
+				if (card.inferred.length === 0 && !card.reset) {
+					this.reset_card(order);
+					resets.add(order);
+				}
+				// Newly eliminated
+				else if (card.inferred.length === 1 && pre_inferences > 1 && !state.isBasicTrash(card.inferred.array[0])) {
+					identities.push(card.inferred.array[0]);
+				}
 			}
 
 			addToMaps(order);
+
+			if (i === identities.length - 1)
+				cross_elim();
 		}
 	}
 

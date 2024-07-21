@@ -95,7 +95,7 @@ function find_unseen_identities(game) {
 	}, {});
 
 	return state.play_stacks.flatMap((stack, suitIndex) => stack >= state.max_ranks[suitIndex] ? [] :
-		Utils.range(stack + 1, state.max_ranks[suitIndex]).reduce((acc, rank) => {
+		Utils.range(stack + 1, state.max_ranks[suitIndex] + 1).reduce((acc, rank) => {
 			const id = { suitIndex, rank };
 
 			if (seen_identities[logCard(id)] === undefined)

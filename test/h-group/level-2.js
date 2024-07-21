@@ -10,6 +10,7 @@ import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.j
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
+import { logPerformAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -30,7 +31,7 @@ describe('reverse finesse', () => {
 		const action = take_action(game);
 
 		// Alice should give green to Bob to finesse over save
-		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN });
+		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN }, `Expected (green to Bob), got ${logPerformAction(action)}`);
 	});
 
 	it('understands a continuing finesse', () => {
