@@ -38,6 +38,30 @@ describe('queued finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r1']);
 	});
 
+	it('understands a delayed queued finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'g3', 'g4', 'r5', 'b4'],
+			['r3', 'b3', 'r4', 'y3', 'p3']
+		], {
+			level: { min: 5 },
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues green to Bob');		// g1, g2 finesse on us
+		takeTurn(game, 'Alice plays g1 (slot 1)');
+		takeTurn(game, 'Bob clues red to Cathy');		// r1, r2 finesse on us
+
+		// Alice should play slot 2 first.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1].order });
+
+		// Alice's slots should be [r1, g2, r2].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r2']);
+	});
+
 	it('waits for a queued finesse to resolve', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

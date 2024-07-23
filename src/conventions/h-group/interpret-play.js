@@ -85,4 +85,9 @@ export function interpret_play(game, action) {
 	common.good_touch_elim(state);
 	common.update_hypo_stacks(state);
 	team_elim(game);
+
+	if (playerIndex === state.ourPlayerIndex) {
+		for (const { order } of state.hands[state.ourPlayerIndex])
+			common.thoughts[order].uncertain = false;
+	}
 }

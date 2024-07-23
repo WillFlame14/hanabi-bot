@@ -5,7 +5,7 @@ import { UnsolvedGame, solve_game } from '../shared/endgame.js';
 import { find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { determine_focus, inBetween, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
-import { cardValue, isTrash } from '../../basics/hanabi-util.js';
+import { cardValue, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
@@ -381,6 +381,21 @@ export function take_action(game) {
 	// If we have a finesse and no urgent high value clues to give, play into the finesse.
 	if (is_finessed)
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
+
+	// Blind play a missing card in the endgame
+	if (state.cardsLeft === 0 && state.strikes < 2) {
+		for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
+			for (let rank = state.play_stacks[suitIndex] + 1; rank <= state.max_ranks[suitIndex]; rank++) {
+				const identity = { suitIndex, rank };
+				const slot1 = state.hands[state.ourPlayerIndex][0];
+
+				if (visibleFind(state, me, identity, { infer: true }).length === 0 && me.thoughts[slot1.order].possible.has(identity)) {
+					logger.highlight('yellow', 'trying to play slot 1 as', logCard(identity));
+					return { tableID, type: ACTION.PLAY, target: slot1.order };
+				}
+			}
+		}
+	}
 
 	// Sarcastic discard to someone else
 	if (game.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {

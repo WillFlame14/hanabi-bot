@@ -139,7 +139,7 @@ export function logObjectiveAction(state, action) {
 				actionType = `clue ${logClue(action)}`;
 			break;
 		case ACTION.DISCARD:
-			actionType = 'discard';
+			actionType = `discard ${action.target}`;
 	}
 
 	return `${actionType} (${state.playerNames[action.playerIndex]})`;

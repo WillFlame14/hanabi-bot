@@ -42,3 +42,37 @@ describe('simple endgames with 1 card left', () => {
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 	});
 });
+
+describe('simple endgames with 1 undrawn identity', () => {
+	it('solves a cluable endgame', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'p4'],
+			['p2', 'g3', 'b1', 'b3', 'p3'],
+			['y1', 'b1', 'p5', 'r3', 'y3'],
+		], {
+			play_stacks: [5, 5, 5, 4, 3],
+			clue_tokens: 5,
+			init: (game) => {
+				const { common, state } = game;
+				const a_slot5 = common.thoughts[state.hands[PLAYER.ALICE][4].order];
+				a_slot5.inferred = a_slot5.inferred.intersect(expandShortCard('p4'));
+				a_slot5.possible = a_slot5.possible.intersect(expandShortCard('p4'));
+				a_slot5.clued = true;
+
+				const b_slot5 = common.thoughts[state.hands[PLAYER.BOB][4].order];
+				b_slot5.inferred = b_slot5.inferred.intersect(expandShortCard('p3'));
+				b_slot5.possible = b_slot5.possible.intersect(expandShortCard('p3'));
+				b_slot5.clued = true;
+
+				const c_slot3 = common.thoughts[state.hands[PLAYER.CATHY][3].order];
+				c_slot3.inferred = c_slot3.inferred.intersect(expandShortCard('p5'));
+				c_slot3.possible = c_slot3.possible.intersect(expandShortCard('p5'));
+				c_slot3.clued = true;
+				game.state.cardsLeft = 2;
+			}
+		});
+
+		const action = solve_game(game, PLAYER.ALICE, find_all_clues);
+		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
+	});
+});

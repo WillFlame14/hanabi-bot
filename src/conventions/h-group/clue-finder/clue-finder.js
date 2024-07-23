@@ -39,12 +39,14 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 		return Math.max(find_clue_value(result), state.isCritical(old_chop) ? 0.1 : -Infinity);
 
 	const saved_trash = chop_moved.filter(card =>
+		state.isBasicTrash(card) ||
 		state.hands.some(hand => hand.some(c => c.matches(card) && c.order !== card.order)) ||		// Saving a duplicated card
 		chop_moved.some(c => card.matches(c) && card.order > c.order)		// Saving 2 of the same card
 	);
 
 	// Direct clue is possible
-	if (hypo_game.moveHistory.at(-1).move === CLUE_INTERP.CM_TRASH && all_clues.some(clue => chop_moved.every(cm => saved_trash.some(c => c.order === cm.order) || cardTouched(cm, state.variant, clue))))
+	if (hypo_game.moveHistory.at(-1).move === CLUE_INTERP.CM_TRASH &&
+		all_clues.some(clue => chop_moved.every(cm => saved_trash.some(c => c.order === cm.order) || cardTouched(cm, state.variant, clue))))
 		return -10;
 
 	// Chop is trash, can give clue later
@@ -95,8 +97,8 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 		/** @type {(SaveClue & {game: Game})[]} */
 		const saves = [];
 
-		// Ignore our hand and the giver's hand
-		if (target === state.ourPlayerIndex || target === giver)
+		// Ignore the giver's hand
+		if (target === giver)
 			continue;
 
 		const hand = state.hands[target];
@@ -125,7 +127,8 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 			}))
 				continue;
 
-			const bad_touch_cards = touch.filter(c => !c.clued && isTrash(state, player, player.thoughts[c.order].identity({ infer: true }), c.order));		// Ignore cards that were already clued
+			const bad_touch_cards = touch.filter(c => !c.clued &&			// Ignore cards that were already clued
+				isTrash(state, player, state.deck[c.order].identity() ?? player.thoughts[c.order].identity({ infer: true }), c.order));
 
 			// Simulate clue from receiver's POV to see if they have the right interpretation
 			const action =  /** @type {const} */ ({ type: 'clue', giver, target, list, clue, hypothetical });

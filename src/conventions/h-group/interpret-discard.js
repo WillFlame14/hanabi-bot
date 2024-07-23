@@ -155,6 +155,11 @@ export function interpret_discard(game, action, card) {
 		check_positional_discard(game, action, before_trash, old_chop, slot);
 
 	team_elim(game);
+
+	if (playerIndex === state.ourPlayerIndex) {
+		for (const { order } of state.hands[state.ourPlayerIndex])
+			common.thoughts[order].uncertain = false;
+	}
 }
 
 /**
@@ -169,7 +174,8 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 	const { order, playerIndex } = action;
 	const expected_discard = before_trash[0] ?? old_chop;
 
-	if (!action.failed && (expected_discard === undefined || order === expected_discard.order))
+	// Blind played a chop moved card, locked hand, discarded expected card
+	if (action.failed ? common.thoughts[order].chop_moved : (expected_discard === undefined || order === expected_discard.order))
 		return;
 
 	const num_plays = action.failed && (before_trash.length > 0 || order !== old_chop?.order) ? 2 : 1;

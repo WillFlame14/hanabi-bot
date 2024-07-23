@@ -112,11 +112,14 @@ export function objClone(obj, depth = 0) {
 	if (obj === null)
 		return null;
 
-	if (typeof obj !== 'object' || obj instanceof BasicCard)
+	if (typeof obj !== 'object')
 		return obj;
 
-	if (obj instanceof Hand || obj instanceof Player)
+	if (obj instanceof Hand || obj instanceof Player || obj instanceof ActualCard || obj instanceof Card)
 		return /** @type {T} */ (obj.clone());
+
+	if (obj instanceof BasicCard)
+		return obj;
 
 	if (Array.isArray(obj))
 		return /** @type {T} */ (obj.map(elem => objClone(elem)));

@@ -1,3 +1,4 @@
+import { ActualCard } from '../../basics/Card.js';
 import { ACTION } from '../../constants.js';
 import { logCard, logClue, logObjectiveAction } from '../../tools/log.js';
 import logger from '../../tools/logger.js';
@@ -32,10 +33,11 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 
 	const unseen_identities = find_unseen_identities(game);
 
-	if (unseen_identities.length > 0)
+	if (unseen_identities.length > 1)
 		throw new UnsolvedGame(`couldn't find any ${unseen_identities.map(logCard).join()}!`);
 
 	const common_state = state.minimalCopy();
+	const unknown_own = [];
 
 	// Write identities on our own cards
 	for (const { order } of state.hands[state.ourPlayerIndex]) {
@@ -46,16 +48,71 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 			Object.assign(common_state.hands[state.ourPlayerIndex].findOrder(order), identity);
 			Object.assign(common_state.deck[order], identity);
 		}
+		else {
+			unknown_own.push(order);
+		}
 	}
-
-	const new_game = game.shallowCopy();
-	new_game.state = common_state;
 
 	timeout = new Date();
 	timeout.setSeconds(timeout.getSeconds() + 2);
 
 	logger.collect();
+
+	if (unseen_identities.length === 1) {
+		const missing = unseen_identities[0];
+		const valid_own = unknown_own.filter(o => me.thoughts[o].possible.has(missing));
+
+		const best_actions = {};
+		const hash_to_actions = {};
+
+		/** @param {State} new_state */
+		const attempt_game = (new_state) => {
+			const new_game = game.minimalCopy();
+			new_game.state = new_state;
+
+			const { actions, winrate } = winnable_simple(new_game, playerTurn, find_clues, find_discards);
+
+			if (winrate === 1) {
+				const hash = logObjectiveAction(new_state, actions[0]);
+				best_actions[hash] ??= 0;
+				best_actions[hash] += 1 / (valid_own.length + state.cardsLeft);
+				hash_to_actions[hash] = actions[0];
+			}
+		};
+
+		for (const order of valid_own) {
+			const new_state = common_state.minimalCopy();
+
+			Object.assign(new_state.hands[state.ourPlayerIndex].findOrder(order), missing);
+			Object.assign(new_state.deck[order], missing);
+
+			attempt_game(new_state);
+		}
+
+		for (let i = 0; i < state.cardsLeft; i++) {
+			const order = state.cardOrder + i + 1;
+			const new_state = common_state.minimalCopy();
+
+			new_state.deck[order] = new ActualCard(missing.suitIndex, missing.rank);
+			attempt_game(new_state);
+		}
+
+		logger.flush(false);
+
+		if (Object.keys(best_actions).length === 0)
+			throw new UnsolvedGame(`couldn't find a winning strategy`);
+
+		const sorted_actions = Object.entries(best_actions).sort(([_, p1], [__, p2]) => p2 - p1);
+
+		logger.highlight('purple', `endgame winnable! found action ${sorted_actions[0][0]} with winrate ${sorted_actions[0][1]}`);
+		return hash_to_actions[sorted_actions[0][0]];
+	}
+
+	const new_game = game.shallowCopy();
+	new_game.state = common_state;
+
 	const { actions, winrate } = winnable_simple(new_game, playerTurn, find_clues, find_discards);
+
 	logger.flush(false);
 
 	if (winrate === 0)
@@ -178,7 +235,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 	}
 
 	if (best_winrate < 1 && state.clue_tokens > 0) {
-		const clues = find_clues(game, playerTurn).filter(c => c.target !== playerTurn);
+		const clues = find_clues(game, playerTurn);
 
 		if (clues.length === 0) {
 			const clue_game = game.shallowCopy();
