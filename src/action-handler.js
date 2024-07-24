@@ -35,6 +35,7 @@ export function handle_action(action) {
 
 			state.dda = undefined;
 			state.screamed_at = false;
+			state.generated = false;
 
 			// Remove the newly_clued flag
 			for (const order of list) {
@@ -61,6 +62,7 @@ export function handle_action(action) {
 			// Assume one cannot SDCM after being screamed at
 			state.dda = undefined;
 			state.screamed_at = false;
+			state.generated = false;
 
 			this.interpret_discard(this, action, card);
 			this.last_actions[playerIndex] = Object.assign(action, { card });

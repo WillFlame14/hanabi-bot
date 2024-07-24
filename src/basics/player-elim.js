@@ -181,7 +181,7 @@ export function good_touch_elim(state, only_self = false) {
 		if ((state.deck[order].identity() !== undefined && !state.deck[order].matches(id)) ||		// Card is visible and doesn't match
 			(state.baseCount(id) + state.hands.flat().filter(c => c.matches(id) && c.order !== order).length === cardCount(state.variant, id)) ||	// Card cannot match
 			(!card.matches(id) && card.newly_clued && !card.focused) ||			// Unknown newly clued cards off focus?
-			unconfirmed.has(order)
+			unconfirmed.has(order) || (card.finessed && card.uncertain)
 		)
 			return;
 

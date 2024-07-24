@@ -163,7 +163,7 @@ function expected_early_game_clue(game, clue, interp) {
 export function early_game_clue(game, playerIndex) {
 	const { state } = game;
 
-	if (state.clue_tokens === 0)
+	if (state.clue_tokens <= 0)
 		return false;
 
 	logger.collect();
@@ -175,7 +175,7 @@ export function early_game_clue(game, playerIndex) {
 		((game.level >= 2 && !game.stalled_5 && stall_clues[0][0]) || undefined);
 
 	if (expected_clue !== undefined)
-		logger.highlight('yellow', `expecting ${state.playerNames[playerIndex]} to give ${logClue(expected_clue)} in early game`);
+		logger.highlight('yellow', `expecting ${state.playerNames[playerIndex]} to give ${logClue(expected_clue)} in early game ${state.clue_tokens}`);
 
 	return expected_clue !== undefined;
 }

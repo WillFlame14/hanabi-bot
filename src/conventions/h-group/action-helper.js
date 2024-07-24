@@ -244,7 +244,7 @@ export function find_positional_discard(game, discarder, expected_discard) {
 
 				const misplay = state.hands[discarder][j].order === expected_discard;
 
-				logger.info(`performing positional ${misplay ? 'misplay' : 'discard' } on ${state.playerNames[playerIndex]}, slot ${j + 1}`);
+				logger.info(`performing positional ${misplay ? 'misplay' : 'discard' } on ${state.playerNames[playerIndex]}, slot ${j + 1} order ${state.hands[discarder][j].order}`);
 				return { misplay, order: state.hands[discarder][j].order };
 			}
 		}

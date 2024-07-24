@@ -35,6 +35,26 @@ describe('ambiguous clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g1']);
 	});
 
+	it(`doesn't eliminate from a possibly-fake finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b3', 'y1', 'p1', 'r4'],
+			['g4', 'r1', 'r3', 'r2'],
+			['b1', 'b2', 'p4', 'p3']
+		], {
+			level: { min: 5 },
+			play_stacks: [5, 5, 5, 0, 1],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 2 to Alice (slot 4)');		// b2, p2 save
+		takeTurn(game, 'Cathy clues blue to Bob');				// b1, b2 finesse (though b2 could be on us)
+		takeTurn(game, 'Donald plays b1', 'b1');
+
+		// Our slot 4 could be b2 or p2.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['b2', 'p2']);
+	});
+
 	it('understands a self-connecting play clue', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

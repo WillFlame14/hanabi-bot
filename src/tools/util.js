@@ -447,3 +447,37 @@ export function groupBy(arr, func) {
 
 	return grouped;
 }
+
+/**
+ * Returns all subsets of the given size.
+ * @template T
+ * @param {T[]} arr
+ * @param {number} size
+ * @returns {T[][]}
+ */
+export function allSubsetsOfSize(arr, size) {
+	if (size > arr.length || arr.length === 0)
+		return [];
+
+	if (size === arr.length)
+		return [arr];
+
+	if (size === 1)
+		return arr.map(i => [i]);
+
+	return allSubsetsOfSize(arr.slice(1), size - 1).map(subset => subset.concat(arr[0]))
+		.concat(allSubsetsOfSize(arr.slice(1), size));
+}
+
+/**
+ * Returns all permutations of the given array.
+ * @template T
+ * @param {T[]} arr
+ * @returns {T[][]}
+ */
+export function permutations(arr) {
+	if (arr.length === 1)
+		return [arr];
+
+	return range(0, arr.length).flatMap(i => permutations(arr.toSpliced(i, 1)).map(sub_arr => [arr[i]].concat(sub_arr)));
+}

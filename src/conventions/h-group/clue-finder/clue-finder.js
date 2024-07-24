@@ -226,6 +226,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 				case CLUE_INTERP.PLAY:
 					if (clue.result.playables.length === 0) {
 						logger.warn('play clue with no playables!');
+						stall_clues[5].push(clue);
 						continue;
 					}
 

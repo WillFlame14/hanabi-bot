@@ -148,10 +148,13 @@ export function interpret_discard(game, action, card) {
 				else
 					common.thoughts[chop.order].chop_moved = true;
 			}
+			else if (result === 'generation') {
+				state.generated = true;
+			}
 		}
 	}
 
-	if (!(sarcastic_targets?.length > 0) && !state.screamed_at && game.level >= LEVEL.ENDGAME && state.inEndgame())
+	if (!(sarcastic_targets?.length > 0) && !state.screamed_at && !state.generated && game.level >= LEVEL.ENDGAME && state.inEndgame())
 		check_positional_discard(game, action, before_trash, old_chop, slot);
 
 	team_elim(game);

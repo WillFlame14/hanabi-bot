@@ -239,7 +239,7 @@ export function take_action(game) {
 	const { priority, best_playable_card } = playable_priorities.some(playables => playables.length > 0) ?
 		find_best_playable(game, playable_cards, playable_priorities) :
 		{ priority: -1, best_playable_card: undefined };
-	const is_finessed = playable_cards.length > 0 && priority === 0;
+	const is_finessed = playable_cards.length > 0 && priority === 0 && !best_playable_card.clued;
 
 	// Bluffs should never be deferred as they can lead to significant desync with human players
 	if (is_finessed && playable_cards.some(c => common.thoughts[c.order].bluffed || common.thoughts[c.order].possibly_bluffed))
@@ -363,7 +363,7 @@ export function take_action(game) {
 
 		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
 			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
-				!state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches({ suitIndex, rank })));
+				!state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches({ suitIndex, rank }, { infer: true })));
 	};
 
 	// Consider finesses while finessed if we are only waited on to play one card,
@@ -379,20 +379,21 @@ export function take_action(game) {
 		return Utils.clueToAction(best_play_clue, tableID);
 
 	// If we have a finesse and no urgent high value clues to give, play into the finesse.
-	if (is_finessed)
+	if (playable_cards.length > 0 && priority === 0)
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
 	// Blind play a missing card in the endgame
 	if (state.cardsLeft === 0 && state.strikes < 2) {
 		for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
-			for (let rank = state.play_stacks[suitIndex] + 1; rank <= state.max_ranks[suitIndex]; rank++) {
-				const identity = { suitIndex, rank };
-				const slot1 = state.hands[state.ourPlayerIndex][0];
+			if (state.play_stacks[suitIndex] === state.max_ranks[suitIndex])
+				continue;
 
-				if (visibleFind(state, me, identity, { infer: true }).length === 0 && me.thoughts[slot1.order].possible.has(identity)) {
-					logger.highlight('yellow', 'trying to play slot 1 as', logCard(identity));
-					return { tableID, type: ACTION.PLAY, target: slot1.order };
-				}
+			const identity = { suitIndex, rank: state.play_stacks[suitIndex] + 1 };
+			const slot1 = state.hands[state.ourPlayerIndex][0];
+
+			if (visibleFind(state, me, identity, { infer: true }).length === 0 && me.thoughts[slot1.order].possible.has(identity)) {
+				logger.highlight('yellow', 'trying to play slot 1 as', logCard(identity));
+				return { tableID, type: ACTION.PLAY, target: slot1.order };
 			}
 		}
 	}
@@ -408,7 +409,7 @@ export function take_action(game) {
 			return cards.concat(hand.filter(c => me.thoughts[c.order].matches(identity)).map(c => game.players[index].thoughts[c.order]));
 		}, []);
 
-		// If playing reveals duplicates are trash, playing is better for tempo in endgame
+		// If playing reveals duplicates are trash, playing is better for tempo
 		if (duplicates.every(c => c.possible.every(p => p.matches(identity) || state.isBasicTrash(p))))
 			return { tableID, type: ACTION.PLAY, target: discards[0].order };
 

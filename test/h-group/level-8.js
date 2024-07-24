@@ -3,11 +3,12 @@ import { describe, it } from 'node:test';
 import * as ExAsserts from '../extra-asserts.js';
 
 import { ACTION } from '../../src/constants.js';
-import { PLAYER, setup, takeTurn } from '../test-utils.js';
+import { PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
+import { CLUE_INTERP } from '../../src/conventions/h-group/h-constants.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -276,5 +277,37 @@ describe('mistake discards', () => {
 
 		// Alice should not attempt to play with no known playables.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+	});
+});
+
+describe('distribution clues', () => {
+	it('understands a distribution clue', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'r5', 'b4', 'b5'],
+			['r4', 'r1', 'g4', 'b5', 'b4'],
+			['b4', 'b3', 'r5', 'p2', 'p3']
+		], {
+			level: { min: 8 },
+			play_stacks: [4, 5, 5, 3, 5],
+			clue_tokens: 1,
+			init: (game) => {
+				const { common, state } = game;
+				const cards = ['r5', 'b4', 'b5'];
+
+				for (let i = 0; i < 3; i++) {
+					const a_card = common.thoughts[state.hands[PLAYER.ALICE][i + 2].order];
+					a_card.inferred = a_card.inferred.intersect(expandShortCard(cards[i]));
+					a_card.possible = a_card.possible.intersect(expandShortCard(cards[i]));
+					a_card.clued = true;
+				}
+				game.state.early_game = false;
+			},
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 4 to Cathy');
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['b4']);
+		assert.equal(game.moveHistory.at(-1).move, CLUE_INTERP.PLAY);
 	});
 });

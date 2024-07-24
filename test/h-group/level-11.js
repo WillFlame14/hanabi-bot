@@ -122,7 +122,7 @@ describe('bluff clues', () => {
 			variant: VARIANTS.PINK
 		});
 		takeTurn(game, 'Bob clues 3 to Alice (slot 3)');
-		ExAsserts.cardHasInferences(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r3', 'i2']);
+		ExAsserts.cardHasInferences(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r3', 'i1', 'i2']);
 
 		// After the play, Alice still assumes a bluff since the rank does not connect to the play.
 		takeTurn(game, 'Cathy plays i1', 'b5');

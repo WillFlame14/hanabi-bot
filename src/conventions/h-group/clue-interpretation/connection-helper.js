@@ -296,7 +296,7 @@ export function assign_connections(game, connections, giver) {
 			}
 		}
 
-		card.uncertain ||= reacting === state.ourPlayerIndex && type !== 'known';
+		card.uncertain ||= (reacting === state.ourPlayerIndex && type !== 'known') || type === 'finesse';
 		if (card.uncertain)
 			logger.highlight('yellow', 'writing uncertain!');
 

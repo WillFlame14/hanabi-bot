@@ -227,7 +227,7 @@ function resolve_card_retained(game, waiting_connection) {
 
 		return { remove: true, remove_finesse: !ambiguous };
 	}
-	else if (last_reacting_action?.type === 'discard') {
+	else if (last_reacting_action?.type === 'discard' && !state.screamed_at && !state.generated) {
 		const unplayable_identities = identities.filter(i => !state.isBasicTrash(i) && !state.isPlayable(i));
 		if (type === 'positional' && unplayable_identities.length > 0) {
 			logger.warn('not all possibilities playable', unplayable_identities.map(logCard));
