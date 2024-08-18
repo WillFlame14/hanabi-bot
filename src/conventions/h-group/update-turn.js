@@ -63,8 +63,10 @@ export function remove_finesse(game, waiting_connection) {
 		}
 	}
 
-	// Remove inference
-	focus_thoughts.inferred = focus_thoughts.inferred.subtract(inference);
+	// Remove inference (if possible)
+	if (focus_thoughts.possible.length > 1)
+		focus_thoughts.inferred = focus_thoughts.inferred.subtract(inference);
+
 	common.update_hypo_stacks(state);
 }
 

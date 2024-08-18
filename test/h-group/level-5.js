@@ -404,6 +404,26 @@ describe('guide principle', () => {
 		// @ts-ignore
 		assert.ok(!last_action.important);
 	});
+
+	it('recognizes when a clue will be given during early game when playing into a finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g1', 'g2', 'p1', 'r5'],
+			['r4', 'y1', 'r1', 'g2'],
+			['y1', 'r2', 'p4', 'g4']
+		], {
+			level: { min: 5 },
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues green to Cathy');		// finessing g1 on us
+		takeTurn(game, 'Cathy clues yellow to Donald');
+		takeTurn(game, 'Donald plays y1', 'y3');
+
+		// Alice should play g1, Bob will clue Cathy's r1.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
+	});
 });
 
 describe('mistake recovery', () => {

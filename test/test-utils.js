@@ -40,6 +40,7 @@ export const PLAYER = /** @type {const} */ ({
 
 export const VARIANTS = /** @type {Record<string, Variant>} */ ({
 	NO_VARIANT: { id: 0, name: 'No Variant', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Purple'] },
+	SIX_SUITS: { id: 1, name: '6 Suits', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Purple', 'Teal'] },
 	RAINBOW: { id: 16,  name: 'Rainbow (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Rainbow'] },
 	BLACK: { id: 21,  name: 'Black (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'Black'] },
 	WHITE: { id: 22,  name: 'White (5 Suits)', suits: ['Red', 'Yellow', 'Green', 'Blue', 'White'] },

@@ -35,10 +35,10 @@ export function team_elim(game) {
 			if (card.inferred.length === 0 && !card.chop_moved)
 				card.inferred = card.possible;
 
-			card.old_inferred = ccard.old_inferred;
-
-			for (const property of ['rewind_ids', 'focused', 'finessed', 'chop_moved', 'reset', 'chop_when_first_clued', 'hidden', 'called_to_discard', 'finesse_index', 'rewinded', 'certain_finessed', 'trash', 'uncertain'])
-				card[property] = ccard[property];
+			for (const property of Object.getOwnPropertyNames(ccard)) {
+				if (!['suitIndex', 'rank', 'possible', 'inferred', 'reasoning', 'reasoning_turn'].includes(property))
+					card[property] = ccard[property];
+			}
 
 			card.reasoning = ccard.reasoning.slice();
 			card.reasoning_turn = ccard.reasoning_turn.slice();

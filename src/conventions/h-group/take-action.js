@@ -208,9 +208,7 @@ export function take_action(game) {
 			id !== undefined &&
 			trash_cards.some(c => c.order === card.order) &&
 			!playable_cards.some(c => me.thoughts[c.order].matches(id, { infer: true }) && c.order !== card.order) &&
-			!common.waiting_connections.some(wc =>
-				!wc.symmetric &&
-				wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === card.order));
+			!common.dependentConnections(card.order).some(wc => !wc.symmetric);
 	});
 
 	const playable_trash = playable_cards.filter(card => {

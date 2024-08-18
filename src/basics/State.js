@@ -139,10 +139,7 @@ export class State {
 	minimalCopy() {
 		const newState = new State(this.playerNames, this.ourPlayerIndex, this.variant, this.options);
 
-		const minimalProps = ['play_stacks', 'hypo_stacks', 'discard_stacks', 'max_ranks', 'hands', 'turn_count', 'clue_tokens',
-			'strikes', 'early_game', 'cardsLeft', 'cardOrder', 'actionList', 'deck', 'screamed_at', 'generated', 'dda', 'endgameTurns'];
-
-		for (const property of minimalProps)
+		for (const property of Object.getOwnPropertyNames(this))
 			newState[property] = Utils.objClone(this[property]);
 
 		return newState;

@@ -448,7 +448,14 @@ export function interpret_clue(game, action) {
 
 				try {
 					const connections = find_own_finesses(game, action, id, looksDirect);
-					logger.info('found connections:', logConnections(connections, id));
+					logger.info('found connections:', logConnections(connections, id), all_connections.map(fp => logCard({ suitIndex: fp.suitIndex, rank: fp.rank })));
+
+					if (all_connections.some(fp => connections.some(conn =>
+						conn.type === 'known' && conn.reacting === giver && conn.identities.every(i => i.rank === fp.rank && i.suitIndex === fp.suitIndex)))
+					) {
+						logger.warn(`attempted to use giver's known connecting when focus could be it!`);
+						continue;
+					}
 
 					all_connections.push({ connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections), interp: CLUE_INTERP.PLAY });
 				}
@@ -480,6 +487,24 @@ export function interpret_clue(game, action) {
 				else
 					throw error;
 			}
+
+			// Try to force finesse assuming the target knows what the clue target is
+			if (all_connections.length === 0) {
+				logger.warn('attempting to force finesse using asymmetric knowledge');
+				try {
+					const connections = find_own_finesses(game, action, focused_card, false);
+					logger.info('found connections:', logConnections(connections, focused_card));
+					all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections), interp: CLUE_INTERP.PLAY });
+				}
+				catch (error) {
+					if (error instanceof IllegalInterpretation)
+						logger.warn(error.message);
+					else if (error instanceof RewindEscape)
+						return;
+					else
+						throw error;
+				}
+			}
 		}
 
 		const finalized_connections = finalize_connections(all_connections);
@@ -492,7 +517,6 @@ export function interpret_clue(game, action) {
 				logger.info('no inference on card (self), defaulting to gtp - ', focus_thoughts.inferred.map(logCard));
 			}
 			// If it's not in our hand, we should adjust our interpretation to their interpretation (to know if we need to fix)
-			// We must force a finesse?
 			else {
 				const saved_inferences = focus_thoughts.inferred;
 				focus_thoughts.inferred = focus_thoughts.inferred.intersect(focus_possible);

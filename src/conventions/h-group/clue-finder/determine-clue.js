@@ -33,12 +33,15 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 	logger.highlight('green', `------- ENTERING HYPO ${logClue(clue)} --------`);
 
 	const hypo_game = game.simulate_clue(action, { enableLogs: true });
-	hypo_game.catchup = true;
-	// This is emulating the needed side effects of handle_action for a clue action.
-	// It might be simpler to call handle_action on the hypo_game.
-	hypo_game.last_actions[action.giver] = {...action, clue: {...action.clue}};
-	hypo_game.handle_action({ type: 'turn', num: hypo_game.state.turn_count, currentPlayerIndex: hypo_game.state.nextPlayerIndex(hypo_game.state.ourPlayerIndex) });
-	hypo_game.catchup = false;
+
+	if (action.giver === state.ourPlayerIndex) {
+		hypo_game.catchup = true;
+		// This is emulating the needed side effects of handle_action for a clue action.
+		// It might be simpler to call handle_action on the hypo_game.
+		hypo_game.last_actions[action.giver] = {...action, clue: {...action.clue}};
+		hypo_game.handle_action({ type: 'turn', num: hypo_game.state.turn_count, currentPlayerIndex: hypo_game.state.nextPlayerIndex(hypo_game.state.ourPlayerIndex) });
+		hypo_game.catchup = false;
+	}
 
 	logger.highlight('green', '------- EXITING HYPO --------');
 
@@ -50,9 +53,9 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 	/** @type {string} */
 	let reason;
 
-	const get_finessed_cards = (game) => {
-		return game.state.hands[action.giver].filter(c => !game.common.thoughts[c.order].clued && game.common.thoughts[c.order].finessed);
-	};
+	/** @param {Game} game */
+	const get_finessed_cards = (game) =>
+		game.state.hands[action.giver].filter(c => !game.common.thoughts[c.order].clued && game.common.thoughts[c.order].finessed);
 
 	const finessed_before_clue = get_finessed_cards(game);
 	const finessed_after_clue = get_finessed_cards(hypo_game);
@@ -107,7 +110,7 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 				card.inferred.every(i => i.rank <= hypo_game.common.hypo_stacks[i.suitIndex] + 1);
 
 			if (looks_playable && !card.inferred.has(visible_card)) {
-				reason = `card ${logCard(visible_card)} looks incorrectly playable with inferences [${card.inferred.map(logCard).join(',')}]`;
+				reason = `card ${logCard(visible_card)} ${visible_card.order} looks incorrectly playable with inferences [${card.inferred.map(logCard).join(',')}]`;
 				break;
 			}
 		}

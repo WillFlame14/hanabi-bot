@@ -130,6 +130,13 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 			return { type: 'playable', reacting: playerIndex, card: match, linked: playables, identities: [identity] };
 		}
 	}
+
+	const giver_asymmetric = state.hands[giver].find(c => game.players[giver].thoughts[c.order].identity({ infer: true, symmetric: true })?.matches(identity));
+
+	if (giver_asymmetric !== undefined) {
+		logger.highlight('cyan', `connecting using giver's asymmetric knowledge of ${logCard(identity)}!`);
+		return { type: 'known', reacting: giver, card: giver_asymmetric, identities: [identity] };
+	}
 }
 
 /**

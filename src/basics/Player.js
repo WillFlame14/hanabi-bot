@@ -271,9 +271,9 @@ export class Player {
 
 				const playable = state.hasConsistentInferences(diff) &&
 					(delayed_playable(diff.possible.array) ||
-					delayed_playable(diff.inferred.array) ||
-					(diff.finessed && delayed_playable([card])) ||
-					this.play_links.some(pl => pl.connected === order && pl.orders.every(o => unknown_plays.has(o))));
+						delayed_playable(diff.inferred.array) ||
+						(diff.finessed && delayed_playable([card])) ||
+						this.play_links.some(pl => pl.connected === order && pl.orders.every(o => unknown_plays.has(o))));
 
 				if (!playable)
 					continue;

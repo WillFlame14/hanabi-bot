@@ -80,7 +80,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 	const player = game.players[giver];
 	const hypothetical = giver !== state.ourPlayerIndex;
 
-	logger.highlight('whiteb', '------- FINDING CLUES -------');
+	logger.highlight('whiteb', `------- FINDING CLUES ${giver !== state.ourPlayerIndex ? `(${state.playerNames[giver]}) ` : ''}-------`);
 
 	const play_clues = /** @type Clue[][] */ 	([]);
 	const save_clues = /** @type SaveClue[] */ 	([]);

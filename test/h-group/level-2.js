@@ -263,6 +263,27 @@ describe('self-finesse', () => {
 		// y4 is the simplest possibility.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y4']);
 	});
+
+	it('trusts the clue giver to give asymmetric self-finesses', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'r5', 'y3', 'g4'],
+			['r4', 'g5', 'p4', 'g3'],
+			['p1', 'b4', 'g1', 'b2']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.CATHY,
+			play_stacks: [2, 0, 0, 4, 0],
+			discarded: ['r3']
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Bob');		// 5 Stall
+		takeTurn(game, 'Donald clues 5 to Bob');	// r3, r4, r5 finesse (but could look like g5 direct)
+
+		// Assume Donald is not making a mistake, and we have g5. Then Bob will know to play into the finesse.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['r3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, true);
+	});
 });
 
 describe('direct clues', () => {

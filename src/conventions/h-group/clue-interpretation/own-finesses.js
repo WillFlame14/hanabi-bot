@@ -87,7 +87,7 @@ function connect(game, action, focusedCard, identity, looksDirect, connected, ig
 	// See if the giver knows about their own card
 	const duplicated_in_own = state.hands[giver].find(c => c.matches(identity) && common.unknown_plays.has(c.order));
 	if (duplicated_in_own && game.players[giver].thoughts[duplicated_in_own.order].identity({ infer: true })?.matches(identity)) {
-		logger.warn(`assuming ${state.playerNames[giver]} knows about their own ${logCard(identity)} asymmetrically`);
+		logger.warn(`assuming ${state.playerNames[giver]} knows about their own (playable) ${logCard(identity)} asymmetrically`);
 		return [{ type: 'known', reacting: giver, card: duplicated_in_own, identities: [identity] }];
 	}
 
@@ -156,6 +156,14 @@ function connect(game, action, focusedCard, identity, looksDirect, connected, ig
 			}
 		}
 	}
+
+	// Guess that giver knows about their own card
+	const asymmetric_own = state.hands[giver].find(c => c.matches(identity) && c.clued);
+	if (asymmetric_own) {
+		logger.warn(`assuming ${state.playerNames[giver]} knows about their own ${logCard(identity)} asymmetrically`);
+		return [{ type: 'known', reacting: giver, card: asymmetric_own, identities: [identity] }];
+	}
+
 	return [];
 }
 

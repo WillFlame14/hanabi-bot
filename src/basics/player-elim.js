@@ -23,6 +23,8 @@ import { logCard } from '../tools/log.js';
 export function card_elim(state) {
 	const identities = this.all_possible.array.slice();
 	const certain_map = /** @type {Map<string, Set<number>>} */ (new Map());
+	let uncertain_ids = /** @type {IdentitySet} */ new IdentitySet(state.variant.suits.length, 0);
+	const uncertain_map = /** @type {Map<number, IdentitySet>} */ (new Map());
 	const elim_map = /** @type {Map<number, {playerIndex: number, order: number}[]>} */(new Map());
 	const reverse_elim_map = /** @type {Map<number, number>} */(new Map());
 
@@ -38,7 +40,7 @@ export function card_elim(state) {
 		}
 
 		// Too many identities, ignore
-		if (card.possible.length > 5)
+		if (card.possible.length > 5 && !card.clued)
 			return;
 
 		const old_entry = reverse_elim_map.get(order);
@@ -58,11 +60,15 @@ export function card_elim(state) {
 
 		const total_multiplicity = card.possible.reduce((acc, id) => acc += cardCount(state.variant, id) - state.baseCount(id), 0);
 
-		if (total_multiplicity > elim_entry.length) {
+		if (elim_entry.length < total_multiplicity) {
 			elim_map.set(card.possible.value, elim_entry);
 			reverse_elim_map.set(order, card.possible.value);
 			return;
 		}
+
+		elim_map.delete(card.possible.value);
+
+		let elim_occurred = false;
 
 		// There are N cards for N identities - everyone knows they are holding what they cannot see
 		for (const { playerIndex: p1, order: o1 } of elim_entry) {
@@ -76,16 +82,33 @@ export function card_elim(state) {
 					continue;
 
 				this.thoughts[o2].possible = this.thoughts[o2].possible.subtract(elim_id);
+				this.thoughts[o2].inferred = this.thoughts[o2].inferred.intersect(this.thoughts[o2].possible);
+
+				elim_occurred = true;
 
 				const new_id = this.thoughts[o2].identity();
 				if (new_id !== undefined) {
 					const id_hash = logCard(new_id);
 					certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
+					identities.push(id);
 				}
 			}
 			reverse_elim_map.delete(o1);
 		}
-		elim_map.delete(card.possible.value);
+
+		if (!elim_occurred) {
+			for (const { order } of elim_entry)
+				uncertain_map.set(order, new IdentitySet(state.variant.suits.length, 0).union(card.possible));
+
+			uncertain_ids = uncertain_ids.union(card.possible);
+
+			for (const id of card.possible)
+				identities.push(id);
+		}
+		else {
+			for (const { playerIndex, order } of elim_entry)
+				addToMap(playerIndex, order);
+		}
 	};
 
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -97,9 +120,10 @@ export function card_elim(state) {
 		const identity = identities[i];
 		const id_hash = logCard(identity);
 
-		if (!this.all_possible.has(identity) ||
-			state.baseCount(identity) + (certain_map.get(id_hash)?.size ?? 0) !== cardCount(state.variant, identity)
-		)
+		const known_count = state.baseCount(identity) + (certain_map.get(id_hash)?.size ?? 0) + (uncertain_ids.has(identity) ? 1 : 0);
+		const total_count = cardCount(state.variant, identity);
+
+		if (!this.all_possible.has(identity) || known_count !== total_count)
 			continue;
 
 		if (!this.all_inferred.has(identity))
@@ -113,7 +137,7 @@ export function card_elim(state) {
 			for (const { order } of state.hands[j]) {
 				const card = this.thoughts[order];
 
-				if (card.possible.length <= 1 || certain_map.get(id_hash)?.has(order))
+				if (card.possible.length <= 1 || certain_map.get(id_hash)?.has(order) || uncertain_map.get(order)?.has(identity))
 					continue;
 
 				card.possible = card.possible.subtract(identity);

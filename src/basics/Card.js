@@ -157,13 +157,13 @@ export class Card extends BasicCard {
 			rank: this.rank
 		});
 
-		for (const field of ['inferred', 'possible', 'rewind_ids', 'old_inferred', 'focused',
-			'finessed', 'bluffed', 'chop_moved', 'reset', 'chop_when_first_clued', 'superposition',
-			'hidden', 'called_to_discard', 'certain_finessed', 'trash', 'finesse_index', 'rewinded', 'uncertain'])
-			new_card[field] = this[field];
+		for (const field of Object.getOwnPropertyNames(this)) {
+			if (!['actualCard', 'reasoning', 'reasoning_turn'].includes(field))
+				new_card[field] = this[field];
+		}
 
-		for (const field of ['reasoning', 'reasoning_turn'])
-			new_card[field] = this[field].slice();
+		new_card.reasoning = this.reasoning.slice();
+		new_card.reasoning_turn = this.reasoning_turn.slice();
 
 		return new_card;
 	}

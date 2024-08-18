@@ -170,6 +170,8 @@ export function early_game_clue(game, playerIndex) {
 	const { play_clues, save_clues, stall_clues } = find_clues(game, playerIndex, expected_early_game_clue);
 	logger.flush(false);
 
+	logger.debug('found clues', play_clues.flat().map(logClue), save_clues.filter(c => c !== undefined).map(logClue), state.playerNames[playerIndex]);
+
 	const expected_clue = play_clues.flat().find(clue => clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch === 0) ||
 		save_clues.find(clue => clue !== undefined && (clue.cm === undefined || clue.cm.length === 0)) ||
 		((game.level >= 2 && !game.stalled_5 && stall_clues[0][0]) || undefined);

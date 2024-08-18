@@ -93,7 +93,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 
 			const { actions, winrate } = winnable_simple(new_game, playerTurn, find_clues, find_discards);
 
-			logger.flush(true);
+			logger.flush(false);
 
 			if (winrate === 1) {
 				const hash = logObjectiveAction(new_state, actions[0]);
@@ -177,7 +177,8 @@ function unwinnable_state(game, playerTurn) {
 	if (state.ended || state.pace < 0)
 		return true;
 
-	const void_players = Utils.range(0, state.numPlayers).filter(i => me.thinksTrash(state, i).length === state.hands[i].length);
+	const void_players = Utils.range(0, state.numPlayers).filter(i =>
+		i === state.ourPlayerIndex ? me.thinksTrash(state, i).length === state.hands[i].length : state.hands[i].every(c => state.isBasicTrash(c)));
 
 	if (void_players.length > state.pace)
 		return true;

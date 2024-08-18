@@ -297,8 +297,6 @@ export function assign_connections(game, connections, giver) {
 		}
 
 		card.uncertain ||= (reacting === state.ourPlayerIndex && type !== 'known') || type === 'finesse';
-		if (card.uncertain)
-			logger.highlight('yellow', 'writing uncertain!');
 
 		// Updating notes not on our turn
 		// There might be multiple possible inferences on the same card from a self component

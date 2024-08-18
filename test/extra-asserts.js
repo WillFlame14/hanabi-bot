@@ -26,7 +26,8 @@ export function cardHasInferences(card, inferences, message) {
  * @param  {string | Error} 		 [message]		The error message if the assertion fails.
  */
 export function cardHasPossibilities(card, possibilities, message) {
-	const defaultMessage = `Differing possibilities. Expected ${possibilities}, got ${card.possible.map(logCard)} (missing ${possibilities.find(p => !card.possible.has(expandShortCard(p)))}`;
+	const defaultMessage = `Differing possibilities. Expected ${possibilities}, got ${card.possible.map(logCard)}` +
+		`${card.possible.length < possibilities.length ? ` (missing ${possibilities.find(p => !card.possible.has(expandShortCard(p)))})` : ''}`;
 
 	assert.ok(card.possible.length === possibilities.length && possibilities.every(p => card.possible.has(expandShortCard(p))), message ?? defaultMessage);
 }
