@@ -691,6 +691,23 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['b3']);
 	});
 
+	it(`understands a double reverse finesse if the target is too far away to be a bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g3', 'p4', 'r2', 'y1'],
+			['g4', 'p1', 'b4', 'p3'],
+			['b1', 'y2', 'g5', 'y3']
+		], {
+			level: { min: 11 },
+			starting: PLAYER.CATHY,
+		});
+		takeTurn(game, 'Cathy clues 3 to Donald');
+
+		// Alice should be finessed for y1.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y1']);
+	});
+
 	it('understands a bluff on top of unknown plays that cannot match', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],

@@ -55,7 +55,7 @@ export function logHand(hand, player = globals.game.common) {
 		new_card.visible = (card.suitIndex === -1 ? 'unknown' : logCard(card));
 		new_card.order = card.order;
 
-		new_card.flags = ['clued', 'newly_clued', 'prompted', 'finessed', 'chop_moved', 'rewinded', 'hidden', 'called_to_discard'].filter(flag => card[flag]);
+		new_card.flags = ['clued', 'newly_clued', 'prompted', 'finessed', 'bluffed', 'certain_finessed', 'chop_moved', 'rewinded', 'hidden', 'trash', 'called_to_discard'].filter(flag => card[flag]);
 
 		new_card.possible = card.possible.map(logCard).join();
 		new_card.inferred = card.inferred.map(logCard).join();

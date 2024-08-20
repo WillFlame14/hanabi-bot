@@ -2,7 +2,7 @@ import { ACTION } from '../../constants.js';
 import { ACTION_PRIORITY as PRIORITY, LEVEL, CLUE_INTERP } from './h-constants.js';
 import { clue_safe } from './clue-finder/clue-safe.js';
 import { get_result } from './clue-finder/determine-clue.js';
-import { determine_focus, valuable_tempo_clue } from './hanabi-logic.js';
+import { determine_focus, playersBetween, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
@@ -177,7 +177,7 @@ export function early_game_clue(game, playerIndex) {
 		((game.level >= 2 && !game.stalled_5 && stall_clues[0][0]) || undefined);
 
 	if (expected_clue !== undefined)
-		logger.highlight('yellow', `expecting ${state.playerNames[playerIndex]} to give ${logClue(expected_clue)} in early game ${state.clue_tokens}`);
+		logger.highlight('yellow', `expecting ${state.playerNames[playerIndex]} to give ${logClue(expected_clue)} in early game`);
 
 	return expected_clue !== undefined;
 }
@@ -200,22 +200,12 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 	for (let i = 1; i < state.numPlayers; i++) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
-		let high_priority = !(state.early_game && early_game_clue(game, target));
+		const early_expected_clue = state.early_game && early_game_clue(game, target);
+		const potential_cluers = playersBetween(state.numPlayers, state.ourPlayerIndex, target).filter(i =>
+			i !== target && !state.hands[i].some(c => common.thoughts[c.order].finessed && state.isPlayable(c))
+		).length;
 
-		if (high_priority) {
-			// If there is at least one non-finessed player with 1 clue (or 2 non-finessed players with 0 clues) between us and target, lower priority
-			let playerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
-
-			while (playerIndex !== target) {
-				if (!state.hands[playerIndex].some(c => common.thoughts[c.order].finessed && state.isPlayable(c))) {
-					high_priority = false;
-					break;
-				}
-				playerIndex = (playerIndex + 1) % state.numPlayers;
-			}
-		}
-
-		const nextPriority = high_priority ? 0 : prioritySize;
+		const nextPriority = (potential_cluers === 0 && !early_expected_clue) ? 0 : prioritySize;
 
 		// They are locked (or will be locked), we should try to unlock
 		if (common.thinksLocked(state, target) || state.hands[target].every(c => common.thoughts[c.order].saved || state.isCritical(c))) {
@@ -369,6 +359,16 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			// Do not save at 1 clue if new chop or sacrifice discard are better than old chop
 			if (state.clue_tokens === 1 && save.cm.length === 0 && bad_save)
 				continue;
+
+			if (hypo_me.chopValue(hypo_state, target) >= 4 && potential_cluers > 0 && state.clue_tokens > 1) {
+				const urgent = !early_expected_clue && potential_cluers === 1;
+
+				if (urgent)
+					logger.info('setting up double save!');
+
+				urgent_actions[PRIORITY.ONLY_SAVE + (urgent ? 0 : prioritySize)].push(Utils.clueToAction(save_clues[target], tableID));
+				continue;
+			}
 
 			// Do not save if unsafe
 			if (!save.safe) {

@@ -113,10 +113,16 @@ export class Card extends BasicCard {
 	rewind_ids;
 
 	/**
-	 * Only used when undoing a finesse.
+	 * Only used when undoing a finesse and after a card has been revealed.
 	 * @type {IdentitySet | undefined}
 	 */
 	old_inferred;
+
+	/**
+	 * Only used after a card has been revealed.
+	 * @type {IdentitySet | undefined}
+	 */
+	old_possible;
 
 	// Boolean flags about the state of the card
 	focused = false;

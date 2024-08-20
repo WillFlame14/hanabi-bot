@@ -126,6 +126,7 @@ export function interpret_clue(game, action) {
 			if (card.possible.has(identity)) {
 				card.inferred = IdentitySet.create(state.variant.suits.length, identity);
 				card.finessed = false;
+				card.certain_finessed = true;
 				card.reset = true;
 				fix = true;
 

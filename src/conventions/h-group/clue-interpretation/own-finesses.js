@@ -263,8 +263,22 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 	}
 	const resolved_connections = resolve_bluff(game, connections);
 
-	if (resolved_connections.length === 0 && state.play_stacks[suitIndex] + 1 !== rank)
+	if (resolved_connections.length === 0 && state.play_stacks[suitIndex] + 1 !== rank) {
+		if (connections.length > 0) {
+			logger.highlight('yellow', 'bluff connection failed, retrying with true finesse');
+			const old_ignore = game.next_ignore[0]?.slice();
+			game.next_ignore[0] ??= [];
+			game.next_ignore[0].push({ order: connections[0].card.order });
+
+			const fixed_connections = find_own_finesses(game, action, identity, looksDirect, ignorePlayer, selfRanks);
+
+			game.next_ignore[0] = old_ignore;
+
+			if (fixed_connections.length > 0)
+				return fixed_connections;
+		}
 		throw new IllegalInterpretation(`unable to connect`);
+	}
 
 	return resolved_connections;
 }
@@ -344,7 +358,7 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
 function find_self_finesse(game, action, identity, connected, ignoreOrders, finesses, allow_rewind) {
 	const { common, state, me } = game;
 	const { suitIndex, rank } = identity;
-	const { giver } = action;
+	const { giver, target } = action;
 	const our_hand = state.hands[state.ourPlayerIndex];
 
 	const finesse = common.find_finesse(our_hand, connected, ignoreOrders);
@@ -373,7 +387,7 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 		if (game.next_finesse.length > 0)
 			return resolve_layered_finesse(game, identity, connected, ignoreOrders);
 
-		const certain = state.hands[giver].some(c => c.matches(identity) && common.unknown_plays.has(c.order));
+		const certain = [giver, target].some(i => state.hands[i].some(c => c.matches(identity) && c.clued));
 		const ambiguous = state.hands.some(hand => {
 			const finesse = common.find_finesse(hand, connected);
 			if (finesse === undefined)

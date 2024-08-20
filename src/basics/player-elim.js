@@ -90,7 +90,7 @@ export function card_elim(state) {
 				if (new_id !== undefined) {
 					const id_hash = logCard(new_id);
 					certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
-					identities.push(id);
+					identities.push(new_id);
 				}
 			}
 			reverse_elim_map.delete(o1);
@@ -288,7 +288,7 @@ export function good_touch_elim(state, only_self = false) {
 
 			const card = this.thoughts[order];
 
-			if (card.inferred.length > 0 && card.inferred.some(inf => !state.isBasicTrash(inf)) && !card.certain_finessed) {
+			if (card.inferred.length > 0 && card.possible.some(inf => !state.isBasicTrash(inf)) && !card.certain_finessed) {
 				// Touched cards always elim
 				if (card.touched)
 					elim_candidates.push({ order, playerIndex: i, cm: false });

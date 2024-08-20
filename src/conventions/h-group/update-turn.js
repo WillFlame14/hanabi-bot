@@ -277,7 +277,7 @@ function resolve_card_played(game, waiting_connection) {
 				return { remove: true, remove_finesse: true };
 			}
 		}
-		else if (type === 'prompt' && thoughts.possible.length === 1) {
+		else if (type === 'prompt' && thoughts.old_possible.length === 1) {
 			logger.warn('connecting card was filled in completely, not confirming prompt');
 		}
 		else {

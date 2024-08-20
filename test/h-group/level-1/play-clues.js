@@ -139,6 +139,29 @@ describe('play clue', () => {
 		// Cathy's slot 4 (used to be slot 3) can still be g4,g5.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][3].order], ['g4', 'g5']);
 	});
+
+	it('correctly writes inferences after playing when connecting on own playables', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'y2', 'r2', 'b3', 'r4'],
+			['r4', 'y2', 'r3', 'r1', 'g1']
+		], {
+			level: { min: 1 },
+			play_stacks: [0, 0, 0, 1, 0],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Alice (slots 2,4)');
+		takeTurn(game, 'Cathy clues 2 to Bob');
+		takeTurn(game, 'Alice plays r1 (slot 4)');
+
+		takeTurn(game, 'Bob clues green to Cathy');
+		takeTurn(game, 'Cathy plays g1', 'b1');
+		takeTurn(game, 'Alice plays y1 (slot 3)');
+
+		// Bob's 2 is [r2,y2,b2].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order], ['r2', 'y2', 'b2']);
+	});
 });
 
 describe('counting playables', () => {

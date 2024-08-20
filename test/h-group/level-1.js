@@ -148,6 +148,25 @@ describe('save clue', () => {
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
 	});
+
+	it('sets up double saves', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'g4', 'y2', 'r1', 'p4'],
+			['p2', 'g3', 'p3', 'r4', 'b5']
+		], {
+			level: { min: 1 },
+			discarded: ['r4'],
+			starting: PLAYER.CATHY,
+			clue_tokens: 3
+		});
+
+		takeTurn(game, 'Cathy clues green to Alice (slot 1)');
+
+		// We should clue 5 to Cathy to set up the double save.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.CATHY, value: 5 });
+	});
 });
 
 describe('early game', () => {

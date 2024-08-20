@@ -4,6 +4,7 @@ import { logCard } from '../../../tools/log.js';
 import logger from '../../../tools/logger.js';
 
 import * as Utils from '../../../tools/util.js';
+import { team_elim } from '../../../basics/helper.js';
 
 
 /**
@@ -80,11 +81,20 @@ function getNextDiscard(game, player, startIndex, clue_tokens) {
 	let next_discard = state.nextPlayerIndex(startIndex);
 	let potential_cluers = 0;
 
+	const old_play_stacks = game.state.play_stacks.slice();
+
 	while (game.players[next_discard].thinksLoaded(state, next_discard, { assume: false })) {
 		const finessed_card = getFinessedCard(game, next_discard);
 
-		if (finessed_card === undefined && state.clue_tokens > potential_cluers)
-			potential_cluers++;
+		if (finessed_card === undefined) {
+			if (state.clue_tokens > potential_cluers)
+				potential_cluers++;
+		}
+		else {
+			state.play_stacks[finessed_card.suitIndex] = finessed_card.rank;
+			game.common.good_touch_elim(state);
+			team_elim(game);
+		}
 
 		if (common.thinksTrash(state, next_discard) && common.thinksPlayables(state, next_discard, { assume: false }))
 			clue_tokens++;
@@ -93,8 +103,10 @@ function getNextDiscard(game, player, startIndex, clue_tokens) {
 
 		next_discard = state.nextPlayerIndex(next_discard);
 
-		if (next_discard === state.ourPlayerIndex)
+		if (next_discard === state.ourPlayerIndex) {
+			game.state.play_stacks = old_play_stacks;
 			return { next_discard, potential_cluers };
+		}
 	}
 
 	// Check if they need to generate a clue for next player (a bit too cautious, maybe a clue could reveal a playable)
@@ -112,6 +124,7 @@ function getNextDiscard(game, player, startIndex, clue_tokens) {
 		potential_cluers += result.potential_cluers;
 	}
 
+	game.state.play_stacks = old_play_stacks;
 	return { next_discard, potential_cluers };
 }
 

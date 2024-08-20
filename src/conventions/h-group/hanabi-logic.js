@@ -169,9 +169,19 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
  * @param {number} target
  */
 export function inBetween(numPlayers, playerIndex, giver, target) {
-	const gap = (target - giver + numPlayers) % numPlayers;
+	return playersBetween(numPlayers, giver, target).includes(playerIndex);
+}
 
-	return gap > 0 && Utils.range(1, gap).some(inc => ((giver + inc) % numPlayers) === playerIndex);
+/**
+ * Returns all player indices between the start (exclusive) and end (inclusive) in play order.
+ * @param {number} numPlayers
+ * @param {number} start
+ * @param {number} end
+ */
+export function playersBetween(numPlayers, start, end) {
+	const gap = (end - start + numPlayers) % numPlayers;
+
+	return gap === 0 ? [] : Utils.range(1, gap).map(inc => ((start + inc) % numPlayers));
 }
 
 /**

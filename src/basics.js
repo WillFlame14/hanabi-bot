@@ -157,6 +157,8 @@ export function onPlay(game, action) {
 
 		for (const player of game.allPlayers) {
 			const card = player.thoughts[order];
+			card.old_possible = card.possible;
+			card.old_inferred = card.inferred;
 			card.possible = card.possible.intersect(identity);
 			card.inferred = card.inferred.intersect(identity);
 			Object.assign(card, identity);
