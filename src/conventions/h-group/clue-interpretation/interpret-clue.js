@@ -537,6 +537,7 @@ export function interpret_clue(game, action) {
 	}
 	logger.highlight('blue', 'final inference on focused card', focus_thoughts.inferred.map(logCard).join(','));
 
+	common.good_touch_elim(state);
 	common.refresh_links(state);
 	common.update_hypo_stacks(state);
 

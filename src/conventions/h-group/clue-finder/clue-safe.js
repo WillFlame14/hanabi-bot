@@ -119,6 +119,8 @@ function getNextDiscard(game, player, startIndex, clue_tokens) {
 	if ((clue_tokens === 0 || forced_discard) && !chopUnsafe(state, player, next_discard)) {
 		logger.highlight('cyan', 'low clues, first discard', state.playerNames[next_discard], 'is safe');
 
+		game.state.clue_tokens++;
+
 		const result = getNextDiscard(game, player, next_discard, 1);
 		next_discard = result.next_discard;
 		potential_cluers += result.potential_cluers;

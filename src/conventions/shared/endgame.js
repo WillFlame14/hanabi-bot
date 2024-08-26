@@ -118,8 +118,6 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 
 	const { actions, winrate } = winnable_simple(new_game, playerTurn, find_clues, find_discards);
 
-	logger.flush(false);
-
 	if (winrate === 0)
 		throw new UnsolvedGame(`couldn't find a winning strategy`);
 

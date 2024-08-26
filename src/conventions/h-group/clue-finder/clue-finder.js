@@ -274,7 +274,12 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 		}
 
 		const all_clues = [...saves, ...play_clues[target]];
-		save_clues[target] = Utils.maxOn(saves, (save_clue) => save_clue_value(game, save_clue.game, save_clue, all_clues), 0);
+		save_clues[target] = Utils.maxOn(saves, (save_clue) => {
+			const value = save_clue_value(game, save_clue.game, save_clue, all_clues);
+
+			logger.debug('save clue', logClue(save_clue), 'has value', value);
+			return value;
+		}, 0);
 
 		if (early_exit)
 			break;

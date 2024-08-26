@@ -68,23 +68,25 @@ export function card_elim(state) {
 
 		elim_map.delete(card.possible.value);
 
-		let elim_occurred = false;
+		const elimd = /** @type {{playerIndex: number, order: number}[]} */ ([]);
 
 		// There are N cards for N identities - everyone knows they are holding what they cannot see
 		for (const { playerIndex: p1, order: o1 } of elim_entry) {
+			reverse_elim_map.delete(o1);
+
+			const elim_id = state.deck[o1].identity();
+			if (elim_id === undefined)
+				continue;
+
 			for (const { playerIndex: p2, order: o2 } of elim_entry) {
 				// Players still cannot elim from themselves
-				if (p1 === p2)
-					continue;
-
-				const elim_id = state.deck[o1].identity();
-				if (elim_id === undefined)
+				if (p1 === p2 || !this.thoughts[o2].possible.has(elim_id))
 					continue;
 
 				this.thoughts[o2].possible = this.thoughts[o2].possible.subtract(elim_id);
 				this.thoughts[o2].inferred = this.thoughts[o2].inferred.intersect(this.thoughts[o2].possible);
 
-				elim_occurred = true;
+				elimd.push({ playerIndex: p2, order: o2 });
 
 				const new_id = this.thoughts[o2].identity();
 				if (new_id !== undefined) {
@@ -93,10 +95,9 @@ export function card_elim(state) {
 					identities.push(new_id);
 				}
 			}
-			reverse_elim_map.delete(o1);
 		}
 
-		if (!elim_occurred) {
+		if (elimd.length === 0) {
 			for (const { order } of elim_entry)
 				uncertain_map.set(order, new IdentitySet(state.variant.suits.length, 0).union(card.possible));
 
@@ -106,7 +107,7 @@ export function card_elim(state) {
 				identities.push(id);
 		}
 		else {
-			for (const { playerIndex, order } of elim_entry)
+			for (const { playerIndex, order } of elimd)
 				addToMap(playerIndex, order);
 		}
 	};

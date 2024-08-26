@@ -193,7 +193,6 @@ export function find_clue_givers(game, clue, giver) {
  */
 export function take_action(game) {
 	const { common, state, me, tableID } = game;
-	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
 
 	// Look for playables, trash and important discards in own hand
@@ -221,6 +220,38 @@ export function take_action(game) {
 	// Remove trash from playables (but not playable trash) and discards and playable trash from trash cards
 	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order) || playable_trash.some(pt => pt.order === pc.order));
 	trash_cards = trash_cards.filter(tc => !discards.some(dc => dc.order === tc.order) && !playable_trash.some(pt => pt.order === tc.order));
+
+	if (playable_cards.length > 0 && state.endgameTurns > 0) {
+		const best_connector = Utils.maxOn(playable_cards, card => {
+			const old_play_stacks = state.play_stacks.slice();
+			let connectables = 0;
+
+			for (let i = 1; i < state.endgameTurns; i++) {
+				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
+				const connectable = game.state.hands[playerIndex].some(c => {
+					const id = game.players[playerIndex].thoughts[c.order].identity({ infer: true });
+					return id !== undefined && id.suitIndex === card.suitIndex && c.rank === card.rank + 1;
+				});
+
+				if (connectable) {
+					connectables++;
+					state.play_stacks[card.suitIndex]++;
+				}
+			}
+
+			state.play_stacks = old_play_stacks;
+			return connectables;
+		}, 1);
+
+		const best_playable = best_connector ??
+			playable_cards.find(c => me.thoughts[c.order].inferred.every(i => i.rank === 5)) ??
+			playable_cards.find(c => me.thoughts[c.order].inferred.every(i => state.isCritical(i))) ??
+			playable_cards[0];
+
+		return { tableID, type: ACTION.PLAY, target: best_playable.order };
+	}
+
+	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
 
 	if (playable_cards.length > 0)
 		logger.info('playable cards', logHand(playable_cards));

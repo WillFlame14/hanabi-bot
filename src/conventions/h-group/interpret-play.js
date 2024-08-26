@@ -64,7 +64,9 @@ export function interpret_play(game, action) {
 	// Now that we know about this card, rewind from when the card was drawn
 	if (playerIndex === state.ourPlayerIndex) {
 		const card = common.thoughts[order];
-		if (!card.rewinded) {
+		const need_rewind = card.inferred.length !== 1 || !card.inferred.array[0].matches(identity) || common.play_links.some(link => link.orders.includes(order));
+
+		if (need_rewind && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
 			const new_game = game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, identities: [identity] });
 			if (new_game) {

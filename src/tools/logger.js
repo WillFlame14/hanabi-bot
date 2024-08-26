@@ -98,6 +98,10 @@ class Logger {
 	 */
 	flush(print = true) {
 		this.accumulateDepth--;
+
+		if (this.accumulateDepth < 0)
+			throw new Error('Negative accumulateDepth!');
+
 		if (print) {
 			for (const log of this.buffer[this.accumulateDepth + 1]) {
 				const { colour, args } = log;
