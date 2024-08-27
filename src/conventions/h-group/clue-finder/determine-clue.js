@@ -4,6 +4,7 @@ import { isTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
+import { determine_focus } from '../hanabi-logic.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -69,7 +70,7 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 
 			// The focused card must not have been reset and must match inferences
 			if (order === target_card.order) {
-				if (card.reset) {
+				if (card.reset && !game.common.thoughts[order].reset) {
 					reason = `card ${logCard(state.deck[card.order])} ${card.order} lost all inferences and was reset`;
 					break;
 				}
@@ -146,10 +147,12 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const touch = provisions.touch ?? hand.clueTouched(clue, state.variant);
 	const list = provisions.list ?? touch.map(c => c.order);
 
+	const { focused_card } = determine_focus(hand, hypo_common, list);
+
 	const { new_touched, fill } = elim_result(hypo_state, common, hypo_common, hand, list);
 	const { bad_touch, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target);
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
 
-	return { elim: fill, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved, remainder: 0 };
+	return { focus: focused_card.order, elim: fill, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved, remainder: 0 };
 }

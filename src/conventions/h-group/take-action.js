@@ -124,7 +124,7 @@ function best_stall_clue(stall_clues, severity) {
  */
 export function find_all_clues(game, giver) {
 	logger.collect();
-	const { play_clues, save_clues } = find_clues(game, giver);
+	const { play_clues, save_clues } = find_clues(game, { giver, no_fix: true });
 	logger.flush(false);
 
 	return [
@@ -198,6 +198,15 @@ export function take_action(game) {
 	// Look for playables, trash and important discards in own hand
 	let playable_cards = me.thinksPlayables(state, state.ourPlayerIndex).map(({ order }) => me.thoughts[order]);
 	let trash_cards = me.thinksTrash(state, state.ourPlayerIndex).filter(c => common.thoughts[c.order].saved).map(({ order }) => me.thoughts[order]);
+
+	// Find an anxiety play
+	if (state.clue_tokens === 0 && me.thinksLocked(state, state.ourPlayerIndex)) {
+		const anxiety = me.anxietyPlay(state, state.hands[state.ourPlayerIndex]);
+		const anxiety_card = me.thoughts[anxiety.order];
+
+		if (anxiety_card.possible.some(p => state.isPlayable(p)))
+			playable_cards.push(anxiety_card);
+	}
 
 	// Discards must be inferred, playable, trash, not duplicated in our hand and not part of a connection
 	const discards = playable_cards.filter(card => {
@@ -332,6 +341,7 @@ export function take_action(game) {
 				return i !== state.ourPlayerIndex && !player.thinksLoaded(state, i, {assume: false}) &&
 					(otherChop === undefined || cardValue(state, player, otherChop, otherChop.order) >= our_chop_value);
 			});
+
 			if (better_givers.length > 0) {
 				let saved_for = [];
 				consider_clues = consider_clues.filter(clue => {
@@ -352,6 +362,7 @@ export function take_action(game) {
 					}
 					return false;
 				});
+
 				if (saved_clue !== undefined)
 					logger.info(`saved clue ${logClue(saved_clue)} for ${saved_for.map(playerIndex => state.playerNames[playerIndex]).join(', ')}`);
 			}
@@ -450,7 +461,6 @@ export function take_action(game) {
 		return urgent_actions[ACTION_PRIORITY.UNLOCK + actionPrioritySize][0];
 
 	// Forced discard if next player is locked
-	// TODO: Anxiety play
 	if ((state.clue_tokens === 0 || (state.clue_tokens === 1 && playable_cards.length === 0)) && common.thinksLocked(state, nextPlayerIndex))
 		return take_discard(game, state.ourPlayerIndex, trash_cards);
 
@@ -575,8 +585,21 @@ export function take_action(game) {
 
 		// 8 clues, must stall
 		if (state.clue_tokens === 8) {
-			return validStall ? Utils.clueToAction(validStall, tableID) :
-				{ type: ACTION.RANK, value: state.hands[nextPlayerIndex].at(-1).rank, target: nextPlayerIndex, tableID };
+			if (validStall)
+				return Utils.clueToAction(validStall, tableID);
+
+			// Give any legal clue
+			for (let i = 1; i < state.numPlayers; i++) {
+				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
+				const valid_clues = state.allValidClues(playerIndex);
+
+				if (valid_clues.length > 0)
+					return Utils.clueToAction(valid_clues[0], tableID);
+			}
+
+			// Bomb discardable slot, or slot 1
+			const target = discardable.order ?? state.hands[state.ourPlayerIndex][0].order;
+			return { tableID, type: ACTION.PLAY, target };
 		}
 
 		if (validStall)

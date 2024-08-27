@@ -7,8 +7,151 @@ import logger from '../../src/tools/logger.js';
 import * as ExAsserts from '../extra-asserts.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 import { ACTION } from '../../src/constants.js';
+import { logPerformAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
+
+describe('stalling', () => {
+	it('understands a play clue when there are better clues available', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b1', 'g4', 'b4', 'b2'],
+			['y4', 'y4', 'r4', 'r3'],
+			['y5', 'r5', 'b5', 'g5']
+		], {
+			level: { min: 9 },
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Donald clues purple to Alice (slot 4)');
+
+		// Can't be a locked hand stall, because getting b1 is available.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['p1']);
+	});
+
+	it('understands a finesse when there are better clues available', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b1', 'g4', 'b4', 'g2'],
+			['y4', 'y4', 'r4', 'r3'],
+			['y5', 'r5', 'b5', 'g5']
+		], {
+			level: { min: 9 },
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Donald clues green to Bob');
+
+		// Can't be a locked hand stall, because getting b1 is available.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+	});
+
+	it('understands a play clue when not in stalling situation', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b3', 'r2', 'b4', 'g4'],
+			['y4', 'y4', 'r4', 'r3'],
+			['y5', 'r5', 'b5', 'g5']
+		], {
+			level: { min: 9 },
+			play_stacks: [4, 0, 0, 0, 0],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 5 to Donald');
+		takeTurn(game, 'Cathy clues red to Donald');
+		takeTurn(game, 'Donald clues green to Alice (slot 4)');
+
+		// Can't be a locked hand stall, because Donald has a play.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['g1']);
+	});
+});
+
+describe('anxiety plays', () => {
+	it('plays into anxiety', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y5', 'y2', 'b4', 'g4'],
+			['b1', 'g4', 'b4', 'b2'],
+			['y4', 'y4', 'r4', 'r3']
+		], {
+			level: { min: 9 },
+			play_stacks: [4, 0, 0, 0, 0],
+			clue_tokens: 2,
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Alice (slots 2,3,4)');
+		takeTurn(game, 'Donald clues 2 to Alice (slot 1)');
+
+		// Alice should play slot 2 as r5.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][1].order }, `Expected (play slot 2), got ${logPerformAction(action)} instead`);
+	});
+
+	it(`doesn't assume anxiety if there are clues available`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y5', 'y2', 'b4', 'g4'],
+			['b1', 'g4', 'b4', 'b2'],
+			['y4', 'y4', 'r4', 'r3']
+		], {
+			level: { min: 9 },
+			play_stacks: [4, 0, 0, 0, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 5 to Alice (slots 1,2,3,4)');
+
+		// Alice should clue instead of playing/discarding.
+		const action = take_action(game);
+		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
+	});
+
+	it(`doesn't play into impossible anxiety`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r5', 'y2', 'b4', 'g4'],
+			['b1', 'g4', 'b4', 'b2'],
+			['y4', 'y4', 'r4', 'r3']
+		], {
+			level: { min: 9 },
+			play_stacks: [4, 0, 0, 0, 0],
+			clue_tokens: 1,
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 5 to Alice (slots 1,2,3,4)');
+
+		// Alice should discard, since it isn't possible to play any card.
+		const action = take_action(game);
+		assert.ok(action.type === ACTION.DISCARD, `Expected discard, got ${logPerformAction(action)} instead`);
+	});
+
+	it('forces the next player into anxiety', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r5', 'y5', 'b5', 'g5'],
+			['b1', 'g4', 'b4', 'b2'],
+			['y4', 'y4', 'r4', 'r3']
+		], {
+			level: { min: 9 },
+			play_stacks: [3, 0, 0, 0, 0],
+			clue_tokens: 2,
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Bob');
+		takeTurn(game, 'Donald clues red to Alice (slot 1)');
+
+		// Alice should play slot 1 as r4.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][0].order });
+	});
+});
 
 describe('double discard avoidance', () => {
 	it(`understands a clue from a player on double discard avoidance may be a stall`, () => {

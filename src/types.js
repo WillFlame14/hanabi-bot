@@ -25,6 +25,7 @@
  */
 /**
  * @typedef ClueResult
+ * @property {number} focus
  * @property {number} elim
  * @property {Card[]} new_touched
  * @property {number} bad_touch
@@ -57,6 +58,7 @@
  * @property {boolean}	[lock]
  * @property {boolean}  [important]
  * @property {boolean}  [hypothetical]
+ * @property {boolean}  [noRecurse]
  * 
  * @typedef CardAction
  * @property {number} order

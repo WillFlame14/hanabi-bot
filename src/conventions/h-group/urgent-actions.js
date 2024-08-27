@@ -44,7 +44,9 @@ export function find_unlock(game, target) {
 			continue;
 
 		// The card must become playable
-		const known = game.players[target].thoughts[card.order].inferred.every(c => state.isPlayable(c) || c.matches(card));
+		const known = game.players[target].thoughts[card.order].inferred.every(c => state.isPlayable(c) || c.matches(card)) ||
+			(game.level >= LEVEL.STALLING && game.players[target].anxietyPlay(state, state.hands[target]).order === card.order);
+
 		if (known)
 			return our_connecting.order;
 	}
@@ -167,7 +169,8 @@ export function early_game_clue(game, playerIndex) {
 		return false;
 
 	logger.collect();
-	const { play_clues, save_clues, stall_clues } = find_clues(game, playerIndex, expected_early_game_clue);
+	const options = { giver: playerIndex, hypothetical: true, no_fix: true, early_exits: expected_early_game_clue };
+	const { play_clues, save_clues, stall_clues } = find_clues(game, options);
 	logger.flush(false);
 
 	logger.debug('found clues', play_clues.flat().map(logClue), save_clues.filter(c => c !== undefined).map(logClue), state.playerNames[playerIndex]);
@@ -265,11 +268,8 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				continue;
 			}
 
-			// Check if Order Chop Move is available - 4 (unknown card) must be highest priority, they must be 1s, and this cannot be a playable save
-			if (!finessed_card && game.level >= LEVEL.BASIC_CM &&
-				playable_priorities.every((cards, priority) => priority >= 4 || cards.length === 0) &&
-				!save.playable
-			) {
+			// Check if Order Chop Move is available - they must be 1s, and this cannot be a playable save
+			if (!finessed_card && game.level >= LEVEL.BASIC_CM && !save.playable) {
 				const ordered_1s = order_1s(state, common, playable_priorities[4]);
 				const distance = (target + state.numPlayers - state.ourPlayerIndex) % state.numPlayers;
 
@@ -298,7 +298,8 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			// Check if Scream/Shout Discard is available (only to next player)
 			if (!finessed_card && game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0) && target === state.nextPlayerIndex(state.ourPlayerIndex)) {
-				const trash = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued && me.thoughts[c.order].inferred.every(i => state.isBasicTrash(i)));
+				const trash = me.thinksTrash(state, state.ourPlayerIndex).filter(c =>
+					c.clued && me.thoughts[c.order].inferred.every(i => state.isBasicTrash(i)));
 
 				if (trash.length > 0) {
 					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push({ tableID, type: ACTION.DISCARD, target: trash[0].order });

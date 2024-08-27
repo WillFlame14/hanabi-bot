@@ -72,13 +72,19 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
  * Each player has only one save clue.
  * 
  * @param {Game} game
- * @param {number} [giver]
- * @param {(game: Game, clue: Clue, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]) => boolean} early_exits
+ * @param {ClueFindingOptions} options
+ * 
+ * @typedef ClueFindingOptions
+ * @property {number} [giver]
+ * @property {boolean} [hypothetical]
+ * @property {boolean} [no_fix]
+ * @property {boolean} [noRecurse]
+ * @property {(game: Game, clue: Clue, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]) => boolean} [early_exits]
  */
-export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits = () => false) {
+export function find_clues(game, options = {}) {
 	const { common, state } = game;
+	const { giver = state.ourPlayerIndex, hypothetical = giver !== state.ourPlayerIndex, no_fix = false, noRecurse = false, early_exits = () => false } = options;
 	const player = game.players[giver];
-	const hypothetical = giver !== state.ourPlayerIndex;
 
 	logger.highlight('whiteb', `------- FINDING CLUES ${giver !== state.ourPlayerIndex ? `(${state.playerNames[giver]}) ` : ''}-------`);
 
@@ -131,7 +137,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 				isTrash(state, player, state.deck[c.order].identity() ?? player.thoughts[c.order].identity({ infer: true }), c.order));
 
 			// Simulate clue from receiver's POV to see if they have the right interpretation
-			const action =  /** @type {const} */ ({ type: 'clue', giver, target, list, clue, hypothetical });
+			const action =  /** @type {const} */ ({ type: 'clue', giver, target, list, clue, hypothetical, noRecurse });
 			const hypo_game = evaluate_clue(game, action, clue, target, focused_card, bad_touch_cards);
 
 			// Clue had incorrect interpretation
@@ -164,7 +170,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 
 			if (discard !== undefined) {
 				logger.highlight('yellow', 'checking default discard');
-				const { safe: default_safe, discard: default_discard } = safe_situation(game, player);
+				const { safe: default_safe, discard: default_discard } = safe_situation(game.minimalCopy(), player);
 
 				if (default_safe && default_discard !== undefined) {
 					const [d_value, dd_value] = [discard, default_discard].map(c => cardValue(state, hypo_game.me, c, c.order));
@@ -286,7 +292,7 @@ export function find_clues(game, giver = game.state.ourPlayerIndex, early_exits 
 	}
 
 	/** @type {FixClue[][]} */
-	const fix_clues = early_exit ? Utils.range(0, state.numPlayers).map(_ => []) : find_fix_clues(game, play_clues, save_clues);
+	const fix_clues = (early_exit || no_fix) ? Utils.range(0, state.numPlayers).map(_ => []) : find_fix_clues(game, play_clues, save_clues);
 
 	if (play_clues.some(clues => clues.length > 0))
 		logger.info('found play clues', play_clues.flatMap(clues => clues.map(clue => logClue(clue))));

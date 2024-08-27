@@ -338,11 +338,11 @@ function assignSettings(data, priv) {
 			return;
 		}
 
-		if (level > 8) {
-			reply(`This bot can currently only play up to level 8 (+ level 11). There is no support for levels 9 - 10.`);
+		if (level > 9) {
+			reply(`This bot can currently only play up to level 9 (+ level 11). There is no support for level 10.`);
 
 			if (level < 11)
-				level = 8;
+				level = 9;
 		}
 
 		settings.level = Math.max(Math.min(level, MAX_H_LEVEL), 1);

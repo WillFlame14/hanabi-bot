@@ -14,6 +14,7 @@ import { logClue } from '../../tools/log.js';
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').ClueResult} ClueResult
  * @typedef {import('../../types.js').Clue} Clue
+ * @typedef {import('../../types.js').WaitingConnection} WaitingConnection
  */
 
 /**
@@ -110,8 +111,9 @@ export function determine_playable_card(game, playable_cards) {
 	for (const { order } of playable_cards) {
 		const card = game.me.thoughts[order];
 
-		const in_finesse = card.finessed || common.dependentConnections(order).some(wc =>
-			!wc.symmetric && wc.connections.some((conn, i) => i >= wc.conn_index && conn.type === 'finesse'));
+		const in_finesse = card.finessed ||
+			(!common.play_links.some(play_link => play_link.orders.includes(order)) && common.dependentConnections(order).some(wc =>
+				!wc.symmetric && wc.connections.some((conn, i) => i >= wc.conn_index && conn.type === 'finesse')));
 
 		if (in_finesse) {
 			priorities[state.numPlayers > 2 ? 0 : 1].push(card);

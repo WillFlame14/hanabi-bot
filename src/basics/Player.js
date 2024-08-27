@@ -177,8 +177,7 @@ export class Player {
 	}
 
 	/**
-	 * Finds the best discard in a locked hand.
-	 * Breaks ties using the leftmost card.
+	 * Finds the best discard in a locked hand. Breaks ties using the leftmost card.
 	 * @param {State} state
 	 * @param {Hand} hand
 	 */
@@ -206,6 +205,23 @@ export class Player {
 			this.thoughts[card.order].possibilities.reduce((sum, p) => sum += distance(p, crit_percents[0].percent === 1), 0));
 
 		return furthest_card;
+	}
+
+	/**
+	 * Finds the best play in a locked hand. Breaks ties using the leftmost card.
+	 * @param {State} state
+	 * @param {Hand} hand
+	 */
+	anxietyPlay(state, hand) {
+		return Array.from(hand.map((c, i) => {
+			const poss = this.thoughts[c.order].possibilities;
+			const percent = poss.filter(p => state.isPlayable(p)).length / poss.length;
+
+			return { card: c, percent, index: i };
+		})).sort((a, b) => {
+			const diff = b.percent - a.percent;
+			return diff !== 0 ? diff : a.index - b.index;
+		})[0].card;
 	}
 
 	/**
