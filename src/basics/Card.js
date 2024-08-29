@@ -113,6 +113,12 @@ export class Card extends BasicCard {
 	rewind_ids;
 
 	/**
+	 * All finesse possibilities of the card
+	 * @type {IdentitySet | undefined}
+	 */
+	finesse_ids;
+
+	/**
 	 * Only used when undoing a finesse and after a card has been revealed.
 	 * @type {IdentitySet | undefined}
 	 */

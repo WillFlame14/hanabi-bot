@@ -8,13 +8,15 @@ import { IllegalInterpretation, RewindEscape, find_own_finesses } from './own-fi
 import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor, connection_score } from './connection-helper.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
-import { remove_finesse } from '../update-turn.js';
 import * as Basics from '../../../basics.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection, logConnections, logHand } from '../../../tools/log.js';
 import { IdentitySet } from '../../../basics/IdentitySet.js';
+import { variantRegexes } from '../../../variants.js';
+import { remove_finesse } from '../update-wcs.js';
+import { order_1s } from '../action-helper.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -353,6 +355,22 @@ export function interpret_clue(game, action) {
 		if (focus_thoughts.inferred.length === 1)
 			common.update_hypo_stacks(state);
 
+		// Pink fix clue on 1s
+		if (fix && state.includesVariant(variantRegexes.pinkish) && clue.type === CLUE.RANK && clue.value !== 1) {
+			const old_1s = list.map(o => common.thoughts[o]).filter(c =>
+				c.clues.length > 1 && c.clues.slice(0, -1).every(clue => clue.type === CLUE.RANK && clue.value === 1));
+			const old_ordered_1s = order_1s(state, common, old_1s, { no_filter: true });
+
+			// Pink fix promise
+			if (old_ordered_1s.length > 0 && !(chop && (clue.value === 2 || clue.value === 5))) {
+				const promised_card = common.thoughts[old_ordered_1s[0].order];
+				promised_card.inferred = promised_card.inferred.intersect(promised_card.inferred.filter(i => i.rank === clue.value));
+				logger.info('pink fix promise!', promised_card.inferred.map(logCard));
+			}
+		}
+
+		common.good_touch_elim(state);
+
 		// Focus doesn't matter for a fix clue
 		focus_thoughts.focused = oldCommon.thoughts[focused_card.order].focused;
 		game.interpretMove(mistake ? CLUE_INTERP.MISTAKE : CLUE_INTERP.FIX);
@@ -426,10 +444,10 @@ export function interpret_clue(game, action) {
 		/** @type {FocusPossibility[]} */
 		let all_connections = [];
 
-		const looksDirect = focus_thoughts.identity() === undefined && (	// Focused card must be unknown AND
-			action.clue.type === CLUE.COLOUR ||											// Colour clue always looks direct
-			rankLooksPlayable(game, action.clue.value, giver, target, focused_card.order) ||			// Looks like a play
-			focus_possible.some(fp => fp.save && game.players[target].thoughts[focused_card.order].possible.has(fp)));										// Looks like a save
+		const looksDirect = focus_thoughts.identity() === undefined && (					// Focused card must be unknown AND
+			clue.type === CLUE.COLOUR ||													// Colour clue always looks direct
+			rankLooksPlayable(game, clue.value, giver, target, focused_card.order) ||		// Looks like a play
+			focus_possible.some(fp => fp.save && game.players[target].thoughts[focused_card.order].possible.has(fp)));	// Looks like a save
 
 		// We are the clue target, so we need to consider all the (sensible) possibilities of the card
 		if (target === state.ourPlayerIndex) {
@@ -439,16 +457,14 @@ export function interpret_clue(game, action) {
 			}
 
 			for (const id of focus_thoughts.inferred) {
-				if (isTrash(state, game.players[giver], id, focused_card.order, { ignoreCM: true }))
-					continue;
-
-				// Focus possibility, skip
-				if (all_connections.some(fp => id.matches(fp)))
+				if (isTrash(state, game.players[giver], id, focused_card.order, { ignoreCM: true }) ||
+					(clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) && id.rank !== clue.value) ||		// Pink promise
+					all_connections.some(fp => id.matches(fp)))					// Focus possibility, skip
 					continue;
 
 				try {
 					const connections = find_own_finesses(game, action, id, looksDirect);
-					logger.info('found connections:', logConnections(connections, id), all_connections.map(fp => logCard({ suitIndex: fp.suitIndex, rank: fp.rank })));
+					logger.info('found connections:', logConnections(connections, id));
 
 					if (all_connections.some(fp => connections.some(conn =>
 						conn.type === 'known' && conn.reacting === giver && conn.identities.every(i => i.rank === fp.rank && i.suitIndex === fp.suitIndex)))
@@ -537,6 +553,25 @@ export function interpret_clue(game, action) {
 	}
 	logger.highlight('blue', 'final inference on focused card', focus_thoughts.inferred.map(logCard).join(','));
 
+	// Pink 1's Assumption
+	if (state.includesVariant(variantRegexes.pinkish) && clue.type === CLUE.RANK && clue.value === 1) {
+		const clued_1s = state.hands[target].filter(c => c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+		const ordered_1s = order_1s(state, common, clued_1s, { no_filter: true });
+
+		if (ordered_1s.length > 0) {
+			const missing_1s = Utils.range(0, state.variant.suits.length)
+				.map(suitIndex => ({ suitIndex, rank: 1 }))
+				.filter(i => !isTrash(state, common, i, ordered_1s[0].order, { infer: true }));
+
+			if (missing_1s.length > 0) {
+				for (const { order } of ordered_1s.slice(0, missing_1s.length)) {
+					const card = common.thoughts[order];
+					card.inferred = card.inferred.intersect(missing_1s);
+				}
+			}
+		}
+	}
+
 	common.good_touch_elim(state);
 	common.refresh_links(state);
 	common.update_hypo_stacks(state);
@@ -563,7 +598,7 @@ export function interpret_clue(game, action) {
 		logger.debug('hand state after clue', logHand(state.hands[target]));
 	}
 	catch (err) {
-		logger.info('Failed to debug hand state', state.hands[target].map(c => c.order), game.common.thoughts.map(c => c.order));
+		logger.info('Failed to debug hand state', err, state.hands[target].map(c => c.order), game.common.thoughts.map(c => c.order));
 	}
 	team_elim(game);
 }

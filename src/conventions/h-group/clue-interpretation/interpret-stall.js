@@ -16,6 +16,15 @@ import { logClue } from '../../../tools/log.js';
  * @typedef {import('../../../types.js').SaveClue} SaveClue
  */
 
+const stall_to_severity = {
+	[CLUE_INTERP.STALL_5]: 0,
+	[CLUE_INTERP.STALL_TEMPO]: 1,
+	[CLUE_INTERP.STALL_FILLIN]: 4,
+	[CLUE_INTERP.STALL_LOCKED]: 4,
+	[CLUE_INTERP.STALL_8CLUES]: 4,
+	[CLUE_INTERP.STALL_BURN]: 5
+};
+
 /**
  * Returns whether a clue could be a stall or not, given the severity level.
  * @param {Game} game
@@ -121,9 +130,6 @@ export function stalling_situation(game, action, prev_game) {
 	const { common, state } = game;
 	const { giver, list, target, noRecurse } = action;
 
-	if (noRecurse)
-		return;
-
 	const { focused_card } = determine_focus(state.hands[target], common, list);
 	const severity = stall_severity(prev_game.state, prev_game.common, giver);
 
@@ -133,6 +139,9 @@ export function stalling_situation(game, action, prev_game) {
 
 	if (stall === undefined)
 		return;
+
+	if (noRecurse)
+		return stall;
 
 	const options = { giver, hypothetical: true, no_fix: true, noRecurse: true, early_exits: expected_clue };
 
@@ -144,7 +153,7 @@ export function stalling_situation(game, action, prev_game) {
 		play_clues.flat().find(cl =>
 			cl.result.playables.some(({ card }) => card.newly_clued) && cl.result.bad_touch === 0 && focused_card.order !== cl.result.focus) ??
 		save_clues.find(cl => cl !== undefined && (cl.cm === undefined || cl.cm.length === 0) && focused_card.order !== cl.result.focus) ??
-		stall_clues.slice(0, severity).find(clues => clues.some(cl => focused_card.order !== cl.result.focus))?.[0];
+		stall_clues.slice(0, stall_to_severity[stall]).find(clues => clues.some(cl => focused_card.order !== cl.result.focus))?.[0];
 
 	if (expected !== undefined) {
 		logger.highlight('yellow', `expected ${logClue(expected)}, not interpreting stall`);

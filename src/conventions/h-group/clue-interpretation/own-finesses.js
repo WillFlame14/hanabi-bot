@@ -261,6 +261,7 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 		else
 			hypo_state.play_stacks[suitIndex]++;
 	}
+
 	const resolved_connections = resolve_bluff(game, connections);
 
 	if (resolved_connections.length === 0 && state.play_stacks[suitIndex] + 1 !== rank) {

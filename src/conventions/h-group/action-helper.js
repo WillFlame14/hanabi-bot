@@ -1,4 +1,3 @@
-import { CLUE } from '../../constants.js';
 import { isTrash } from '../../basics/hanabi-util.js';
 import { connectable_simple } from '../../basics/helper.js';
 import * as Utils from '../../tools/util.js';
@@ -59,9 +58,10 @@ export function select_play_clue(play_clues) {
  * @param {State} state
  * @param {Player} player
  * @param {ActualCard[]} cards
+ * @param {{ no_filter?: boolean}} options
  */
-export function order_1s(state, player, cards) {
-	const unknown_1s = cards.filter(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+export function order_1s(state, player, cards, options = { no_filter: false }) {
+	const unknown_1s = options.no_filter ? cards : cards.filter(card => card.clues.length > 0 && player.thoughts[card.order].possible.every(p => p.rank === 1));
 
 	return unknown_1s.sort((card1, card2) => {
 		const [c1_start, c2_start] = [card1, card2].map(c => state.inStartingHand(c.order));
@@ -239,12 +239,15 @@ export function find_positional_discard(game, discarder, expected_discard) {
 					return valid_target(pl, state.hands[pl][j]);
 				});
 
-				if (playerIndex2 !== undefined) {
+				if (playerIndex2 !== undefined && state.strikes < 2) {
 					logger.info(`performing double positional misplay on ${[playerIndex, playerIndex2].map(p => state.playerNames[p])}, slot ${j + 1}`);
 					return { misplay: true, order: state.hands[discarder][j].order };
 				}
 
 				const misplay = state.hands[discarder][j].order === expected_discard;
+
+				if (misplay && state.strikes === 2)
+					continue;
 
 				logger.info(`performing positional ${misplay ? 'misplay' : 'discard' } on ${state.playerNames[playerIndex]}, slot ${j + 1} order ${state.hands[discarder][j].order}`);
 				return { misplay, order: state.hands[discarder][j].order };

@@ -267,6 +267,11 @@ export function find_clues(game, options = {}) {
 					stall_clues[3].push(clue);
 					break;
 
+				case CLUE_INTERP.STALL_8CLUES:
+					logger.info('8 clue save', logClue(clue));
+					stall_clues[4].push(clue);
+					break;
+
 				case CLUE_INTERP.STALL_BURN:
 					logger.info('hard burn', logClue(clue));
 					stall_clues[5].push(clue);
@@ -304,7 +309,7 @@ export function find_clues(game, options = {}) {
 		logger.info('found fix clues', fix_clues.flatMap(clues => clues.map(clue => logClue(clue) + (clue.trash ? ' (trash)' : ''))));
 
 	if (stall_clues.some(clues => clues.length > 0))
-		logger.info('found stall clues', stall_clues.flatMap(clues => clues.map(clue => logClue(clue))));
+		logger.info('found stall clues', stall_clues.map(clues => clues.map(clue => logClue(clue))));
 
 	return { play_clues, save_clues, fix_clues, stall_clues };
 }

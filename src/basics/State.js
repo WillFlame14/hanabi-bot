@@ -233,4 +233,12 @@ export class State {
 
 		return actual_id === undefined || card.possible.length === 1 || card.inferred.has(actual_id);
 	}
+
+	/**
+	 * Returns whether the state contains a variant matching the regex.
+	 * @param {RegExp} variantRegex
+	 */
+	includesVariant(variantRegex) {
+		return this.variant.suits.some(suit => suit.match(variantRegex));
+	}
 }

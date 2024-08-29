@@ -126,8 +126,10 @@ function find_colour_focus(game, suitIndex, action) {
 					(c.newly_clued || c.clues.some((clue, i) =>
 						i !== c.clues.length - 1 && !(c.clues.at(-1).type === clue.type && c.clues.at(-1).value === clue.value)))).length;
 
-				// Only touched/filled in 1 new card
-				if (fill_ins < 2)
+				const trash = state.hands[target].filter(c => c.rank === rank && !c.clued && state.isBasicTrash(c)).length;
+
+				// Only touched/filled in 1 new card and wasn't to keep GTP
+				if (fill_ins < 2 && trash === 0)
 					continue;
 			}
 
@@ -162,6 +164,10 @@ function find_rank_focus(game, rank, action) {
 
 			// Don't consider save on k3, k4 with rank
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
+				continue;
+
+			// Don't consider loaded save with 3,4 in whitish variants
+			if (common.thinksLoaded(state, target) && state.includesVariant(variantRegexes.whitish) && (rank === 3 || rank === 4))
 				continue;
 
 			// Critical save or 2 save

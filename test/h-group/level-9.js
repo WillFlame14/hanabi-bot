@@ -49,6 +49,28 @@ describe('stalling', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 	});
 
+	it('understands a finesse when there are better clues available', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b3', 'g4', 'g2', 'b4'],
+			['y4', 'y4', 'r4', 'p5'],
+			['y5', 'r5', 'b5', 'g5']
+		], {
+			level: { min: 9 },
+			play_stacks: [2, 0, 0, 0, 0],
+			discarded: ['r4'],
+		});
+
+		takeTurn(game, 'Alice clues 5 to Cathy');
+		takeTurn(game, 'Bob clues red to Cathy');	// r4 save
+		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Donald clues red to Cathy');
+
+		// Can't be a hard burn, because filling in p5 is available.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+	});
+
 	it('understands a play clue when not in stalling situation', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],

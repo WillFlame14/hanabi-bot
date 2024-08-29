@@ -1,5 +1,5 @@
 import { LEVEL } from '../h-constants.js';
-import { cardTouched, direct_clues } from '../../../variants.js';
+import { cardTouched, direct_clues, variantRegexes } from '../../../variants.js';
 import { isSaved, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
@@ -39,22 +39,14 @@ export function find_fix_clues(game, play_clues, save_clues) {
 		for (const { clued, order } of state.hands[target]) {
 			const card = me.thoughts[order];
 
-			// Card known (or known trash), doesn't need fix
-			if (card.possible.length === 1 || card.possible.every(p => state.isBasicTrash(p)))
-				continue;
+			const fix_unneeded = card.possible.length === 1 ||
+				card.possible.every(p => state.isBasicTrash(p)) ||
+				(card.chop_moved && !clued) ||										// Card chop moved but not clued, don't fix
+				common.dependentConnections(order).some(wc => wc.symmetric)	||		// Part of a symmetric waiting connection
+				card.inferred.length === 0;
 
-			// Card chop moved but not clued, don't fix
-			if (card.chop_moved && !clued)
+			if (fix_unneeded)
 				continue;
-
-			// Part of a symmetric waiting connection
-			if (common.dependentConnections(order).some(wc => wc.symmetric))
-				continue;
-
-			if (card.inferred.length === 0) {
-				logger.debug(`card ${logCard(card)} order ${order} need fix??`);
-				continue;
-			}
 
 			const seems_playable = card.inferred.every(p => {
 				const away = state.playableAway(p);
@@ -146,6 +138,10 @@ function inference_corrected(game, order, _target) {
 
 	if (state.isBasicTrash(actualCard))
 		return card.possible.every(p => state.isBasicTrash(p));
+
+	// Revealed to be pink
+	if (card.possible.every(p => state.variant.suits[p.suitIndex].match(variantRegexes.pinkish)))
+		return card.inferred.every(i => !state.isPlayable(i)) && state.hasConsistentInferences(card);
 
 	return card.possible.every(p => !state.isPlayable(p));
 }

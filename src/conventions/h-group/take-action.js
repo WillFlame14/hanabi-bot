@@ -199,15 +199,6 @@ export function take_action(game) {
 	let playable_cards = me.thinksPlayables(state, state.ourPlayerIndex).map(({ order }) => me.thoughts[order]);
 	let trash_cards = me.thinksTrash(state, state.ourPlayerIndex).filter(c => common.thoughts[c.order].saved).map(({ order }) => me.thoughts[order]);
 
-	// Find an anxiety play
-	if (state.clue_tokens === 0 && me.thinksLocked(state, state.ourPlayerIndex)) {
-		const anxiety = me.anxietyPlay(state, state.hands[state.ourPlayerIndex]);
-		const anxiety_card = me.thoughts[anxiety.order];
-
-		if (anxiety_card.possible.some(p => state.isPlayable(p)))
-			playable_cards.push(anxiety_card);
-	}
-
 	// Discards must be inferred, playable, trash, not duplicated in our hand and not part of a connection
 	const discards = playable_cards.filter(card => {
 		const id = card.identity({ infer: true });
@@ -449,11 +440,13 @@ export function take_action(game) {
 			return cards.concat(hand.filter(c => me.thoughts[c.order].matches(identity)).map(c => game.players[index].thoughts[c.order]));
 		}, []);
 
-		// If playing reveals duplicates are trash, playing is better for tempo
-		if (duplicates.every(c => c.possible.every(p => p.matches(identity) || state.isBasicTrash(p))))
-			return { tableID, type: ACTION.PLAY, target: discards[0].order };
+		if (!duplicates.every(c => c.inferred.every(p => p.matches(identity) || state.isBasicTrash(p)))) {
+			// If playing reveals duplicates are trash, playing is better for tempo
+			if (duplicates.every(c => c.possible.every(p => p.matches(identity) || state.isBasicTrash(p))))
+				return { tableID, type: ACTION.PLAY, target: discards[0].order };
 
-		return { tableID, type: ACTION.DISCARD, target: discards[0].order };
+			return { tableID, type: ACTION.DISCARD, target: discards[0].order };
+		}
 	}
 
 	// Unlock other player than next

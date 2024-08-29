@@ -251,16 +251,19 @@ export function assign_connections(game, connections, giver) {
 		if (connections.some(conn => conn.type === 'finesse'))
 			card.finesse_index = card.finesse_index ?? state.actionList.length;
 
-		if (bluff || hidden) {
-			const playable_identities = hypo_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }))
-				.filter(id => id.rank <= state.max_ranks[id.suitIndex] && !isTrash(state, common, id, card.order, { infer: true }));
+		const playable_identities = hypo_stacks
+			.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }))
+			.filter(id => id.rank <= state.max_ranks[id.suitIndex] && !isTrash(state, common, id, card.order, { infer: true }));
 
+		const currently_playable_identities = state.play_stacks
+			.map((stack_rank, index) =>({ suitIndex: index, rank: stack_rank + 1 }))
+			.filter(id => id.rank <= state.max_ranks[id.suitIndex]);
+
+		if (bluff || hidden) {
 			card.inferred = card.inferred.intersect(playable_identities);
 
-			if (bluff) {
-				const currently_playable_identities = state.play_stacks.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 })).filter(id => id.rank <= state.max_ranks[id.suitIndex]);
+			if (bluff)
 				card.inferred = card.inferred.intersect(currently_playable_identities);
-			}
 
 			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
 			if (state.deck[card.order].identity() !== undefined) {
@@ -273,9 +276,11 @@ export function assign_connections(game, connections, giver) {
 		}
 		else {
 			// There are multiple possible connections on this card
-			if (card.superposition || card.uncertain) {
+			if (card.superposition) {
 				card.inferred = card.inferred.union(identities);
-				logger.info('union', identities.map(logCard), card.inferred.map(logCard));
+			}
+			else if (card.uncertain) {
+				card.inferred = card.inferred.union(card.finesse_ids.intersect(identities));
 			}
 			else {
 				if (type === 'playable' && linked.length > 1) {
@@ -296,7 +301,10 @@ export function assign_connections(game, connections, giver) {
 			}
 		}
 
-		card.uncertain ||= (reacting === state.ourPlayerIndex && type !== 'known') || type === 'finesse';
+		if (!card.uncertain && ((reacting === state.ourPlayerIndex && type !== 'known') || type === 'finesse')) {
+			card.finesse_ids = IdentitySet.create(state.variant.suits.length, bluff ? currently_playable_identities : playable_identities);
+			card.uncertain = true;
+		}
 
 		// Updating notes not on our turn
 		// There might be multiple possible inferences on the same card from a self component

@@ -248,4 +248,23 @@ describe('layered finesse', () => {
 		// 3 to Bob does not work, since we may have g3
 		assert.equal(play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 3), false);
 	});
+
+	it(`doesn't accomodate impossible layers`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g1', 'g2', 'b2', 'g4'],
+			['g5', 'p2', 'g1', 'p1'],
+			['p4', 'r4', 'y5', 'y3']
+		], {
+			level: { min: 5 },
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues blue to Bob');				// Finessing ALice's b1 in slot 1
+		takeTurn(game, 'Donald clues 4 to Alice (slot 2)');
+
+		// The simplest interpretation is g3 behind b1 (note that g3 cannot be in front of b1)
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['g3']);
+	});
 });

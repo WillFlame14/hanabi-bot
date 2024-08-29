@@ -365,7 +365,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 
 			return !ignoreOrders.includes(order) &&
 				!connected.includes(order) &&
-				(card.inferred.has(identity) || (card.uncertain && card.possible.has(identity))) &&		// At least one inference must match
+				(card.inferred.has(identity) || (card.uncertain && card.possible.has(identity) && card.finesse_ids.has(identity))) &&		// At least one inference must match
 				card.matches(identity, { assume: true }) &&				// If we know the card (from a rewind), it must match
 				((card.inferred.every(i => state.isPlayable(i)) && card.clued) || card.finessed);	// Must be playable
 		});

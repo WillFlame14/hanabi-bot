@@ -1,9 +1,10 @@
 import { Hand } from '../basics/Hand.js';
 import { Player } from '../basics/Player.js';
 import { cardValue } from '../basics/hanabi-util.js';
+import { CLUE } from '../constants.js';
 
 import * as Utils from '../tools/util.js';
-import { cardTouched } from '../variants.js';
+import { cardTouched, variantRegexes } from '../variants.js';
 
 /**
  * @typedef {import('../basics/Card.js').Card} Card
@@ -97,8 +98,10 @@ export class HGroup_Player extends Player {
 			return !connected.includes(order) &&			// not already connected
 				clued && !newly_clued && 					// previously clued
 				possible.has(identity) &&					// must be a possibility
-				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 	// must not be information-locked on a different identity
-				clues.some(clue => cardTouched(identity, variant, clue));	// at least one clue matches
+				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 		// must not be information-locked on a different identity
+				clues.some(clue => cardTouched(identity, variant, clue)) &&				// at least one clue matches
+				(!variant.suits[identity.suitIndex].match(variantRegexes.pinkish) ||	// pink rank match
+					clues.some(clue => clue.type === CLUE.RANK && clue.value === identity.rank));
 		});
 
 		return (card && !ignoreOrders.includes(card.order)) ? card : undefined;
