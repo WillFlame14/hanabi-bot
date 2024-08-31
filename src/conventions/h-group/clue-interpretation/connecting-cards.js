@@ -155,7 +155,7 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 
 	const hand = state.hands[reacting];
 	const prompt = common.find_prompt(hand, identity, state.variant, connected, ignoreOrders);
-	const finesse = common.find_finesse(hand, connected, ignoreOrders);
+	const finesses = common.find_ambiguous_finesses(hand, connected, ignoreOrders);
 
 	// Prompt takes priority over finesse
 	if (prompt !== undefined && prompt.identity() !== undefined) {
@@ -175,12 +175,15 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 		return { type: 'terminate', reacting, card: prompt, identities: [identity] };
 	}
 
-	if (finesse !== undefined && finesse.identity() !== undefined) {
+	for (const finesse of finesses) {
+		if (finesse.identity() === undefined)
+			continue;
+
 		/** @param {number} order */
 		const order_touched = (order) => {
 			const card = common.thoughts[order];
 
-			return card.touched && !card.newly_clued &&
+			return (!card.uncertain || common.dependentConnections(order).some(wc => common.thoughts[wc.focused_card.order].rewinded)) && card.touched && !card.newly_clued &&
 				(state.deck[order].identity() !== undefined || common.dependentConnections(order).every(wc =>
 					!wc.symmetric && wc.focused_card.matches(wc.inference, { assume: true })));
 		};
@@ -214,6 +217,16 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 				if (!bluff && state.hands[giver].some(c => c.clued && me.thoughts[c.order].inferred.has(identity))) {
 					logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
 					return;
+				}
+			}
+
+			if (common.thoughts[finesse.order].touched) {
+				const waiting_connection = common.waiting_connections.find(conn => conn.connections.some(c => c.card.order == finesse.order));
+				if (waiting_connection) {
+					// TODO: Is this the right way to trigger the replay when we play the card that
+					// proves the uncertain finesse was true?
+					logger.warn(`Uncertain bluff, will trigger rewind on playing inferred ${logCard(waiting_connection.inference)}.`);
+					common.play_links.push({ orders: [waiting_connection.focused_card.order], prereqs: [waiting_connection.inference], connected: waiting_connection.focused_card.order });
 				}
 			}
 

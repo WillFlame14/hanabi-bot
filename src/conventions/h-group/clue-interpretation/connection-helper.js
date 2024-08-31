@@ -63,7 +63,7 @@ export function valid_bluff(game, action, identity, reacting, connected) {
 		!(clue.type === CLUE.COLOUR && reacting === target) &&				// must not be self-colour bluff
 		!game.state.hands[reacting].some(c => {								// must not be confused with an existing finesse
 			const card = game.players[reacting].thoughts[c.order];
-			return card.finessed && card.possible.has(identity);
+			return !card.uncertain && card.finessed && card.possible.has(identity);
 		});
 }
 

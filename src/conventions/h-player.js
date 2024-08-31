@@ -118,4 +118,20 @@ export class HGroup_Player extends Player {
 
 		return (card && !ignoreOrders.includes(card.order)) ? card : undefined;
 	}
+
+	/**
+	 * Finds all possible finesses, or an empty array if there are none.
+	 * @param {Hand} hand
+	 * @param {number[]} connected 		Orders of cards that have previously connected
+	 * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
+	 */
+	find_ambiguous_finesses(hand, connected = [], ignoreOrders = []) {
+		let finessable = hand.filter(card => !card.clued && (!this.thoughts[card.order].finessed || this.thoughts[card.order].uncertain) && !connected.includes(card.order));
+
+		const certain = finessable.findIndex(card => !this.thoughts[card.order].uncertain);
+		if (certain != -1)
+			finessable = finessable.slice(0, certain + 1);
+
+		return finessable.filter(card => !ignoreOrders.includes(card.order));
+	}
 }
