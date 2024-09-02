@@ -120,8 +120,8 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
 export function find_symmetric_connections(new_game, game, action, inf_possibilities, selfRanks, ownBlindPlays) {
 	const { common, state } = game;
 
-	const { giver, list, target } = action;
-	const { order } = determine_focus(state.hands[target], common, list, { beforeClue: true }).focused_card;
+	const { clue, giver, list, target } = action;
+	const { order } = determine_focus(game, state.hands[target], common, list, clue, { beforeClue: true }).focused_card;
 	const focused_card = common.thoughts[order];
 
 	/** @type {{ id: Identity, connections: Connection[], fake: boolean }[][]} */

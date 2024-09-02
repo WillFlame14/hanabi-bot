@@ -53,6 +53,27 @@ describe('reverse finesse', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
 		assert.equal(game.common.hypo_stacks[COLOUR.RED], 5);
 	});
+
+	it('correctly recognizes bad touch on play clues that touch copies of finessed cards', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y5', 'r5', 'b1', 'p2'],
+			['p1', 'b3', 'r2', 'p4'],
+			['r3', 'p1', 'y4', 'r1']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues purple to Bob');	// Reverse finessing p1
+
+		const { play_clues } = find_clues(game);
+
+		// 1 to Donald is a valid play clue, but it bad touches one card.
+		const donald_1 = play_clues[PLAYER.DONALD].find(clue => clue.type === CLUE.RANK && clue.type === 1);
+		assert.ok(donald_1);
+		assert.equal(donald_1.result.bad_touch, 1);
+	});
 });
 
 describe('self-finesse', () => {
@@ -620,5 +641,20 @@ describe(`occam's razor`, () => {
 		// Even if Donald has [g3,b3], Alice's slot 2 should be g4 (g3 self-finesse) rather than b4 (b2 prompt + b3 finesse on Bob)
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g4']);
 		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].inferred.length > 1);
+	});
+});
+
+describe('early game', () => {
+	it('gives a bad touch play clue on turn 1 rather than something random', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'y4', 'p4', 'b3', 'g3'],
+			['b4', 'r2', 'y1', 'b3', 'y1']
+		], { level: { min: 2 } });
+
+		const action = take_action(game);
+
+		assert.ok(action.type === ACTION.RANK && action.value === 1 && action.target === PLAYER.CATHY ||
+			action.type === ACTION.COLOUR && action.value === COLOUR.YELLOW && action.target === PLAYER.CATHY);
 	});
 });

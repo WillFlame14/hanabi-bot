@@ -1,6 +1,6 @@
 import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
-import { clue_safe, safe_situation } from './clue-safe.js';
+import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue, get_result } from './determine-clue.js';
 import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
@@ -95,6 +95,7 @@ export function find_clues(game, options = {}) {
 	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, player.hypo_stacks, state.max_ranks);
 
 	let early_exit = false;
+	const hypo_games = /** @type {Record<string, Game>} */ ({});
 
 	// Find all valid clues
 	for (let target = 0; target < state.numPlayers; target++) {
@@ -113,7 +114,7 @@ export function find_clues(game, options = {}) {
 			const touch = state.hands[target].clueTouched(clue, state.variant);
 
 			const list = touch.map(c => c.order);
-			const { focused_card, chop } = determine_focus(hand, common, list);
+			const { focused_card, chop } = determine_focus(game, hand, common, list, clue);
 
 			const in_finesse = common.waiting_connections.some(w_conn => {
 				const { focused_card: wc_focus, inference } = w_conn;
@@ -133,12 +134,9 @@ export function find_clues(game, options = {}) {
 			}))
 				continue;
 
-			const bad_touch_cards = touch.filter(c => !c.clued &&			// Ignore cards that were already clued
-				isTrash(state, player, state.deck[c.order].identity() ?? player.thoughts[c.order].identity({ infer: true }), c.order));
-
 			// Simulate clue from receiver's POV to see if they have the right interpretation
 			const action =  /** @type {const} */ ({ type: 'clue', giver, target, list, clue, hypothetical, noRecurse });
-			const hypo_game = evaluate_clue(game, action, clue, target, focused_card, bad_touch_cards);
+			const hypo_game = evaluate_clue(game, action, clue, target, focused_card);
 
 			// Clue had incorrect interpretation
 			if (hypo_game === undefined)
@@ -164,19 +162,9 @@ export function find_clues(game, options = {}) {
 			Object.assign(clue, { result });
 
 			const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game, player, clue);
+			Object.assign(result, { discard });
 
 			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = result;
-			let remainder = 0;
-
-			if (discard !== undefined) {
-				logger.highlight('yellow', 'checking default discard');
-				const { safe: default_safe, discard: default_discard } = safe_situation(game.minimalCopy(), player);
-
-				if (default_safe && default_discard !== undefined) {
-					const [d_value, dd_value] = [discard, default_discard].map(c => cardValue(state, hypo_game.me, c, c.order));
-					remainder = Math.max(0, d_value - dd_value);
-				}
-			}
 
 			const result_log = {
 				clue: logClue(clue),
@@ -189,10 +177,12 @@ export function find_clues(game, options = {}) {
 				finesses: finesses.length,
 				playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
 				chop_moved: chop_moved.map(c => `${logCard(state.deck[c.order])} ${c.order}`),
-				remainder,
+				discard: discard ? logCard(discard) : undefined,
 				interp: hypo_game.moveHistory.at(-1).move
 			};
-			logger.info('result,', JSON.stringify(result_log), find_clue_value(Object.assign(result, { remainder })));
+			logger.info('result,', JSON.stringify(result_log), find_clue_value(result));
+
+			hypo_games[logClue(clue)] = hypo_game;
 
 			if ((/** @type {any} */ ([CLUE_INTERP.SAVE, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TRASH]).includes(hypo_game.moveHistory.at(-1).move))) {
 				if (chop && focused_card.rank === 2) {
@@ -284,9 +274,8 @@ export function find_clues(game, options = {}) {
 			}
 		}
 
-		const all_clues = [...saves, ...play_clues[target]];
 		save_clues[target] = Utils.maxOn(saves, (save_clue) => {
-			const value = save_clue_value(game, save_clue.game, save_clue, all_clues);
+			const value = save_clue_value(game, save_clue.game, save_clue, [...saves, ...play_clues[target]]);
 
 			logger.debug('save clue', logClue(save_clue), 'has value', value);
 			return value;
@@ -294,6 +283,21 @@ export function find_clues(game, options = {}) {
 
 		if (early_exit)
 			break;
+	}
+
+	const all_clues = [...save_clues.filter(c => c !== undefined), ...play_clues.flat(), ...stall_clues.flat()];
+
+	if (all_clues.length > 0) {
+		const best_remainder = Utils.maxOn(all_clues, clue => {
+			const discard = clue?.result?.discard;
+			const value = discard ? cardValue(state, hypo_games[logClue(clue)].me, discard, discard.order) : 0;
+			clue.result.remainder = value;
+
+			return -clue.result.remainder;
+		}).result.remainder;
+
+		for (const clue of all_clues)
+			clue.result.remainder = clue.result.remainder - best_remainder;
 	}
 
 	/** @type {FixClue[][]} */

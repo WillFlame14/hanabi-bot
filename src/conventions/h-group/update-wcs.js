@@ -69,13 +69,16 @@ export function remove_finesse(game, waiting_connection) {
  * @param {number} reacting
  * @param {number} order
  * @param {WaitingConnection} waiting_connection
+ * @param {{played: boolean}} options
  */
-function stomped_finesse(game, reacting, order, waiting_connection) {
+function stomped_finesse(game, reacting, order, waiting_connection, options) {
 	const { common, state } = game;
 	const thoughts = common.thoughts[order];
+	const possibilities = options.played ? thoughts.old_possible : thoughts.possible;
 
 	return thoughts.clued && thoughts.clues.at(-1).turn > waiting_connection.turn && (thoughts.focused ||
-		(common.thinksPlayables(state, reacting).length === 0 && thoughts.inferred.every(i => state.isPlayable(i) || thoughts.matches(i, { assume: true }))));
+		(common.thinksPlayables(state, reacting).length === 0 &&
+			possibilities.every(i => state.isPlayable(i) || thoughts.matches(i, { assume: true }) || state.isBasicTrash(i))));
 }
 
 /**
@@ -120,7 +123,7 @@ export function resolve_card_retained(game, waiting_connection) {
 
 		if (last_reacting_action?.type === 'clue') {
 			// TODO: Maybe it's good to force demonstrating the connection immediately anyways; this can be confusing.
-			if (stomped_finesse(game, reacting, order, waiting_connection)) {
+			if (stomped_finesse(game, reacting, order, waiting_connection, { played: false })) {
 				logger.warn(`finesse was stomped on, ${state.playerNames[reacting]} no longer needs to demonstrate connection immediately`);
 				return { remove: false };
 			}
@@ -269,7 +272,7 @@ export function resolve_card_played(game, waiting_connection) {
 		const thoughts = common.thoughts[connection.order];
 
 		// Consider a stomped finesse if the played card was focused or they didn't choose to play it first
-		if (type === 'finesse' && stomped_finesse(game, reacting, connection.order, waiting_connection)) {
+		if (type === 'finesse' && stomped_finesse(game, reacting, connection.order, waiting_connection, { played: true })) {
 			logger.warn(`connecting card was focused/known playable with a clue (stomped on), not confirming ${logCard(inference)} finesse`);
 
 			if (connections[conn_index + 1]?.self) {

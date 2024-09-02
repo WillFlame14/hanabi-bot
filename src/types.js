@@ -32,6 +32,7 @@
  * @property {number} trash
  * @property {number} avoidable_dupe
  * @property {number} remainder
+ * @property {Card | undefined} discard
  * @property {{playerIndex: number, card: Card}[]} playables
  * @property {{playerIndex: number, card: Card}[]} finesses
  * @property {ActualCard[]} chop_moved

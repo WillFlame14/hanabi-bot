@@ -1,4 +1,3 @@
-import { CLUE } from '../../../constants.js';
 import { cardCount } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
 import { order_1s } from '../action-helper.js';
@@ -372,7 +371,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 
 		if (playable_conns.length > 0) {
 			const multiple_1s = rank === 1 &&
-				playable_conns.every(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+				playable_conns.some(card => card.clues.length > 0 && me.thoughts[card.order].possible.every(p => p.rank === 1));
 
 			return [{
 				type: 'playable',

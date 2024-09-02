@@ -2,7 +2,7 @@ import { ACTION } from '../../constants.js';
 import { ACTION_PRIORITY as PRIORITY, LEVEL, CLUE_INTERP } from './h-constants.js';
 import { clue_safe } from './clue-finder/clue-safe.js';
 import { get_result } from './clue-finder/determine-clue.js';
-import { determine_focus, playersBetween, valuable_tempo_clue } from './hanabi-logic.js';
+import { playersBetween, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
@@ -320,9 +320,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && (!save.playable || state.clue_tokens === 1)) {
 				const tccm = Utils.maxOn(stall_clues[1].filter(clue => clue.target === target), clue => {
 					const { playables } = clue.result;
-
-					const list = hand.clueTouched(clue, state.variant).map(c => c.order);
-					const { focused_card } = determine_focus(hand, common, list, { beforeClue: true });
+					const focused_card = state.hands[target].findOrder(clue.result.focus);
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focused_card);
 
 					if (tempo && !valuable && clue_safe(game, me, clue).safe)

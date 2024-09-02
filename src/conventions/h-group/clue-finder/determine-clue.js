@@ -23,9 +23,8 @@ import { determine_focus } from '../hanabi-logic.js';
  * @param  {Clue} clue
  * @param  {number} target
  * @param  {ActualCard} target_card
- * @param  {ActualCard[]} bad_touch_cards
  */
-export function evaluate_clue(game, action, clue, target, target_card, bad_touch_cards) {
+export function evaluate_clue(game, action, clue, target, target_card) {
 	const { state } = game;
 
 	// Prevent outputting logs until we know that the result is correct
@@ -61,9 +60,13 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 	const finessed_before_clue = get_finessed_cards(game);
 	const finessed_after_clue = get_finessed_cards(hypo_game);
 	const lost_finesse = finessed_before_clue.filter(c => finessed_after_clue.find(other => other.order == c.order) === undefined);
+
 	if (lost_finesse.length > 0) {
 		reason = `cards ${lost_finesse.map(c => logCard(state.deck[c.order])).join(', ')} lost finesse`;
-	} else {
+	}
+	else {
+		const { bad_touch } = bad_touch_result(game, hypo_game, hypo_game.common, action.giver, action.target);
+
 		for (const { order, clued } of state.hands[target]) {
 			const card = hypo_game.common.thoughts[order];
 			const visible_card = state.deck[order];
@@ -87,7 +90,7 @@ export function evaluate_clue(game, action, clue, target, target_card, bad_touch
 			const allowable_trash = card.chop_moved ||													// Chop moved (might have become trash)
 				old_card.reset || !state.hasConsistentInferences(old_card) || old_card.inferred.length === 0 ||	// Didn't match inference even before clue
 				(clued && isTrash(state, game.me, visible_card, order, { infer: true })) ||				// Previously-clued duplicate or recently became basic trash
-				bad_touch_cards.some(b => b.order === order) ||											// Bad touched
+				bad_touch.some(b => b.order === order) ||											// Bad touched
 				card.possible.every(id => isTrash(hypo_game.state, hypo_game.common, id, order, { infer: true }));		// Known trash
 
 			if (allowable_trash || card.possible.length === 1)
@@ -147,12 +150,24 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const touch = provisions.touch ?? hand.clueTouched(clue, state.variant);
 	const list = provisions.list ?? touch.map(c => c.order);
 
-	const { focused_card } = determine_focus(hand, hypo_common, list);
+	const { focused_card } = determine_focus(game, hand, hypo_common, list, clue);
 
 	const { new_touched, fill } = elim_result(hypo_state, common, hypo_common, hand, list);
 	const { bad_touch, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target);
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
 
-	return { focus: focused_card.order, elim: fill, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved, remainder: 0 };
+	return {
+		focus: focused_card.order,
+		elim: fill,
+		new_touched,
+		bad_touch: bad_touch.length,
+		trash: trash.length,
+		avoidable_dupe,
+		finesses,
+		playables,
+		chop_moved,
+		discard: undefined,
+		remainder: 0
+	};
 }

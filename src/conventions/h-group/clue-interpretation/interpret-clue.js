@@ -270,7 +270,7 @@ export function interpret_clue(game, action) {
 	const oldCommon = common.clone();
 
 	const { clue, giver, list, target, mistake = false } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], common, list, { beforeClue: true });
+	const { focused_card, chop, positional } = determine_focus(game, state.hands[target], common, list, clue, { beforeClue: true });
 
 	const focus_thoughts = common.thoughts[focused_card.order];
 	focus_thoughts.focused = true;
@@ -385,6 +385,10 @@ export function interpret_clue(game, action) {
 
 		if (stall === CLUE_INTERP.STALL_5 && state.early_game)
 			game.stalled_5 = true;
+
+		// Pink promise on stalls
+		if (state.includesVariant(variantRegexes.pinkish) && clue.type === CLUE.RANK)
+			focus_thoughts.inferred = focus_thoughts.inferred.intersect(focus_thoughts.inferred.filter(i => i.rank === clue.value));
 
 		common.update_hypo_stacks(state);
 		team_elim(game);
@@ -576,7 +580,7 @@ export function interpret_clue(game, action) {
 	common.refresh_links(state);
 	common.update_hypo_stacks(state);
 
-	if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2)
+	if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && !positional)
 		interpret_tccm(game, oldCommon, target, list, focused_card);
 
 	// Advance connections if a speed-up clue was given

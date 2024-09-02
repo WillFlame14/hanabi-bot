@@ -25,8 +25,8 @@ import { logCard, logConnections } from '../../../tools/log.js';
  */
 function find_colour_focus(game, suitIndex, action) {
 	const { common, state } = game;
-	const { list, target } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], common, list);
+	const { clue, list, target } = action;
+	const { focused_card, chop } = determine_focus(game, state.hands[target], common, list, clue);
 
 	/** @type {FocusPossibility[]} */
 	const focus_possible = [];
@@ -82,8 +82,8 @@ function find_colour_focus(game, suitIndex, action) {
 
 		for (const { card } of connecting)
 			state.play_stacks[card.suitIndex]++;
-		next_rank++;
 
+		next_rank++;
 		connections = connections.concat(connecting);
 		already_connected = already_connected.concat(connecting.map(conn => conn.card.order));
 	}
@@ -149,8 +149,8 @@ function find_colour_focus(game, suitIndex, action) {
  */
 function find_rank_focus(game, rank, action) {
 	const { common, state } = game;
-	const { giver, list, target } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], common, list);
+	const { clue, giver, list, target } = action;
+	const { focused_card, chop, positional } = determine_focus(game, state.hands[target], common, list, clue);
 	const focus_thoughts = common.thoughts[focused_card.order];
 
 	/** @type {FocusPossibility[]} */
@@ -272,7 +272,7 @@ function find_rank_focus(game, rank, action) {
 		logger.info('found connections:', logConnections(connections, next_identity));
 
 		// Connected cards can stack up to this rank
-		if (rank === next_rank) {
+		if (rank === next_rank || positional) {
 			if (connections.some(conn => conn.reacting === target && conn.hidden && conn.identities[0].rank + 1 === rank))
 				logger.warn('illegal clandestine self-finesse!');
 
@@ -280,7 +280,7 @@ function find_rank_focus(game, rank, action) {
 				logger.warn('illegal self-finesse that will cause a wrong prompt!');
 
 			else
-				focus_possible.push({ suitIndex, rank, save: false, connections, interp: CLUE_INTERP.PLAY });
+				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
 		}
 	}
 

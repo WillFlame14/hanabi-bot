@@ -1,4 +1,3 @@
-import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
 import { team_elim } from '../../basics/helper.js';
 import { order_1s } from './action-helper.js';
@@ -23,7 +22,7 @@ function check_ocm(game, action) {
 
 	// Played an unknown 1
 	if (card.clues.length > 0 &&
-		card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) &&
+		common.thoughts[card.order].possible.every(p => p.rank === 1) &&
 		(card.inferred.length > 1 || card.rewinded)
 	) {
 		const ordered_1s = order_1s(state, common, state.hands[playerIndex]);

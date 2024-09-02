@@ -29,7 +29,7 @@ export function find_clue_value(clue_result) {
 	const new_touched_value = (new_touched.length >= 1) ? 0.51 + 0.1 * (new_touched.length - 1) : 0;
 
 	const precision_value = (new_touched.reduce((acc, c) => acc + c.possible.length, 0) - new_touched.reduce((acc, c) => acc + c.inferred.length, 0)) * 0.01;
-	return 0.5*(finesses.length + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch - 0.1*avoidable_dupe - 0.1*remainder + precision_value;
+	return 0.5*(finesses.length + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch - 0.1*avoidable_dupe - 0.1*(remainder**2) + precision_value;
 }
 
 /**
@@ -42,7 +42,7 @@ export function select_play_clue(play_clues) {
 
 	for (const clue of play_clues) {
 		const clue_value = find_clue_value(clue.result);
-		logger.info('clue', logClue(clue), 'value', clue_value);
+		logger.info('clue', logClue(clue), 'value', clue_value, 'remainder', clue.result.remainder);
 
 		if (clue_value > best_clue_value) {
 			best_clue_value = clue_value;

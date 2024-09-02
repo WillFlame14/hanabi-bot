@@ -46,6 +46,7 @@ export function elim_result(state, player, hypo_player, hand, list) {
  * @param  {number} target
  */
 export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
+	const { me: old_me } = game;
 	const { me, state } = hypo_game;
 
 	const dupe_scores = game.players.map((player, pi) => {
@@ -77,7 +78,7 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 	const min_dupe = Math.min(...dupe_scores);
 	const avoidable_dupe = dupe_scores[giver] - min_dupe;
 
-	let bad_touch = 0, trash = 0;
+	const bad_touch = [], trash = [];
 
 	for (const card of state.hands[target]) {
 		// Ignore cards that aren't newly clued
@@ -86,22 +87,25 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 
 		// Known trash from empathy
 		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order, { infer: true }))) {
-			trash++;
+			trash.push(card);
 			continue;
 		}
 
 		if (state.isBasicTrash(card)) {
-			bad_touch++;
+			bad_touch.push(card);
 			continue;
 		}
 
 		const duplicates = state.hands.flatMap(hand => hand.filter(c => {
+			const old_thoughts = old_me.thoughts[c.order];
 			const thoughts = me.thoughts[c.order];
-			return thoughts.matches(card, { infer: true }) && thoughts.touched && c.order !== card.order;
+
+			// We need to check old thoughts, since the clue may cause good touch elim that removes earlier notes
+			return old_thoughts.matches(card, { infer: true }) && (old_thoughts.touched || thoughts.touched) && c.order !== card.order;
 		}));
 
 		if (duplicates.length > 0 && !(duplicates.every(c => c.newly_clued) && card.order < Math.min(...duplicates.map(c => c.order))))
-			bad_touch++;
+			bad_touch.push(card);
 	}
 
 	return { bad_touch, trash, avoidable_dupe };

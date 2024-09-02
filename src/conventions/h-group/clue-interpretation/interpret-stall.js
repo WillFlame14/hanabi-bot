@@ -19,9 +19,9 @@ import { logClue } from '../../../tools/log.js';
 const stall_to_severity = {
 	[CLUE_INTERP.STALL_5]: 0,
 	[CLUE_INTERP.STALL_TEMPO]: 1,
-	[CLUE_INTERP.STALL_FILLIN]: 4,
-	[CLUE_INTERP.STALL_LOCKED]: 4,
-	[CLUE_INTERP.STALL_8CLUES]: 4,
+	[CLUE_INTERP.STALL_FILLIN]: 2,
+	[CLUE_INTERP.STALL_LOCKED]: 2,
+	[CLUE_INTERP.STALL_8CLUES]: 2,
 	[CLUE_INTERP.STALL_BURN]: 5
 };
 
@@ -36,7 +36,7 @@ const stall_to_severity = {
 function isStall(game, action, giver, severity, prev_game) {
 	const { common, me, state } = game;
 	const { clue, list, target } = action;
-	const { focused_card, chop } = determine_focus(state.hands[target], common, list);
+	const { focused_card, chop } = determine_focus(game, state.hands[target], common, list, clue);
 	const focus_thoughts = common.thoughts[focused_card.order];
 	const hand = state.hands[target];
 
@@ -74,8 +74,8 @@ function isStall(game, action, giver, severity, prev_game) {
 		}
 
 		if (severity >= 3) {
-			// Locked hand stall given, not touching slot 1
-			if (chop && state.hands[target].findIndex(c => c.order === focused_card.order) !== 0) {
+			// Locked hand stall given, not touching slot 1 and not locked
+			if (chop && state.hands[target].findIndex(c => c.order === focused_card.order) !== 0 && !common.thinksLocked(state, target)) {
 				logger.info('locked hand stall!');
 				return CLUE_INTERP.STALL_LOCKED;
 			}
@@ -128,9 +128,9 @@ function expected_clue(_game, clue, interp) {
  */
 export function stalling_situation(game, action, prev_game) {
 	const { common, state } = game;
-	const { giver, list, target, noRecurse } = action;
+	const { clue, giver, list, target, noRecurse } = action;
 
-	const { focused_card } = determine_focus(state.hands[target], common, list);
+	const { focused_card } = determine_focus(game, state.hands[target], common, list, clue);
 	const severity = stall_severity(prev_game.state, prev_game.common, giver);
 
 	logger.info('severity', severity);

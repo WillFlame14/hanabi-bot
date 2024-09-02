@@ -1,6 +1,7 @@
-import { cardCount } from '../../variants.js';
+import { CLUE } from '../../constants.js';
+import { cardCount, variantRegexes } from '../../variants.js';
 import { Hand } from '../../basics/Hand.js';
-import { visibleFind } from '../../basics/hanabi-util.js';
+import { knownAs, visibleFind } from '../../basics/hanabi-util.js';
 import * as Utils from '../../tools/util.js';
 
 import { logHand } from '../../tools/log.js';
@@ -11,6 +12,7 @@ import { logHand } from '../../tools/log.js';
  * @typedef {import('../h-player.js').HGroup_Player} Player
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
+ * @typedef {import('../../types.js').BaseClue} BaseClue
  * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').Identity} Identity
  */
@@ -20,19 +22,29 @@ import { logHand } from '../../tools/log.js';
  * 
  * The 'beforeClue' option is needed if this is called before the clue has been interpreted
  * to prevent focusing a previously clued card.
+ * @param {Game} game
  * @param {Hand} hand
  * @param {Player} player
  * @param {number[]} list 	The orders of all cards that were just clued.
+ * @param {BaseClue} clue
  * @param {{beforeClue?: boolean}} options
  */
-export function determine_focus(hand, player, list, options = {}) {
+export function determine_focus(game, hand, player, list, clue, options = {}) {
+	const { state } = game;
 	const chop = player.chop(hand);
+	const touch = hand.filter(c => list.includes(c.order));
 
 	// Chop card exists, check for chop focus
 	if (chop && list.includes(chop.order))
-		return { focused_card: chop, chop: true };
+		return { focused_card: chop, chop: true, positional: false };
 
-	const touch = hand.filter(c => list.includes(c.order));
+	const pink_choice_tempo = clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) &&
+		touch.every(c => c.clues.some(cl =>
+			(cl.type === CLUE.RANK && cl.value !== clue.value) || (cl.type === CLUE.COLOUR && state.variant.suits[cl.value].match(variantRegexes.pinkish)))) &&
+		list.includes(hand[clue.value - 1].order);
+
+	if (pink_choice_tempo)
+		return { focused_card: hand[clue.value - 1], chop: false, positional: true };
 
 	const focused_card =
 		touch.find(c => (options.beforeClue ? !c.clued : c.newly_clued)) ??		// leftmost newly clued
@@ -44,7 +56,7 @@ export function determine_focus(hand, player, list, options = {}) {
 		throw new Error('No focus found!');
 	}
 
-	return { focused_card, chop: false };
+	return { focused_card, chop: false, positional: false };
 }
 
 /**
@@ -137,6 +149,10 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 
 	if (touch.some(card => !card.clued))
 		return { tempo: false, valuable: false };
+
+	// Brown/pink tempo clues are always valuable
+	if ([variantRegexes.pinkish, variantRegexes.brownish].some(v => state.includesVariant(v) && touch.every(card => knownAs(game, card.order, v))))
+		return { tempo: true, valuable: true };
 
 	const prompt = common.find_prompt(state.hands[target], focused_card, state.variant);
 

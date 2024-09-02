@@ -4,7 +4,7 @@ import { select_play_clue, determine_playable_card, order_1s, find_clue_value, f
 import { UnsolvedGame, solve_game } from '../shared/endgame.js';
 import { find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
-import { determine_focus, inBetween, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
+import { inBetween, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
 import { cardValue, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
@@ -31,8 +31,10 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 	let priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 	let best_playable_card = playable_priorities[priority][0];
 
+	const unknown_1 = best_playable_card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1);
+
 	// Best playable card is an unknown 1, so we should order correctly
-	if (priority !== 0 && best_playable_card.clues.length > 0 && best_playable_card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1)) {
+	if (priority !== 0 && best_playable_card.clues.length > 0 && unknown_1) {
 		const ordered_1s = order_1s(state, common, playable_cards);
 
 		if (ordered_1s.length > 0 && game.level >= LEVEL.BASIC_CM) {
@@ -68,6 +70,11 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 				priority = 2;
 			}
 			best_playable_card = ordered_1s[best_ocm_index];
+		}
+		else {
+			// Play (possibly pinkish) 1s in order
+			const clued_1s = playable_priorities[priority].filter(c => c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+			best_playable_card = order_1s(state, common, clued_1s, { no_filter: true })[0];
 		}
 	}
 
@@ -336,15 +343,13 @@ export function take_action(game) {
 			if (better_givers.length > 0) {
 				let saved_for = [];
 				consider_clues = consider_clues.filter(clue => {
-					const hand = state.hands[clue.target];
-					const list = hand.clueTouched(clue, state.variant).map(c => c.order);
-					const finesse_order = game.players[clue.target].find_finesse(hand)?.order;
-					if (finesse_order !== determine_focus(state.hands[clue.target], common, list, {beforeClue: true}).focused_card.order)
+					if (game.players[clue.target].find_finesse(state.hands[clue.target])?.order !== clue.result.focus)
 						return true;
 
 					const save_for = find_clue_givers(game, clue, state.ourPlayerIndex).filter(playerIndex => better_givers.includes(playerIndex));
 					if (save_for.length == 0)
 						return true;
+
 					const value = find_clue_value(clue.result);
 					if (saved_clue === undefined || value > saved_clue_value) {
 						saved_for = save_for;
@@ -388,9 +393,7 @@ export function take_action(game) {
 
 	/** @param {Clue} clue */
 	const not_selfish = (clue) => {
-		const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
-		const { focused_card } = determine_focus(state.hands[clue.target], common, list, { beforeClue: true });
-		const { suitIndex } = focused_card;
+		const { suitIndex } = state.hands[clue.target].findOrder(clue.result.focus);
 
 		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
 			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
@@ -526,6 +529,9 @@ export function take_action(game) {
 	if (best_playable_card !== undefined)
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
+	const common_severity = stall_severity(state, common, state.ourPlayerIndex);
+	const actual_severity = stall_severity(state, game.me, state.ourPlayerIndex);
+
 	if (state.clue_tokens > 0) {
 		for (let i = actionPrioritySize + 1; i <= actionPrioritySize * 2; i++) {
 			// Give play clue (at correct priority level)
@@ -535,7 +541,7 @@ export function take_action(game) {
 				}
 				else {
 					logger.info('clue too low value', logClue(best_play_clue), clue_value);
-					stall_clues[1].push(best_play_clue);
+					stall_clues[Math.min(Math.max(0, common_severity - 1), 4)].push(best_play_clue);
 				}
 			}
 
@@ -568,9 +574,6 @@ export function take_action(game) {
 	// Early save
 	if (state.clue_tokens > 0 && urgent_actions[actionPrioritySize * 2].length > 0)
 		return urgent_actions[actionPrioritySize * 2][0];
-
-	const common_severity = stall_severity(state, common, state.ourPlayerIndex);
-	const actual_severity = stall_severity(state, game.me, state.ourPlayerIndex);
 
 	// Stalling situations
 	if (state.clue_tokens > 0 && actual_severity > 0 && common_severity > 0) {

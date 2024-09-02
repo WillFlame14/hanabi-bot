@@ -180,9 +180,9 @@ function connect(game, action, focusedCard, identity, looksDirect, connected, ig
  */
 export function find_own_finesses(game, action, identity, looksDirect, ignorePlayer = -1, selfRanks = []) {
 	const { common, state } = game;
-	const { giver, target, clue, list } = action;
+	const { giver, target, list, clue } = action;
 	const { suitIndex, rank } = identity;
-	const { focused_card } = determine_focus(state.hands[target], common, list, { beforeClue: true });
+	const { focused_card } = determine_focus(game, state.hands[target], common, list, clue, { beforeClue: true });
 
 	if (giver === state.ourPlayerIndex && ignorePlayer === -1)
 		throw new IllegalInterpretation('cannot finesse ourselves.');

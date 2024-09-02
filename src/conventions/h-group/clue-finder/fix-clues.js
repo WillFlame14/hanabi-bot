@@ -1,6 +1,6 @@
 import { LEVEL } from '../h-constants.js';
 import { cardTouched, direct_clues, variantRegexes } from '../../../variants.js';
-import { isSaved, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
+import { isSaved, isTrash, knownAs, visibleFind } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
@@ -140,7 +140,7 @@ function inference_corrected(game, order, _target) {
 		return card.possible.every(p => state.isBasicTrash(p));
 
 	// Revealed to be pink
-	if (card.possible.every(p => state.variant.suits[p.suitIndex].match(variantRegexes.pinkish)))
+	if (knownAs(game, order, variantRegexes.pinkish))
 		return card.inferred.every(i => !state.isPlayable(i)) && state.hasConsistentInferences(card);
 
 	return card.possible.every(p => !state.isPlayable(p));

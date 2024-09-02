@@ -481,3 +481,13 @@ export function permutations(arr) {
 
 	return range(0, arr.length).flatMap(i => permutations(arr.toSpliced(i, 1)).map(sub_arr => [arr[i]].concat(sub_arr)));
 }
+
+/**
+ * Clamps a number to a specified range.
+ * @param {number} num
+ * @param {number} min
+ * @param {number} max
+ */
+export function clampBetween(num, min, max) {
+	return Math.min(max, Math.max(num, min));
+}
