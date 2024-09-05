@@ -1,5 +1,5 @@
 import { CLUE } from '../../constants.js';
-import { cardCount, variantRegexes } from '../../variants.js';
+import { cardCount, colourableSuits, variantRegexes } from '../../variants.js';
 import { Hand } from '../../basics/Hand.js';
 import { knownAs, visibleFind } from '../../basics/hanabi-util.js';
 import * as Utils from '../../tools/util.js';
@@ -40,8 +40,8 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 
 	const pink_choice_tempo = clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) &&
 		touch.every(c => c.clues.some(cl =>
-			(cl.type === CLUE.RANK && cl.value !== clue.value) || (cl.type === CLUE.COLOUR && state.variant.suits[cl.value].match(variantRegexes.pinkish)))) &&
-		list.includes(hand[clue.value - 1].order);
+			(cl.type === CLUE.RANK && cl.value !== clue.value) || (cl.type === CLUE.COLOUR && colourableSuits(state.variant)[cl.value]?.match(variantRegexes.pinkish)))) &&
+		clue.value <= hand.length && list.includes(hand[clue.value - 1].order);
 
 	if (pink_choice_tempo)
 		return { focused_card: hand[clue.value - 1], chop: false, positional: true };

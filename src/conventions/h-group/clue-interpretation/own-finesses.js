@@ -432,5 +432,5 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 		}
 	}
 
-	throw new IllegalInterpretation('self-finesse not found');
+	throw new IllegalInterpretation(`self-finesse not found for ${logCard(identity)}`);
 }

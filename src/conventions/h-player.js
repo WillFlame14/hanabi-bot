@@ -4,7 +4,7 @@ import { cardValue } from '../basics/hanabi-util.js';
 import { CLUE } from '../constants.js';
 
 import * as Utils from '../tools/util.js';
-import { cardTouched, variantRegexes } from '../variants.js';
+import { cardTouched, colourableSuits, variantRegexes } from '../variants.js';
 
 /**
  * @typedef {import('../basics/Card.js').Card} Card
@@ -100,8 +100,9 @@ export class HGroup_Player extends Player {
 				possible.has(identity) &&					// must be a possibility
 				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 		// must not be information-locked on a different identity
 				clues.some(clue => cardTouched(identity, variant, clue)) &&				// at least one clue matches
-				(!variant.suits[identity.suitIndex].match(variantRegexes.pinkish) ||	// pink rank match
-					clues.some(clue => clue.type === CLUE.RANK && clue.value === identity.rank));
+				(!colourableSuits(variant)[identity.suitIndex]?.match(variantRegexes.pinkish) ||	// pink rank match
+					clues.some(clue => clue.type === CLUE.RANK && clue.value === identity.rank) ||
+					clues.some(clue => clue.type === CLUE.COLOUR && colourableSuits(variant)[clue.value]?.match(variantRegexes.pinkish)));
 		});
 
 		return (card && !ignoreOrders.includes(card.order)) ? card : undefined;

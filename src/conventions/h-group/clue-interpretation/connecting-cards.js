@@ -83,7 +83,8 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 			known_link = common.links.find(link =>
 				link.promised &&
 				link.identities.some(i => i.suitIndex === identity.suitIndex && i.rank === identity.rank) &&
-				link.cards.some(c => c.order === order));
+				link.cards.some(c => c.order === order) &&
+				link.cards.length >= link.identities.length);
 			return known_link !== undefined;
 		});
 
@@ -269,6 +270,8 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 	const { common, state, me } = game;
 	const { giver, target } = action;
 	const { suitIndex, rank } = identity;
+
+	logger.debug('looking for connecting', logCard(identity));
 
 	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, identity)) {
 		logger.info(`all ${logCard(identity)} in trash`);

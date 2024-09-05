@@ -220,8 +220,9 @@ export function find_symmetric_connections(new_game, game, action, inf_possibili
  * @param {Game} game
  * @param {Connection[]} connections
  * @param {number} giver
+ * @param {boolean} write_playables
  */
-export function assign_connections(game, connections, giver) {
+export function assign_connections(game, connections, giver, write_playables) {
 	const { common, state } = game;
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
@@ -276,29 +277,32 @@ export function assign_connections(game, connections, giver) {
 		}
 		else {
 			// There are multiple possible connections on this card
-			if (card.superposition) {
+			if (card.superposition)
 				card.inferred = card.inferred.union(identities);
-			}
-			else if (card.uncertain) {
+			else if (card.uncertain)
 				card.inferred = card.inferred.union(card.finesse_ids.intersect(identities));
-			}
-			else {
-				if (type === 'playable' && linked.length > 1) {
-					const existing_link = common.links.find(link => {
-						const { promised } = link;
-						const { suitIndex, rank } = link.identities[0];
-						return promised && identities[0].suitIndex === suitIndex && identities[0].rank === rank;
-					});
 
-					if (!(existing_link?.cards.length === linked.length && existing_link.cards.every(c => linked.some(l => l.order === c.order))))
-						common.links.push({ promised: true, identities, cards: linked });
-				}
-				else {
-					card.inferred = IdentitySet.create(state.variant.suits.length, identities);
-				}
+			if (type === 'playable' && linked.length > 1 && write_playables) {
+				const existing_link_index = common.links.find(link => {
+					const { promised } = link;
+					const { suitIndex, rank } = link.identities[0];
 
-				card.superposition = true;
+					return promised &&
+						identities[0].suitIndex === suitIndex && identities[0].rank === rank &&
+						link.cards.length === linked.length &&
+						link.cards.every(c => linked.some(l => l.order === c.order));
+				});
+
+				if (existing_link_index === undefined) {
+					logger.info('adding promised link with identities', identities.map(logCard), 'and cards', linked.map(c => c.order));
+					common.links.push({ promised: true, identities, cards: linked });
+				}
 			}
+			else if (!card.superposition && !card.uncertain) {
+				card.inferred = IdentitySet.create(state.variant.suits.length, identities);
+			}
+
+			card.superposition = true;
 		}
 
 		if (!card.uncertain && ((reacting === state.ourPlayerIndex && type !== 'known') || type === 'finesse')) {

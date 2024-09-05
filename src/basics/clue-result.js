@@ -120,55 +120,19 @@ export function playables_result(state, player, hypo_player) {
 	const finesses = [];
 	const playables = [];
 
-	/**
-	 * TODO: This might not find the right card if it was duplicated...
-	 * @param  {Identity} identity
-	 */
-	function find_card(identity) {
-		for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
-			const hand = state.hands[playerIndex];
+	for (const order of hypo_player.hypo_plays) {
+		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
+		const old_card = player.thoughts[order];
+		const hypo_card = hypo_player.thoughts[order];
 
-			for (const { order } of hand) {
-				const old_card = player.thoughts[order];
-				const hypo_card = hypo_player.thoughts[order];
-
-				if (hypo_card.saved && hypo_card.matches(identity, { infer: true }))
-					return { playerIndex, old_card, hypo_card };
-			}
-		}
-	}
-
-	// Count the number of finesses and newly known playable cards
-	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
-		for (let rank = player.hypo_stacks[suitIndex] + 1; rank <= hypo_player.hypo_stacks[suitIndex]; rank++) {
-			// Hypo stack increased from promised link, card won't be findable
-			if (hypo_player.links.some(link => link.promised && link.identities[0].suitIndex === suitIndex && link.identities[0].rank === rank))
-				continue;
-
-			const { playerIndex, old_card, hypo_card } = find_card({ suitIndex, rank });
-
-			if (hypo_card.finessed && !old_card.finessed)
-				finesses.push({ playerIndex, card: hypo_card });
-
-			// Only counts as a playable if it wasn't already playing
-			if (!player.unknown_plays.has(hypo_card.order))
-				playables.push({ playerIndex, card: hypo_card });
-		}
-	}
-
-	for (const order of hypo_player.unknown_plays) {
-		if (player.unknown_plays.has(order) || Array.from(player.unknown_plays).some(o => state.deck[order].matches(state.deck[o])))
+		// Only counts as a playable if it wasn't already playing
+		if (player.hypo_plays.has(order))
 			continue;
 
-		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
+		if (hypo_card.finessed && !old_card.finessed)
+			finesses.push({ playerIndex, card: hypo_card });
 
-		// Only count unknown playables if they actually go on top of the stacks
-		if (state.deck[order].rank > player.hypo_stacks[state.deck[order].suitIndex]) {
-			if (hypo_player.thoughts[order].finessed)
-				finesses.push({ playerIndex, card: hypo_player.thoughts[order] });
-
-			playables.push({ playerIndex, card: hypo_player.thoughts[order] });
-		}
+		playables.push({ playerIndex, card: hypo_card });
 	}
 
 	return { finesses, playables };

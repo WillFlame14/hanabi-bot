@@ -1,5 +1,4 @@
 import { CLUE } from '../../../constants.js';
-import { IdentitySet } from '../../../basics/IdentitySet.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
@@ -185,7 +184,7 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 	}
 
 	// Check for double tempo clue
-	if (list.length > 1) {
+	/* if (list.length > 1) {
 		const possibly_playable = touched_cards.filter(({ order }) => {
 			const card = common.thoughts[order];
 			return card.inferred.length > 1 &&
@@ -205,7 +204,7 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 			logger.info(`multiple tempo clue on ${slots.length > 1 ? `slots [${slots.join(',')}]` : `slot ${slots[0]}`}`);
 			return false;
 		}
-	}
+	} */
 
 	if (state.hands.some(hand => hand.some(c => !oldCommon.thoughts[c.order].finessed && common.thoughts[c.order].finessed))) {
 		logger.info('caused finesse, not tccm');

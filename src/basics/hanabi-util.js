@@ -1,4 +1,4 @@
-import { cardCount } from '../variants.js';
+import { cardCount, colourableSuits } from '../variants.js';
 
 /**
  * @typedef {import('./Game.js').Game} Game
@@ -151,5 +151,5 @@ export function refer_right(hand, index) {
  * @param {RegExp} regex
  */
 export function knownAs(game, order, regex) {
-	return game.common.thoughts[order].possible.every(i => game.state.variant.suits[i.suitIndex].match(regex));
+	return game.common.thoughts[order].possible.every(i => colourableSuits(game.state.variant)[i.suitIndex].match(regex));
 }

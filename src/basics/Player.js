@@ -31,6 +31,9 @@ export class Player {
 	/** @type {{ orders: number[], prereqs: Identity[], connected: number}[]} */
 	play_links;
 
+	/** @type {Set<number>} */
+	hypo_plays;
+
 	/**
 	 * @param {number} playerIndex
 	 * @param {IdentitySet} all_possible
@@ -58,6 +61,8 @@ export class Player {
 		 * The orders of playable cards whose identities are not known, according to each player. Used for identifying TCCMs.
 		 */
 		this.unknown_plays = unknown_plays;
+
+		this.hypo_plays = new Set();
 
 		this.waiting_connections = waiting_connections;
 		this.elims = elims;
@@ -307,8 +312,10 @@ export class Player {
 					continue;
 
 				if (id === undefined) {
-					// Playable, but the player doesn't know what card it is so hypo stacks aren't updated
+					// Playable, but the player doesn't know what card it is
 					unknown_plays.add(order);
+					already_played.add(order);
+					found_new_playable = true;
 
 					const promised_link = this.links.find(link => link.promised && link.cards.some(c => c.order === order));
 
@@ -322,8 +329,6 @@ export class Player {
 						else {
 							hypo_stacks[id2.suitIndex] = id2.rank;
 							good_touch_elim = good_touch_elim.union(id2);
-							found_new_playable = true;
-							already_played.add(order);
 						}
 					}
 					continue;
@@ -345,5 +350,6 @@ export class Player {
 		}
 		this.hypo_stacks = hypo_stacks;
 		this.unknown_plays = unknown_plays;
+		this.hypo_plays = already_played;
 	}
 }

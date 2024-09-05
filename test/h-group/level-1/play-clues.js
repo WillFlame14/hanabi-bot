@@ -162,6 +162,25 @@ describe('play clue', () => {
 		// Bob's 2 is [r2,y2,b2].
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order], ['r2', 'y2', 'b2']);
 	});
+
+	it(`doesn't erroneously assume red connections`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r4', 'r2', 'p3', 'b3']
+		], {
+			level: { min: 1 },
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Alice (slots 1,3,4)');
+		takeTurn(game, 'Alice plays y1 (slot 4)');
+		takeTurn(game, 'Bob clues 2 to Alice (slot 3)');			// This 2 could be y, or mystery depending on our other 1s.
+
+		const { play_clues } = find_clues(game);
+
+		// 2 to Bob is a nonsensical clue, we don't know where r1 is.
+		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 2));
+	});
 });
 
 describe('counting playables', () => {
@@ -302,6 +321,7 @@ describe('counting playables', () => {
 		const { play_clues } = find_clues(game);
 		const clue = play_clues[PLAYER.CATHY].find(clue => clue.type === CLUE.RANK && clue.value === 2);
 
+		// 2 to Cathy gets 1 new playable.
 		assert.ok(clue !== undefined);
 		assert.equal(clue.result.playables.length, 1);
 	});
