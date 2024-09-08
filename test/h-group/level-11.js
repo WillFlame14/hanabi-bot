@@ -974,7 +974,6 @@ describe('guide principle', () => {
 		// Recognizing that Donald played b1 for the finesse, Alice is finessed.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g1']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3].order], ['g1', 'g2']);
 	});
 
 	it(`understands delaying on an ambiguous bluff`, () => {

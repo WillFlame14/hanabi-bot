@@ -260,6 +260,32 @@ function urgent_save(game, action, focused_order, oldCommon) {
 }
 
 /**
+ * Connects on the play that will disprove a potential ambiguous bluff.
+ * @param {Game} game
+ * @param {FocusPossibility} ambiguous_bluff
+ * @param {Connection[]} connections
+ * @returns {Connection[]}
+ */
+export function connect_after(game, ambiguous_bluff, connections) {
+	const { common } = game;
+	if (!ambiguous_bluff || connections.length == 0)
+		return connections;
+	// Bluffs couldn't be resolved on time with an ambiguous finesse possibility.
+	if (connections[0].bluff)
+		return [];
+	logger.warn(`Adding connection on bluff disproving card`);
+	const ambiguous_play = ambiguous_bluff.connections[0].card.order;
+	const waiting_connection = common.waiting_connections.find(wc => wc.connections.some(c => c.card.order == ambiguous_play));
+	connections.splice(0, 0, {
+		type: 'waiting',
+		reacting: waiting_connection.target,
+		card: waiting_connection.focused_card,
+		identities: [waiting_connection.inference]
+	});
+	return connections;
+}
+
+/**
  * Interprets the given clue. First tries to look for inferred connecting cards, then attempts to find prompts/finesses.
  * @param {Game} game
  * @param {ClueAction} action
@@ -412,7 +438,8 @@ export function interpret_clue(game, action) {
 	const focus_possible = find_focus_possible(game, action);
 	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) => logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
 
-	const matched_inferences = focus_possible.filter(p => focus_thoughts.inferred.has(p));
+	const ambiguous_bluff = focus_possible.find(fp => focus_thoughts.inferred.has(fp) && focused_card.matches(fp) && fp.connections[0]?.type == 'finesse' && fp.connections[0].bluff && fp.connections[0].ambiguous);
+	const matched_inferences = focus_possible.filter(p => p != ambiguous_bluff && focus_thoughts.inferred.has(p));
 	const old_game = game.minimalCopy();
 
 	// Card matches an inference and not a save/stall
@@ -463,7 +490,7 @@ export function interpret_clue(game, action) {
 					continue;
 
 				try {
-					const connections = find_own_finesses(game, action, id, looksDirect);
+					const connections = connect_after(game, ambiguous_bluff, find_own_finesses(game, action, id, looksDirect));
 					logger.info('found connections:', logConnections(connections, id));
 
 					if (all_connections.some(fp => connections.some(conn =>
@@ -491,7 +518,7 @@ export function interpret_clue(game, action) {
 		else if (!state.isBasicTrash(focused_card)) {
 			const { suitIndex } = focused_card;
 			try {
-				const connections = find_own_finesses(game, action, focused_card, looksDirect);
+				const connections = connect_after(game, ambiguous_bluff, find_own_finesses(game, action, focused_card, looksDirect));
 				logger.info('found connections:', logConnections(connections, focused_card));
 				all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections), interp: CLUE_INTERP.PLAY });
 			}
@@ -508,7 +535,7 @@ export function interpret_clue(game, action) {
 			if (all_connections.length === 0) {
 				logger.warn('attempting to force finesse using asymmetric knowledge');
 				try {
-					const connections = find_own_finesses(game, action, focused_card, false);
+					const connections = connect_after(game, ambiguous_bluff, find_own_finesses(game, action, focused_card, false));
 					logger.info('found connections:', logConnections(connections, focused_card));
 					all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections), interp: CLUE_INTERP.PLAY });
 				}

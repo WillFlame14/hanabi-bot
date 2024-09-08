@@ -220,17 +220,8 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 				}
 			}
 
-			if (common.thoughts[finesse.order].touched) {
-				const waiting_connection = common.waiting_connections.find(conn => conn.connections.some(c => c.card.order == finesse.order));
-				if (waiting_connection) {
-					// TODO: Is this the right way to trigger the replay when we play the card that
-					// proves the uncertain finesse was true?
-					logger.warn(`Uncertain bluff, will trigger rewind on playing inferred ${logCard(waiting_connection.inference)}.`);
-					common.play_links.push({ orders: [waiting_connection.focused_card.order], prereqs: [waiting_connection.inference], connected: waiting_connection.focused_card.order });
-				}
-			}
-
-			return { type: 'finesse', reacting, card: finesse, hidden: true, bluff, identities: [finesse.raw()] };
+			const ambiguous = bluff && common.thoughts[finesse.order].touched;
+			return { type: 'finesse', reacting, card: finesse, ambiguous, hidden: true, bluff, identities: [finesse.raw()] };
 		}
 	}
 }

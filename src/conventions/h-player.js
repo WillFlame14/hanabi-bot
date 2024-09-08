@@ -130,7 +130,7 @@ export class HGroup_Player extends Player {
 
 		const certain = finessable.findIndex(card => !this.thoughts[card.order].uncertain);
 		if (certain != -1)
-			finessable = finessable.slice(0, certain + 1);
+			finessable = finessable.slice(0, certain + 1).reverse();
 
 		return finessable.filter(card => !ignoreOrders.includes(card.order));
 	}

@@ -125,8 +125,13 @@ export class Player {
 				(state.strikes === 2 ||
 					card.possible.some(p => state.play_stacks[p.suitIndex] + 1 < p.rank && p.rank <= state.max_ranks[p.suitIndex]) ||
 					Array.from(linked_orders).some(o => this.thoughts[o].focused && o !== c.order));
+			// We are waiting for a play to prove this connection
+			const waiting_proof = this.waiting_connections.some(wc =>
+				wc.connections.some((conn, ci) => ci >= wc.conn_index && conn.card.order === c.order &&
+					wc.connections.some((conn2, ci2) => ci2 >= wc.conn_index && ci > ci2 && conn2.type == 'waiting'))
+			);
 
-			return (!card.trash || card.possible.every(p => !state.isBasicTrash(p))) && !unsafe_linked &&
+			return (!card.trash || card.possible.every(p => !state.isBasicTrash(p))) && !unsafe_linked && !waiting_proof &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
 				((options?.assume ?? true) || !this.waiting_connections.some((wc, i1) =>
