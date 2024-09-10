@@ -178,7 +178,7 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 	const expected_discard = before_trash[0] ?? old_chop;
 
 	// Locked hand, blind played a chop moved card, discarded expected card
-	if (expected_discard === undefined || (action.failed && common.thoughts[order].chop_moved) || order === expected_discard.order)
+	if (expected_discard === undefined || (action.failed ? common.thoughts[order].chop_moved : order === expected_discard.order))
 		return;
 
 	const num_plays = (action.failed && order !== expected_discard.order) ? 2 : 1;
