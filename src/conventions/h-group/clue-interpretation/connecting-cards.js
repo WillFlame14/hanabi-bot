@@ -157,6 +157,8 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 	const prompt = common.find_prompt(hand, identity, state.variant, connected, ignoreOrders);
 	const finesse = common.find_finesse(hand, connected, ignoreOrders);
 
+	logger.debug('finding unknown connecting for', logCard(identity), state.playerNames[reacting], prompt?.order, finesse?.order, connected, ignoreOrders);
+
 	// Prompt takes priority over finesse
 	if (prompt !== undefined && prompt.identity() !== undefined) {
 		if (prompt.matches(identity))
@@ -226,22 +228,61 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
  * Determines whether a bluff connection is a valid bluff, and updates the connection accordingly.
  * @param {Game} game
  * @param {Connection[]} connections	The complete connections leading to the play of a card.
+ * @param {number} giver
  * @returns {Connection[]}
  */
-export function resolve_bluff(game, connections) {
+export function resolve_bluff(game, connections, giver) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
 
+	const { common, state } = game;
+
 	const next_visible = connections.findIndex(conn =>
-		!(conn.type === 'finesse' && conn.reacting === connections[0].reacting && (conn.card.identity() === undefined || game.state.isPlayable(conn.card))));
+		!(conn.type === 'finesse' && conn.reacting === connections[0].reacting && (conn.card.identity() === undefined || state.isPlayable(conn.card))));
 	const index = next_visible === -1 ? connections.length : next_visible;
 
-	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
-	if (connections.some((conn, i) => i >= index && (conn.hidden || conn.type === 'finesse'))) {
-		// If a bluff is not possible, we only have a valid connection if a real matching card was found
+	// A bluff cannot be followed by finesses, otherwise it wouldn't have been a valid bluff target.
+	let f_index = connections.findIndex((conn, i) => i >= index && conn.type === 'finesse');
+
+	// See if we can replace finesse connections with prompts in our own hand
+	if (giver !== state.ourPlayerIndex) {
+		while (f_index !== -1) {
+			const connected = connections.slice(0, f_index).map(conn => conn.card.order);
+			const prompt = common.find_prompt(state.hands[state.ourPlayerIndex], connections[f_index].identities[0], state.variant, connected, []);
+
+			if (prompt === undefined)
+				break;
+
+			logger.highlight('yellow', `replacing finesse connection [${logConnection(connections[f_index])}] with own prompt ${prompt.order}`);
+			connections[f_index] = { type: 'prompt', reacting: state.ourPlayerIndex, card: prompt, identities: connections[f_index].identities };
+			f_index = connections.findIndex((conn, i) => i >= index && conn.type === 'finesse');
+		}
+	}
+
+	if (f_index !== -1) {
+		// If a bluff is not possible, we only have a valid connection if all cards can be played
 		if (next_visible > 1) {
-			logger.warn('bluff invalid but connection still exists');
-			return connections.with(0, Object.assign(Utils.objClone(connections[0]), { bluff: false }));
+			let valid_finesse = true;
+
+			const hypo_stacks = state.play_stacks.slice();
+			for (const conn of connections) {
+				const { identities } = conn;
+
+				if (identities.length === 1) {
+					const { suitIndex, rank } = identities[0];
+
+					if (hypo_stacks[suitIndex] + 1 !== rank) {
+						valid_finesse = false;
+						break;
+					}
+					hypo_stacks[suitIndex] = rank;
+				}
+			}
+
+			if (valid_finesse) {
+				logger.warn('bluff invalid but connection still exists');
+				return connections.with(0, Object.assign(Utils.objClone(connections[0]), { bluff: false }));
+			}
 		}
 
 		logger.warn(`bluff invalid (${connections.map(logConnection).join(' -> ')}), followed by hidden/finesse connections`);
@@ -301,7 +342,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 
 	// Only consider prompts/finesses if no connecting cards found
 	for (let i = 0; i < state.numPlayers; i++) {
-		const playerIndex = (state.numPlayers + target - i - 1) % state.numPlayers;
+		const playerIndex = (state.numPlayers + giver - i - 1) % state.numPlayers;
 
 		// Clue receiver won't find known prompts/finesses in their hand unless it doesn't look direct
 		// Also disallow prompting/finessing a player when they may need to prove a finesse to us

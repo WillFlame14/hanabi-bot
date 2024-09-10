@@ -25,7 +25,7 @@ import { logCard, logConnections } from '../../../tools/log.js';
  */
 function find_colour_focus(game, suitIndex, action) {
 	const { common, state } = game;
-	const { clue, list, target } = action;
+	const { clue, giver, list, target } = action;
 	const { focused_card, chop } = determine_focus(game, state.hands[target], common, list, clue);
 
 	/** @type {FocusPossibility[]} */
@@ -75,7 +75,7 @@ function find_colour_focus(game, suitIndex, action) {
 			}
 
 			// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
-			const possible_connections = resolve_bluff(game, connections);
+			const possible_connections = resolve_bluff(game, connections, giver);
 			if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
 				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
 		}
@@ -91,7 +91,7 @@ function find_colour_focus(game, suitIndex, action) {
 	// Restore play stacks
 	state.play_stacks = old_play_stacks;
 
-	connections = resolve_bluff(game, connections);
+	connections = resolve_bluff(game, connections, giver);
 	if (connections.length == 0) {
 		// Undo plays invalidated by a false bluff.
 		next_rank = old_play_stacks[suitIndex] + 1;
@@ -133,6 +133,15 @@ function find_colour_focus(game, suitIndex, action) {
 					continue;
 			}
 
+			if (state.includesVariant(/Dark Rainbow/)) {
+				const completed_suit = common.hypo_stacks[suitIndex] === state.max_ranks[suitIndex];
+				const saved_crit = state.hands[target].some(c =>
+					state.isCritical(c) && c.newly_clued && c.rank !== 5 && !state.variant.suits[c.suitIndex].match(/Dark Rainbow/));
+
+				if (!completed_suit && !saved_crit)
+					continue;
+			}
+
 			// Check if card is critical or a brownish-2
 			if (state.isCritical({ suitIndex, rank }) || brown_poss.some(c => c.rank === 2))
 				focus_possible.push({ suitIndex, rank, save: true, connections: [], interp: CLUE_INTERP.SAVE });
@@ -166,8 +175,8 @@ function find_rank_focus(game, rank, action) {
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
 				continue;
 
-			// Don't consider loaded save with 3,4 in whitish variants
-			if (common.thinksLoaded(state, target) && state.includesVariant(variantRegexes.whitish) && (rank === 3 || rank === 4))
+			// Don't consider loaded save with 3,4 in whitish variants (also dark rainbow)
+			if (common.thinksLoaded(state, target) && state.includesVariant(Utils.combineRegex(variantRegexes.whitish, /Dark Rainbow/)) && (rank === 3 || rank === 4))
 				continue;
 
 			// Critical save or 2 save
@@ -240,7 +249,7 @@ function find_rank_focus(game, rank, action) {
 				looksDirect = focus_thoughts.identity() === undefined && looksSave;
 
 				if (rank === next_rank) {
-					const possible_connections = resolve_bluff(game, connections);
+					const possible_connections = resolve_bluff(game, connections, giver);
 					// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
 					if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
 						focus_possible.push({ suitIndex, rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
@@ -264,7 +273,7 @@ function find_rank_focus(game, rank, action) {
 			continue;
 		}
 
-		connections = resolve_bluff(game, connections);
+		connections = resolve_bluff(game, connections, giver);
 
 		if (connections.length == 0)
 			next_rank = old_play_stacks[suitIndex] + 1;

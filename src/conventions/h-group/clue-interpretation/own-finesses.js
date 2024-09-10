@@ -182,7 +182,7 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 	const { common, state } = game;
 	const { giver, target, list, clue } = action;
 	const { suitIndex, rank } = identity;
-	const { focused_card } = determine_focus(game, state.hands[target], common, list, clue, { beforeClue: true });
+	const { focused_card } = determine_focus(game, state.hands[target], common, list, clue);
 
 	if (giver === state.ourPlayerIndex && ignorePlayer === -1)
 		throw new IllegalInterpretation('cannot finesse ourselves.');
@@ -262,21 +262,33 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 			hypo_state.play_stacks[suitIndex]++;
 	}
 
-	const resolved_connections = resolve_bluff(game, connections);
+	const resolved_connections = resolve_bluff(game, connections, giver);
 
 	if (resolved_connections.length === 0 && state.play_stacks[suitIndex] + 1 !== rank) {
 		if (connections.length > 0) {
-			logger.highlight('yellow', 'bluff connection failed, retrying with true finesse');
+			logger.highlight('yellow', `bluff connection failed, retrying with true finesse ignoring ${connections[0].card.order}`);
+
 			const old_ignore = game.next_ignore[0]?.slice();
 			game.next_ignore[0] ??= [];
 			game.next_ignore[0].push({ order: connections[0].card.order });
 
-			const fixed_connections = find_own_finesses(game, action, identity, looksDirect, ignorePlayer, selfRanks);
+			try {
+				const fixed_connections = find_own_finesses(game, action, identity, looksDirect, ignorePlayer, selfRanks);
 
+				if (fixed_connections.length > 0) {
+					game.next_ignore[0] = old_ignore;
+					return fixed_connections;
+				}
+			}
+			catch (error) {
+				if (error instanceof IllegalInterpretation)
+					logger.warn(error.message);
+				else
+					throw error;
+			}
+
+			logger.highlight('yellow', 'failed to connect with true finesse');
 			game.next_ignore[0] = old_ignore;
-
-			if (fixed_connections.length > 0)
-				return fixed_connections;
 		}
 		throw new IllegalInterpretation(`unable to connect`);
 	}

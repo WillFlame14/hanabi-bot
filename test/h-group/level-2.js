@@ -305,6 +305,29 @@ describe('self-finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['r3']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, true);
 	});
+
+	it('correctly realizes self-finesses after symmetric possibilities are directly stomped', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y4', 'r5', 'y3', 'g4'],
+			['g4', 'p1', 'g1', 'r1'],
+			['r3', 'b4', 'g1', 'b2']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.BOB,
+			play_stacks: [0, 1, 0, 0, 0]
+		});
+
+		takeTurn(game, 'Bob clues 1 to Cathy');
+		takeTurn(game, 'Cathy plays r1', 'r2');
+		takeTurn(game, 'Donald clues 4 to Alice (slot 3)');		// could be red (most likely), or green, or purple
+
+		takeTurn(game, 'Alice discards y3 (slot 4)');
+		takeTurn(game, 'Bob clues red to Donald');				// finessing r2, proving the earlier finesse wasn't red
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['y4', 'g4', 'p4']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
+	});
 });
 
 describe('direct clues', () => {
@@ -496,11 +519,11 @@ describe('asymmetric clues', () => {
 			['g1', 'b4', 'y5', 'y2']
 		], {
 			level: { min: 2 },
-			play_stacks: [0, 1, 0, 0, 0]	// y1 is played.
+			play_stacks: [0, 1, 0, 0, 0],	// y1 is played.
+			starting: PLAYER.BOB
 		});
 
-		takeTurn(game, 'Alice clues 2 to Donald');
-		takeTurn(game, 'Bob clues 1 to Donald');
+		takeTurn(game, 'Bob clues 2 to Donald');
 		takeTurn(game, 'Cathy clues 4 to Bob');			// connecting on g2 (Bob, finesse) and g3 (Bob, finesse)
 
 		// There should be y3 -> y4 and g2 -> g3 -> g4 waiting connections.

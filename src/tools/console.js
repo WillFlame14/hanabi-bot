@@ -1,7 +1,10 @@
 import * as readline from 'readline';
+import { ACTION } from '../constants.js';
+import { handle } from '../command-handler.js';
+import * as Utils from './util.js';
+
 import logger from './logger.js';
 import { logHand, logLinks } from './log.js';
-import * as Utils from './util.js';
 
 /**
  * Initializes the console interactivity with the game state.
@@ -27,7 +30,7 @@ export function initConsole() {
 				logger.info();
 				const parts = command.join('').split(' ');
 
-				if (parts[0] !== 'spectate' && Utils.globals.game?.state === undefined) {
+				if (parts[0] !== 'spectate' && Utils.globals.game?.state === undefined && parts[0] !== 'rejoin') {
 					logger.error('No game specified. Try loading a replay or joining a game first.');
 					command = [];
 					return;
@@ -108,6 +111,39 @@ export function initConsole() {
 					case 'unattend':
 						Utils.sendCmd('tableUnattend', { tableID: game.tableID });
 						break;
+					case 'chat':
+						// @ts-ignore
+						handle.chat({ msg: parts[1], who: Utils.globals.username });
+						break;
+					case 'play': {
+						const slot = Number(parts[1]);
+
+						if (state.hands[state.ourPlayerIndex][slot - 1] === undefined) {
+							logger.warn('Invalid slot', slot - 1, 'provided');
+							break;
+						}
+
+						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.PLAY, target: state.hands[state.ourPlayerIndex][slot - 1].order });
+						break;
+					}
+					case 'discard': {
+						const slot = Number(parts[1]);
+
+						if (state.hands[state.ourPlayerIndex][slot - 1] === undefined) {
+							logger.warn('Invalid slot', slot - 1, 'provided');
+							break;
+						}
+
+						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.DISCARD, target: state.hands[state.ourPlayerIndex][slot - 1].order });
+						break;
+					}
+					case 'clue': {
+						const target = state.playerNames.findIndex(p => p === parts[1]);
+						const type = parts[2] === 'rank' ? ACTION.RANK : ACTION.COLOUR;
+						const value = Number(parts[3]);
+						Utils.sendCmd('action', { tableID: game.tableID, type, target, value });
+						break;
+					}
 					default:
 						logger.warn('Command not recognized.');
 				}

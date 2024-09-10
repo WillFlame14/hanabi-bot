@@ -210,7 +210,10 @@ export function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		if (last_reacting_action?.type === 'discard' && last_reacting_action.failed) {
+		const attempted_bomb = last_reacting_action?.type === 'discard' && last_reacting_action.failed &&
+			identities.some(i => game.players[reacting].thoughts[last_reacting_action.card.order].possible.has(i));
+
+		if (attempted_bomb) {
 			logger.warn(`${state.playerNames[reacting]} bombed, maybe tried to play into it`);
 			return { remove: false };
 		}

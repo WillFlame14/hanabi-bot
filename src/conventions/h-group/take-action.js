@@ -31,10 +31,10 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 	let priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 	let best_playable_card = playable_priorities[priority][0];
 
-	const unknown_1 = best_playable_card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1);
+	const unknown_1 = playable_priorities[priority].some(c => c.clues.length > 0 && c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
 
 	// Best playable card is an unknown 1, so we should order correctly
-	if (priority !== 0 && best_playable_card.clues.length > 0 && unknown_1) {
+	if (priority !== 0 && unknown_1) {
 		const ordered_1s = order_1s(state, common, playable_cards);
 
 		if (ordered_1s.length > 0 && game.level >= LEVEL.BASIC_CM) {
@@ -321,8 +321,7 @@ export function take_action(game) {
 
 	let best_play_clue, clue_value;
 	if (state.clue_tokens > 0) {
-		const all_play_clues = play_clues.flat();
-		let consider_clues = all_play_clues;
+		let consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined));
 		const chop = game.me.chop(state.hands[state.ourPlayerIndex]);
 		let saved_clue;
 		let saved_clue_value = -99;

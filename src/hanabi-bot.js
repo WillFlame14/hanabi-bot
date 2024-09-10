@@ -25,6 +25,8 @@ function connect(bot_index = '') {
 	const password = encodeURIComponent(process.env[p_field]);
 	const data = `username=${username}&password=${password}&version=bot`;
 
+	Utils.globalModify({ username });
+
 	const options = {
 		hostname: HANABI_HOSTNAME,
 		port: 443,
@@ -82,6 +84,9 @@ async function main() {
 	// Pass the websocket to utils
 	Utils.globalModify({ ws });
 	initConsole();
+
+	if (args.manual)
+		Utils.globalModify({ manual: true });
 
 	ws.on('open', () => console.log('Established websocket connection!'));
 	ws.on('error', (err) => console.log('Websocket error:', err));

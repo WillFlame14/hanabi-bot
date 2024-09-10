@@ -129,7 +129,7 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 	// const save_target = state.hands[target].chop();
 	// const playable_saves = play_clues.filter(({ playables }) => playables.some(c => c.matches(save_target.suitIndex, save_target.rank)));
 
-	const clue = Utils.maxOn(play_clues, (clue) => find_clue_value(clue.result));
+	const clue = Utils.maxOn(save_clue === undefined ? play_clues : play_clues.concat(save_clue), (clue) => find_clue_value(clue.result));
 
 	// Convert CLUE to ACTION
 	return Utils.clueToAction(clue, tableID);

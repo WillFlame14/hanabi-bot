@@ -4,6 +4,7 @@ import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logClue } from '../../tools/log.js';
+import { CLUE } from '../../constants.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -61,7 +62,10 @@ export function select_play_clue(play_clues) {
  * @param {{ no_filter?: boolean}} options
  */
 export function order_1s(state, player, cards, options = { no_filter: false }) {
-	const unknown_1s = options.no_filter ? cards : cards.filter(card => card.clues.length > 0 && player.thoughts[card.order].possible.every(p => p.rank === 1));
+	const unknown_1s = options.no_filter ? cards : cards.filter(card =>
+		card.clues.length > 0 &&
+		card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) &&
+		player.thoughts[card.order].inferred.every(p => p.rank === 1));
 
 	return unknown_1s.sort((card1, card2) => {
 		const [c1_start, c2_start] = [card1, card2].map(c => state.inStartingHand(c.order));

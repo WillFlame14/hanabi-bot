@@ -873,6 +873,44 @@ describe('bluff clues', () => {
 		// 3 to Bob is not a valid bluff, since Bob needs to wait for g1 and r1 to play first.
 		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 3));
 	});
+
+	it('does not give bluffs that connect strangely', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b1', 'g1', 'p2', 'y3'],
+			['r1', 'b1', 'r3', 'b4'],
+			['r1', 'p3', 'r3', 'r2']
+		], { level: { min: 11 } });
+
+		const { play_clues } = find_clues(game);
+
+		// 3 to Donald is not a valid bluff, since p3 is not 1-away.
+		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.RANK && clue.value === 3));
+	});
+
+	it('attempts to prompt when considering whether a bluff is valid', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b1', 'g1', 'p2', 'y3'],
+			['r1', 'b1', 'r3', 'b4'],
+			['b3', 'p3', 'r3', 'r2']
+		], {
+			level: { min: 11 },
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues blue to Alice (slots 1,3)');
+		takeTurn(game, 'Alice plays b1 (slot 1)');
+		takeTurn(game, 'Bob clues 4 to Alice (slot 1)');		// Could be b2 prompt (Alice) -> b3 finesse (Donald), or r1 bluff (Cathy) -> b3 prompt (Alice)
+
+		// Cathy's r1 should be finessed as a possible bluff.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order].finessed, true);
+
+		takeTurn(game, 'Cathy plays r1', 'g2');
+
+		// Alice's slot 3 should be known as b3.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['b3']);
+	});
 });
 
 describe('guide principle', () => {

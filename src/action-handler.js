@@ -115,7 +115,8 @@ export function handle_action(action) {
 
 			if (currentPlayerIndex === state.ourPlayerIndex && !this.catchup) {
 				if (this.in_progress) {
-					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), state.options.speedrun ? 0 : 2000);
+					if (Utils.globals.manual === undefined)
+						setTimeout(() => Utils.sendCmd('action', this.take_action(this)), state.options.speedrun ? 0 : 2000);
 				}
 				// Replaying a turn
 				else {

@@ -134,8 +134,6 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 
 	const correct_match = inf_possibilities.find(p => focused_card.matches(p));
 
-	game.interpretMove(inf_possibilities.some(p => p.save) ? CLUE_INTERP.SAVE : CLUE_INTERP.PLAY);
-
 	if (target !== state.ourPlayerIndex && !correct_match?.save) {
 		const selfRanks = Array.from(new Set(inf_possibilities.flatMap(({ connections }) =>
 			connections.filter(conn => conn.type === 'finesse' && conn.reacting === target && conn.identities.length === 1
@@ -159,6 +157,13 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			}
 		}
 
+		const simplest_symmetric_connections = occams_razor(game, symmetric_fps.filter(fp => !fp.fake).concat(inf_possibilities), target, focused_card.order);
+		if (!simplest_symmetric_connections.some(fp => focused_card.matches(fp))) {
+			logger.warn(`invalid clue, simplest symmetric connections are ${simplest_symmetric_connections.map(logCard).join()}`);
+			game.interpretMove(CLUE_INTERP.NONE);
+			return;
+		}
+
 		for (const conn of symmetric_fps.concat(inf_possibilities).flatMap(fp => fp.connections)) {
 			if (conn.type === 'playable') {
 				const orders = Array.from(conn.linked.map(c => c.order));
@@ -178,6 +183,8 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			.union(old_inferred.filter(inf => symmetric_fps.some(fp => !fp.fake && inf.matches(fp))))
 			.intersect(focus_thoughts.possible);
 	}
+
+	game.interpretMove(inf_possibilities.some(p => p.save) ? CLUE_INTERP.SAVE : CLUE_INTERP.PLAY);
 	reset_superpositions(game);
 }
 
@@ -303,7 +310,7 @@ export function interpret_clue(game, action) {
 	const to_remove = new Set();
 
 	for (const [i, waiting_connection] of Object.entries(common.waiting_connections)) {
-		const { connections, conn_index, focused_card: wc_focus, inference, target: wc_target } = waiting_connection;
+		const { connections, conn_index, action_index, focused_card: wc_focus, inference, target: wc_target } = waiting_connection;
 
 		const impossible_conn = connections.find((conn, index) => {
 			const { reacting, card, identities } = conn;
@@ -320,6 +327,25 @@ export function interpret_clue(game, action) {
 				last_reacting_action?.card.order === card.order &&
 				!identities.some(id => last_reacting_action.card.matches(id));
 		});
+
+		const focus_id = focused_card.identity();
+
+		if (focus_id !== undefined && list.length === 1) {
+			const stomped_conn_index = connections.findIndex(conn =>
+				conn.identities.every(i => focus_id.suitIndex === i.suitIndex && focus_id.rank === i.rank));
+			const stomped_conn = connections[stomped_conn_index];
+
+			if (stomped_conn) {
+				logger.warn(`connection [${connections.map(logConnection)}] had connection clued directly, cancelling`);
+
+				const real_connects = connections.filter((conn, index) => index < stomped_conn_index && !conn.hidden).length;
+				const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order: stomped_conn.card.order, inference });
+				if (new_game) {
+					Object.assign(game, new_game);
+					return;
+				}
+			}
+		}
 
 		if (impossible_conn !== undefined)
 			logger.warn(`connection [${connections.map(logConnection)}] depends on revealed card having identities ${impossible_conn.identities.map(logCard)}`);

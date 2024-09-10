@@ -35,8 +35,13 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 
 	const old_chop = common.chop(state.hands[target]);
 
-	if (chop_moved.length === 0)
+	if (chop_moved.length === 0) {
+		// Chop can be clued later
+		if (state.hands.some(hand => hand.some(c => c.matches(old_chop) && c.order !== old_chop.order)))
+			return -10;
+
 		return Math.max(find_clue_value(result), state.isCritical(old_chop) ? 0.1 : -Infinity);
+	}
 
 	const saved_trash = chop_moved.filter(card =>
 		state.isBasicTrash(card) ||

@@ -265,7 +265,7 @@ export const handle = {
 	 * Received when we send an invalid command.
 	 */
 	warning: (data) => {
-		if (last_sender === undefined) {
+		if (Utils.globals.manual || last_sender === undefined) {
 			logger.error(data.warning);
 		}
 		else {

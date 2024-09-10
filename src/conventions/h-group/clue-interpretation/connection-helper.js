@@ -355,8 +355,9 @@ export function connection_score(focus_possibility, playerIndex) {
 }
 
 /**
+ * @template {Pick<FocusPossibility, 'suitIndex'| 'rank' | 'connections'>} T
  * @param {Game} game
- * @param {FocusPossibility[]} focus_possibilities
+ * @param {T[]} focus_possibilities
  * @param {number} playerIndex
  * @param {number} focused_order
  */
