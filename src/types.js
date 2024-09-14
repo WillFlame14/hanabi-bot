@@ -99,9 +99,10 @@
  * @property {boolean} [hidden]
  * @property {boolean} [bluff]
  * @property {boolean} [possibly_bluff]
- * @property {ActualCard[]} [linked]
+ * @property {ActualCard[]} [linked]	Only used in 'playable' connections.
  * @property {boolean} [certain]
  * @property {boolean} [ambiguous]
+ * @property {boolean} [asymmetric]		Only used in 'known' connections.
  * 
  * @typedef FocusPossibility
  * @property {number} suitIndex

@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, VARIANTS, setup, takeTurn } from '../test-utils.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
@@ -598,6 +598,27 @@ describe('asymmetric clues', () => {
 
 		// Alice's slot 2 should be [y2,g2] (not r2).
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y2', 'g2']);
+	});
+
+	it('prefers to self-finesse over assuming asymmetric information', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g4', 'r1', 'y5', 'r2', 'b4'],
+			['r3', 'g3', 'b2', 'b3', 'm4']
+		], {
+			level: { min: 2 },
+			play_stacks: [0, 0, 2, 0, 3],
+			discarded: ['r3', 'm4'],
+			variant: VARIANTS.RAINBOW
+		});
+
+		takeTurn(game, 'Alice clues red to Cathy');				// r1,r3,m4
+		takeTurn(game, 'Bob clues 5 to Alice (slot 5)');		// 5 Save
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
+
+		// Alice's slot 1 should be finessed as g3.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 	});
 });
 

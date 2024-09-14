@@ -281,6 +281,12 @@ export function take_action(game) {
 	if (is_finessed && playable_cards.some(c => common.thoughts[c.order].bluffed || common.thoughts[c.order].possibly_bluffed))
 		return { tableID, type: ACTION.PLAY, target: best_playable_card.order };
 
+	// ALways give a save clue after a Generation Discard to avoid desync
+	if (state.generated && save_clues[nextPlayerIndex]?.safe) {
+		logger.info('giving save clue after generation!');
+		return Utils.clueToAction(save_clues[nextPlayerIndex], tableID);
+	}
+
 	const urgent_actions = find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities, is_finessed ? best_playable_card : undefined);
 
 	if (urgent_actions.some(actions => actions.length > 0))

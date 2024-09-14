@@ -114,7 +114,7 @@ describe('pink 1s assumption', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'i3', 'i2', 'r1', 'g3'],
 		], {
-			level: { min: 3 },
+			level: { min: 4 },
 			clue_tokens: 7,
 			play_stacks: [1, 0, 0, 0, 0],
 			starting: PLAYER.BOB,

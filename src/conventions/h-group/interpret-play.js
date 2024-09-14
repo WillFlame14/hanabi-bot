@@ -8,14 +8,15 @@ import logger from '../../tools/logger.js';
 /**
  * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../h-player.js').HGroup_Player} Player
+ * @typedef {import('../../types.js').CardAction} CardAction
  * @typedef {import('../../types.js').PlayAction} PlayAction
  */
 
 /**
  * @param {Game} game
- * @param {PlayAction} action
+ * @param {CardAction} action
  */
-function check_ocm(game, action) {
+export function check_ocm(game, action) {
 	const { common, state } = game;
 	const { order, playerIndex } = action;
 

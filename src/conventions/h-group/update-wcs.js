@@ -1,5 +1,5 @@
 import { LEVEL } from './h-constants.js';
-import { inBetween, older_queued_finesse } from './hanabi-logic.js';
+import { getRealConnects, inBetween, older_queued_finesse } from './hanabi-logic.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logConnection } from '../../tools/log.js';
@@ -221,7 +221,7 @@ export function resolve_card_retained(game, waiting_connection) {
 		logger.warn(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);
 
 		if (reacting !== state.ourPlayerIndex) {
-			const real_connects = connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
+			const real_connects = getRealConnects(connections, conn_index);
 			const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
 			if (new_game) {
 				Object.assign(game, new_game);

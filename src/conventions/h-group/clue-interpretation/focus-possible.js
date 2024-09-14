@@ -282,7 +282,10 @@ function find_rank_focus(game, rank, action) {
 
 		// Connected cards can stack up to this rank
 		if (rank === next_rank || positional) {
-			if (connections.some(conn => conn.reacting === target && conn.hidden && conn.identities[0].rank + 1 === rank))
+			const self_clandestine = connections.some(conn =>
+				conn.reacting === target && conn.type === 'finesse' && conn.hidden && conn.identities[0].rank + 1 === rank);
+
+			if (self_clandestine)
 				logger.warn('illegal clandestine self-finesse!');
 
 			else if (connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target)))

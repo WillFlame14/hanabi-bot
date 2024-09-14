@@ -51,7 +51,7 @@ function own_prompt(game, finesses, prompt, identity) {
 		if (game.level < LEVEL.INTERMEDIATE_FINESSES)
 			throw new IllegalInterpretation('blocked hidden finesse at level 1');
 
-		return [{ type: 'known', reacting, card: prompt, hidden: true, self: true, identities: [prompt.raw()] }];
+		return [{ type: 'prompt', reacting, card: prompt, hidden: true, self: true, identities: [prompt.raw()] }];
 	}
 
 	if (card.matches(identity, { assume: true }))
@@ -161,7 +161,7 @@ function connect(game, action, focusedCard, identity, looksDirect, connected, ig
 	const asymmetric_own = state.hands[giver].find(c => c.matches(identity) && c.clued);
 	if (asymmetric_own) {
 		logger.warn(`assuming ${state.playerNames[giver]} knows about their own ${logCard(identity)} asymmetrically`);
-		return [{ type: 'known', reacting: giver, card: asymmetric_own, identities: [identity] }];
+		return [{ type: 'known', reacting: giver, card: asymmetric_own, identities: [identity], asymmetric: true }];
 	}
 
 	return [];

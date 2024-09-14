@@ -911,6 +911,26 @@ describe('bluff clues', () => {
 		// Alice's slot 3 should be known as b3.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['b3']);
 	});
+
+	it('correctly interprets a bluff where a hidden finesse is impossible', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'g3', 'b3', 'm2'],
+			['r2', 'y4', 'g4', 'y3'],
+			['g2', 'b4', 'm4', 'y1']
+		], {
+			level: { min: 11 },
+			starting: PLAYER.BOB,
+			variant: VARIANTS.RAINBOW
+		});
+
+		takeTurn(game, 'Bob clues red to Alice (slot 2)');		// r1, m1
+		takeTurn(game, 'Cathy clues red to Bob');				// m2 (promising m1 in Alice's hand)
+		takeTurn(game, 'Donald clues red to Cathy');			// bluffing Alice (cannot be hidden finesse)
+
+		// Alice's slot 1 should be finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+	});
 });
 
 describe('guide principle', () => {

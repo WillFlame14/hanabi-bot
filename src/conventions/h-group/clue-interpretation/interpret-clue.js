@@ -2,7 +2,7 @@ import { CLUE } from '../../../constants.js';
 import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { interpret_tcm, interpret_5cm, interpret_tccm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
-import { determine_focus, rankLooksPlayable } from '../hanabi-logic.js';
+import { determine_focus, getRealConnects, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { IllegalInterpretation, RewindEscape, find_own_finesses } from './own-finesses.js';
 import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor, connection_score } from './connection-helper.js';
@@ -114,7 +114,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		const matches = focused_card.matches(inference, { assume: true }) && game.players[target].thoughts[focused_card.order].possible.has(inference);
 		// Don't assign save connections or known false connections
 		if (!save && matches)
-			assign_connections(game, connections, giver, focused_card.matches(inference));
+			assign_connections(game, connections, giver, focused_card, inference);
 
 		// Multiple possible sets, we need to wait for connections
 		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
@@ -184,7 +184,17 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			.intersect(focus_thoughts.possible);
 	}
 
-	game.interpretMove(inf_possibilities.some(p => p.save) ? CLUE_INTERP.SAVE : CLUE_INTERP.PLAY);
+	const interp = inf_possibilities.some(p => p.save) ? CLUE_INTERP.SAVE : CLUE_INTERP.PLAY;
+	game.interpretMove(interp);
+
+	// If a save clue was given to the next player after a scream, then the discard was actually for generation.
+	if (interp === CLUE_INTERP.SAVE && target === state.nextPlayerIndex(giver) && state.screamed_at) {
+		const old_chop = state.hands[giver].find(c => common.thoughts[c.order].chop_moved);
+		common.thoughts[old_chop.order].chop_moved = false;
+
+		logger.highlight('yellow', `undoing scream discard chop move on ${old_chop.order} due to generation!`);
+	}
+
 	reset_superpositions(game);
 }
 
@@ -338,7 +348,7 @@ export function interpret_clue(game, action) {
 			if (stomped_conn) {
 				logger.warn(`connection [${connections.map(logConnection)}] had connection clued directly, cancelling`);
 
-				const real_connects = connections.filter((conn, index) => index < stomped_conn_index && !conn.hidden).length;
+				const real_connects = getRealConnects(connections, stomped_conn_index);
 				const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order: stomped_conn.card.order, inference });
 				if (new_game) {
 					Object.assign(game, new_game);
@@ -585,7 +595,7 @@ export function interpret_clue(game, action) {
 
 	// Pink 1's Assumption
 	if (state.includesVariant(variantRegexes.pinkish) && clue.type === CLUE.RANK && clue.value === 1) {
-		const clued_1s = state.hands[target].filter(c => c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+		const clued_1s = state.hands[target].filter(c => c.clues.length > 0 && c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
 		const ordered_1s = order_1s(state, common, clued_1s, { no_filter: true });
 
 		if (ordered_1s.length > 0) {

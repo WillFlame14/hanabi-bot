@@ -14,6 +14,7 @@ import { logHand } from '../../tools/log.js';
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').BaseClue} BaseClue
  * @typedef {import('../../types.js').Clue} Clue
+ * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').Identity} Identity
  */
 
@@ -227,4 +228,12 @@ export function getIgnoreOrders(game, index, suitIndex) {
 	return (game.next_ignore[index] ?? [])
 		.filter(i => i.inference === undefined || i.inference.suitIndex === suitIndex)
 		.map(i => i.order);
+}
+
+/**
+ * @param {Connection[]} connections
+ * @param {number} conn_index
+ */
+export function getRealConnects(connections, conn_index) {
+	return connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
 }

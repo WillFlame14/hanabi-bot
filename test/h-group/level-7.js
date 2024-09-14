@@ -182,6 +182,31 @@ describe('generation discards', () => {
 
 		// Alice should discard slot 4 to generate for Cathy.
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3].order });
+
+		// Bob's slot 5 should not be chop moved.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4].order].chop_moved, false);
+	});
+
+	it(`interprets generation over sdcm`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r2', 'g4', 'b4', 'r1'],
+			['g1', 'b3', 'r2', 'y3', 'p5']
+		], {
+			level: { min: 7 },
+			clue_tokens: 1
+		});
+
+		takeTurn(game, 'Alice clues red to Bob');
+		takeTurn(game, 'Bob discards b4', 'g3');		// Could be scream or generation
+
+		assert.equal(game.state.screamed_at, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4].order].chop_moved, true);
+
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
+
+		// Alice now knows that it was a generation discard.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4].order].chop_moved, false);
 	});
 
 	it(`doesn't perform a gen discard if they can connect`, () => {

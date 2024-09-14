@@ -171,6 +171,13 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 		return false;
 	}
 
+	const id = focused_card.identity();
+
+	if (id !== undefined && common.hypo_stacks[id.suitIndex] < id.rank) {
+		logger.info('focused card did not become playable, not tccm');
+		return false;
+	}
+
 	const focus_thoughts = common.thoughts[focused_card.order];
 	const not_promptable = focus_thoughts.inferred.every(i => {
 		const prompt = oldCommon.find_prompt(state.hands[target], i, state.variant);

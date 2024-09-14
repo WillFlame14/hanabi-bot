@@ -352,7 +352,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 					index >= wc.conn_index && conn.type === 'finesse' && conn.reacting === playerIndex))))
 			continue;
 
-		const connections = [];
+		const connections = /** @type {Connection[]} */ ([]);
 		const already_connected = connected.slice();
 		state.play_stacks = old_play_stacks.slice();
 
@@ -406,21 +406,21 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 		const playable_conns = state.hands[state.ourPlayerIndex].filter(({order}) => {
 			const card = me.thoughts[order];
 
+			const possibly_hidden = () =>
+				card.uncertain && card.possible.has(identity) && card.finesse_ids.has(identity);
+
 			return !ignoreOrders.includes(order) &&
 				!connected.includes(order) &&
-				(card.inferred.has(identity) || (card.uncertain && card.possible.has(identity) && card.finesse_ids.has(identity))) &&		// At least one inference must match
+				(card.inferred.has(identity) || possibly_hidden()) &&		// At least one inference must match
 				card.matches(identity, { assume: true }) &&				// If we know the card (from a rewind), it must match
 				((card.inferred.every(i => state.isPlayable(i)) && card.clued) || card.finessed);	// Must be playable
 		});
 
 		if (playable_conns.length > 0) {
-			const multiple_1s = rank === 1 &&
-				playable_conns.some(card => card.clues.length > 0 && me.thoughts[card.order].possible.every(p => p.rank === 1));
-
 			return [{
 				type: 'playable',
 				reacting: state.ourPlayerIndex,
-				card: multiple_1s ? order_1s(state, common, playable_conns)[0] : playable_conns.at(-1),	  // If necessary, reorder to oldest 1 to avoid prompting
+				card: (rank === 1 && order_1s(state, common, playable_conns)[0]) || playable_conns.at(-1),	  // If necessary, reorder to oldest 1 to avoid prompting
 				linked: playable_conns,
 				identities: [identity]
 			}];

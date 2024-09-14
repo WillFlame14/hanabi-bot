@@ -95,25 +95,25 @@ export class ActualCard extends BasicCard {
  */
 export class Card extends BasicCard {
 	/**
-	 * All possibilities of the card (from positive/negative information)
+	 * All possibilities of the card (from positive/negative information).
 	 * @type {IdentitySet}
 	 */
 	possible;
 
 	/**
-	 * All inferences of the card (from conventions)
+	 * All inferences of the card (from conventions).
 	 * @type {IdentitySet}
 	 */
 	inferred;
 
 	/**
-	 * All possibilities of the card (from future information)
+	 * All possibilities of the card (from future information).
 	 * @type {Identity[] | undefined}
 	 */
 	rewind_ids;
 
 	/**
-	 * All finesse possibilities of the card
+	 * All finesse possibilities of the card (hidden if this card is not finessed).
 	 * @type {IdentitySet | undefined}
 	 */
 	finesse_ids;

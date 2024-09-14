@@ -220,18 +220,19 @@ export function find_symmetric_connections(new_game, game, action, inf_possibili
  * @param {Game} game
  * @param {Connection[]} connections
  * @param {number} giver
- * @param {boolean} write_playables
+ * @param {ActualCard} focused_card
+ * @param {Identity} inference
  */
-export function assign_connections(game, connections, giver, write_playables) {
-	const { common, state } = game;
+export function assign_connections(game, connections, giver, focused_card, inference) {
+	const { common, state, me } = game;
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
-	for (let i = 0; i < connections.length; i++) {
-		const { type, reacting, bluff, possibly_bluff, hidden, card: conn_card, linked, identities, certain } = connections[i];
+	for (const conn of connections) {
+		const { type, reacting, bluff, possibly_bluff, hidden, card: conn_card, linked, identities, certain } = conn;
 		// The connections can be cloned, so need to modify the card directly
 		const card = common.thoughts[conn_card.order];
 
-		logger.debug('assigning connection', logConnection(connections[i]));
+		logger.debug('assigning connection', logConnection(conn));
 
 		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
 		card.old_inferred ??= card.inferred;
@@ -282,7 +283,7 @@ export function assign_connections(game, connections, giver, write_playables) {
 			else if (card.uncertain)
 				card.inferred = card.inferred.union(card.finesse_ids.intersect(identities));
 
-			if (type === 'playable' && linked.length > 1 && write_playables) {
+			if (type === 'playable' && linked.length > 1 && focused_card.matches(inference)) {
 				const existing_link_index = common.links.find(link => {
 					const { promised } = link;
 					const { suitIndex, rank } = link.identities[0];
@@ -305,7 +306,13 @@ export function assign_connections(game, connections, giver, write_playables) {
 			card.superposition = true;
 		}
 
-		if (!card.uncertain && ((reacting === state.ourPlayerIndex && type !== 'known') || type === 'finesse')) {
+		const uncertain = !card.uncertain && ((reacting === state.ourPlayerIndex) ?
+			// If we're reacting, we are uncertain if the card is not known and there is some other card in our hand that allows for a swap
+			type !== 'known' && identities.some(i => state.hands[state.ourPlayerIndex].some(c => c.order !== card.order && me.thoughts[c.order].possible.has(i))) :
+			// If we're not reacting, we are uncertain if the connection is a finesse that could be ambiguous
+			type === 'finesse' && !(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)));
+
+		if (uncertain) {
 			card.finesse_ids = IdentitySet.create(state.variant.suits.length, bluff ? currently_playable_identities : playable_identities);
 			card.uncertain = true;
 		}
@@ -327,11 +334,12 @@ export function assign_connections(game, connections, giver, write_playables) {
 export function connection_score(focus_possibility, playerIndex) {
 	const { connections } = focus_possibility;
 
+	const asymmetric_penalty = connections.filter(conn => conn.asymmetric).length * 100;
 	const first_self = connections.findIndex(conn => conn.type !== 'known' && conn.type !== 'playable');
 
 	// Starts on someone else
 	if (connections[first_self]?.reacting !== playerIndex)
-		return 0;
+		return asymmetric_penalty;
 
 	let blind_plays = 0, bluffs = 0, prompts = 0, self = 0;
 
@@ -341,17 +349,18 @@ export function connection_score(focus_possibility, playerIndex) {
 		if (conn.reacting === playerIndex)
 			self++;
 
-		if (conn.type === 'finesse')
+		if (conn.type === 'finesse') {
 			blind_plays++;
 
-		if (conn.bluff && !conn.self)
-			bluffs++;
+			if (conn.bluff && !conn.self)
+				bluffs++;
+		}
 
 		if (conn.type === 'prompt')
 			prompts++;
 	}
 
-	return 10*blind_plays + 1*bluffs + 0.1*prompts + 0.01*self;
+	return asymmetric_penalty + 10*blind_plays + 1*bluffs + 0.1*prompts + 0.01*self;
 }
 
 /**

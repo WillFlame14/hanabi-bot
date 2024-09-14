@@ -65,7 +65,7 @@ export function order_1s(state, player, cards, options = { no_filter: false }) {
 	const unknown_1s = options.no_filter ? cards : cards.filter(card =>
 		card.clues.length > 0 &&
 		card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) &&
-		player.thoughts[card.order].inferred.every(p => p.rank === 1));
+		player.thoughts[card.order].possible.every(p => p.rank === 1));
 
 	return unknown_1s.sort((card1, card2) => {
 		const [c1_start, c2_start] = [card1, card2].map(c => state.inStartingHand(c.order));
@@ -79,6 +79,9 @@ export function order_1s(state, player, cards, options = { no_filter: false }) {
 
 		if (c2.finessed)
 			return 1;
+
+		if (c1.chop_when_first_clued && c2.chop_when_first_clued)
+			return c2.order - c1.order;
 
 		// c1 is chop focus
 		if (c1.chop_when_first_clued)
