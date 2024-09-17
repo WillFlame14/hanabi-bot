@@ -18,9 +18,11 @@ describe('visible elim', () => {
 		], {
 			level: { min: 1 },
 			play_stacks: [5, 0, 0, 0, 0, 0],
+			starting: PLAYER.DONALD,
 			variant: VARIANTS.SIX_SUITS
 		});
 
+		takeTurn(game, 'Donald clues green to Alice (slot 1)');
 		takeTurn(game, 'Alice clues 5 to Bob');
 		takeTurn(game, 'Bob clues 5 to Cathy');
 		takeTurn(game, 'Cathy clues 5 to Donald');

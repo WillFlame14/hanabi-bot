@@ -575,7 +575,7 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Bob clues purple to Cathy');
 
 		// Alice's slot 2 can be any 3 (not prompted to be p3).
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'y3', 'g3', 'b3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'y3', 'g3', 'b3', 'p3']);
 	});
 
 	it(`doesn't consider already-finessed possibilities`, () => {
@@ -689,6 +689,20 @@ describe(`occam's razor`, () => {
 });
 
 describe('early game', () => {
+	it('will not 5 stall on a trash 5', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g4', 'r5', 'r4', 'y4', 'b3'],
+		], {
+			level: { min: 2 },
+			discarded: ['r4', 'r4'],
+			clue_tokens: 7
+		});
+
+		const action = game.take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
+	});
+
 	it('gives a bad touch play clue on turn 1 rather than something random', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

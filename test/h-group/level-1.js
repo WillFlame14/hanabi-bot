@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { ACTION, CLUE } from '../../src/constants.js';
-import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
@@ -170,20 +170,6 @@ describe('save clue', () => {
 });
 
 describe('early game', () => {
-	it('will not 5 stall on a trash 5', () => {
-		const game = setup(HGroup, [
-			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['g4', 'r5', 'r4', 'y4', 'b3'],
-		], {
-			level: { min: 1 },
-			discarded: ['r4', 'r4'],
-			clue_tokens: 7
-		});
-
-		const action = game.take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
-	});
-
 	it(`doesn't try to save in early game when clues are available`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -197,6 +183,22 @@ describe('early game', () => {
 		takeTurn(game, 'Cathy clues blue to Alice (slot 2)');
 
 		// Bob can clue Cathy's r1.
+		assert.equal(early_game_clue(game, PLAYER.BOB), true);
+	});
+
+	it(`doesn't try to save in early game when duplicated clues are available`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g4', 'r2', 'r4', 'p4'],
+			['r1', 'b4', 'y4', 'r1'],
+			['y2', 'b3', 'b3', 'r1']
+		], {
+			level: { min: 11 },
+			clue_tokens: 7,
+			variant: VARIANTS.BLACK		// Necessary so that cluing (potential) k1 is treated as a save clue
+		});
+
+		// Bob can must clue at least one r1.
 		assert.equal(early_game_clue(game, PLAYER.BOB), true);
 	});
 });

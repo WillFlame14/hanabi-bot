@@ -6,6 +6,7 @@ import { State } from '../basics/State.js';
 import { ACTION, CLUE } from '../constants.js';
 import { types } from 'node:util';
 import logger from './logger.js';
+import { IdentitySet } from '../basics/IdentitySet.js';
 
 /**
  * @typedef {typeof import('../constants.js').ACTION} ACTION
@@ -118,7 +119,7 @@ export function objClone(obj, depth = 0) {
 	if (obj instanceof Hand || obj instanceof Player || obj instanceof ActualCard || obj instanceof Card)
 		return /** @type {T} */ (obj.clone());
 
-	if (obj instanceof BasicCard)
+	if (obj instanceof BasicCard || obj instanceof IdentitySet)
 		return obj;
 
 	if (Array.isArray(obj))
@@ -465,7 +466,7 @@ export function allSubsetsOfSize(arr, size) {
 	if (size === 1)
 		return arr.map(i => [i]);
 
-	return allSubsetsOfSize(arr.slice(1), size - 1).map(subset => subset.concat(arr[0]))
+	return allSubsetsOfSize(arr.slice(1), size - 1).map(subset => subset.concat([arr[0]]))
 		.concat(allSubsetsOfSize(arr.slice(1), size));
 }
 

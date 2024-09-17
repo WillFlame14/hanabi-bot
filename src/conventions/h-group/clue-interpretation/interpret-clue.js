@@ -51,8 +51,8 @@ function apply_good_touch(game, action) {
 			if (card.finessed && oldThoughts[order].inferred.length >= 1 && card.inferred.length === 0) {
 				// TODO: Possibly try rewinding older reasoning until rewind works?
 				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
-				const new_game = game.rewind(action_index, { type: 'finesse', list, clue: action.clue }) ??
-					game.rewind(action_index, { type: 'ignore', order, conn_index: 0 });		// Rewinding the layered finesse doesn't work, just ignore us then.
+				const new_game = game.rewind(action_index, [{ type: 'finesse', list, clue: action.clue }]) ??
+					game.rewind(action_index, [{ type: 'ignore', order, conn_index: 0 }]);		// Rewinding the layered finesse doesn't work, just ignore us then.
 
 				if (new_game) {
 					Object.assign(game, new_game);
@@ -203,20 +203,25 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
  * @param {FocusPossibility[]} focus_possibilities
  */
 export function finalize_connections(focus_possibilities) {
-	const bluff_connections = focus_possibilities.some(fp => fp.connections[0]?.bluff);
+	const bluff_orders = focus_possibilities.filter(fp => fp.connections[0]?.bluff).flatMap(fp => fp.connections[0].card.order);
 
-	if (!bluff_connections)
+	if (bluff_orders.length === 0)
 		return focus_possibilities;
 
 	return focus_possibilities.filter(({ connections }) => {
+		const first_conn = connections[0];
 		// A non-bluff connection is invalid if it requires a self finesse after a potential bluff play.
 		// E.g. if we could be bluffed for a 3 in one suit, we can't assume we have the connecting 2 in another suit.
-		const valid = connections.length < 2 || connections[0].bluff || !(connections[1].type === 'finesse' && connections[1].self);
+		const invalid = connections.length >= 2 &&
+			first_conn.type === 'finesse' &&
+			!first_conn.bluff &&
+			bluff_orders.includes(first_conn.card.order) &&
+			connections[1].self;
 
-		if (!valid)
+		if (invalid)
 			logger.highlight('green', `removing ${connections.map(logConnection).join(' -> ')} self finesse due to possible bluff interpretation`);
 
-		return valid;
+		return !invalid;
 	});
 }
 
@@ -309,7 +314,7 @@ export function interpret_clue(game, action) {
 
 		// There is a waiting connection that depends on this card
 		if (focus_thoughts.possible.length === 1 && common.dependentConnections(focused_card.order).length > 0) {
-			const new_game = game.rewind(focused_card.drawn_index, { type: 'identify', order: focused_card.order, playerIndex: target, identities: [focus_thoughts.possible.array[0].raw()] });
+			const new_game = game.rewind(focused_card.drawn_index, [{ type: 'identify', order: focused_card.order, playerIndex: target, identities: [focus_thoughts.possible.array[0].raw()] }]);
 			if (new_game) {
 				Object.assign(game, new_game);
 				return;
@@ -349,7 +354,7 @@ export function interpret_clue(game, action) {
 				logger.warn(`connection [${connections.map(logConnection)}] had connection clued directly, cancelling`);
 
 				const real_connects = getRealConnects(connections, stomped_conn_index);
-				const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order: stomped_conn.card.order, inference });
+				const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: real_connects, order: stomped_conn.card.order, inference }]);
 				if (new_game) {
 					Object.assign(game, new_game);
 					return;
@@ -370,7 +375,7 @@ export function interpret_clue(game, action) {
 		const rewind_identity = common.thoughts[rewind_card.order]?.identity();
 
 		if (rewind_identity !== undefined && !common.thoughts[rewind_card.order].rewinded && wc_target === state.ourPlayerIndex && state.hands[state.ourPlayerIndex].findOrder(rewind_card.order)) {
-			const new_game = game.rewind(rewind_card.drawn_index, { type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] });
+			const new_game = game.rewind(rewind_card.drawn_index, [{ type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] }]);
 			if (new_game) {
 				Object.assign(game, new_game);
 				return;

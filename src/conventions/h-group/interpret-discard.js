@@ -81,7 +81,7 @@ export function interpret_discard(game, action, card) {
 		}
 
 		const real_connects = getRealConnects(connections, dc_conn_index);
-		const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
+		const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: real_connects, order, inference }]);
 		if (new_game) {
 			Object.assign(game, new_game);
 			return;
@@ -102,7 +102,7 @@ export function interpret_discard(game, action, card) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
 		const action_index = card.drawn_index;
-		const new_game = game.rewind(action_index, { type: 'identify', order, playerIndex, identities: [{ suitIndex, rank }] }, thoughts.finessed);
+		const new_game = game.rewind(action_index, [{ type: 'identify', order, playerIndex, identities: [{ suitIndex, rank }] }], thoughts.finessed);
 		if (new_game) {
 			Object.assign(game, new_game);
 			return;

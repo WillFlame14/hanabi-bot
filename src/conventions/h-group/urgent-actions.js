@@ -30,7 +30,7 @@ import { ActualCard } from '../../basics/Card.js';
  * @returns {number | undefined}	The order of the card to play, otherwise undefined.
  */
 export function find_unlock(game, target) {
-	const { me, state } = game;
+	const { common, me, state } = game;
 
 	for (const card of state.hands[target]) {
 		const { suitIndex, rank } = card;
@@ -45,7 +45,10 @@ export function find_unlock(game, target) {
 
 		// The card must become playable
 		const known = game.players[target].thoughts[card.order].inferred.every(c => state.isPlayable(c) || c.matches(card)) ||
-			(game.level >= LEVEL.STALLING && game.players[target].anxietyPlay(state, state.hands[target]).order === card.order);
+			(game.level >= LEVEL.STALLING &&
+				common.thinksLocked(state, target) &&
+				state.clue_tokens === 0 &&
+				game.players[target].anxietyPlay(state, state.hands[target]).order === card.order);
 
 		if (known)
 			return our_connecting.order;
@@ -141,6 +144,8 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
  * @param {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} interp
  */
 function expected_early_game_clue(game, clue, interp) {
+	const { common, state } = game;
+
 	switch(interp) {
 		case CLUE_INTERP.STALL_5:
 			return game.level >= 2 && !game.stalled_5;
@@ -150,7 +155,12 @@ function expected_early_game_clue(game, clue, interp) {
 
 		case CLUE_INTERP.SAVE: {
 			const save_clue = /** @type {SaveClue} */(clue);
-			return save_clue.cm === undefined || save_clue.cm.length === 0;
+			const chop = common.chop(state.hands[clue.target]);
+			const duplicate_holders = Utils.range(0, state.numPlayers).filter(i => state.hands[i].some(c => c.matches(chop) && c.order !== chop.order));
+
+			return (save_clue.cm === undefined || save_clue.cm.length === 0) &&
+				!duplicate_holders.includes(clue.target) &&
+				(save_clue.playable || duplicate_holders.length === 0);
 		}
 
 		default:

@@ -312,7 +312,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 	const { giver, target } = action;
 	const { suitIndex, rank } = identity;
 
-	logger.debug('looking for connecting', logCard(identity));
+	logger.debug('looking for connecting', logCard(identity), looksDirect);
 
 	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, identity)) {
 		logger.info(`all ${logCard(identity)} in trash`);

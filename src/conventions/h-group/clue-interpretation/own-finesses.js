@@ -392,7 +392,10 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 			return [{ type: 'finesse', reacting, card: finesse, hidden: true, self: true, bluff: possibly_bluff, identities: [finesse.raw()] }];
 	}
 
-	if ((card.inferred.has(identity) && card.matches(identity, { assume: true })) || (possibly_bluff && card.inferred.some(id => state.isPlayable(id)))) {
+	const true_finesse = card.inferred.has(identity) && card.matches(identity, { assume: true });
+	const bluffable_ids = possibly_bluff && card.inferred.filter(id => state.isPlayable(id));
+
+	if (true_finesse || bluffable_ids.length > 0) {
 		if (game.level === 1 && connected.length > 1)
 			throw new IllegalInterpretation(`blocked ${finesses >= 1 ? 'double finesse' : 'prompt + finesse'} at level 1`);
 
@@ -413,7 +416,9 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 			return state.hands.flat().find(c => c.order === ignored_order).matches(identity);
 		});
 
-		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff: !card.possible.has(identity), possibly_bluff, identities: [identity], certain, ambiguous }];
+		const identities = true_finesse ? [identity] : bluffable_ids;
+
+		return [{ type: 'finesse', reacting, card: finesse, self: true, bluff: !card.possible.has(identity), possibly_bluff, identities, certain, ambiguous }];
 	}
 
 	const first_finesse = common.thoughts[our_hand.find(c => !c.clued)?.order];
@@ -422,12 +427,12 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 	if (allow_rewind && first_finesse?.finessed && !game.ephemeral_rewind) {
 		try {
 			logger.highlight('yellow', 'trying rewind on', first_finesse.order, 'to fulfill finesse');
-			const new_game = game.rewind(first_finesse.drawn_index, {
+			const new_game = game.rewind(first_finesse.drawn_index, [{
 				type: 'identify',
 				order: first_finesse.order,
 				playerIndex: state.ourPlayerIndex,
 				identities: [identity]
-			}, false, true);
+			}], false, true);
 
 			if (new_game) {
 				new_game.ephemeral_rewind = false;

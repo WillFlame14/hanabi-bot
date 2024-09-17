@@ -133,10 +133,10 @@ function find_colour_focus(game, suitIndex, action) {
 					continue;
 			}
 
-			if (state.includesVariant(/Dark Rainbow/)) {
+			if (state.includesVariant(/Dark Rainbow|Dark Prism/)) {
 				const completed_suit = common.hypo_stacks[suitIndex] === state.max_ranks[suitIndex];
 				const saved_crit = state.hands[target].some(c =>
-					state.isCritical(c) && c.newly_clued && c.rank !== 5 && !state.variant.suits[c.suitIndex].match(/Dark Rainbow/));
+					state.isCritical(c) && c.newly_clued && c.rank !== 5 && !state.variant.suits[c.suitIndex].match(/Dark Rainbow|Dark Prism/));
 
 				if (!completed_suit && !saved_crit)
 					continue;
@@ -175,8 +175,12 @@ function find_rank_focus(game, rank, action) {
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
 				continue;
 
-			// Don't consider loaded save with 3,4 in whitish variants (also dark rainbow)
-			if (common.thinksLoaded(state, target) && state.includesVariant(Utils.combineRegex(variantRegexes.whitish, /Dark Rainbow/)) && (rank === 3 || rank === 4))
+			// Don't consider loaded save with 3,4 in whitish variants (also dark rainbow/prism)
+			const loaded_34 = common.thinksLoaded(state, target) &&
+				state.includesVariant(Utils.combineRegex(variantRegexes.whitish, /Dark Rainbow|Dark Prism/)) &&
+				(rank === 3 || rank === 4);
+
+			if (loaded_34)
 				continue;
 
 			// Critical save or 2 save

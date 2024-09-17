@@ -203,7 +203,7 @@ export function resolve_card_retained(game, waiting_connection) {
 			(wc.connections[wc.conn_index].reacting !== reacting || last_reacting_action?.type === 'play'));
 
 		if (unplayable_connections.length > 0) {
-			logger.warn('not all possibilities playable', unplayable_connections.map(wc =>
+			logger.warn(last_reacting_action?.type, 'but not all possibilities playable', unplayable_connections.map(wc =>
 				`${wc.connections.map(logConnection).join(' -> ')}  (${wc.connections.find((conn, index) =>
 					index >= conn_index && conn.card.order === order && conn.identities.some(i => state.playableAway(i) > 0)
 				).identities.map(logCard).join()})`));
@@ -222,7 +222,7 @@ export function resolve_card_retained(game, waiting_connection) {
 
 		if (reacting !== state.ourPlayerIndex) {
 			const real_connects = getRealConnects(connections, conn_index);
-			const new_game = game.rewind(action_index, { type: 'ignore', conn_index: real_connects, order, inference });
+			const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: real_connects, order, inference }]);
 			if (new_game) {
 				Object.assign(game, new_game);
 				return { quit: true };
@@ -238,13 +238,13 @@ export function resolve_card_retained(game, waiting_connection) {
 	else if (last_reacting_action?.type === 'discard' && !state.screamed_at && !state.generated) {
 		const unplayable_identities = identities.filter(i => !state.isBasicTrash(i) && !state.isPlayable(i));
 		if (type === 'positional' && unplayable_identities.length > 0) {
-			logger.warn('not all possibilities playable', unplayable_identities.map(logCard));
+			logger.warn('discarded but not all possibilities playable', unplayable_identities.map(logCard));
 			return { remove: false };
 		}
 
 		logger.warn(`${state.playerNames[reacting]} discarded with a waiting connection, removing inference ${logCard(inference)}`);
 
-		const new_game = game.rewind(action_index, { type: 'ignore', conn_index: 0, order, inference });
+		const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: 0, order, inference }]);
 		if (new_game) {
 			Object.assign(game, new_game);
 			return { quit: true };

@@ -5,6 +5,7 @@ import { knownAs, visibleFind } from '../../basics/hanabi-util.js';
 import * as Utils from '../../tools/util.js';
 
 import { logHand } from '../../tools/log.js';
+import { order_1s } from './action-helper.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -31,7 +32,7 @@ import { logHand } from '../../tools/log.js';
  * @param {{beforeClue?: boolean}} options
  */
 export function determine_focus(game, hand, player, list, clue, options = {}) {
-	const { state } = game;
+	const { common, state } = game;
 	const chop = player.chop(hand);
 	const touch = hand.filter(c => list.includes(c.order));
 
@@ -46,6 +47,14 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 
 	if (pink_choice_tempo)
 		return { focused_card: hand[clue.value - 1], chop: false, positional: true };
+
+	if (clue.type === CLUE.RANK && clue.value === 1) {
+		const unknown_1s = touch.filter(c => c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+		const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
+
+		if (ordered_1s.length > 0)
+			return { focused_card: ordered_1s[0], chop: false, positional: false };
+	}
 
 	const focused_card =
 		touch.find(c => (options.beforeClue ? !c.clued : c.newly_clued)) ??		// leftmost newly clued

@@ -3,6 +3,7 @@ import { Hand } from './Hand.js';
 import { cardCount, colourableSuits } from '../variants.js';
 
 import * as Utils from '../tools/util.js';
+import { IdentitySet } from './IdentitySet.js';
 
 /**
  * @typedef {import('../basics/Card.js').ActualCard} ActualCard
@@ -77,6 +78,8 @@ export class State {
 
 		for (let i = 0; i < this.numPlayers; i++)
 			this.hands.push(new Hand());
+
+		this.base_ids = new IdentitySet(variant.suits.length, 0);
 	}
 
 	/**

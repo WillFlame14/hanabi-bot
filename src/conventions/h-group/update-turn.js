@@ -165,6 +165,35 @@ export function update_turn(game, action) {
 		thoughts.uncertain = false;
 	}
 
+	let min_drawn_index = state.actionList.length;
+
+	// Rewind any confirmed finesse connections we have now
+	const rewind_actions = demonstrated.reduce((acc, { card }) => {
+		const playerIndex = state.hands.findIndex(hand => hand.findOrder(card.order));
+
+		if (playerIndex !== state.ourPlayerIndex || common.thoughts[card.order].rewinded)
+			return acc;
+
+		const id = common.thoughts[card.order].identity({ infer: true });
+		if (id === undefined)
+			return acc;
+
+		acc.push({ type: 'identify', order: card.order, playerIndex: state.ourPlayerIndex, identities: [id] });
+
+		if (card.drawn_index < min_drawn_index)
+			min_drawn_index = card.drawn_index;
+
+		return acc;
+	}, []);
+
+	if (rewind_actions.length > 0) {
+		const new_game = game.rewind(min_drawn_index, rewind_actions);
+		if (new_game) {
+			Object.assign(game, new_game);
+			return;
+		}
+	}
+
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const { focused_card, inference } = common.waiting_connections[i];
 

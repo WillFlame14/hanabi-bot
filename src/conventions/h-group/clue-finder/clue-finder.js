@@ -170,6 +170,7 @@ export function find_clues(game, options = {}) {
 			Object.assign(result, { discard });
 
 			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = result;
+			const interp = /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.moveHistory.at(-1).move);
 
 			const result_log = {
 				clue: logClue(clue),
@@ -183,7 +184,7 @@ export function find_clues(game, options = {}) {
 				playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
 				chop_moved: chop_moved.map(c => `${logCard(state.deck[c.order])} ${c.order}`),
 				discard: discard ? logCard(discard) : undefined,
-				interp: hypo_game.moveHistory.at(-1).move
+				interp
 			};
 			logger.info('result,', JSON.stringify(result_log), find_clue_value(result));
 
@@ -206,7 +207,7 @@ export function find_clues(game, options = {}) {
 					logger.highlight('yellow', `${logClue(clue)} save results in avoidable potential duplication`);
 			}
 
-			switch (hypo_game.moveHistory.at(-1).move) {
+			switch (interp) {
 				case CLUE_INTERP.CM_TEMPO: {
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, clue.result.playables, focused_card);
 
@@ -273,11 +274,17 @@ export function find_clues(game, options = {}) {
 					break;
 			}
 
-			if (early_exits(game, clue, /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.moveHistory.at(-1).move))) {
+			if (early_exits(game, clue, interp)) {
+				if (interp === CLUE_INTERP.SAVE)
+					save_clues[target] = saves.at(-1);
+
 				early_exit = true;
 				break;
 			}
 		}
+
+		if (early_exit)
+			break;
 
 		save_clues[target] = Utils.maxOn(saves, (save_clue) => {
 			const value = save_clue_value(game, save_clue.game, save_clue, [...saves, ...play_clues[target]]);
@@ -285,9 +292,6 @@ export function find_clues(game, options = {}) {
 			logger.debug('save clue', logClue(save_clue), 'has value', value);
 			return value;
 		}, 0);
-
-		if (early_exit)
-			break;
 	}
 
 	const all_clues = [...save_clues.filter(c => c !== undefined), ...play_clues.flat(), ...stall_clues.flat()];

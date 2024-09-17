@@ -69,7 +69,7 @@ function isStall(game, action, giver, severity, prev_game) {
 
 		// Tempo clue given
 		if (playables.length > 0 && find_clue_value(clue_result) < minimum_clue_value(state)) {
-			logger.info('tempo clue stall! value', find_clue_value(clue_result));
+			logger.info('tempo clue stall! value', find_clue_value(clue_result), playables.map(p => p.card.order));
 			return CLUE_INTERP.STALL_TEMPO;
 		}
 
@@ -127,7 +127,7 @@ function expected_clue(_game, clue, interp) {
  * @param {Game} prev_game
  */
 export function stalling_situation(game, action, prev_game) {
-	const { common, state } = game;
+	const { common, state, me } = game;
 	const { clue, giver, list, target, noRecurse } = action;
 
 	const { focused_card } = determine_focus(game, state.hands[target], common, list, clue);
@@ -149,11 +149,22 @@ export function stalling_situation(game, action, prev_game) {
 	const { play_clues, save_clues, stall_clues } = find_clues(game, options);
 	logger.flush(false);
 
-	const expected =
-		play_clues.flat().find(cl =>
-			cl.result.playables.some(({ card }) => card.newly_clued) && cl.result.bad_touch === 0 && focused_card.order !== cl.result.focus) ??
-		save_clues.find(cl => cl !== undefined && (cl.cm === undefined || cl.cm.length === 0) && focused_card.order !== cl.result.focus) ??
-		stall_clues.slice(0, stall_to_severity[stall]).find(clues => clues.some(cl => focused_card.order !== cl.result.focus))?.[0];
+	const expected_play = () => play_clues.flat().find(cl =>
+		cl.result.playables.some(({ card }) => card.newly_clued) && cl.result.bad_touch === 0 && focused_card.order !== cl.result.focus);
+
+	const expected_save = () => save_clues.find((cl, target) => {
+		if (cl === undefined || cl.cm?.length > 0 || focused_card.order === cl.result.focus)
+			return false;
+
+		const chop = common.chop(state.hands[target]);
+
+		// Not a 2 save that could be duplicated in our hand
+		return !(cl.type === CLUE.RANK && cl.value === 2 && state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].possible.has(chop)));
+	});
+
+	const expected_stall = () => stall_clues.slice(0, stall_to_severity[stall]).find(clues => clues.some(cl => focused_card.order !== cl.result.focus))?.[0];
+
+	const expected = expected_play() ?? expected_save() ?? expected_stall();
 
 	if (expected !== undefined) {
 		logger.highlight('yellow', `expected ${logClue(expected)}, not interpreting stall`);

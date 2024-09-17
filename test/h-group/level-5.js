@@ -233,14 +233,21 @@ describe('ambiguous clues', () => {
 			['p4', 'r1', 'g4', 'p4'],
 			['p4', 'b2', 'b3', 'y4'],
 			['r1', 'y2', 'r4', 'r5']
-		], { level: { min: 5 }, starting: PLAYER.BOB, play_stacks: [0, 0, 0, 0, 0] });
+		], {
+			level: { min: 5 },
+			starting: PLAYER.BOB
+		});
+
 		takeTurn(game, 'Bob clues 5 to Donald');
 		takeTurn(game, 'Cathy clues red to Bob');
 		takeTurn(game, 'Donald discards r4', 'r5');
+
 		assert.equal(game.common.waiting_connections.some(conn =>
 			conn.connections[0]?.reacting == PLAYER.ALICE &&
 			conn.connections[0].card.order == game.state.hands[PLAYER.ALICE][0].order), true);
+
 		takeTurn(game, 'Alice discards y2 (slot 4)');
+
 		assert.equal(game.common.waiting_connections.length, 0);
 	});
 });

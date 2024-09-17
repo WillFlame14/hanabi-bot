@@ -8,6 +8,7 @@ import { logCard, logConnection, logConnections } from '../../../tools/log.js';
 import * as Utils from '../../../tools/util.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 import { LEVEL } from '../h-constants.js';
+import { variantRegexes } from '../../../variants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -140,6 +141,10 @@ export function find_symmetric_connections(new_game, game, action, inf_possibili
 	for (const id of focused_card.inferred) {
 		// Receiver won't consider trash possibilities or ones that are subsumed by real possibilities
 		if (isTrash(state, common, id, focused_card.order) || inf_possibilities.some(fp => fp.suitIndex === id.suitIndex && fp.rank >= id.rank))
+			continue;
+
+		// Pink promise
+		if (clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) && id.rank !== clue.value)
 			continue;
 
 		const visible_dupe = state.hands.some((hand, i) => {
