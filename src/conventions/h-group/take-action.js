@@ -80,7 +80,7 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 
 	if (game.level >= LEVEL.INTERMEDIATE_FINESSES && priority === 0) {
 		playable_priorities[0] = playable_priorities[0].filter(c => {
-			const older_finesse = older_queued_finesse(state.hands[state.ourPlayerIndex], common, c.order);
+			const older_finesse = older_queued_finesse(state.ourHand, common, c.order);
 
 			if (older_finesse !== undefined)
 				logger.warn('older finesse', logCard(older_finesse), older_finesse.order, 'could be layered, unable to play newer finesse', logCard(c));
@@ -304,7 +304,7 @@ export function take_action(game) {
 			return action;
 	}
 
-	const discardable = trash_cards[0] ?? common.chop(state.hands[state.ourPlayerIndex]);
+	const discardable = trash_cards[0] ?? common.chop(state.ourHand);
 
 	if (!is_finessed && state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
 		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
@@ -328,7 +328,7 @@ export function take_action(game) {
 	let best_play_clue, clue_value;
 	if (state.clue_tokens > 0) {
 		let consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined));
-		const chop = game.me.chop(state.hands[state.ourPlayerIndex]);
+		const chop = game.me.chop(state.ourHand);
 		let saved_clue;
 		let saved_clue_value = -99;
 
@@ -402,7 +402,7 @@ export function take_action(game) {
 
 		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
 			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
-				!state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches({ suitIndex, rank }, { infer: true })));
+				!state.ourHand.some(c => me.thoughts[c.order].matches({ suitIndex, rank }, { infer: true })));
 	};
 
 	// Consider finesses while finessed if we are only waited on to play one card,
@@ -428,7 +428,7 @@ export function take_action(game) {
 				continue;
 
 			const identity = { suitIndex, rank: state.play_stacks[suitIndex] + 1 };
-			const slot1 = state.hands[state.ourPlayerIndex][0];
+			const slot1 = state.ourHand[0];
 
 			if (visibleFind(state, me, identity, { infer: true }).length === 0 && me.thoughts[slot1.order].possible.has(identity)) {
 				logger.highlight('yellow', 'trying to play slot 1 as', logCard(identity));
@@ -599,7 +599,7 @@ export function take_action(game) {
 			}
 
 			// Bomb discardable slot, or slot 1
-			const target = discardable.order ?? state.hands[state.ourPlayerIndex][0].order;
+			const target = discardable.order ?? state.ourHand[0].order;
 			return { tableID, type: ACTION.PLAY, target };
 		}
 

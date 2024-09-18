@@ -118,23 +118,23 @@ export function initConsole() {
 					case 'play': {
 						const slot = Number(parts[1]);
 
-						if (state.hands[state.ourPlayerIndex][slot - 1] === undefined) {
+						if (state.ourHand[slot - 1] === undefined) {
 							logger.warn('Invalid slot', slot - 1, 'provided');
 							break;
 						}
 
-						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.PLAY, target: state.hands[state.ourPlayerIndex][slot - 1].order });
+						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.PLAY, target: state.ourHand[slot - 1].order });
 						break;
 					}
 					case 'discard': {
 						const slot = Number(parts[1]);
 
-						if (state.hands[state.ourPlayerIndex][slot - 1] === undefined) {
+						if (state.ourHand[slot - 1] === undefined) {
 							logger.warn('Invalid slot', slot - 1, 'provided');
 							break;
 						}
 
-						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.DISCARD, target: state.hands[state.ourPlayerIndex][slot - 1].order });
+						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.DISCARD, target: state.ourHand[slot - 1].order });
 						break;
 					}
 					case 'clue': {

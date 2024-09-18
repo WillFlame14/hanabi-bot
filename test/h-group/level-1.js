@@ -11,6 +11,7 @@ import { early_game_clue } from '../../src/conventions/h-group/urgent-actions.js
 
 import logger from '../../src/tools/logger.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
+import { logPerformAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -19,7 +20,7 @@ describe('save clue', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
-			['g3', 'p1', 'b3', 'b2', 'b5']
+			['g3', 'p1', 'b3', 'b4', 'b5']
 		], {
 			level: { min: 1 },
 			play_stacks: [1, 5, 1, 0, 5],
@@ -36,7 +37,7 @@ describe('save clue', () => {
 		const action = take_action(game);
 
 		// Alice should give green to Cathy to finesse over save
-		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN });
+		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN }, `Expected (green to Cathy) but got ${logPerformAction(action)}`);
 	});
 
 	it('prefers touching less cards to save critical cards', () => {

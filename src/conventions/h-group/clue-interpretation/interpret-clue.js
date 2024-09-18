@@ -374,7 +374,7 @@ export function interpret_clue(game, action) {
 		const rewind_card = impossible_conn?.card ?? wc_focus;
 		const rewind_identity = common.thoughts[rewind_card.order]?.identity();
 
-		if (rewind_identity !== undefined && !common.thoughts[rewind_card.order].rewinded && wc_target === state.ourPlayerIndex && state.hands[state.ourPlayerIndex].findOrder(rewind_card.order)) {
+		if (rewind_identity !== undefined && !common.thoughts[rewind_card.order].rewinded && wc_target === state.ourPlayerIndex && state.ourHand.findOrder(rewind_card.order)) {
 			const new_game = game.rewind(rewind_card.drawn_index, [{ type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] }]);
 			if (new_game) {
 				Object.assign(game, new_game);

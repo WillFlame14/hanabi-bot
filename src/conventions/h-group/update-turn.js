@@ -218,7 +218,7 @@ export function update_turn(game, action) {
 	if (currentPlayerIndex === state.ourPlayerIndex) {
 		// Find an anxiety play
 		if (state.clue_tokens === 0 && me.thinksLocked(state, state.ourPlayerIndex)) {
-			const anxiety = me.anxietyPlay(state, state.hands[state.ourPlayerIndex]);
+			const anxiety = me.anxietyPlay(state, state.ourHand);
 			const anxiety_card = common.thoughts[anxiety.order];
 			const playable_poss = me.thoughts[anxiety.order].possible.filter(p => state.isPlayable(p));
 

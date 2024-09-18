@@ -22,7 +22,7 @@ export function handle_action(action) {
 	state.actionList.push(action);
 
 	if (action.type === 'clue' && action.giver === state.ourPlayerIndex)
-		this.handHistory[state.turn_count] = Utils.objClone(state.hands[state.ourPlayerIndex]);
+		this.handHistory[state.turn_count] = Utils.objClone(state.ourHand);
 
 	switch(action.type) {
 		case 'clue': {

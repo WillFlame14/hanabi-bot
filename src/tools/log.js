@@ -91,20 +91,18 @@ export function logPerformAction(action) {
 
 	/** @type {Game} */
 	const game = globals.game;
-
 	const { common, state } = game;
-	const hand = state.hands[state.ourPlayerIndex];
 
 	switch(type) {
 		case ACTION.PLAY: {
-			const slot = hand.findIndex(card => card.order === target) + 1;
-			const card = common.thoughts[hand[slot - 1].order];
+			const slot = state.ourHand.findIndex(card => card.order === target) + 1;
+			const card = common.thoughts[state.ourHand[slot - 1].order];
 
 			return `Play slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}
 		case ACTION.DISCARD: {
-			const slot = hand.findIndex(card => card.order === target) + 1;
-			const card = common.thoughts[hand[slot - 1].order];
+			const slot = state.ourHand.findIndex(card => card.order === target) + 1;
+			const card = common.thoughts[state.ourHand[slot - 1].order];
 
 			return `Discard slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}

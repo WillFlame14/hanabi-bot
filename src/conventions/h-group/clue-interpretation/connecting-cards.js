@@ -248,7 +248,7 @@ export function resolve_bluff(game, connections, giver) {
 	if (giver !== state.ourPlayerIndex) {
 		while (f_index !== -1) {
 			const connected = connections.slice(0, f_index).map(conn => conn.card.order);
-			const prompt = common.find_prompt(state.hands[state.ourPlayerIndex], connections[f_index].identities[0], state.variant, connected, []);
+			const prompt = common.find_prompt(state.ourHand, connections[f_index].identities[0], state.variant, connected, []);
 
 			if (prompt === undefined)
 				break;
@@ -403,7 +403,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
 	if (giver !== state.ourPlayerIndex && !options.knownOnly?.includes(state.ourPlayerIndex)) {
-		const playable_conns = state.hands[state.ourPlayerIndex].filter(({order}) => {
+		const playable_conns = state.ourHand.filter(({order}) => {
 			const card = me.thoughts[order];
 
 			const possibly_hidden = () =>

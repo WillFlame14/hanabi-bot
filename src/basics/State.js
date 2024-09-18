@@ -82,6 +82,10 @@ export class State {
 		this.base_ids = new IdentitySet(variant.suits.length, 0);
 	}
 
+	get ourHand() {
+		return this.hands[this.ourPlayerIndex];
+	}
+
 	/**
 	 * Returns the hand size.
 	 */

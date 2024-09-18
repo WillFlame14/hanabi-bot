@@ -39,7 +39,7 @@ export function find_unlock(game, target) {
 			continue;
 
 		// See if we have the connecting card (should be certain)
-		const our_connecting = state.hands[state.ourPlayerIndex].find(c => me.thoughts[c.order].matches({ suitIndex, rank: rank - 1 }, { infer: true }));
+		const our_connecting = state.ourHand.find(c => me.thoughts[c.order].matches({ suitIndex, rank: rank - 1 }, { infer: true }));
 		if (our_connecting === undefined)
 			continue;
 
@@ -316,7 +316,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 					continue;
 				}
 
-				const chop = common.chop(state.hands[state.ourPlayerIndex]);
+				const chop = common.chop(state.ourHand);
 
 				// As a last resort, only scream discard if it is critical.
 				const save_card = game.players[target].chop(state.hands[target]);

@@ -200,7 +200,7 @@ describe('giving order chop move', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slots 3,4)');
 
 		const { state } = game;
-		const our_hand = state.hands[state.ourPlayerIndex];
+		const our_hand = state.ourHand;
 
 		const playable_priorities = determine_playable_card(game, game.me.thinksPlayables(state, PLAYER.ALICE));
 		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);

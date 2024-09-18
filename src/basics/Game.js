@@ -207,10 +207,19 @@ export class Game {
 
 		logger.highlight('cyan', `Rewinding to insert ${rewind_actions.map(a => JSON.stringify(a))}`);
 
-		const double_rewinded = rewind_actions.find(a => [-1, 0].some(offset => Utils.objEquals(actionList[action_index + offset], a)));
-		if (double_rewinded) {
-			logger.error(`Attempted to rewind ${JSON.stringify(double_rewinded)} that was already rewinded!`);
-			return;
+		let offset = 0;
+		let action = actionList[action_index - offset];
+
+		while (action.type === 'ignore' || action.type === 'finesse' || action.type === 'identify' || offset === 0) {
+			const double_rewinded = rewind_actions.find(a => Utils.objEquals(action, a));
+
+			if (double_rewinded) {
+				logger.error(`Attempted to rewind ${JSON.stringify(double_rewinded)} that was already rewinded!`);
+				return;
+			}
+
+			offset++;
+			action = actionList[action_index - offset];
 		}
 
 		if (pivotal_action.type === 'clue')

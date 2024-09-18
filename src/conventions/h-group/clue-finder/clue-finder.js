@@ -50,7 +50,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	);
 
 	// Direct clue is possible
-	if (hypo_game.moveHistory.at(-1).move === CLUE_INTERP.CM_TRASH &&
+	if (hypo_game.lastMove === CLUE_INTERP.CM_TRASH &&
 		all_clues.some(clue => chop_moved.every(cm => saved_trash.some(c => c.order === cm.order) || cardTouched(cm, state.variant, clue))))
 		return -10;
 
@@ -133,7 +133,7 @@ export function find_clues(game, options = {}) {
 				continue;
 
 			// Do not expect others to clue cards that could be clued in our hand
-			if (hypothetical && state.hands[state.ourPlayerIndex].some(c => {
+			if (hypothetical && state.ourHand.some(c => {
 				const card = game.me.thoughts[c.order];
 				return card.touched && card.inferred.some(i => i.matches(focused_card));
 			}))
@@ -170,7 +170,7 @@ export function find_clues(game, options = {}) {
 			Object.assign(result, { discard });
 
 			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = result;
-			const interp = /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.moveHistory.at(-1).move);
+			const interp = /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.lastMove);
 
 			const result_log = {
 				clue: logClue(clue),
@@ -190,7 +190,7 @@ export function find_clues(game, options = {}) {
 
 			hypo_games[logClue(clue)] = hypo_game;
 
-			if ((/** @type {any} */ ([CLUE_INTERP.SAVE, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TRASH]).includes(hypo_game.moveHistory.at(-1).move))) {
+			if ((/** @type {any} */ ([CLUE_INTERP.SAVE, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TRASH]).includes(hypo_game.lastMove))) {
 				if (chop && focused_card.rank === 2) {
 					const copies = visibleFind(state, player, focused_card);
 					const chops = state.hands.map(hand => common.chop(hand)?.order);

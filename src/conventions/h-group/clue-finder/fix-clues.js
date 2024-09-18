@@ -50,15 +50,14 @@ export function find_fix_clues(game, play_clues, save_clues) {
 
 			const seems_playable = card.inferred.every(p => {
 				const away = state.playableAway(p);
-				const our_hand = state.hands[state.ourPlayerIndex];
 
 				// Possibility is immediately playable or 1-away and we have the connecting card
 				return away === 0 ||
-					(away === 1 && our_hand.some(c => me.thoughts[c.order].matches({ suitIndex: p.suitIndex, rank: p.rank - 1 }, { infer: true })));
+					(away === 1 && state.ourHand.some(c => me.thoughts[c.order].matches({ suitIndex: p.suitIndex, rank: p.rank - 1 }, { infer: true })));
 			});
 
 			// We don't need to fix cards where we hold one copy, since we can just sarcastic discard
-			if (state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches(card, { infer: true })))
+			if (state.ourHand.some(c => me.thoughts[c.order].matches(card, { infer: true })))
 				continue;
 
 			const wrong_inference = !state.hasConsistentInferences(card) && state.playableAway(card) !== 0;

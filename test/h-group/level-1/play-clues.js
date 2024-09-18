@@ -146,7 +146,7 @@ describe('play clue', () => {
 			['b4', 'y2', 'r2', 'b3', 'r4'],
 			['r4', 'y2', 'r3', 'r1', 'g1']
 		], {
-			level: { min: 1 },
+			level: { min: 1, max: 4 },			// At lv 5, Bob's 2 could be purple if we are hidden finessed.
 			play_stacks: [0, 0, 0, 1, 0],
 			starting: PLAYER.BOB
 		});

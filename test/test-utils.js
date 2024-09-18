@@ -266,7 +266,7 @@ function parseSlots(state, parts, partsIndex, expectOne, insufficientMsg = '') {
 
 	const slots = parts[partsIndex].slice(0, parts[partsIndex].length - 1).split(',').map(Number);
 
-	if (slots.length === 0 || slots.some(slot => isNaN(slot) || slot < 1 && slot > state.hands[state.ourPlayerIndex].length))
+	if (slots.length === 0 || slots.some(slot => isNaN(slot) || slot < 1 && slot > state.ourHand.length))
 		throw new Error(`Failed to parse ${original}.`);
 
 	if (expectOne && slots.length > 1)
@@ -315,7 +315,7 @@ export function parseAction(state, rawAction) {
 			else {
 				// e.g. "Bob clues 2 to Alice (slots 2,4)"
 				const slots = parseSlots(state, parts, 6, false, '(clue to us)');
-				const list = slots.map(slot => state.hands[state.ourPlayerIndex][slot - 1].order);
+				const list = slots.map(slot => state.ourHand[slot - 1].order);
 
 				return { type: 'clue', clue, giver: playerIndex, target, list };
 			}
@@ -353,7 +353,7 @@ export function parseAction(state, rawAction) {
 			else {
 				// e.g. "Alice plays y5 (slot 1)"
 				const slot = parseSlots(state, parts, 4, true, '(play from us)')[0];
-				const { order } = state.hands[state.ourPlayerIndex][slot - 1];
+				const { order } = state.ourHand[slot - 1];
 
 				return { type: 'play', playerIndex, suitIndex, rank, order };
 			}
@@ -385,7 +385,7 @@ export function parseAction(state, rawAction) {
 					throw new Error(`Not enough arguments provided for a discard action from us, needs '(slot x)' at the end.`);
 
 				const slot = parseSlots(state, parts, 4, true, '(discard from us)')[0];
-				const { order } = state.hands[state.ourPlayerIndex][slot - 1];
+				const { order } = state.ourHand[slot - 1];
 
 				return { type: 'discard', playerIndex, suitIndex, rank, order, failed: parts[1] === 'bombs' };
 			}

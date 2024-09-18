@@ -45,7 +45,7 @@ export function evaluate_clue(game, action, clue, target, target_card) {
 
 	logger.highlight('green', '------- EXITING HYPO --------');
 
-	if (action.hypothetical && hypo_game.moveHistory.at(-1).move === CLUE_INTERP.NONE) {
+	if (action.hypothetical && hypo_game.lastMove === CLUE_INTERP.NONE) {
 		logger.flush(false);
 		return undefined;
 	}

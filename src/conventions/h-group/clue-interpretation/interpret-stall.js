@@ -159,7 +159,7 @@ export function stalling_situation(game, action, prev_game) {
 		const chop = common.chop(state.hands[target]);
 
 		// Not a 2 save that could be duplicated in our hand
-		return !(cl.type === CLUE.RANK && cl.value === 2 && state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].possible.has(chop)));
+		return !(cl.type === CLUE.RANK && cl.value === 2 && state.ourHand.some(c => me.thoughts[c.order].possible.has(chop)));
 	});
 
 	const expected_stall = () => stall_clues.slice(0, stall_to_severity[stall]).find(clues => clues.some(cl => focused_card.order !== cl.result.focus))?.[0];

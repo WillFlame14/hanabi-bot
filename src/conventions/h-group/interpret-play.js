@@ -85,7 +85,7 @@ export function interpret_play(game, action) {
 	team_elim(game);
 
 	if (playerIndex === state.ourPlayerIndex) {
-		for (const { order } of state.hands[state.ourPlayerIndex])
+		for (const { order } of state.ourHand)
 			common.thoughts[order].uncertain = false;
 	}
 }

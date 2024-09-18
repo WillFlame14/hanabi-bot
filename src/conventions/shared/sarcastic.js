@@ -94,10 +94,10 @@ export function interpret_sarcastic(game, discardAction) {
 		if (playerIndex === state.ourPlayerIndex)
 			return [];
 
-		const sarcastics = find_sarcastics(state.hands[state.ourPlayerIndex], me, identity);
+		const sarcastics = find_sarcastics(state.ourHand, me, identity);
 
 		if (sarcastics.length === 1) {
-			logger.info('writing sarcastic on slot', state.hands[state.ourPlayerIndex].findIndex(c => c.order === sarcastics[0].order) + 1);
+			logger.info('writing sarcastic on slot', state.ourHand.findIndex(c => c.order === sarcastics[0].order) + 1);
 			const common_sarcastic = common.thoughts[sarcastics[0].order];
 			common_sarcastic.inferred = common_sarcastic.inferred.intersect(identity);
 			common_sarcastic.trash = false;

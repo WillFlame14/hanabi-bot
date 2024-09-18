@@ -41,12 +41,12 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 	const unknown_own = [];
 
 	// Write identities on our own cards
-	for (const { order } of state.hands[state.ourPlayerIndex]) {
+	for (const { order } of state.ourHand) {
 		const id = me.thoughts[order].identity({ infer: true });
 
 		if (id !== undefined) {
 			const identity = { suitIndex: id.suitIndex, rank: id.rank };
-			Object.assign(common_state.hands[state.ourPlayerIndex].findOrder(order), identity);
+			Object.assign(common_state.ourHand.findOrder(order), identity);
 			Object.assign(common_state.deck[order], identity);
 		}
 		else {
@@ -80,7 +80,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 				const order = locs[i];
 
 				if (unknown_own.includes(order)) {
-					Object.assign(new_state.hands[state.ourPlayerIndex].findOrder(order), identity);
+					Object.assign(new_state.ourHand.findOrder(order), identity);
 					Object.assign(new_state.deck[order], identity);
 				}
 				else {

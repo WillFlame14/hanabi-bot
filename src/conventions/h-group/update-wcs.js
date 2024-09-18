@@ -109,7 +109,7 @@ export function resolve_card_retained(game, waiting_connection) {
 
 	const old_finesse = connections.find((conn, i) => i >= conn_index && conn.reacting === state.ourPlayerIndex && conn.type === 'finesse')?.card;
 
-	const new_finesse_queued = old_finesse !== undefined && state.hands[state.ourPlayerIndex].some(c => {
+	const new_finesse_queued = old_finesse !== undefined && state.ourHand.some(c => {
 		const { finessed, finesse_index } = me.thoughts[c.order];
 		return finessed && finesse_index > me.thoughts[old_finesse.order].finesse_index;
 	});
@@ -167,7 +167,7 @@ export function resolve_card_retained(game, waiting_connection) {
 			}
 
 			if (giver !== state.ourPlayerIndex && reacting !== state.ourPlayerIndex && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
-				const our_finesse = common.find_finesse(state.hands[state.ourPlayerIndex]);
+				const our_finesse = common.find_finesse(state.ourHand);
 
 				if (our_finesse !== undefined && identities.some(i => common.thoughts[our_finesse.order].inferred.has(i))) {
 					logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but we could have ${identities.map(logCard)} on finesse position`);

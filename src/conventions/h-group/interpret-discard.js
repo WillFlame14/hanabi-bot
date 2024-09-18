@@ -1,5 +1,4 @@
 import { LEVEL } from './h-constants.js';
-import { cardCount } from '../../variants.js';
 import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 import { team_elim, undo_hypo_stacks } from '../../basics/helper.js';
 import { interpret_sarcastic } from '../shared/sarcastic.js';
@@ -125,13 +124,14 @@ export function interpret_discard(game, action, card) {
 			else
 				sarcastic_targets = interpret_sarcastic(game, action);
 		}
+
 		if (!(sarcastic_targets?.length > 0) && game.level >= LEVEL.STALLING) {
 			// If there is only one of this card left and it could be in the next player's chop,
 			// they are to be treated as in double discard avoidance.
-			const remaining = cardCount(state.variant, { suitIndex, rank }) - state.discard_stacks[suitIndex][rank - 1];
 			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
 			const chop = common.chop(state.hands[nextPlayerIndex]);
-			if (remaining == 1 && chop !== undefined && common.thoughts[chop.order].possible.has(card.identity()))
+
+			if (state.isCritical({ suitIndex, rank }) && common.thoughts[chop?.order]?.possible.has(card.identity()))
 				state.dda = card.identity();
 		}
 	}
@@ -165,7 +165,7 @@ export function interpret_discard(game, action, card) {
 	team_elim(game);
 
 	if (playerIndex === state.ourPlayerIndex) {
-		for (const { order } of state.hands[state.ourPlayerIndex])
+		for (const { order } of state.ourHand)
 			common.thoughts[order].uncertain = false;
 	}
 }
@@ -213,8 +213,8 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 
 	// If we haven't found a target, check if we can be the target.
 	if (reacting.length < num_plays) {
-		if (state.hands[state.ourPlayerIndex].length >= slot &&
-			me.thoughts[state.hands[state.ourPlayerIndex][slot - 1].order].inferred.some(i => playable_possibilities.some(p => i.matches(p)))
+		if (state.ourHand.length >= slot &&
+			me.thoughts[state.ourHand[slot - 1].order].inferred.some(i => playable_possibilities.some(p => i.matches(p)))
 		)
 			reacting.push(state.ourPlayerIndex);
 

@@ -313,7 +313,7 @@ export function assign_connections(game, connections, giver, focused_card, infer
 
 		const uncertain = !card.uncertain && ((reacting === state.ourPlayerIndex) ?
 			// If we're reacting, we are uncertain if the card is not known and there is some other card in our hand that allows for a swap
-			type !== 'known' && identities.some(i => state.hands[state.ourPlayerIndex].some(c => c.order !== card.order && me.thoughts[c.order].possible.has(i))) :
+			type !== 'known' && identities.some(i => state.ourHand.some(c => c.order !== card.order && me.thoughts[c.order].possible.has(i))) :
 			// If we're not reacting, we are uncertain if the connection is a finesse that could be ambiguous
 			type === 'finesse' && !(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)));
 

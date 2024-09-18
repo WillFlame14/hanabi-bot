@@ -198,7 +198,7 @@ describe('pink choice tempo clues', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g4', 'y3', 'r2', 'b3', 'b1'],
-			['r1', 'b1', 'b3', 'b2', 'g5']
+			['r3', 'b1', 'b3', 'b2', 'g5']
 		], {
 			level: { min: 6 },
 			clue_tokens: 7,
