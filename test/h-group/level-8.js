@@ -308,6 +308,6 @@ describe('distribution clues', () => {
 		takeTurn(game, 'Bob clues 4 to Cathy');
 
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['b4']);
-		assert.equal(game.lastMove, CLUE_INTERP.PLAY);
+		assert.equal(game.lastMove, CLUE_INTERP.DISTRIBUTION);
 	});
 });

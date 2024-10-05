@@ -113,17 +113,28 @@ export function checkFix(game, oldThoughts, clueAction) {
 	}
 
 	// Any clued cards that lost all inferences
-	const clued_reset = list.some(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
+	const clued_reset = list.find(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
 
-	const duplicate_reveal = state.hands[target].some(({ order }) => {
+	if (clued_reset)
+		logger.info('clued card', clued_reset, 'was newly reset!');
+
+	const duplicate_reveal = state.hands[target].find(({ order }) => {
 		const card = common.thoughts[order];
 
+		if (!list.includes(order) || game.common.thoughts[order].identity() === undefined)
+			return false;
+
 		// The fix can be in anyone's hand except the giver's
-		return list.includes(order) && game.common.thoughts[order].identity() !== undefined &&
-			visibleFind(state, common, card.identity(), { ignore: [giver], infer: true }).some(c => common.thoughts[c.order].touched && c.order !== order);
+		const copy = visibleFind(state, common, card.identity(), { ignore: [giver], infer: true })
+			.find(c => common.thoughts[c.order].touched && c.order !== order);// && !c.newly_clued);
+
+		if (copy)
+			logger.info('duplicate', logCard(card.identity()), 'revealed! copy of order', copy.order, card.possible.map(logCard));
+
+		return copy !== undefined;
 	});
 
-	return { fix: clued_reset || duplicate_reveal };
+	return { fix: clued_reset !== undefined || duplicate_reveal !== undefined };
 }
 
 /**

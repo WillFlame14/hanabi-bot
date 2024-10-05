@@ -282,6 +282,51 @@ function urgent_save(game, action, focused_order, oldCommon) {
 }
 
 /**
+ * Returns whether a clue was a distribution clue.
+ * @param {Game} game
+ * @param {ClueAction} action
+ * @param {Card} focus_thoughts
+ */
+function distribution_clue(game, action, focus_thoughts) {
+	const { common, state } = game;
+	const { list, target } = action;
+
+	if (state.maxScore - state.score > state.variant.suits.length || !state.hands[target].some(c => c.newly_clued && list.includes(c.order)))
+		return false;
+
+	const id = focus_thoughts.identity({ infer: true });
+	if (id !== undefined && state.isBasicTrash(id))
+		return false;
+
+	const distributed = focus_thoughts.possible.some(p => !state.isBasicTrash(p) && state.hands.some(hand => {
+		let duplicated = false, other_useful = false;
+		for (const c of hand) {
+			const id = common.thoughts[c.order].identity({ infer: true });
+			if (id === undefined)
+				continue;
+
+			if (id.matches(p))
+				duplicated = true;
+			else if (!state.isBasicTrash(id))
+				other_useful = true;
+		}
+		return duplicated && other_useful;
+	}));
+
+	if (!distributed)
+		return false;
+
+	focus_thoughts.inferred = focus_thoughts.inferred.intersect(focus_thoughts.inferred.filter(i => !state.isBasicTrash(i)));
+	focus_thoughts.certain_finessed = true;
+	focus_thoughts.reset = false;
+
+	logger.info('distribution clue!');
+	game.interpretMove(CLUE_INTERP.DISTRIBUTION);
+	team_elim(game);
+	return true;
+}
+
+/**
  * Interprets the given clue. First tries to look for inferred connecting cards, then attempts to find prompts/finesses.
  * @param {Game} game
  * @param {ClueAction} action
@@ -382,11 +427,12 @@ export function interpret_clue(game, action) {
 			}
 		}
 
-		to_remove.add(i);
+		to_remove.add(Number(i));
 		remove_finesse(game, waiting_connection);
 	}
 
 	common.waiting_connections = common.waiting_connections.filter((_, i) => !to_remove.has(i));
+	team_elim(game);
 
 	logger.debug('pre-inferences', focus_thoughts.inferred.map(logCard).join());
 
@@ -436,6 +482,9 @@ export function interpret_clue(game, action) {
 		game.interpretMove(stall);
 		return;
 	}
+
+	if (distribution_clue(game, action, focus_thoughts))
+		return;
 
 	// Check for chop moves at level 4+
 	if (game.level >= LEVEL.BASIC_CM && !state.inEndgame()) {

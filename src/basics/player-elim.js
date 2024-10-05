@@ -42,7 +42,7 @@ export function card_elim(state) {
 		const addToMap = (index) => {
 			const { order } = candidates[index];
 			const card = this.thoughts[order];
-			const id = card.identity();
+			const id = card.identity({ symmetric: this.playerIndex === -1 });
 
 			if (id !== undefined) {
 				const id_hash = logCard(id);

@@ -264,8 +264,8 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 	const resolved_connections = resolve_bluff(game, connections, giver);
 
 	if (resolved_connections.length === 0 && state.play_stacks[suitIndex] + 1 !== rank) {
-		if (connections.length > 0) {
-			logger.highlight('yellow', `bluff connection failed, retrying with true finesse ignoring ${connections[0].card.order}`);
+		if (connections.length > 0 && connections[0]?.bluff) {
+			logger.highlight('yellow', `bluff connection failed, retrying with true finesse ignoring ${connections[0].card.order} ${connections.map(logConnection).join(' -> ')}`);
 
 			const old_ignore = game.next_ignore[0]?.slice();
 			game.next_ignore[0] ??= [];

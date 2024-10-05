@@ -5,6 +5,8 @@ import { isSaved, isTrash, knownAs, visibleFind } from '../../../basics/hanabi-u
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
 import { get_result } from './determine-clue.js';
+import { CLUE } from '../../../constants.js';
+import { order_1s } from '../action-helper.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -39,11 +41,22 @@ export function find_fix_clues(game, play_clues, save_clues) {
 		for (const { clued, order } of state.hands[target]) {
 			const card = me.thoughts[order];
 
+			const pink_1s = () => {
+				if (!state.includesVariant(variantRegexes.pinkish))
+					return false;
+
+				const unknown_1s = state.hands[target].filter(c => c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+				const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
+
+				return ordered_1s[0] !== undefined && state.isPlayable(ordered_1s[0]);
+			};
+
 			const fix_unneeded = card.possible.length === 1 ||
 				card.possible.every(p => state.isBasicTrash(p)) ||
 				(card.chop_moved && !clued) ||										// Card chop moved but not clued, don't fix
 				common.dependentConnections(order).some(wc => wc.symmetric)	||		// Part of a symmetric waiting connection
-				card.inferred.length === 0;
+				card.inferred.length === 0 ||
+				pink_1s();
 
 			if (fix_unneeded)
 				continue;

@@ -5,6 +5,8 @@ import { isTrash } from '../../../basics/hanabi-util.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import { determine_focus } from '../hanabi-logic.js';
+import { variantRegexes } from '../../../variants.js';
+import { CLUE } from '../../../constants.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -91,6 +93,7 @@ export function evaluate_clue(game, action, clue, target, target_card) {
 				old_card.reset || !state.hasConsistentInferences(old_card) || old_card.inferred.length === 0 ||	// Didn't match inference even before clue
 				(clued && isTrash(state, game.me, visible_card, order, { infer: true })) ||				// Previously-clued duplicate or recently became basic trash
 				bad_touch.some(b => b.order === order) ||											// Bad touched
+				(state.includesVariant(variantRegexes.pinkish) && clue.type === CLUE.RANK && clue.value === 1) ||		// 1 clue in pink
 				card.possible.every(id => isTrash(hypo_game.state, hypo_game.common, id, order, { infer: true }));		// Known trash
 
 			if (allowable_trash || card.possible.length === 1)

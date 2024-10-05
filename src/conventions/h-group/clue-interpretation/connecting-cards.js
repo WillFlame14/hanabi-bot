@@ -206,16 +206,28 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 			const bluff = valid_bluff(game, action, finesse, reacting, connected);
 
 			if (giver === state.ourPlayerIndex) {
-				// Don't bluff out cards that are likely to create bad touch in our own hand.
-				if (bluff && state.hands[giver].some(c => c.clued && me.thoughts[c.order].inferred.length <= 2 && me.thoughts[c.order].inferred.has(finesse))) {
-					logger.warn(`disallowed bluff on ${logCard(finesse)} ${finesse.order}, likely duplicated in giver's hand`);
-					return;
-				}
+				if (bluff) {
+					const likely_duplicated = state.hands[giver].some(c => {
+						const card = me.thoughts[c.order];
+						return card.touched && card.inferred.length <= 2 && card.inferred.has(finesse);
+					});
 
-				// Could be duplicated in giver's hand - disallow hidden finesse unless it could be a bluff.
-				if (!bluff && state.hands[giver].some(c => c.clued && me.thoughts[c.order].inferred.has(identity))) {
-					logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
-					return;
+					if (likely_duplicated) {
+						logger.warn(`disallowed bluff on ${logCard(finesse)} ${finesse.order}, likely duplicated in giver's hand`);
+						return;
+					}
+				}
+				else {
+					const possibly_duplicated = state.hands[giver].some(c => {
+						const card = me.thoughts[c.order];
+						return card.touched && card.inferred.has(finesse);
+					});
+
+					// Could be duplicated in giver's hand - disallow hidden finesse.
+					if (possibly_duplicated) {
+						logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
+						return;
+					}
 				}
 			}
 

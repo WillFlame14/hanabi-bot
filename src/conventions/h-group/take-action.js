@@ -131,12 +131,13 @@ function best_stall_clue(stall_clues, severity) {
  */
 export function find_all_clues(game, giver) {
 	logger.collect();
-	const { play_clues, save_clues } = find_clues(game, { giver, no_fix: true });
+	const { play_clues, save_clues, stall_clues } = find_clues(game, { giver, no_fix: true });
 	logger.flush(false);
 
 	return [
 		...play_clues.flatMap((clues, target) => clues.map(clue => Object.assign(clue, { target }))),
 		...Utils.range(0, game.state.numPlayers).reduce((acc, target) => (save_clues[target] ? acc.concat([Object.assign(save_clues[target], { target })]) : acc), []),
+		...stall_clues[6]		// distribution clues
 	];
 }
 
@@ -309,8 +310,13 @@ export function take_action(game) {
 	if (!is_finessed && state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
 		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
 
+		const gen_required = me.chopValue(state, nextNextPlayerIndex) >= 4 &&
+			!common.thinksLocked(state, nextNextPlayerIndex) &&
+			!common.thinksLoaded(state, nextNextPlayerIndex, { assume: false }) &&
+			find_unlock(game, nextNextPlayerIndex) === undefined;
+
 		// Generate for next next player
-		if (me.chopValue(state, nextNextPlayerIndex) >= 4 && !common.thinksLoaded(state, nextNextPlayerIndex, {assume: false}) && find_unlock(game, nextNextPlayerIndex) === undefined) {
+		if (gen_required) {
 			const nextChop = common.chop(state.hands[nextPlayerIndex]);
 
 			// Play a 5 if we have one
@@ -410,7 +416,9 @@ export function take_action(game) {
 	// and we're not in the end-game.
 	const waiting_self_connections = game.common.waiting_connections.filter(c => c.connections[c.conn_index]?.reacting === state.ourPlayerIndex);
 	const waiting_cards = waiting_self_connections.reduce((sum, c) => sum + c.connections.length - c.conn_index, 0);
-	const waiting_out_of_order = waiting_self_connections.some(c => c.connections.length >= c.conn_index + 2 && !inBetween(state.numPlayers, c.connections[c.conn_index + 1].reacting, state.ourPlayerIndex, c.connections[c.conn_index + 2]?.reacting ?? c.target));
+	const waiting_out_of_order = waiting_self_connections.some(({ connections, conn_index, target }) =>
+		connections.length >= conn_index + 2 &&
+		!inBetween(state.numPlayers, connections[conn_index + 1].reacting, state.ourPlayerIndex, connections[conn_index + 2]?.reacting ?? target));
 	const consider_finesse = !is_finessed || best_play_clue && waiting_cards < 3 && !waiting_out_of_order && not_selfish(best_play_clue) && !state.inEndgame();
 
 	// Get a high value play clue involving next player (otherwise, next player can give it)

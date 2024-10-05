@@ -95,7 +95,7 @@ export function find_clues(game, options = {}) {
 
 	const play_clues = /** @type Clue[][] */ 	([]);
 	const save_clues = /** @type SaveClue[] */ 	([]);
-	const stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], []]);
+	const stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], [], []]);
 
 	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, player.hypo_stacks, state.max_ranks);
 
@@ -208,6 +208,11 @@ export function find_clues(game, options = {}) {
 			}
 
 			switch (interp) {
+				case CLUE_INTERP.DISTRIBUTION:
+					logger.info('distribution clue!');
+					play_clues[target].push(clue);
+					break;
+
 				case CLUE_INTERP.CM_TEMPO: {
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, clue.result.playables, focused_card);
 
@@ -229,6 +234,11 @@ export function find_clues(game, options = {}) {
 					if (clue.result.playables.length === 0) {
 						logger.warn('play clue with no playables!');
 						stall_clues[5].push(clue);
+						continue;
+					}
+
+					if (clue.result.bad_touch === clue.result.new_touched.length && clue.result.bad_touch > 0) {
+						logger.warn('all newly clued cards are bad touched!', clue.result.new_touched.map(c => c.order));
 						continue;
 					}
 

@@ -6,6 +6,7 @@ import { logCard, logConnection } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
+ * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').WaitingConnection} WaitingConnection
  */
 
@@ -166,11 +167,16 @@ export function resolve_card_retained(game, waiting_connection) {
 				return { remove: false };
 			}
 
+			/** @param {ActualCard} our_finesse */
+			const allowable_hesitation = (our_finesse) => our_finesse !== undefined && common.thoughts[focused_card.order].inferred.find(i =>
+				!i.matches(inference) && common.thoughts[our_finesse.order].inferred.has(i));
+
 			if (giver !== state.ourPlayerIndex && reacting !== state.ourPlayerIndex && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
 				const our_finesse = common.find_finesse(state.ourHand);
+				const hesitation_possibility = allowable_hesitation(our_finesse);
 
-				if (our_finesse !== undefined && identities.some(i => common.thoughts[our_finesse.order].inferred.has(i))) {
-					logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but we could have ${identities.map(logCard)} on finesse position`);
+				if (hesitation_possibility) {
+					logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but we could have ${logCard(hesitation_possibility)} on finesse position`);
 					waiting_connection.selfPassback = true;
 					return { remove: false };
 				}
@@ -216,6 +222,17 @@ export function resolve_card_retained(game, waiting_connection) {
 		if (attempted_bomb) {
 			logger.warn(`${state.playerNames[reacting]} bombed, maybe tried to play into it`);
 			return { remove: false };
+		}
+
+		// We're not playing in a rewind
+		if (!bluff && reacting === state.ourPlayerIndex && game.catchup && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, target)) {
+			const self_delay = common.find_finesse(state.hands[target])?.matches(identities[0]);
+
+			if (self_delay && !selfPassback) {
+				logger.warn('delaying for potential self-finesse');
+				waiting_connection.selfPassback = true;
+				return { remove: false };
+			}
 		}
 
 		logger.warn(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);

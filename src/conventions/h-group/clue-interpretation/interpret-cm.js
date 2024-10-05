@@ -29,24 +29,6 @@ export function interpret_tcm(game, target, focus_order) {
 		focus_thoughts.inferred.every(i => state.isPlayable(i) && !isTrash(state, common, i, focus_order, { infer: true })))
 		return false;
 
-	if ((state.maxScore - state.score <= state.variant.suits.length) && focus_thoughts.possible.some(p => !state.isBasicTrash(p) && state.hands.some(hand => {
-		let duplicated = false, other_useful = false;
-		for (const c of hand) {
-			const id = common.thoughts[c.order].identity({ infer: true });
-			if (id === undefined)
-				continue;
-
-			if (id.matches(p))
-				duplicated = true;
-			else if (!state.isBasicTrash(id))
-				other_useful = true;
-		}
-		return duplicated && other_useful;
-	}))) {
-		logger.info('distribution clue!');
-		return false;
-	}
-
 	const oldest_trash_index = state.hands[target].findLastIndex(card =>
 		card.newly_clued && common.thoughts[card.order].possible.every(c => isTrash(state, common, c, card.order, { infer: true })));
 

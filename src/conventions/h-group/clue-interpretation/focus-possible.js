@@ -133,7 +133,7 @@ function find_colour_focus(game, suitIndex, action) {
 					continue;
 			}
 
-			if (state.includesVariant(/Dark Rainbow|Dark Prism/)) {
+			if (state.includesVariant(/Dark Rainbow|Dark Prism/) && state.variant.suits[suitIndex].match(/Dark Rainbow|Dark Prism/)) {
 				const completed_suit = common.hypo_stacks[suitIndex] === state.max_ranks[suitIndex];
 				const saved_crit = state.hands[target].some(c =>
 					state.isCritical(c) && c.newly_clued && c.rank !== 5 && !state.variant.suits[c.suitIndex].match(/Dark Rainbow|Dark Prism/));

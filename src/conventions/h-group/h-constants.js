@@ -30,6 +30,7 @@ export const CLUE_INTERP = /** @type {const} */ ({
 	STALL_FILLIN: 'fill-in',
 	STALL_8CLUES: '8cs',
 	STALL_BURN: 'hard burn',
+	DISTRIBUTION: 'distribution',
 	FIX: 'fix',
 	CM_TRASH: 'trash cm',
 	CM_5: '5cm',
