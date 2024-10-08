@@ -146,7 +146,7 @@ export function stalling_situation(game, action, prev_game) {
 	const options = { giver, hypothetical: true, no_fix: true, noRecurse: true, early_exits: expected_clue };
 
 	logger.collect();
-	const { play_clues, save_clues, stall_clues } = find_clues(game, options);
+	const { play_clues, save_clues, stall_clues } = find_clues(prev_game, options);
 	logger.flush(false);
 
 	const expected_play = () => play_clues.flat().find(cl =>

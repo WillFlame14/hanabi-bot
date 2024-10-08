@@ -188,7 +188,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 	game.interpretMove(interp);
 
 	// If a save clue was given to the next player after a scream, then the discard was actually for generation.
-	if (interp === CLUE_INTERP.SAVE && target === state.nextPlayerIndex(giver) && state.screamed_at) {
+	if (interp === CLUE_INTERP.SAVE && target === state.nextPlayerIndex(giver) && state.screamed_at && state.numPlayers > 2) {
 		const old_chop = state.hands[giver].find(c => common.thoughts[c.order].chop_moved);
 		common.thoughts[old_chop.order].chop_moved = false;
 

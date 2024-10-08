@@ -209,7 +209,7 @@ export const handle = {
 		// Initialize game state using convention set
 		game = new conventions[/** @type {'HGroup' | 'PlayfulSieve'} */ (settings.convention)](tableID, state, true, settings.level);
 
-		Utils.globalModify({ game });
+		Utils.globalModify({ game, cache: new Map() });
 
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });

@@ -185,7 +185,7 @@ export function setup(GameClass, hands, test_options = {}) {
 	const [minLevel, maxLevel] = [test_options?.level?.min ?? 1, test_options?.level?.max ?? MAX_H_LEVEL];
 	const game = new GameClass(-1, state, false, Math.min(Math.max(minLevel, DEFAULT_LEVEL), maxLevel));
 	game.catchup = true;
-	Utils.globalModify({ game });
+	Utils.globalModify({ game, cache: new Map() });
 
 	let orderCounter = 0;
 

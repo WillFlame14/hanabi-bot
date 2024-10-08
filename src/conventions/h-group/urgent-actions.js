@@ -178,10 +178,16 @@ export function early_game_clue(game, playerIndex) {
 	if (state.clue_tokens <= 0)
 		return false;
 
+	const { screamed_at, generated } = state;
+	state.screamed_at = false;
+
 	logger.collect();
 	const options = { giver: playerIndex, hypothetical: true, no_fix: true, early_exits: expected_early_game_clue };
 	const { play_clues, save_clues, stall_clues } = find_clues(game, options);
 	logger.flush(false);
+
+	state.screamed_at = screamed_at;
+	state.generated = generated;
 
 	logger.debug('found clues', play_clues.flat().map(logClue), save_clues.filter(c => c !== undefined).map(logClue), state.playerNames[playerIndex]);
 

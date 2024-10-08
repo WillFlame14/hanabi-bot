@@ -120,7 +120,7 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 		return game;
 	});
 
-	Utils.globalModify({ game: games[0] });
+	Utils.globalModify({ game: games[0], cache: new Map() });
 
 	for (const game of games) {
 		// Draw cards in starting hands

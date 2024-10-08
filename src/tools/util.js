@@ -12,11 +12,14 @@ import { IdentitySet } from '../basics/IdentitySet.js';
  * @typedef {typeof import('../constants.js').ACTION} ACTION
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Clue} Clue
+ * @typedef {import('../types.js').SaveClue} SaveClue
+ * @typedef {import('../types.js').FixClue} FixClue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').PerformAction} PerformAction
  */
 
-export const globals = {};
+/** @type {Record<string, any> & {cache: Map<string, { play_clues: Clue[][], save_clues: SaveClue[], fix_clues: FixClue[][], stall_clues: Clue[][] }>}} */
+export const globals = { cache: new Map() };
 
 /**
  * Modifies the global object.

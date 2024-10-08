@@ -87,6 +87,11 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
  * @property {(game: Game, clue: Clue, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]) => boolean} [early_exits]
  */
 export function find_clues(game, options = {}) {
+	const hash = game.hash + ',' + JSON.stringify(options) + ',' + options.early_exits?.toString();
+
+	if (Utils.globals.cache.has(hash))
+		return Utils.globals.cache.get(hash);
+
 	const { common, state } = game;
 	const { giver = state.ourPlayerIndex, hypothetical = giver !== state.ourPlayerIndex, no_fix = false, noRecurse = false, early_exits = () => false } = options;
 	const player = game.players[giver];
@@ -334,5 +339,6 @@ export function find_clues(game, options = {}) {
 	if (stall_clues.some(clues => clues.length > 0))
 		logger.info('found stall clues', stall_clues.map(clues => clues.map(clue => logClue(clue))));
 
+	Utils.globals.cache.set(hash, { play_clues, save_clues, fix_clues, stall_clues });
 	return { play_clues, save_clues, fix_clues, stall_clues };
 }

@@ -6,7 +6,7 @@ import { handle_action } from '../action-handler.js';
 
 import logger from '../tools/logger.js';
 import * as Utils from '../tools/util.js';
-import { logPerformAction } from '../tools/log.js';
+import { logCard, logPerformAction } from '../tools/log.js';
 
 /**
  * @typedef {import('../basics/State.js').State} State
@@ -88,6 +88,14 @@ export class Game {
 
 	get allPlayers() {
 		return this.players.concat(this.common);
+	}
+
+	get hash() {
+		const { clue_tokens, turn_count, actionList } = this.state;
+		const player_thoughts = this.common.thoughts.flatMap(c => c.inferred.map(logCard).join()).join();
+		const deck = this.state.deck.map(c => c.identity() !== undefined ? logCard(c.identity()) : 'xx');
+
+		return `${player_thoughts},${deck},${JSON.stringify(actionList.at(-1))},${clue_tokens},${turn_count}`;
 	}
 
 	/**
@@ -384,6 +392,7 @@ export class Game {
 		Utils.globalModify({ game: this });
 
 		hypo_game.catchup = false;
+		hypo_game.state.turn_count++;
 		return hypo_game;
 	}
 

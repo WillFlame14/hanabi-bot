@@ -82,7 +82,7 @@ async function main() {
 	const game = new conventions[/** @type {keyof typeof conventions} */(convention)](Number(id), state, false, Number(level ?? 1));
 	game.catchup = true;
 
-	Utils.globalModify({ game });
+	Utils.globalModify({ game,  cache: new Map() });
 
 	// Draw cards in starting hands
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {

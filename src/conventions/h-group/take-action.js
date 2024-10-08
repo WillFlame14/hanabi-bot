@@ -150,7 +150,10 @@ export function find_all_discards(game, playerIndex) {
 
 	const trash_cards = me.thinksTrash(state, playerIndex).filter(c => common.thoughts[c.order].saved);
 	const discardable = trash_cards[0] ?? common.chop(state.hands[playerIndex]);
+
+	logger.collect();
 	const positional = find_positional_discard(game, playerIndex, discardable?.order ?? -1);
+	logger.flush(false);
 
 	return positional !== undefined ? [positional] : (discardable ? [{ misplay: false, order: discardable.order}] : []);
 }
