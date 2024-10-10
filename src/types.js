@@ -32,6 +32,7 @@
  * @property {number} trash
  * @property {number} avoidable_dupe
  * @property {number} remainder
+ * @property {Card | undefined} discard
  * @property {{playerIndex: number, card: Card}[]} playables
  * @property {{playerIndex: number, card: Card}[]} finesses
  * @property {ActualCard[]} chop_moved
@@ -93,14 +94,15 @@
  * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'waiting' | 'terminate' | 'positional'} type
  * @property {number} reacting
  * @property {ActualCard} card
- * @property {Identity[]} identities
+ * @property {Identity[]} identities	The possible identities this card could be playing as (can be multiple, if we're playing into a layered finesse or known bluff).
  * @property {boolean} [self]
  * @property {boolean} [hidden]
  * @property {boolean} [bluff]
  * @property {boolean} [possibly_bluff]
- * @property {ActualCard[]} [linked]
+ * @property {ActualCard[]} [linked]	Only used in 'playable' connections.
  * @property {boolean} [certain]
  * @property {boolean} [ambiguous]
+ * @property {boolean} [asymmetric]		Only used in 'known' connections.
  * 
  * @typedef FocusPossibility
  * @property {number} suitIndex

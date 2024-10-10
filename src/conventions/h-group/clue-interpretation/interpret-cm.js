@@ -1,5 +1,4 @@
 import { CLUE } from '../../../constants.js';
-import { IdentitySet } from '../../../basics/IdentitySet.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
@@ -29,24 +28,6 @@ export function interpret_tcm(game, target, focus_order) {
 		focus_thoughts.possible.some(c => !isTrash(state, common, c, focus_order, { infer: true })) ||
 		focus_thoughts.inferred.every(i => state.isPlayable(i) && !isTrash(state, common, i, focus_order, { infer: true })))
 		return false;
-
-	if ((state.maxScore - state.score <= state.variant.suits.length) && focus_thoughts.possible.some(p => !state.isBasicTrash(p) && state.hands.some(hand => {
-		let duplicated = false, other_useful = false;
-		for (const c of hand) {
-			const id = common.thoughts[c.order].identity({ infer: true });
-			if (id === undefined)
-				continue;
-
-			if (id.matches(p))
-				duplicated = true;
-			else if (!state.isBasicTrash(id))
-				other_useful = true;
-		}
-		return duplicated && other_useful;
-	}))) {
-		logger.info('distribution clue!');
-		return false;
-	}
 
 	const oldest_trash_index = state.hands[target].findLastIndex(card =>
 		card.newly_clued && common.thoughts[card.order].possible.every(c => isTrash(state, common, c, card.order, { infer: true })));
@@ -172,6 +153,13 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 		return false;
 	}
 
+	const id = focused_card.identity();
+
+	if (id !== undefined && common.hypo_stacks[id.suitIndex] < id.rank) {
+		logger.info('focused card did not become playable, not tccm');
+		return false;
+	}
+
 	const focus_thoughts = common.thoughts[focused_card.order];
 	const not_promptable = focus_thoughts.inferred.every(i => {
 		const prompt = oldCommon.find_prompt(state.hands[target], i, state.variant);
@@ -185,7 +173,7 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 	}
 
 	// Check for double tempo clue
-	if (list.length > 1) {
+	/* if (list.length > 1) {
 		const possibly_playable = touched_cards.filter(({ order }) => {
 			const card = common.thoughts[order];
 			return card.inferred.length > 1 &&
@@ -205,7 +193,7 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 			logger.info(`multiple tempo clue on ${slots.length > 1 ? `slots [${slots.join(',')}]` : `slot ${slots[0]}`}`);
 			return false;
 		}
-	}
+	} */
 
 	if (state.hands.some(hand => hand.some(c => !oldCommon.thoughts[c.order].finessed && common.thoughts[c.order].finessed))) {
 		logger.info('caused finesse, not tccm');

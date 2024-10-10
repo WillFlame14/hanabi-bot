@@ -1,4 +1,3 @@
-import { CLUE } from '../../../constants.js';
 import { cardCount } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
 import { order_1s } from '../action-helper.js';
@@ -84,7 +83,8 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 			known_link = common.links.find(link =>
 				link.promised &&
 				link.identities.some(i => i.suitIndex === identity.suitIndex && i.rank === identity.rank) &&
-				link.cards.some(c => c.order === order));
+				link.cards.some(c => c.order === order) &&
+				link.cards.length >= link.identities.length);
 			return known_link !== undefined;
 		});
 
@@ -157,6 +157,8 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 	const prompt = common.find_prompt(hand, identity, state.variant, connected, ignoreOrders);
 	const finesses = common.find_ambiguous_finesses(hand, connected, ignoreOrders);
 
+	logger.debug('finding unknown connecting for', logCard(identity), state.playerNames[reacting], prompt?.order, finesse?.order, connected, ignoreOrders);
+
 	// Prompt takes priority over finesse
 	if (prompt !== undefined && prompt.identity() !== undefined) {
 		if (prompt.matches(identity))
@@ -207,16 +209,28 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 			const bluff = valid_bluff(game, action, finesse, reacting, connected);
 
 			if (giver === state.ourPlayerIndex) {
-				// Don't bluff out cards that are likely to create bad touch in our own hand.
-				if (bluff && state.hands[giver].some(c => c.clued && me.thoughts[c.order].inferred.length <= 2 && me.thoughts[c.order].inferred.has(finesse))) {
-					logger.warn(`disallowed bluff on ${logCard(finesse)} ${finesse.order}, likely duplicated in giver's hand`);
-					return;
-				}
+				if (bluff) {
+					const likely_duplicated = state.hands[giver].some(c => {
+						const card = me.thoughts[c.order];
+						return card.touched && card.inferred.length <= 2 && card.inferred.has(finesse);
+					});
 
-				// Could be duplicated in giver's hand - disallow hidden finesse unless it could be a bluff.
-				if (!bluff && state.hands[giver].some(c => c.clued && me.thoughts[c.order].inferred.has(identity))) {
-					logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
-					return;
+					if (likely_duplicated) {
+						logger.warn(`disallowed bluff on ${logCard(finesse)} ${finesse.order}, likely duplicated in giver's hand`);
+						return;
+					}
+				}
+				else {
+					const possibly_duplicated = state.hands[giver].some(c => {
+						const card = me.thoughts[c.order];
+						return card.touched && card.inferred.has(finesse);
+					});
+
+					// Could be duplicated in giver's hand - disallow hidden finesse.
+					if (possibly_duplicated) {
+						logger.warn(`disallowed hidden finesse on ${logCard(finesse)} ${finesse.order}, true ${logCard(identity)} could be duplicated in giver's hand`);
+						return;
+					}
 				}
 			}
 
@@ -230,22 +244,61 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
  * Determines whether a bluff connection is a valid bluff, and updates the connection accordingly.
  * @param {Game} game
  * @param {Connection[]} connections	The complete connections leading to the play of a card.
+ * @param {number} giver
  * @returns {Connection[]}
  */
-export function resolve_bluff(game, connections) {
+export function resolve_bluff(game, connections, giver) {
 	if (connections.length == 0 || !connections[0].bluff)
 		return connections;
 
+	const { common, state } = game;
+
 	const next_visible = connections.findIndex(conn =>
-		!(conn.type === 'finesse' && conn.reacting === connections[0].reacting && (conn.card.identity() === undefined || game.state.isPlayable(conn.card))));
+		!(conn.type === 'finesse' && conn.reacting === connections[0].reacting && (conn.card.identity() === undefined || state.isPlayable(conn.card))));
 	const index = next_visible === -1 ? connections.length : next_visible;
 
-	// A bluff must be followed only by prompts as otherwise it would not have been a valid bluff target.
-	if (connections.some((conn, i) => i >= index && (conn.hidden || conn.type === 'finesse'))) {
-		// If a bluff is not possible, we only have a valid connection if a real matching card was found
+	// A bluff cannot be followed by finesses, otherwise it wouldn't have been a valid bluff target.
+	let f_index = connections.findIndex((conn, i) => i >= index && conn.type === 'finesse');
+
+	// See if we can replace finesse connections with prompts in our own hand
+	if (giver !== state.ourPlayerIndex) {
+		while (f_index !== -1) {
+			const connected = connections.slice(0, f_index).map(conn => conn.card.order);
+			const prompt = common.find_prompt(state.ourHand, connections[f_index].identities[0], state.variant, connected, []);
+
+			if (prompt === undefined)
+				break;
+
+			logger.highlight('yellow', `replacing finesse connection [${logConnection(connections[f_index])}] with own prompt ${prompt.order}`);
+			connections[f_index] = { type: 'prompt', reacting: state.ourPlayerIndex, card: prompt, identities: connections[f_index].identities };
+			f_index = connections.findIndex((conn, i) => i >= index && conn.type === 'finesse');
+		}
+	}
+
+	if (f_index !== -1) {
+		// If a bluff is not possible, we only have a valid connection if all cards can be played
 		if (next_visible > 1) {
-			logger.warn('bluff invalid but connection still exists');
-			return connections.with(0, Object.assign(Utils.objClone(connections[0]), { bluff: false }));
+			let valid_finesse = true;
+
+			const hypo_stacks = state.play_stacks.slice();
+			for (const conn of connections) {
+				const { identities } = conn;
+
+				if (identities.length === 1) {
+					const { suitIndex, rank } = identities[0];
+
+					if (hypo_stacks[suitIndex] + 1 !== rank) {
+						valid_finesse = false;
+						break;
+					}
+					hypo_stacks[suitIndex] = rank;
+				}
+			}
+
+			if (valid_finesse) {
+				logger.warn('bluff invalid but connection still exists');
+				return connections.with(0, Object.assign(Utils.objClone(connections[0]), { bluff: false }));
+			}
 		}
 
 		logger.warn(`bluff invalid (${connections.map(logConnection).join(' -> ')}), followed by hidden/finesse connections`);
@@ -275,6 +328,8 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 	const { giver, target } = action;
 	const { suitIndex, rank } = identity;
 
+	logger.debug('looking for connecting', logCard(identity), looksDirect);
+
 	if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, identity)) {
 		logger.info(`all ${logCard(identity)} in trash`);
 		return [];
@@ -303,7 +358,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 
 	// Only consider prompts/finesses if no connecting cards found
 	for (let i = 0; i < state.numPlayers; i++) {
-		const playerIndex = (state.numPlayers + target - i - 1) % state.numPlayers;
+		const playerIndex = (state.numPlayers + giver - i - 1) % state.numPlayers;
 
 		// Clue receiver won't find known prompts/finesses in their hand unless it doesn't look direct
 		// Also disallow prompting/finessing a player when they may need to prove a finesse to us
@@ -313,7 +368,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 					index >= wc.conn_index && conn.type === 'finesse' && conn.reacting === playerIndex))))
 			continue;
 
-		const connections = [];
+		const connections = /** @type {Connection[]} */ ([]);
 		const already_connected = connected.slice();
 		state.play_stacks = old_play_stacks.slice();
 
@@ -364,24 +419,24 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
 	if (giver !== state.ourPlayerIndex && !options.knownOnly?.includes(state.ourPlayerIndex)) {
-		const playable_conns = state.hands[state.ourPlayerIndex].filter(({order}) => {
+		const playable_conns = state.ourHand.filter(({order}) => {
 			const card = me.thoughts[order];
+
+			const possibly_hidden = () =>
+				card.uncertain && card.possible.has(identity) && card.finesse_ids.has(identity);
 
 			return !ignoreOrders.includes(order) &&
 				!connected.includes(order) &&
-				(card.inferred.has(identity) || (card.uncertain && card.possible.has(identity) && card.finesse_ids.has(identity))) &&		// At least one inference must match
+				(card.inferred.has(identity) || possibly_hidden()) &&		// At least one inference must match
 				card.matches(identity, { assume: true }) &&				// If we know the card (from a rewind), it must match
 				((card.inferred.every(i => state.isPlayable(i)) && card.clued) || card.finessed);	// Must be playable
 		});
 
 		if (playable_conns.length > 0) {
-			const multiple_1s = rank === 1 &&
-				playable_conns.every(card => card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
-
 			return [{
 				type: 'playable',
 				reacting: state.ourPlayerIndex,
-				card: multiple_1s ? order_1s(state, common, playable_conns)[0] : playable_conns.at(-1),	  // If necessary, reorder to oldest 1 to avoid prompting
+				card: (rank === 1 && order_1s(state, common, playable_conns)[0]) || playable_conns.at(-1),	  // If necessary, reorder to oldest 1 to avoid prompting
 				linked: playable_conns,
 				identities: [identity]
 			}];

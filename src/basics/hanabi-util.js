@@ -6,6 +6,7 @@ import { cardCount } from '../variants.js';
  * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Player.js').Player} Player
  * @typedef {import('./Card.js').ActualCard} ActualCard
+ * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Identity} Identity
  * 
  * @typedef {{symmetric?: number[], infer?: number[], ignore?: number[]}} FindOptions
@@ -141,4 +142,14 @@ export function refer_right(hand, index) {
 		target_index = (target_index + 1) % hand.length;
 
 	return target_index;
+}
+
+/**
+ * Returns whether the order is known to be a particular special suit from empathy.
+ * @param {Game} game
+ * @param {number} order
+ * @param {RegExp} regex
+ */
+export function knownAs(game, order, regex) {
+	return game.common.thoughts[order].possible.every(i => game.state.variant.suits[i.suitIndex].match(regex));
 }

@@ -24,7 +24,6 @@ import * as Utils from '../../tools/util.js';
  */
 export function take_action(game) {
 	const { common, me, state, tableID } = game;
-	const hand = state.hands[state.ourPlayerIndex];
 	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
 	const partner_hand = state.hands[partner];
 
@@ -33,7 +32,7 @@ export function take_action(game) {
 	let trash_cards = me.thinksTrash(state, state.ourPlayerIndex).filter(c => c.clued);
 
 	// Add cards called to discard
-	for (const { order } of hand) {
+	for (const { order } of state.ourHand) {
 		const card = me.thoughts[order];
 		if (!trash_cards.some(c => c.order === order) && card.called_to_discard && card.possible.some(p => !state.isCritical(p)))
 			trash_cards.push(card);
@@ -75,7 +74,7 @@ export function take_action(game) {
 
 	const fix_clue = find_fix_clue(game);
 
-	const locked_discard_action = { tableID, type: ACTION.DISCARD, target: me.lockedDiscard(state, state.hands[state.ourPlayerIndex]).order };
+	const locked_discard_action = { tableID, type: ACTION.DISCARD, target: me.lockedDiscard(state, state.ourHand).order };
 
 	// Stalling situation
 	if (me.thinksLocked(state, state.ourPlayerIndex)) {
@@ -210,7 +209,7 @@ export function take_action(game) {
 	if (sarcastic_chop)
 		return { tableID, type: ACTION.DISCARD, target: sarcastic_chop.order };
 
-	const playable_sarcastic = discards.find(card => state.isPlayable(card) && find_sarcastics(hand, me, card).length === 1);
+	const playable_sarcastic = discards.find(card => state.isPlayable(card) && find_sarcastics(state.ourHand, me, card).length === 1);
 
 	if (playable_sarcastic !== undefined && state.clue_tokens !== 8)
 		return { tableID, type: ACTION.DISCARD, target: playable_sarcastic.order };

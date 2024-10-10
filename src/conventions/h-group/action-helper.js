@@ -4,6 +4,7 @@ import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logClue } from '../../tools/log.js';
+import { CLUE } from '../../constants.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -29,7 +30,7 @@ export function find_clue_value(clue_result) {
 	const new_touched_value = (new_touched.length >= 1) ? 0.51 + 0.1 * (new_touched.length - 1) : 0;
 
 	const precision_value = (new_touched.reduce((acc, c) => acc + c.possible.length, 0) - new_touched.reduce((acc, c) => acc + c.inferred.length, 0)) * 0.01;
-	return 0.5*(finesses.length + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch - 0.1*avoidable_dupe - 0.1*remainder + precision_value;
+	return 0.5*(finesses.length + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch - 0.1*avoidable_dupe - 0.1*(remainder**2) + precision_value;
 }
 
 /**
@@ -42,7 +43,7 @@ export function select_play_clue(play_clues) {
 
 	for (const clue of play_clues) {
 		const clue_value = find_clue_value(clue.result);
-		logger.info('clue', logClue(clue), 'value', clue_value);
+		logger.info('clue', logClue(clue), 'value', clue_value, 'remainder', clue.result.remainder);
 
 		if (clue_value > best_clue_value) {
 			best_clue_value = clue_value;
@@ -61,7 +62,10 @@ export function select_play_clue(play_clues) {
  * @param {{ no_filter?: boolean}} options
  */
 export function order_1s(state, player, cards, options = { no_filter: false }) {
-	const unknown_1s = options.no_filter ? cards : cards.filter(card => card.clues.length > 0 && player.thoughts[card.order].possible.every(p => p.rank === 1));
+	const unknown_1s = options.no_filter ? cards : cards.filter(card =>
+		card.clues.length > 0 &&
+		card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) &&
+		player.thoughts[card.order].possible.every(p => p.rank === 1));
 
 	return unknown_1s.sort((card1, card2) => {
 		const [c1_start, c2_start] = [card1, card2].map(c => state.inStartingHand(c.order));
@@ -75,6 +79,9 @@ export function order_1s(state, player, cards, options = { no_filter: false }) {
 
 		if (c2.finessed)
 			return 1;
+
+		if (c1.chop_when_first_clued && c2.chop_when_first_clued)
+			return c2.order - c1.order;
 
 		// c1 is chop focus
 		if (c1.chop_when_first_clued)

@@ -47,7 +47,7 @@ export function get_result(game, clue) {
 	const new_discards = hypo_state.hands[partner].filter(c =>
 		hypo_common.thoughts[c.order].called_to_discard && !common.thoughts[c.order].called_to_discard);
 
-	const good_touch = new_touched.length - (bad_touch + trash);
+	const good_touch = new_touched.length - (bad_touch.length + trash.length);
 
 	const value_log = {
 		good_touch,
@@ -65,7 +65,7 @@ export function get_result(game, clue) {
 		0.5*revealed_trash.length +
 		0.25*fill +
 		0.05*elim -
-		0.1*bad_touch).toFixed(2));
+		0.1*bad_touch.length).toFixed(2));
 
 	logger.info(logClue(clue), value, JSON.stringify(value_log));
 

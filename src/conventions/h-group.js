@@ -63,6 +63,10 @@ export default class HGroup extends Game {
 		return this.players[this.state.ourPlayerIndex];
 	}
 
+	get lastMove() {
+		return this.moveHistory.at(-1).move;
+	}
+
 	createBlank() {
 		const blank = new HGroup(this.tableID, this.state.createBlank(), this.in_progress, this.level);
 		blank.notes = this.notes;

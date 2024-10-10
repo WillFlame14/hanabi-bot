@@ -209,7 +209,7 @@ export const handle = {
 		// Initialize game state using convention set
 		game = new conventions[/** @type {'HGroup' | 'PlayfulSieve'} */ (settings.convention)](tableID, state, true, settings.level);
 
-		Utils.globalModify({ game });
+		Utils.globalModify({ game, cache: new Map() });
 
 		// Ask the server for more info
 		Utils.sendCmd('getGameInfo2', { tableID: data.tableID });
@@ -265,7 +265,7 @@ export const handle = {
 	 * Received when we send an invalid command.
 	 */
 	warning: (data) => {
-		if (last_sender === undefined) {
+		if (Utils.globals.manual || last_sender === undefined) {
 			logger.error(data.warning);
 		}
 		else {

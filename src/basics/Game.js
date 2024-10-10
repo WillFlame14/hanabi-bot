@@ -6,7 +6,7 @@ import { handle_action } from '../action-handler.js';
 
 import logger from '../tools/logger.js';
 import * as Utils from '../tools/util.js';
-import { logPerformAction } from '../tools/log.js';
+import { logCard, logPerformAction } from '../tools/log.js';
 
 /**
  * @typedef {import('../basics/State.js').State} State
@@ -88,6 +88,14 @@ export class Game {
 
 	get allPlayers() {
 		return this.players.concat(this.common);
+	}
+
+	get hash() {
+		const { clue_tokens, turn_count, actionList } = this.state;
+		const player_thoughts = this.common.thoughts.flatMap(c => c.inferred.map(logCard).join()).join();
+		const deck = this.state.deck.map(c => c.identity() !== undefined ? logCard(c.identity()) : 'xx');
+
+		return `${player_thoughts},${deck},${JSON.stringify(actionList.at(-1))},${clue_tokens},${turn_count}`;
 	}
 
 	/**
@@ -180,21 +188,21 @@ export class Game {
 	}
 
 	/**
-	 * Rewinds the state to a particular action index, inserts the rewind action just before it and then replays all future moves.
+	 * Rewinds the state to a particular action index, inserts the rewind actions just before it and then replays all future moves.
 	 * @param {number} action_index
-	 * @param {Action} rewind_action	The rewind action to insert before the target action
+	 * @param {Action[]} rewind_actions	The rewind action to insert before the target action
 	 * @param {boolean} [mistake] 		Whether the target action was a mistake
 	 * @param {boolean} [ephemeral]		Whether the action should be saved in the action list
 	 * @returns {this | undefined}
 	 */
-	rewind(action_index, rewind_action, mistake = false, ephemeral = false) {
+	rewind(action_index, rewind_actions, mistake = false, ephemeral = false) {
 		const actionList = this.state.actionList.map(Utils.cleanAction);
 
 		this.rewinds++;
 		if (this.rewinds > 100)
 			throw new Error('Attempted to rewind too many times!');
 
-		if (this.rewindDepth > 2)
+		if (this.rewindDepth > 3)
 			throw new Error('Rewind depth went too deep!');
 
 		if (action_index === undefined || (typeof action_index !== 'number') || action_index < 0 || action_index >= actionList.length) {
@@ -205,10 +213,21 @@ export class Game {
 
 		const pivotal_action = /** @type {ClueAction} */ (actionList[action_index]);
 
-		logger.highlight('cyan', `Rewinding to insert ${JSON.stringify(rewind_action)}`);
-		if ([-1, 0].some(offset => Utils.objEquals(actionList[action_index + offset], rewind_action))) {
-			logger.error(`Attempted to rewind ${JSON.stringify(rewind_action)} that was already rewinded!`);
-			return;
+		logger.highlight('cyan', `Rewinding to insert ${rewind_actions.map(a => JSON.stringify(a))}`);
+
+		let offset = 0;
+		let action = actionList[action_index - offset];
+
+		while (action.type === 'ignore' || action.type === 'finesse' || action.type === 'identify' || offset === 0) {
+			const double_rewinded = rewind_actions.find(a => Utils.objEquals(action, a));
+
+			if (double_rewinded) {
+				logger.error(`Attempted to rewind ${JSON.stringify(double_rewinded)} that was already rewinded!`);
+				return;
+			}
+
+			offset++;
+			action = actionList[action_index - offset];
 		}
 
 		if (pivotal_action.type === 'clue')
@@ -267,7 +286,9 @@ export class Game {
 		}
 
 		// Rewrite and save as a rewind action
-		newGame.handle_action(rewind_action);
+		for (const action of rewind_actions)
+			newGame.handle_action(action);
+
 		if (ephemeral) {
 			newGame.state.actionList.pop();
 			newGame.ephemeral_rewind = true;
@@ -371,6 +392,7 @@ export class Game {
 		Utils.globalModify({ game: this });
 
 		hypo_game.catchup = false;
+		hypo_game.state.turn_count++;
 		return hypo_game;
 	}
 

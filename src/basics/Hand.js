@@ -1,4 +1,3 @@
-import logger from '../tools/logger.js';
 import { cardTouched } from '../variants.js';
 
 /**
@@ -34,7 +33,7 @@ export class Hand extends Array {
 		const card_index = this.findIndex(c => c.order === order);
 
 		if (card_index === -1) {
-			logger.error('could not find such card index!');
+			console.log('could not find order', order, 'in hand', this.map(c => c.order));
 			return;
 		}
 

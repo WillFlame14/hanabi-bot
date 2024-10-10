@@ -44,13 +44,13 @@ describe('simple endgames with 1 card left', () => {
 });
 
 describe('simple endgames with 1 undrawn identity', () => {
-	it('solves a cluable endgame', () => {
+	it('solves a cluable endgame with 1 undrawn identity', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'p4'],
 			['p2', 'g3', 'b1', 'b3', 'p3'],
 			['y1', 'b1', 'p5', 'r3', 'y3'],
 		], {
-			play_stacks: [5, 5, 5, 4, 3],
+			play_stacks: [5, 5, 5, 4, 2],
 			clue_tokens: 5,
 			init: (game) => {
 				const { common, state } = game;
@@ -64,7 +64,7 @@ describe('simple endgames with 1 undrawn identity', () => {
 				b_slot5.possible = b_slot5.possible.intersect(expandShortCard('p3'));
 				b_slot5.clued = true;
 
-				const c_slot3 = common.thoughts[state.hands[PLAYER.CATHY][3].order];
+				const c_slot3 = common.thoughts[state.hands[PLAYER.CATHY][2].order];
 				c_slot3.inferred = c_slot3.inferred.intersect(expandShortCard('p5'));
 				c_slot3.possible = c_slot3.possible.intersect(expandShortCard('p5'));
 				c_slot3.clued = true;

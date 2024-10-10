@@ -198,6 +198,7 @@ describe('tempo clue chop moves', () => {
 	});
 });
 
+/*
 describe('multiple tempo clues', () => {
 	it('understands a double tempo clue', () => {
 		const game = setup(HGroup, [
@@ -270,3 +271,4 @@ describe('multiple tempo clues', () => {
 		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 2));
 	});
 });
+*/

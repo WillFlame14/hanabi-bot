@@ -46,6 +46,7 @@ export function elim_result(state, player, hypo_player, hand, list) {
  * @param  {number} target
  */
 export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
+	const { me: old_me } = game;
 	const { me, state } = hypo_game;
 
 	const dupe_scores = game.players.map((player, pi) => {
@@ -77,7 +78,7 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 	const min_dupe = Math.min(...dupe_scores);
 	const avoidable_dupe = dupe_scores[giver] - min_dupe;
 
-	let bad_touch = 0, trash = 0;
+	const bad_touch = [], trash = [];
 
 	for (const card of state.hands[target]) {
 		// Ignore cards that aren't newly clued
@@ -86,22 +87,25 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 
 		// Known trash from empathy
 		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order, { infer: true }))) {
-			trash++;
+			trash.push(card);
 			continue;
 		}
 
 		if (state.isBasicTrash(card)) {
-			bad_touch++;
+			bad_touch.push(card);
 			continue;
 		}
 
 		const duplicates = state.hands.flatMap(hand => hand.filter(c => {
+			const old_thoughts = old_me.thoughts[c.order];
 			const thoughts = me.thoughts[c.order];
-			return thoughts.matches(card, { infer: true }) && thoughts.touched && c.order !== card.order;
+
+			// We need to check old thoughts, since the clue may cause good touch elim that removes earlier notes
+			return old_thoughts.matches(card, { infer: true }) && (old_thoughts.touched || thoughts.touched) && c.order !== card.order;
 		}));
 
 		if (duplicates.length > 0 && !(duplicates.every(c => c.newly_clued) && card.order < Math.min(...duplicates.map(c => c.order))))
-			bad_touch++;
+			bad_touch.push(card);
 	}
 
 	return { bad_touch, trash, avoidable_dupe };
@@ -116,55 +120,19 @@ export function playables_result(state, player, hypo_player) {
 	const finesses = [];
 	const playables = [];
 
-	/**
-	 * TODO: This might not find the right card if it was duplicated...
-	 * @param  {Identity} identity
-	 */
-	function find_card(identity) {
-		for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
-			const hand = state.hands[playerIndex];
+	for (const order of hypo_player.hypo_plays) {
+		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
+		const old_card = player.thoughts[order];
+		const hypo_card = hypo_player.thoughts[order];
 
-			for (const { order } of hand) {
-				const old_card = player.thoughts[order];
-				const hypo_card = hypo_player.thoughts[order];
-
-				if (hypo_card.saved && hypo_card.matches(identity, { infer: true }))
-					return { playerIndex, old_card, hypo_card };
-			}
-		}
-	}
-
-	// Count the number of finesses and newly known playable cards
-	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
-		for (let rank = player.hypo_stacks[suitIndex] + 1; rank <= hypo_player.hypo_stacks[suitIndex]; rank++) {
-			// Hypo stack increased from promised link, card won't be findable
-			if (hypo_player.links.some(link => link.promised && link.identities[0].suitIndex === suitIndex && link.identities[0].rank === rank))
-				continue;
-
-			const { playerIndex, old_card, hypo_card } = find_card({ suitIndex, rank });
-
-			if (hypo_card.finessed && !old_card.finessed)
-				finesses.push({ playerIndex, card: hypo_card });
-
-			// Only counts as a playable if it wasn't already playing
-			if (!player.unknown_plays.has(hypo_card.order))
-				playables.push({ playerIndex, card: hypo_card });
-		}
-	}
-
-	for (const order of hypo_player.unknown_plays) {
-		if (player.unknown_plays.has(order) || Array.from(player.unknown_plays).some(o => state.deck[order].matches(state.deck[o])))
+		// Only counts as a playable if it wasn't already playing
+		if (player.hypo_plays.has(order))
 			continue;
 
-		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
+		if (hypo_card.finessed && !old_card.finessed)
+			finesses.push({ playerIndex, card: hypo_card });
 
-		// Only count unknown playables if they actually go on top of the stacks
-		if (state.deck[order].rank > player.hypo_stacks[state.deck[order].suitIndex]) {
-			if (hypo_player.thoughts[order].finessed)
-				finesses.push({ playerIndex, card: hypo_player.thoughts[order] });
-
-			playables.push({ playerIndex, card: hypo_player.thoughts[order] });
-		}
+		playables.push({ playerIndex, card: hypo_card });
 	}
 
 	return { finesses, playables };

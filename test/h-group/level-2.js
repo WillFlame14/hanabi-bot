@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, VARIANTS, setup, takeTurn } from '../test-utils.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
@@ -52,6 +52,27 @@ describe('reverse finesse', () => {
 		// We don't need to finesse anything.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
 		assert.equal(game.common.hypo_stacks[COLOUR.RED], 5);
+	});
+
+	it('correctly recognizes bad touch on play clues that touch copies of finessed cards', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y5', 'r5', 'b1', 'p2'],
+			['p1', 'b3', 'r2', 'p4'],
+			['r3', 'p1', 'y4', 'r1']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues purple to Bob');	// Reverse finessing p1
+
+		const { play_clues } = find_clues(game);
+
+		// 1 to Donald is a valid play clue, but it bad touches one card.
+		const donald_1 = play_clues[PLAYER.DONALD].find(clue => clue.type === CLUE.RANK && clue.type === 1);
+		assert.ok(donald_1);
+		assert.equal(donald_1.result.bad_touch, 1);
 	});
 });
 
@@ -284,6 +305,29 @@ describe('self-finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['r3']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, true);
 	});
+
+	it('correctly realizes self-finesses after symmetric possibilities are directly stomped', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y4', 'r5', 'y3', 'g4'],
+			['g4', 'p1', 'g1', 'r1'],
+			['r3', 'b4', 'g1', 'b2']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.BOB,
+			play_stacks: [0, 1, 0, 0, 0]
+		});
+
+		takeTurn(game, 'Bob clues 1 to Cathy');
+		takeTurn(game, 'Cathy plays r1', 'r2');
+		takeTurn(game, 'Donald clues 4 to Alice (slot 3)');		// could be red (most likely), or green, or purple
+
+		takeTurn(game, 'Alice discards y3 (slot 4)');
+		takeTurn(game, 'Bob clues red to Donald');				// finessing r2, proving the earlier finesse wasn't red
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['y4', 'g4', 'p4']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
+	});
 });
 
 describe('direct clues', () => {
@@ -475,11 +519,11 @@ describe('asymmetric clues', () => {
 			['g1', 'b4', 'y5', 'y2']
 		], {
 			level: { min: 2 },
-			play_stacks: [0, 1, 0, 0, 0]	// y1 is played.
+			play_stacks: [0, 1, 0, 0, 0],	// y1 is played.
+			starting: PLAYER.BOB
 		});
 
-		takeTurn(game, 'Alice clues 2 to Donald');
-		takeTurn(game, 'Bob clues 1 to Donald');
+		takeTurn(game, 'Bob clues 2 to Donald');
 		takeTurn(game, 'Cathy clues 4 to Bob');			// connecting on g2 (Bob, finesse) and g3 (Bob, finesse)
 
 		// There should be y3 -> y4 and g2 -> g3 -> g4 waiting connections.
@@ -531,7 +575,7 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Bob clues purple to Cathy');
 
 		// Alice's slot 2 can be any 3 (not prompted to be p3).
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'y3', 'g3', 'b3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'y3', 'g3', 'b3', 'p3']);
 	});
 
 	it(`doesn't consider already-finessed possibilities`, () => {
@@ -554,6 +598,27 @@ describe('asymmetric clues', () => {
 
 		// Alice's slot 2 should be [y2,g2] (not r2).
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y2', 'g2']);
+	});
+
+	it('prefers to self-finesse over assuming asymmetric information', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g4', 'r1', 'y5', 'r2', 'b4'],
+			['r3', 'g3', 'b2', 'b3', 'm4']
+		], {
+			level: { min: 2 },
+			play_stacks: [0, 0, 2, 0, 3],
+			discarded: ['r3', 'm4'],
+			variant: VARIANTS.RAINBOW
+		});
+
+		takeTurn(game, 'Alice clues red to Cathy');				// r1,r3,m4
+		takeTurn(game, 'Bob clues 5 to Alice (slot 5)');		// 5 Save
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
+
+		// Alice's slot 1 should be finessed as g3.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
 	});
 });
 
@@ -620,5 +685,34 @@ describe(`occam's razor`, () => {
 		// Even if Donald has [g3,b3], Alice's slot 2 should be g4 (g3 self-finesse) rather than b4 (b2 prompt + b3 finesse on Bob)
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g4']);
 		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].inferred.length > 1);
+	});
+});
+
+describe('early game', () => {
+	it('will not 5 stall on a trash 5', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g4', 'r5', 'r4', 'y4', 'b3'],
+		], {
+			level: { min: 2 },
+			discarded: ['r4', 'r4'],
+			clue_tokens: 7
+		});
+
+		const action = game.take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
+	});
+
+	it('gives a bad touch play clue on turn 1 rather than something random', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'y4', 'p4', 'b3', 'g3'],
+			['b4', 'r2', 'y1', 'b3', 'y1']
+		], { level: { min: 2 } });
+
+		const action = take_action(game);
+
+		assert.ok(action.type === ACTION.RANK && action.value === 1 && action.target === PLAYER.CATHY ||
+			action.type === ACTION.COLOUR && action.value === COLOUR.YELLOW && action.target === PLAYER.CATHY);
 	});
 });

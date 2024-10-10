@@ -2,12 +2,14 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
-import HGroup from '../../src/conventions/h-group.js';
-import logger from '../../src/tools/logger.js';
 import * as ExAsserts from '../extra-asserts.js';
+import HGroup from '../../src/conventions/h-group.js';
+import { ACTION, CLUE } from '../../src/constants.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
-import { ACTION } from '../../src/constants.js';
+
+import logger from '../../src/tools/logger.js';
 import { logPerformAction } from '../../src/tools/log.js';
+import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -89,6 +91,30 @@ describe('stalling', () => {
 
 		// Can't be a locked hand stall, because Donald has a play.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['g1']);
+	});
+
+	it('correctly finds all clues in stalling situations', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'r4', 'b2', 'b2', 'r1'],
+			['y4', 'y4', 'r4', 'r3', 'g2']
+		], { level: { min: 9 } });
+
+		takeTurn(game, 'Alice clues 2 to Cathy');
+		takeTurn(game, 'Bob clues 5 to Alice (slots 1,2,3,4,5)');
+		takeTurn(game, 'Cathy clues red to Bob');
+
+		const { stall_clues } = find_clues(game);
+
+		// 3,4 to Bob are both valid Fill-In Clues
+		assert.ok(stall_clues[2].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 3));
+		assert.ok(stall_clues[2].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 4));
+
+		// 3 to Cathy is also a valid Locked Hand Stall.
+		assert.ok(stall_clues[3].some(clue => clue.target === PLAYER.CATHY && clue.type === CLUE.RANK && clue.value === 3));
+
+		// However, 2 to Cathy is not a valid Hard Burn (Cathy will play as r2).
+		assert.ok(!stall_clues[3].some(clue => clue.target === PLAYER.CATHY && clue.type === CLUE.RANK && clue.value === 2));
 	});
 });
 

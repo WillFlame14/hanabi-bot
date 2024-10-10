@@ -22,7 +22,7 @@ export function handle_action(action) {
 	state.actionList.push(action);
 
 	if (action.type === 'clue' && action.giver === state.ourPlayerIndex)
-		this.handHistory[state.turn_count] = Utils.objClone(state.hands[state.ourPlayerIndex]);
+		this.handHistory[state.turn_count] = Utils.objClone(state.ourHand);
 
 	switch(action.type) {
 		case 'clue': {
@@ -115,7 +115,8 @@ export function handle_action(action) {
 
 			if (currentPlayerIndex === state.ourPlayerIndex && !this.catchup) {
 				if (this.in_progress) {
-					setTimeout(() => Utils.sendCmd('action', this.take_action(this)), state.options.speedrun ? 0 : 2000);
+					if (Utils.globals.manual === undefined)
+						setTimeout(() => Utils.sendCmd('action', this.take_action(this)), state.options.speedrun ? 0 : 2000);
 				}
 				// Replaying a turn
 				else {

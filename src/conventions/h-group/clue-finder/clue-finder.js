@@ -1,6 +1,6 @@
 import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
-import { clue_safe, safe_situation } from './clue-safe.js';
+import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue, get_result } from './determine-clue.js';
 import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
@@ -35,8 +35,13 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 
 	const old_chop = common.chop(state.hands[target]);
 
-	if (chop_moved.length === 0)
+	if (chop_moved.length === 0) {
+		// Chop can be clued later
+		if (state.hands.some(hand => hand.some(c => c.matches(old_chop) && c.order !== old_chop.order)))
+			return -10;
+
 		return Math.max(find_clue_value(result), state.isCritical(old_chop) ? 0.1 : -Infinity);
+	}
 
 	const saved_trash = chop_moved.filter(card =>
 		state.isBasicTrash(card) ||
@@ -45,7 +50,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	);
 
 	// Direct clue is possible
-	if (hypo_game.moveHistory.at(-1).move === CLUE_INTERP.CM_TRASH &&
+	if (hypo_game.lastMove === CLUE_INTERP.CM_TRASH &&
 		all_clues.some(clue => chop_moved.every(cm => saved_trash.some(c => c.order === cm.order) || cardTouched(cm, state.variant, clue))))
 		return -10;
 
@@ -82,6 +87,11 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
  * @property {(game: Game, clue: Clue, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]) => boolean} [early_exits]
  */
 export function find_clues(game, options = {}) {
+	const hash = game.hash + ',' + JSON.stringify(options) + ',' + options.early_exits?.toString();
+
+	if (Utils.globals.cache.has(hash))
+		return Utils.globals.cache.get(hash);
+
 	const { common, state } = game;
 	const { giver = state.ourPlayerIndex, hypothetical = giver !== state.ourPlayerIndex, no_fix = false, noRecurse = false, early_exits = () => false } = options;
 	const player = game.players[giver];
@@ -90,11 +100,12 @@ export function find_clues(game, options = {}) {
 
 	const play_clues = /** @type Clue[][] */ 	([]);
 	const save_clues = /** @type SaveClue[] */ 	([]);
-	const stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], []]);
+	const stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], [], []]);
 
 	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, player.hypo_stacks, state.max_ranks);
 
 	let early_exit = false;
+	const hypo_games = /** @type {Record<string, Game>} */ ({});
 
 	// Find all valid clues
 	for (let target = 0; target < state.numPlayers; target++) {
@@ -113,7 +124,7 @@ export function find_clues(game, options = {}) {
 			const touch = state.hands[target].clueTouched(clue, state.variant);
 
 			const list = touch.map(c => c.order);
-			const { focused_card, chop } = determine_focus(hand, common, list);
+			const { focused_card, chop } = determine_focus(game, hand, common, list, clue);
 
 			const in_finesse = common.waiting_connections.some(w_conn => {
 				const { focused_card: wc_focus, inference } = w_conn;
@@ -127,18 +138,15 @@ export function find_clues(game, options = {}) {
 				continue;
 
 			// Do not expect others to clue cards that could be clued in our hand
-			if (hypothetical && state.hands[state.ourPlayerIndex].some(c => {
+			if (hypothetical && state.ourHand.some(c => {
 				const card = game.me.thoughts[c.order];
 				return card.touched && card.inferred.some(i => i.matches(focused_card));
 			}))
 				continue;
 
-			const bad_touch_cards = touch.filter(c => !c.clued &&			// Ignore cards that were already clued
-				isTrash(state, player, state.deck[c.order].identity() ?? player.thoughts[c.order].identity({ infer: true }), c.order));
-
 			// Simulate clue from receiver's POV to see if they have the right interpretation
 			const action =  /** @type {const} */ ({ type: 'clue', giver, target, list, clue, hypothetical, noRecurse });
-			const hypo_game = evaluate_clue(game, action, clue, target, focused_card, bad_touch_cards);
+			const hypo_game = evaluate_clue(game, action, clue, target, focused_card);
 
 			// Clue had incorrect interpretation
 			if (hypo_game === undefined)
@@ -164,19 +172,10 @@ export function find_clues(game, options = {}) {
 			Object.assign(clue, { result });
 
 			const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game, player, clue);
+			Object.assign(result, { discard });
 
 			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = result;
-			let remainder = 0;
-
-			if (discard !== undefined) {
-				logger.highlight('yellow', 'checking default discard');
-				const { safe: default_safe, discard: default_discard } = safe_situation(game.minimalCopy(), player);
-
-				if (default_safe && default_discard !== undefined) {
-					const [d_value, dd_value] = [discard, default_discard].map(c => cardValue(state, hypo_game.me, c, c.order));
-					remainder = Math.max(0, d_value - dd_value);
-				}
-			}
+			const interp = /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.lastMove);
 
 			const result_log = {
 				clue: logClue(clue),
@@ -189,12 +188,14 @@ export function find_clues(game, options = {}) {
 				finesses: finesses.length,
 				playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
 				chop_moved: chop_moved.map(c => `${logCard(state.deck[c.order])} ${c.order}`),
-				remainder,
-				interp: hypo_game.moveHistory.at(-1).move
+				discard: discard ? logCard(discard) : undefined,
+				interp
 			};
-			logger.info('result,', JSON.stringify(result_log), find_clue_value(Object.assign(result, { remainder })));
+			logger.info('result,', JSON.stringify(result_log), find_clue_value(result));
 
-			if ((/** @type {any} */ ([CLUE_INTERP.SAVE, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TRASH]).includes(hypo_game.moveHistory.at(-1).move))) {
+			hypo_games[logClue(clue)] = hypo_game;
+
+			if ((/** @type {any} */ ([CLUE_INTERP.SAVE, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TRASH]).includes(hypo_game.lastMove))) {
 				if (chop && focused_card.rank === 2) {
 					const copies = visibleFind(state, player, focused_card);
 					const chops = state.hands.map(hand => common.chop(hand)?.order);
@@ -211,7 +212,12 @@ export function find_clues(game, options = {}) {
 					logger.highlight('yellow', `${logClue(clue)} save results in avoidable potential duplication`);
 			}
 
-			switch (hypo_game.moveHistory.at(-1).move) {
+			switch (interp) {
+				case CLUE_INTERP.DISTRIBUTION:
+					logger.info('distribution clue!');
+					play_clues[target].push(clue);
+					break;
+
 				case CLUE_INTERP.CM_TEMPO: {
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, clue.result.playables, focused_card);
 
@@ -233,6 +239,11 @@ export function find_clues(game, options = {}) {
 					if (clue.result.playables.length === 0) {
 						logger.warn('play clue with no playables!');
 						stall_clues[5].push(clue);
+						continue;
+					}
+
+					if (clue.result.bad_touch === clue.result.new_touched.length && clue.result.bad_touch > 0) {
+						logger.warn('all newly clued cards are bad touched!', clue.result.new_touched.map(c => c.order));
 						continue;
 					}
 
@@ -278,22 +289,39 @@ export function find_clues(game, options = {}) {
 					break;
 			}
 
-			if (early_exits(game, clue, /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.moveHistory.at(-1).move))) {
+			if (early_exits(game, clue, interp)) {
+				if (interp === CLUE_INTERP.SAVE)
+					save_clues[target] = saves.at(-1);
+
 				early_exit = true;
 				break;
 			}
 		}
 
-		const all_clues = [...saves, ...play_clues[target]];
+		if (early_exit)
+			break;
+
 		save_clues[target] = Utils.maxOn(saves, (save_clue) => {
-			const value = save_clue_value(game, save_clue.game, save_clue, all_clues);
+			const value = save_clue_value(game, save_clue.game, save_clue, [...saves, ...play_clues[target]]);
 
 			logger.debug('save clue', logClue(save_clue), 'has value', value);
 			return value;
 		}, 0);
+	}
 
-		if (early_exit)
-			break;
+	const all_clues = [...save_clues.filter(c => c !== undefined), ...play_clues.flat(), ...stall_clues.flat()];
+
+	if (all_clues.length > 0) {
+		const best_remainder = Utils.maxOn(all_clues, clue => {
+			const discard = clue?.result?.discard;
+			const value = discard ? cardValue(state, hypo_games[logClue(clue)].me, discard, discard.order) : 0;
+			clue.result.remainder = value;
+
+			return -clue.result.remainder;
+		}).result.remainder;
+
+		for (const clue of all_clues)
+			clue.result.remainder = clue.result.remainder - best_remainder;
 	}
 
 	/** @type {FixClue[][]} */
@@ -311,5 +339,6 @@ export function find_clues(game, options = {}) {
 	if (stall_clues.some(clues => clues.length > 0))
 		logger.info('found stall clues', stall_clues.map(clues => clues.map(clue => logClue(clue))));
 
+	Utils.globals.cache.set(hash, { play_clues, save_clues, fix_clues, stall_clues });
 	return { play_clues, save_clues, fix_clues, stall_clues };
 }

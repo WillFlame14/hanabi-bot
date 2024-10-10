@@ -6,16 +6,20 @@ import { State } from '../basics/State.js';
 import { ACTION, CLUE } from '../constants.js';
 import { types } from 'node:util';
 import logger from './logger.js';
+import { IdentitySet } from '../basics/IdentitySet.js';
 
 /**
  * @typedef {typeof import('../constants.js').ACTION} ACTION
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Clue} Clue
+ * @typedef {import('../types.js').SaveClue} SaveClue
+ * @typedef {import('../types.js').FixClue} FixClue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').PerformAction} PerformAction
  */
 
-export const globals = {};
+/** @type {Record<string, any> & {cache: Map<string, { play_clues: Clue[][], save_clues: SaveClue[], fix_clues: FixClue[][], stall_clues: Clue[][] }>}} */
+export const globals = { cache: new Map() };
 
 /**
  * Modifies the global object.
@@ -118,7 +122,7 @@ export function objClone(obj, depth = 0) {
 	if (obj instanceof Hand || obj instanceof Player || obj instanceof ActualCard || obj instanceof Card)
 		return /** @type {T} */ (obj.clone());
 
-	if (obj instanceof BasicCard)
+	if (obj instanceof BasicCard || obj instanceof IdentitySet)
 		return obj;
 
 	if (Array.isArray(obj))
@@ -465,7 +469,7 @@ export function allSubsetsOfSize(arr, size) {
 	if (size === 1)
 		return arr.map(i => [i]);
 
-	return allSubsetsOfSize(arr.slice(1), size - 1).map(subset => subset.concat(arr[0]))
+	return allSubsetsOfSize(arr.slice(1), size - 1).map(subset => subset.concat([arr[0]]))
 		.concat(allSubsetsOfSize(arr.slice(1), size));
 }
 
@@ -480,4 +484,14 @@ export function permutations(arr) {
 		return [arr];
 
 	return range(0, arr.length).flatMap(i => permutations(arr.toSpliced(i, 1)).map(sub_arr => [arr[i]].concat(sub_arr)));
+}
+
+/**
+ * Clamps a number to a specified range.
+ * @param {number} num
+ * @param {number} min
+ * @param {number} max
+ */
+export function clampBetween(num, min, max) {
+	return Math.min(max, Math.max(num, min));
 }

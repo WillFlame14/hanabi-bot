@@ -1,6 +1,7 @@
 import { cardCount } from '../variants.js';
 import { IdentitySet } from './IdentitySet.js';
 import { unknownIdentities } from './hanabi-util.js';
+import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
@@ -21,141 +22,148 @@ import { logCard } from '../tools/log.js';
  * @param {State} state
  */
 export function card_elim(state) {
-	const identities = this.all_possible.array.slice();
 	const certain_map = /** @type {Map<string, Set<number>>} */ (new Map());
-	let uncertain_ids = /** @type {IdentitySet} */ new IdentitySet(state.variant.suits.length, 0);
-	const uncertain_map = /** @type {Map<number, IdentitySet>} */ (new Map());
-	const elim_map = /** @type {Map<number, {playerIndex: number, order: number}[]>} */(new Map());
-	const reverse_elim_map = /** @type {Map<number, number>} */(new Map());
+	let uncertain_ids = state.base_ids;
+	let uncertain_map = /** @type {Map<number, IdentitySet>} */ (new Map());
 
-	/** @type {(playerIndex: number, order: number) => void} */
-	const addToMap = (playerIndex, order) => {
-		const card = this.thoughts[order];
-		const id = card.identity();
+	const candidates = state.hands.flatMap((hand, playerIndex) => hand.map(c => ({ playerIndex, order: c.order })));
 
-		if (id !== undefined) {
-			const id_hash = logCard(id);
-			certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
-			return;
-		}
+	const all_ids = state.hands.flatMap(hand => hand.flatMap(c => this.thoughts[c.order].possible.array));
+	const identities = state.base_ids.union(all_ids).array;
 
-		// Too many identities, ignore
-		if (card.possible.length > 5 && !card.clued)
-			return;
+	/**
+	 * The "typical" empathy operation. If there are enough known instances of an identity, it is removed from every card (including future cards).
+	 * Returns true if at least one card was modified.
+	 */
+	const basic_elim = () => {
+		let changed = false;
 
-		const old_entry = reverse_elim_map.get(order);
+		/** @type {(index: number) => void} */
+		const addToMap = (index) => {
+			const { order } = candidates[index];
+			const card = this.thoughts[order];
+			const id = card.identity({ symmetric: this.playerIndex === -1 });
 
-		if (old_entry !== undefined) {
-			// No change in possibilities
-			if (card.possible.value === old_entry)
-				return;
+			if (id !== undefined) {
+				const id_hash = logCard(id);
+				certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
+				candidates.splice(index, 1);
+			}
+		};
 
-			// Delete old entry
-			const reverse_entry = elim_map.get(old_entry);
-			reverse_entry.splice(reverse_entry.findIndex(e => e.order === order), 1);
-		}
+		for (let i = candidates.length - 1; i >= 0; i--)
+			addToMap(i);
 
-		const elim_entry = elim_map.get(card.possible.value) ?? [];
-		elim_entry.push({ playerIndex, order });
+		for (let i = 0; i < identities.length; i++) {
+			const identity = identities[i];
+			const id_hash = logCard(identity);
 
-		const total_multiplicity = card.possible.reduce((acc, id) => acc += cardCount(state.variant, id) - state.baseCount(id), 0);
+			const known_count = state.baseCount(identity) + (certain_map.get(id_hash)?.size ?? 0) + (uncertain_ids.has(identity) ? 1 : 0);
+			const total_count = cardCount(state.variant, identity);
 
-		if (elim_entry.length < total_multiplicity) {
-			elim_map.set(card.possible.value, elim_entry);
-			reverse_elim_map.set(order, card.possible.value);
-			return;
-		}
-
-		elim_map.delete(card.possible.value);
-
-		const elimd = /** @type {{playerIndex: number, order: number}[]} */ ([]);
-
-		// There are N cards for N identities - everyone knows they are holding what they cannot see
-		for (const { playerIndex: p1, order: o1 } of elim_entry) {
-			reverse_elim_map.delete(o1);
-
-			const elim_id = state.deck[o1].identity();
-			if (elim_id === undefined)
+			if (known_count !== total_count)
 				continue;
 
-			for (const { playerIndex: p2, order: o2 } of elim_entry) {
-				// Players still cannot elim from themselves
-				if (p1 === p2 || !this.thoughts[o2].possible.has(elim_id))
-					continue;
+			// Remove it from the list of future possibilities
+			this.all_possible = this.all_possible.subtract(identity);
+			this.all_inferred = this.all_inferred.subtract(identity);
 
-				this.thoughts[o2].possible = this.thoughts[o2].possible.subtract(elim_id);
-				this.thoughts[o2].inferred = this.thoughts[o2].inferred.intersect(this.thoughts[o2].possible);
-
-				elimd.push({ playerIndex: p2, order: o2 });
-
-				const new_id = this.thoughts[o2].identity();
-				if (new_id !== undefined) {
-					const id_hash = logCard(new_id);
-					certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
-					identities.push(new_id);
-				}
-			}
-		}
-
-		if (elimd.length === 0) {
-			for (const { order } of elim_entry)
-				uncertain_map.set(order, new IdentitySet(state.variant.suits.length, 0).union(card.possible));
-
-			uncertain_ids = uncertain_ids.union(card.possible);
-
-			for (const id of card.possible)
-				identities.push(id);
-		}
-		else {
-			for (const { playerIndex, order } of elimd)
-				addToMap(playerIndex, order);
-		}
-	};
-
-	for (let i = 0; i < state.numPlayers; i++) {
-		for (const { order } of state.hands[i])
-			addToMap(i, order);
-	}
-
-	for (let i = 0; i < identities.length; i++) {
-		const identity = identities[i];
-		const id_hash = logCard(identity);
-
-		const known_count = state.baseCount(identity) + (certain_map.get(id_hash)?.size ?? 0) + (uncertain_ids.has(identity) ? 1 : 0);
-		const total_count = cardCount(state.variant, identity);
-
-		if (!this.all_possible.has(identity) || known_count !== total_count)
-			continue;
-
-		if (!this.all_inferred.has(identity))
-			throw new Error(`failing to eliminate identity ${id_hash} from inferred`);
-
-		// Remove it from the list of future possibilities
-		this.all_possible = this.all_possible.subtract(identity);
-		this.all_inferred = this.all_inferred.subtract(identity);
-
-		for (let j = 0; j < state.numPlayers; j++) {
-			for (const { order } of state.hands[j]) {
+			for (let i = candidates.length - 1; i >= 0; i--) {
+				const { order } = candidates[i];
 				const card = this.thoughts[order];
 
-				if (card.possible.length <= 1 || certain_map.get(id_hash)?.has(order) || uncertain_map.get(order)?.has(identity))
+				if (!card.possible.has(identity) || certain_map.get(id_hash)?.has(order) || uncertain_map.get(order)?.has(identity))
 					continue;
+
+				changed = true;
 
 				card.possible = card.possible.subtract(identity);
 				card.inferred = card.inferred.subtract(identity);
 
-				if (card.inferred.length === 0 && !card.reset)
+				if (card.inferred.length === 0 && !card.reset) {
 					this.reset_card(order);
-
+				}
 				// Card can be further eliminated
-				else if (card.possible.length === 1)
+				else if (card.possible.length === 1) {
 					identities.push(card.identity());
+					addToMap(i);
+				}
+			}
+			logger.debug(`removing ${id_hash} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
+		}
+		return changed;
+	};
 
-				addToMap(j, order);
+	/**
+	 * The "sudoku" empathy operation, involving 2 parts.
+	 * Symmetric info - if Alice has [r5,g5] and Bob has [r5,g5], then everyone knows how r5 and g5 are distributed.
+	 * Naked pairs - If Alice has 3 cards with [r4,g5], then everyone knows that both r4 and g5 cannot be elsewhere (will be eliminated in basic_elim).
+	 * Returns true if at least one card was modified.
+	 */
+	const cross_elim = () => {
+		uncertain_ids = state.base_ids;
+		uncertain_map = new Map();
+
+		let changed = false;
+
+		const cross_elim_candidates = candidates.filter(({ order }) => {
+			const card = this.thoughts[order];
+			return card.possible.length <= 5 || card.clued;
+		});
+
+		/**
+		 * @param {{ order: number, playerIndex: number }[]} entries
+		 * @param {IdentitySet} identities
+		 */
+		const perform_elim = (entries, identities) => {
+			// There are N cards for N identities - everyone knows they are holding what they cannot see
+			for (const { playerIndex: p1, order: o1 } of entries) {
+				const elim_id = state.deck[o1].identity();
+				if (elim_id === undefined)
+					continue;
+
+				for (const { playerIndex: p2, order: o2 } of entries) {
+					// Players still cannot elim from themselves
+					if (p1 === p2 || !this.thoughts[o2].possible.has(elim_id))
+						continue;
+
+					this.thoughts[o2].possible = this.thoughts[o2].possible.subtract(elim_id);
+					this.thoughts[o2].inferred = this.thoughts[o2].inferred.intersect(this.thoughts[o2].possible);
+					changed = true;
+				}
+			}
+
+			if (!changed) {
+				for (const { order } of entries)
+					uncertain_map.set(order, state.base_ids.union(identities));
+
+				uncertain_ids = uncertain_ids.union(identities);
+			}
+
+			for (const e of entries)
+				cross_elim_candidates.splice(cross_elim_candidates.findIndex(({ order }) => order === e.order), 1);
+		};
+
+		/** @param {IdentitySet} identities */
+		const total_multiplicity = (identities) => identities.reduce((acc, id) => acc += cardCount(state.variant, id) - state.baseCount(id), 0);
+
+		for (let i = 2; i <= cross_elim_candidates.length; i++) {
+			const subsets = Utils.allSubsetsOfSize(cross_elim_candidates, i);
+
+			for (const subset of subsets) {
+				const identities = subset.reduce((acc, { order }) => acc.union(this.thoughts[order].possible), state.base_ids);
+
+				if (subset.length === total_multiplicity(identities))
+					perform_elim(subset, identities);
 			}
 		}
-		logger.debug(`removing ${id_hash} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
-	}
+
+		return changed;
+	};
+
+	basic_elim();
+
+	while (cross_elim() || basic_elim());
 }
 
 /**
@@ -166,22 +174,6 @@ export function card_elim(state) {
  * @param {boolean} only_self 	Whether to only use cards in own hand for elim (e.g. in 2-player games, where GTP is less strong.)
  */
 export function good_touch_elim(state, only_self = false) {
-	/** @type {Set<number>} Orders of cards that are in unconfirmed connections */
-	const unconfirmed = new Set();
-
-	for (const { connections, conn_index } of this.waiting_connections) {
-		// If this player is next, assume the connection is true
-		if (connections[conn_index].reacting === this.playerIndex)
-			continue;
-
-		for (let i = conn_index; i < connections.length; i++) {
-			const { order } = connections[i].card;
-
-			if (this.thoughts[order].identity() === undefined)
-				unconfirmed.add(order);
-		}
-	}
-
 	const match_map = /** @type {Map<string, Set<number>>} */ (new Map());
 	const hard_match_map = /** @type {Map<string, Set<number>>} */ (new Map());
 	const cross_map = /** @type {Map<number, Set<number>>} */ (new Map());
@@ -206,7 +198,7 @@ export function good_touch_elim(state, only_self = false) {
 		if ((state.deck[order].identity() !== undefined && !state.deck[order].matches(id)) ||		// Card is visible and doesn't match
 			(state.baseCount(id) + state.hands.flat().filter(c => c.matches(id) && c.order !== order).length === cardCount(state.variant, id)) ||	// Card cannot match
 			(!card.matches(id) && card.newly_clued && !card.focused) ||			// Unknown newly clued cards off focus?
-			unconfirmed.has(order) || (card.finessed && card.uncertain)
+			card.uncertain
 		)
 			return;
 

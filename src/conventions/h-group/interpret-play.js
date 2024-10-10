@@ -1,4 +1,3 @@
-import { CLUE } from '../../constants.js';
 import { LEVEL } from './h-constants.js';
 import { team_elim } from '../../basics/helper.js';
 import { order_1s } from './action-helper.js';
@@ -9,47 +8,44 @@ import logger from '../../tools/logger.js';
 /**
  * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../h-player.js').HGroup_Player} Player
+ * @typedef {import('../../types.js').CardAction} CardAction
  * @typedef {import('../../types.js').PlayAction} PlayAction
  */
 
 /**
  * @param {Game} game
- * @param {PlayAction} action
+ * @param {CardAction} action
  */
-function check_ocm(game, action) {
+export function check_ocm(game, action) {
 	const { common, state } = game;
 	const { order, playerIndex } = action;
-	const card = common.thoughts[order];
 
-	// Played an unknown 1
-	if (card.clues.length > 0 &&
-		card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) &&
-		(card.inferred.length > 1 || card.rewinded)
-	) {
-		const ordered_1s = order_1s(state, common, state.hands[playerIndex]);
-		const offset = ordered_1s.findIndex(c => c.order === order);
+	const ordered_1s = order_1s(state, common, state.hands[playerIndex]);
+	const offset = ordered_1s.findIndex(c => c.order === order);
 
-		if (offset === 0) {
-			logger.info('played unknown 1 in correct order, no ocm');
-			return;
-		}
+	if (offset === -1)
+		return;
 
-		const target = (playerIndex + offset) % state.numPlayers;
-		if (target === playerIndex) {
-			// Just going to assume no double order chop moves in 3p
-			logger.error('double order chop move???');
-			return;
-		}
-
-		const chop = common.chop(state.hands[target]);
-		if (chop === undefined) {
-			logger.warn(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
-			return;
-		}
-
-		common.thoughts[chop.order].chop_moved = true;
-		logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
+	if (offset === 0) {
+		logger.info('played unknown 1 in correct order, no ocm');
+		return;
 	}
+
+	const target = (playerIndex + offset) % state.numPlayers;
+	if (target === playerIndex) {
+		// Just going to assume no double order chop moves in 3p
+		logger.error('double order chop move???');
+		return;
+	}
+
+	const chop = common.chop(state.hands[target]);
+	if (chop === undefined) {
+		logger.warn(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
+		return;
+	}
+
+	common.thoughts[chop.order].chop_moved = true;
+	logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
 }
 
 /**
@@ -62,13 +58,13 @@ export function interpret_play(game, action) {
 	const identity = { suitIndex, rank };
 
 	// Now that we know about this card, rewind from when the card was drawn
-	if (playerIndex === state.ourPlayerIndex) {
+	if (playerIndex === state.ourPlayerIndex && suitIndex !== -1) {
 		const card = common.thoughts[order];
 		const need_rewind = card.uncertain || card.inferred.length !== 1 || !card.inferred.array[0].matches(identity) || common.play_links.some(link => link.orders.includes(order));
 
 		if (need_rewind && !card.rewinded) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
-			const new_game = game.rewind(card.drawn_index, { type: 'identify', order, playerIndex, identities: [identity] });
+			const new_game = game.rewind(card.drawn_index, [{ type: 'identify', order, playerIndex, identities: [identity] }]);
 			if (new_game) {
 				Object.assign(game, new_game);
 				return;
@@ -89,7 +85,7 @@ export function interpret_play(game, action) {
 	team_elim(game);
 
 	if (playerIndex === state.ourPlayerIndex) {
-		for (const { order } of state.hands[state.ourPlayerIndex])
+		for (const { order } of state.ourHand)
 			common.thoughts[order].uncertain = false;
 	}
 }

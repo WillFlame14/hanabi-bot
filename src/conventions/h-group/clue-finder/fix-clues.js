@@ -1,10 +1,12 @@
 import { LEVEL } from '../h-constants.js';
 import { cardTouched, direct_clues, variantRegexes } from '../../../variants.js';
-import { isSaved, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
+import { isSaved, isTrash, knownAs, visibleFind } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
 import { get_result } from './determine-clue.js';
+import { CLUE } from '../../../constants.js';
+import { order_1s } from '../action-helper.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -39,26 +41,36 @@ export function find_fix_clues(game, play_clues, save_clues) {
 		for (const { clued, order } of state.hands[target]) {
 			const card = me.thoughts[order];
 
+			const pink_1s = () => {
+				if (!state.includesVariant(variantRegexes.pinkish))
+					return false;
+
+				const unknown_1s = state.hands[target].filter(c => c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+				const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
+
+				return ordered_1s[0] !== undefined && state.isPlayable(ordered_1s[0]);
+			};
+
 			const fix_unneeded = card.possible.length === 1 ||
 				card.possible.every(p => state.isBasicTrash(p)) ||
 				(card.chop_moved && !clued) ||										// Card chop moved but not clued, don't fix
 				common.dependentConnections(order).some(wc => wc.symmetric)	||		// Part of a symmetric waiting connection
-				card.inferred.length === 0;
+				card.inferred.length === 0 ||
+				pink_1s();
 
 			if (fix_unneeded)
 				continue;
 
 			const seems_playable = card.inferred.every(p => {
 				const away = state.playableAway(p);
-				const our_hand = state.hands[state.ourPlayerIndex];
 
 				// Possibility is immediately playable or 1-away and we have the connecting card
 				return away === 0 ||
-					(away === 1 && our_hand.some(c => me.thoughts[c.order].matches({ suitIndex: p.suitIndex, rank: p.rank - 1 }, { infer: true })));
+					(away === 1 && state.ourHand.some(c => me.thoughts[c.order].matches({ suitIndex: p.suitIndex, rank: p.rank - 1 }, { infer: true })));
 			});
 
 			// We don't need to fix cards where we hold one copy, since we can just sarcastic discard
-			if (state.hands[state.ourPlayerIndex].some(c => me.thoughts[c.order].matches(card, { infer: true })))
+			if (state.ourHand.some(c => me.thoughts[c.order].matches(card, { infer: true })))
 				continue;
 
 			const wrong_inference = !state.hasConsistentInferences(card) && state.playableAway(card) !== 0;
@@ -140,7 +152,7 @@ function inference_corrected(game, order, _target) {
 		return card.possible.every(p => state.isBasicTrash(p));
 
 	// Revealed to be pink
-	if (card.possible.every(p => state.variant.suits[p.suitIndex].match(variantRegexes.pinkish)))
+	if (knownAs(game, order, variantRegexes.pinkish))
 		return card.inferred.every(i => !state.isPlayable(i)) && state.hasConsistentInferences(card);
 
 	return card.possible.every(p => !state.isPlayable(p));

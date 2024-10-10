@@ -9,6 +9,7 @@ import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.j
 import logger from '../../src/tools/logger.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 import { logPerformAction } from '../../src/tools/log.js';
+import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -232,14 +233,21 @@ describe('ambiguous clues', () => {
 			['p4', 'r1', 'g4', 'p4'],
 			['p4', 'b2', 'b3', 'y4'],
 			['r1', 'y2', 'r4', 'r5']
-		], { level: { min: 5 }, starting: PLAYER.BOB, play_stacks: [0, 0, 0, 0, 0] });
+		], {
+			level: { min: 5 },
+			starting: PLAYER.BOB
+		});
+
 		takeTurn(game, 'Bob clues 5 to Donald');
 		takeTurn(game, 'Cathy clues red to Bob');
 		takeTurn(game, 'Donald discards r4', 'r5');
+
 		assert.equal(game.common.waiting_connections.some(conn =>
 			conn.connections[0]?.reacting == PLAYER.ALICE &&
 			conn.connections[0].card.order == game.state.hands[PLAYER.ALICE][0].order), true);
+
 		takeTurn(game, 'Alice discards y2 (slot 4)');
+
 		assert.equal(game.common.waiting_connections.length, 0);
 	});
 });
@@ -423,6 +431,34 @@ describe('guide principle', () => {
 		// Alice should play g1, Bob will clue Cathy's r1.
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
+	});
+});
+
+describe('prompts in multi-colour variants', () => {
+	it(`doesn't give wrong prompts`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b3', 'm3', 'r1', 'r3'],
+			['g4', 'g2', 'b3', 'm5'],
+			['b1', 'y2', 'r3', 'r4']
+		], {
+			level: { min: 2 },
+			play_stacks: [0, 0, 0, 2, 0],
+			starting: PLAYER.DONALD,
+			variant: VARIANTS.RAINBOW
+		});
+
+		takeTurn(game, 'Donald clues blue to Bob');
+		takeTurn(game, 'Alice clues 5 to Cathy');
+		takeTurn(game, 'Bob plays b3', 'r2');
+
+		takeTurn(game, 'Cathy discards b3', 'b5');
+		takeTurn(game, 'Donald discards r4', 'b1');
+
+		const { play_clues } = find_clues(game);
+
+		// 2 to Bob is not a valid clue (m3 will bomb as prompt into m2).
+		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 2));
 	});
 });
 

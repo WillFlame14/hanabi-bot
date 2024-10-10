@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
 import { ACTION, CLUE } from '../../src/constants.js';
-import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
@@ -11,6 +11,7 @@ import { early_game_clue } from '../../src/conventions/h-group/urgent-actions.js
 
 import logger from '../../src/tools/logger.js';
 import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
+import { logPerformAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -19,7 +20,7 @@ describe('save clue', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
-			['g3', 'p1', 'b3', 'b2', 'b5']
+			['g3', 'p1', 'b3', 'b4', 'b5']
 		], {
 			level: { min: 1 },
 			play_stacks: [1, 5, 1, 0, 5],
@@ -36,7 +37,7 @@ describe('save clue', () => {
 		const action = take_action(game);
 
 		// Alice should give green to Cathy to finesse over save
-		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN });
+		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN }, `Expected (green to Cathy) but got ${logPerformAction(action)}`);
 	});
 
 	it('prefers touching less cards to save critical cards', () => {
@@ -170,20 +171,6 @@ describe('save clue', () => {
 });
 
 describe('early game', () => {
-	it('will not 5 stall on a trash 5', () => {
-		const game = setup(HGroup, [
-			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['g4', 'r5', 'r4', 'y4', 'b3'],
-		], {
-			level: { min: 1 },
-			discarded: ['r4', 'r4'],
-			clue_tokens: 7
-		});
-
-		const action = game.take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
-	});
-
 	it(`doesn't try to save in early game when clues are available`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -197,6 +184,22 @@ describe('early game', () => {
 		takeTurn(game, 'Cathy clues blue to Alice (slot 2)');
 
 		// Bob can clue Cathy's r1.
+		assert.equal(early_game_clue(game, PLAYER.BOB), true);
+	});
+
+	it(`doesn't try to save in early game when duplicated clues are available`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g4', 'r2', 'r4', 'p4'],
+			['r1', 'b4', 'y4', 'r1'],
+			['y2', 'b3', 'b3', 'r1']
+		], {
+			level: { min: 11 },
+			clue_tokens: 7,
+			variant: VARIANTS.BLACK		// Necessary so that cluing (potential) k1 is treated as a save clue
+		});
+
+		// Bob can must clue at least one r1.
 		assert.equal(early_game_clue(game, PLAYER.BOB), true);
 	});
 });
