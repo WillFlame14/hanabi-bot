@@ -5,6 +5,7 @@ import { find_clue_value } from '../action-helper.js';
 import { get_result } from '../clue-finder/determine-clue.js';
 import { determine_focus, minimum_clue_value, stall_severity } from '../hanabi-logic.js';
 import { find_clues } from '../clue-finder/clue-finder.js';
+import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logClue } from '../../../tools/log.js';
@@ -147,6 +148,7 @@ export function stalling_situation(game, action, prev_game) {
 
 	logger.collect();
 	const { play_clues, save_clues, stall_clues } = find_clues(prev_game, options);
+	Utils.globalModify({ game });
 	logger.flush(false);
 
 	const expected_play = () => play_clues.flat().find(cl =>

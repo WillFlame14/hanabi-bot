@@ -692,7 +692,7 @@ export function interpret_clue(game, action) {
 		logger.debug('hand state after clue', logHand(state.hands[target]));
 	}
 	catch (err) {
-		logger.info('Failed to debug hand state', err, state.hands[target].map(c => c.order), game.common.thoughts.map(c => c.order));
+		logger.info('Failed to debug hand state', err, state.hands[target].map(c => c.order), Utils.globals.game.common.thoughts.map(c => c.order));
 	}
 	team_elim(game);
 }

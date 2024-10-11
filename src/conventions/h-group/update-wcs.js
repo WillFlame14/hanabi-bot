@@ -1,4 +1,4 @@
-import { LEVEL } from './h-constants.js';
+import { CLUE_INTERP, LEVEL } from './h-constants.js';
 import { getRealConnects, inBetween, older_queued_finesse } from './hanabi-logic.js';
 
 import logger from '../../tools/logger.js';
@@ -129,8 +129,8 @@ export function resolve_card_retained(game, waiting_connection) {
 				return { remove: false };
 			}
 
-			if (type === 'prompt') {
-				logger.warn(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a clue`);
+			if (type === 'prompt' && ![CLUE_INTERP.PLAY, CLUE_INTERP.SAVE, CLUE_INTERP.FIX, CLUE_INTERP.CM_TRASH, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TEMPO]) {
+				logger.warn(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a useful clue`);
 				return { remove: false };
 			}
 
