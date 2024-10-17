@@ -24,12 +24,12 @@ describe('simple endgames with 1 card left', () => {
 			clue_tokens: 2,
 			init: (game) => {
 				const { common, state } = game;
-				const a_slot1 = common.thoughts[state.hands[PLAYER.ALICE][0].order];
+				const a_slot1 = common.thoughts[state.hands[PLAYER.ALICE][0]];
 				a_slot1.inferred = a_slot1.inferred.intersect(expandShortCard('r5'));
 				a_slot1.possible = a_slot1.possible.intersect(expandShortCard('r5'));
 				a_slot1.clued = true;
 
-				const d_slot4 = common.thoughts[state.hands[PLAYER.DONALD][3].order];
+				const d_slot4 = common.thoughts[state.hands[PLAYER.DONALD][3]];
 				d_slot4.inferred = d_slot4.inferred.intersect(expandShortCard('b5'));
 				d_slot4.possible = d_slot4.possible.intersect(expandShortCard('b5'));
 				d_slot4.clued = true;
@@ -54,17 +54,17 @@ describe('simple endgames with 1 undrawn identity', () => {
 			clue_tokens: 5,
 			init: (game) => {
 				const { common, state } = game;
-				const a_slot5 = common.thoughts[state.hands[PLAYER.ALICE][4].order];
+				const a_slot5 = common.thoughts[state.hands[PLAYER.ALICE][4]];
 				a_slot5.inferred = a_slot5.inferred.intersect(expandShortCard('p4'));
 				a_slot5.possible = a_slot5.possible.intersect(expandShortCard('p4'));
 				a_slot5.clued = true;
 
-				const b_slot5 = common.thoughts[state.hands[PLAYER.BOB][4].order];
+				const b_slot5 = common.thoughts[state.hands[PLAYER.BOB][4]];
 				b_slot5.inferred = b_slot5.inferred.intersect(expandShortCard('p3'));
 				b_slot5.possible = b_slot5.possible.intersect(expandShortCard('p3'));
 				b_slot5.clued = true;
 
-				const c_slot3 = common.thoughts[state.hands[PLAYER.CATHY][2].order];
+				const c_slot3 = common.thoughts[state.hands[PLAYER.CATHY][2]];
 				c_slot3.inferred = c_slot3.inferred.intersect(expandShortCard('p5'));
 				c_slot3.possible = c_slot3.possible.intersect(expandShortCard('p5'));
 				c_slot3.clued = true;

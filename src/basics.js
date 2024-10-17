@@ -1,5 +1,6 @@
 import { ActualCard, Card } from './basics/Card.js';
 import { cardCount, find_possibilities } from './variants.js';
+import { produce } from './StateProxy.js';
 
 /**
  * @typedef {import('./basics/Game.js').Game} Game
@@ -18,29 +19,38 @@ export function onClue(game, action) {
 	const { target, clue, list, giver } = action;
 	const new_possible = find_possibilities(clue, state.variant);
 
-	for (const { order } of state.hands[target]) {
-		const c = state.hands[target].findOrder(order);
+	for (const order of state.hands[target]) {
+		const index = state.hands[target].findIndex(o => o === order);
 
 		if (list.includes(order)) {
-			if (!c.clued) {
-				c.newly_clued = true;
-				c.clued = true;
-			}
-			c.clues.push(Object.assign({}, clue, { giver, turn: state.turn_count }));
+			/** @param {import('./types.js').Writable<ActualCard>} card */
+			const update_func = (card) => {
+				if (!card.clued) {
+					card.newly_clued = true;
+					card.clued = true;
+				}
+				card.clues.push(Object.assign({}, clue, { giver, turn: state.turn_count }));
+			};
+
+			state.deck[order] = produce(state.deck[order], update_func);
+			state.hands[target] = state.hands[target].with(index, order);
+
+			for (const player of game.allPlayers)
+				player.updateThoughts(order, update_func);
 		}
 
 		for (const player of game.allPlayers) {
-			const card = player.thoughts[order];
-			const inferences_before = card.inferred.length;
+			const { possible, inferred } = player.thoughts[order];
+			player.updateThoughts(order, (draft) => {
+				const operation = list.includes(order) ? 'intersect' : 'subtract';
+				draft.possible = possible[operation](new_possible);
+				draft.inferred = inferred[operation](new_possible);
 
-			const operation = list.includes(order) ? 'intersect' : 'subtract';
-			card.possible = card.possible[operation](new_possible);
-			card.inferred = card.inferred[operation](new_possible);
-
-			if (list.includes(order) && card.inferred.length < inferences_before) {
-				card.reasoning.push(state.actionList.length - 1);
-				card.reasoning_turn.push(state.turn_count);
-			}
+				if (list.includes(order) && draft.inferred.length < inferred.length) {
+					draft.reasoning.push(state.actionList.length - 1);
+					draft.reasoning_turn.push(state.turn_count);
+				}
+			});
 		}
 	}
 
@@ -64,17 +74,22 @@ export function onDiscard(game, action) {
 	const { failed, order, playerIndex, rank, suitIndex } = action;
 	const identity = { suitIndex, rank };
 
-	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
+	state.hands[playerIndex] = state.hands[playerIndex].toSpliced(state.hands[playerIndex].indexOf(order), 1);
 
 	if (suitIndex !== -1 && rank !== -1) {
 		state.discard_stacks[suitIndex][rank - 1]++;
-		Object.assign(state.deck[order], identity);
+		state.deck[order] = produce(state.deck[order], (draft) => {
+			draft.suitIndex = suitIndex;
+			draft.rank = rank;
+		});
 
 		for (const player of game.allPlayers) {
-			const card = player.thoughts[order];
-			card.possible = card.possible.intersect(identity);
-			card.inferred = card.inferred.intersect(identity);
-			Object.assign(card, identity);
+			player.updateThoughts(order, (draft) => {
+				draft.suitIndex = suitIndex;
+				draft.rank = rank;
+				draft.possible = player.thoughts[order].possible.intersect(identity);
+				draft.inferred = player.thoughts[order].inferred.intersect(identity);
+			});
 
 			player.card_elim(state);
 			player.refresh_links(state);
@@ -102,21 +117,19 @@ export function onDraw(game, action) {
 	const { state } = game;
 	const { order, playerIndex, suitIndex, rank } = action;
 
-	const card = new ActualCard(suitIndex, rank, order, state.actionList.length);
-	state.hands[playerIndex].unshift(card);
-	state.deck[order] = card;
+	state.hands[playerIndex].unshift(order);
+	state.deck[order] = new ActualCard(suitIndex, rank, order, state.actionList.length);
 
 	for (let i = 0; i < state.numPlayers; i++) {
 		const player = game.players[i];
 
-		player.thoughts[order] = new Card(card, {
-			suitIndex: (i !== playerIndex || i === state.ourPlayerIndex) ? suitIndex : -1,
-			rank: (i !== playerIndex || i === state.ourPlayerIndex) ? rank : -1,
+		player.thoughts[order] = new Card(
+			(i !== playerIndex || i === state.ourPlayerIndex) ? suitIndex : -1,
+			(i !== playerIndex || i === state.ourPlayerIndex) ? rank : -1,
+			player.all_possible,
+			player.all_possible,
 			order,
-			possible: player.all_possible,
-			inferred: player.all_possible,
-			drawn_index: state.actionList.length
-		});
+			state.actionList.length);
 	}
 
 	game.players.forEach(player => {
@@ -124,15 +137,7 @@ export function onDraw(game, action) {
 		player.refresh_links(state);
 	});
 
-	game.common.thoughts[order] = new Card(card, {
-		suitIndex: -1,
-		rank: -1,
-		order,
-		possible: game.common.all_possible,
-		inferred: game.common.all_possible,
-		drawn_index: state.actionList.length
-	});
-
+	game.common.thoughts[order] = new Card(-1, -1, game.common.all_possible, game.common.all_possible, order, state.actionList.length);
 	state.cardOrder = order;
 	state.cardsLeft--;
 
@@ -149,19 +154,26 @@ export function onPlay(game, action) {
 	const { order, playerIndex, rank, suitIndex } = action;
 	const identity = { suitIndex, rank };
 
-	state.hands[playerIndex] = state.hands[playerIndex].removeOrder(order);
+	state.hands[playerIndex] = state.hands[playerIndex].toSpliced(state.hands[playerIndex].indexOf(order), 1);
 
 	if (suitIndex !== undefined && rank !== undefined) {
 		state.play_stacks[suitIndex] = rank;
-		Object.assign(state.deck[order], identity);
+		state.deck[order] = produce(state.deck[order], (draft) => {
+			draft.suitIndex = suitIndex;
+			draft.rank = rank;
+		});
 
 		for (const player of game.allPlayers) {
-			const card = player.thoughts[order];
-			card.old_possible = card.possible;
-			card.old_inferred = card.inferred;
-			card.possible = card.possible.intersect(identity);
-			card.inferred = card.inferred.intersect(identity);
-			Object.assign(card, identity);
+			const { possible, inferred } = player.thoughts[order];
+
+			player.updateThoughts(order, (draft) => {
+				draft.suitIndex = suitIndex;
+				draft.rank = rank;
+				draft.old_possible = possible;
+				draft.old_inferred = inferred;
+				draft.possible = possible.intersect(identity);
+				draft.inferred = inferred.intersect(identity);
+			});
 
 			player.card_elim(state);
 			player.refresh_links(state);

@@ -25,7 +25,7 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Bob clues yellow to Alice (slot 3)');
 
 		// Alice's slot 3 should be [y1,y2].
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['y1', 'y2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['y1', 'y2']);
 
 		takeTurn(game, 'Cathy plays g1', 'b1');		// expecting y1 finesse
 		takeTurn(game, 'Alice discards b1 (slot 5)');
@@ -34,7 +34,7 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Cathy plays y1', 'y1');
 
 		// Alice's slot 4 (used to be slot 3) should be y2 now.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['y2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['y2']);
 	});
 
 	it('writes correct notes for a layered finesse', () => {
@@ -50,7 +50,7 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Bob clues yellow to Alice (slot 3)');
 
 		// Cathy's hand should be marked correctly.
-		assert.ok(game.state.hands[PLAYER.CATHY].every(c => game.common.thoughts[c.order].inferred.has(c)));
+		assert.ok(game.state.hands[PLAYER.CATHY].every(o => game.common.thoughts[o].inferred.has(game.state.deck[o])));
 	});
 
 	it('understands playing into a layered finesse', () => {
@@ -66,12 +66,12 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Cathy clues yellow to Bob');
 
 		// Alice's slot 1 should be [y1].
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['y1']);
 
 		takeTurn(game, 'Alice plays g1 (slot 1)');		// expecting y1 finesse
 
 		// Alice's slot 2 should be [y1] now.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['y1']);
 	});
 
 	it('understands playing into a complex layered finesse', () => {
@@ -90,12 +90,12 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Donald plays g2 (slot 1)', 'r5');
 		takeTurn(game, 'Alice plays p1 (slot 1)');
 
-		const slot2 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order];
+		const slot2 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1]];
 		ExAsserts.cardHasInferences(slot2, ['g3']);
 		assert.equal(slot2.finessed, true);
 
 		// Double-check that Alice also thinks slot 2 is g3 and finessed
-		const alice_slot2 = game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][1].order];
+		const alice_slot2 = game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][1]];
 		ExAsserts.cardHasInferences(alice_slot2, ['g3']);
 		assert.equal(alice_slot2.finessed, true);
 	});
@@ -121,7 +121,7 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Alice bombs g1 (slot 1)');		// We try to play r3, but end up bombing a copy of g1 that was layered.
 
 		// Slot 2 should still be finessed as r3.
-		const slot2 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order];
+		const slot2 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1]];
 		ExAsserts.cardHasInferences(slot2, ['r3']);
 		assert.equal(slot2.finessed, true);
 	});
@@ -155,12 +155,12 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Bob clues yellow to Alice (slots 2,5)');		// y4 save
 
 		// Alice's slot 2 (the yellow card) should be finessed as y1.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['y1']);
 
 		// Alice's slot 3 should be finessed as the missing r1.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['r1']);
 	});
 
 	it('gracefully handles clues that reveal layered finesses (matching)', () => {
@@ -179,12 +179,12 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Bob clues red to Alice (slots 3,5)');		// r4 save
 
 		// Alice's slot 2 should be finessed as [y1, g1, b2, p1].
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y1', 'g1', 'b2', 'p1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['y1', 'g1', 'b2', 'p1']);
 
 		// Alice's slot 3 should be finessed as the missing r1.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['r1']);
 	});
 
 	it('plays correctly into layered finesses with self-connecting cards', () => {
@@ -206,7 +206,7 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Alice plays p2 (slot 2)');			// expecting y1 finesse
 
 		// y1 should be in slot 3 now.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['y1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['y1']);
 	});
 
 	it('recognizes unsafe players when they cannot play into a layered finesse', () => {
@@ -264,7 +264,7 @@ describe('layered finesse', () => {
 		takeTurn(game, 'Donald clues 4 to Alice (slot 2)');
 
 		// The simplest interpretation is g3 behind b1 (note that g3 cannot be in front of b1)
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['g3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['b1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['g3']);
 	});
 });

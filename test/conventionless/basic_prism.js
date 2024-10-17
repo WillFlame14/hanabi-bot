@@ -21,10 +21,10 @@ describe('prism cluing', () => {
 		});
 
 		takeTurn(game, 'Bob clues red to Alice (slot 1)');
-		ExAsserts.cardHasPossibilities(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r1', 'r2', 'r3', 'r4', 'r5', 'i1', 'i5']);
+		ExAsserts.cardHasPossibilities(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r1', 'r2', 'r3', 'r4', 'r5', 'i1', 'i5']);
 
 		takeTurn(game, 'Alice clues blue to Bob');
 		takeTurn(game, 'Bob clues green to Alice (slot 2)');
-		ExAsserts.cardHasPossibilities(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g1', 'g2', 'g3', 'g4', 'g5', 'i3']);
+		ExAsserts.cardHasPossibilities(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['g1', 'g2', 'g3', 'g4', 'g5', 'i3']);
 	});
 });

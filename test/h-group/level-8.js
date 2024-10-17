@@ -32,11 +32,11 @@ describe('positional discards', () => {
 		takeTurn(game, 'Cathy discards g1', 'b3');
 
 		// Alice's slot 3 should be "finessed" from a positional discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, true);
 
 		// Alice should play slot 3.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2] });
 	});
 
 	it('does not play from a positional discard to someone after them', () => {
@@ -58,7 +58,7 @@ describe('positional discards', () => {
 		takeTurn(game, 'Cathy discards g1', 'b3');
 
 		// Alice's slot 3 not should be "finessed" from a positional discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, false);
 	});
 
 	it('does not play from a positional discard if someone before them played into it', () => {
@@ -80,12 +80,12 @@ describe('positional discards', () => {
 		takeTurn(game, 'Bob discards r2', 'g3');
 
 		// Cathy's slot 3 should be "finessed" from a positional discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][2].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][2]].finessed, true);
 
 		takeTurn(game, 'Cathy plays p5', 'b3');
 
 		// Alice's slot 3 should not be "finessed" from a positional discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, false);
 	});
 
 	it('does not play from a chop discard', () => {
@@ -107,7 +107,7 @@ describe('positional discards', () => {
 		takeTurn(game, 'Cathy discards p1', 'b3');
 
 		// Alice's slot 5 not should be "finessed" from a positional discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, false);
 	});
 
 	it('does not play from a normal discard', () => {
@@ -129,7 +129,7 @@ describe('positional discards', () => {
 		takeTurn(game, 'Cathy discards p1', 'b3');
 
 		// Alice's slot 5 not should be "finessed" from a positional discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, false);
 	});
 
 	it('plays from a positional discard if someone before them did not play into it', () => {
@@ -152,7 +152,7 @@ describe('positional discards', () => {
 		takeTurn(game, 'Cathy discards p1', 'b3');
 
 		// Alice's slot 3 should be "finessed" from a positional discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, true);
 	});
 
 	it('recognizes a positional discard on the correct player', () => {
@@ -175,8 +175,8 @@ describe('positional discards', () => {
 		takeTurn(game, 'Donald discards r3', 'b3');
 
 		// Cathy's slot 3 should be "finessed" from a positional discard, while Bob's should not.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][2].order].finessed, true);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][2].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][2]].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][2]].finessed, false);
 	});
 
 	it('performs a positional discard', () => {
@@ -198,7 +198,7 @@ describe('positional discards', () => {
 		const action = take_action(game);
 
 		// Alice should discard slot 3 as a positional discard.
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][2].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][2] });
 	});
 });
 
@@ -222,11 +222,11 @@ describe('positional misplays', () => {
 		takeTurn(game, 'Cathy bombs p1', 'b3');
 
 		// Alice's slot 5 should be "finessed" from a positional misplay.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].finessed, true);
 
 		// Alice should play slot 3.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 
 	it('plays from a double positional misplay', () => {
@@ -248,11 +248,11 @@ describe('positional misplays', () => {
 		takeTurn(game, 'Cathy bombs g1', 'b3');
 
 		// Alice's slot 3 should be "finessed" from a positional misplay.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, true);
 
 		// Alice should play slot 3.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2] });
 	});
 });
 
@@ -276,7 +276,7 @@ describe('mistake discards', () => {
 		takeTurn(game, 'Bob discards g4', 'r1');
 
 		// Alice should not attempt to play with no known playables.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 });
 
@@ -295,7 +295,7 @@ describe('distribution clues', () => {
 				const cards = ['r5', 'b4', 'b5'];
 
 				for (let i = 0; i < 3; i++) {
-					const a_card = common.thoughts[state.hands[PLAYER.ALICE][i + 2].order];
+					const a_card = common.thoughts[state.hands[PLAYER.ALICE][i + 2]];
 					a_card.inferred = a_card.inferred.intersect(expandShortCard(cards[i]));
 					a_card.possible = a_card.possible.intersect(expandShortCard(cards[i]));
 					a_card.clued = true;
@@ -307,7 +307,7 @@ describe('distribution clues', () => {
 
 		takeTurn(game, 'Bob clues 4 to Cathy');
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0].order], ['b4']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0]], ['b4']);
 		assert.equal(game.lastMove, CLUE_INTERP.DISTRIBUTION);
 	});
 });

@@ -28,12 +28,12 @@ describe('scream discard chop moves', () => {
 		const action = take_action(game);
 
 		// Alice should discard slot 4 as a SDCM.
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3] });
 
 		takeTurn(game, 'Alice discards y3 (slot 4)');
 
 		// Bob's slot 5 should be chop moved.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4]].chop_moved, true);
 	});
 
 	it(`only scream discards if critical`, () => {
@@ -52,7 +52,7 @@ describe('scream discard chop moves', () => {
 		const action = take_action(game);
 
 		// Alice should play as y2 is not critical or playable.
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 
 	it(`scream discards if playable`, () => {
@@ -72,7 +72,7 @@ describe('scream discard chop moves', () => {
 		const action = take_action(game);
 
 		// Alice should discard slot 4 to SDCM as y2 is playable.
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3] });
 
 	});
 
@@ -115,12 +115,12 @@ describe('shout discard chop moves', () => {
 		const action = take_action(game);
 
 		// Alice should discard slot 4 as a Shout Discard.
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3] });
 
 		takeTurn(game, 'Alice discards p1 (slot 4)');
 
 		// Bob's slot 5 should be chop moved.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4]].chop_moved, true);
 	});
 
 	it(`stalls after a shout discard`, () => {
@@ -162,7 +162,7 @@ describe('generation discards', () => {
 		const action = take_action(game);
 
 		// Alice should discard slot 4 to generate for Cathy.
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3] });
 	});
 
 	it(`doesn't mistake a gen discard for a sdcm`, () => {
@@ -181,10 +181,10 @@ describe('generation discards', () => {
 		const action = take_action(game);
 
 		// Alice should discard slot 4 to generate for Cathy.
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3] });
 
 		// Bob's slot 5 should not be chop moved.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4].order].chop_moved, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4]].chop_moved, false);
 	});
 
 	it(`interprets generation over sdcm`, () => {
@@ -201,12 +201,12 @@ describe('generation discards', () => {
 		takeTurn(game, 'Bob discards b4', 'g3');		// Could be scream or generation
 
 		assert.equal(game.state.screamed_at, true);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4]].chop_moved, true);
 
 		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
 
 		// Alice now knows that it was a generation discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4].order].chop_moved, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4]].chop_moved, false);
 	});
 
 	it(`doesn't perform a gen discard if they can connect`, () => {
@@ -229,6 +229,6 @@ describe('generation discards', () => {
 		const action = take_action(game);
 
 		// Alice should play slot 5 (r4 -> r5) rather than generating for Cathy.
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 });

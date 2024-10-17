@@ -1,4 +1,3 @@
-import { Hand } from './Hand.js';
 import { isTrash } from './hanabi-util.js';
 
 /**
@@ -15,14 +14,14 @@ import { isTrash } from './hanabi-util.js';
  * @param  {State} state
  * @param  {Player} player
  * @param  {Player} hypo_player
- * @param  {Hand} hand
+ * @param  {number[]} hand
  * @param  {number[]} list
  */
 export function elim_result(state, player, hypo_player, hand, list) {
 	const new_touched = [];
 	let fill = 0, elim = 0;
 
-	for (const { order } of hand) {
+	for (const order of hand) {
 		const old_card = player.thoughts[order];
 		const hypo_card = hypo_player.thoughts[order];
 
@@ -55,7 +54,8 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 		let possible_dupe = 0;
 		// Check if the giver may have a touched duplicate card.
 		// TODO: Should we consider chop moved cards?
-		for (const card of state.hands[target]) {
+		for (const order of state.hands[target]) {
+			const card = state.deck[order];
 			// Ignore cards that aren't newly clued
 			if (!card.newly_clued)
 				continue;
@@ -64,11 +64,11 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 			// TODO: Should we cluing cards where receiver knows they are duplicated?
 			if (!identity || hypo_game.state.isBasicTrash(identity))
 				continue;
-			for (const giverCard of state.hands[pi]) {
+			for (const giverOrder of state.hands[pi]) {
 				// Allow known duplication since we can discard to resolve it.
-				if (giverCard.clued &&
-					player.thoughts[giverCard.order].inferred.length > 1 &&
-					player.thoughts[giverCard.order].inferred.has(identity))
+				if (state.deck[giverOrder].clued &&
+					player.thoughts[giverOrder].inferred.length > 1 &&
+					player.thoughts[giverOrder].inferred.has(identity))
 					possible_dupe++;
 			}
 		}
@@ -80,13 +80,14 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 
 	const bad_touch = [], trash = [];
 
-	for (const card of state.hands[target]) {
+	for (const order of state.hands[target]) {
+		const card = state.deck[order];
 		// Ignore cards that aren't newly clued
 		if (!card.newly_clued)
 			continue;
 
 		// Known trash from empathy
-		if (hypo_player.thoughts[card.order].possible.every(p => isTrash(state, hypo_player, p, card.order, { infer: true }))) {
+		if (hypo_player.thoughts[order].possible.every(p => isTrash(state, hypo_player, p, order, { infer: true }))) {
 			trash.push(card);
 			continue;
 		}
@@ -96,15 +97,15 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 			continue;
 		}
 
-		const duplicates = state.hands.flatMap(hand => hand.filter(c => {
-			const old_thoughts = old_me.thoughts[c.order];
-			const thoughts = me.thoughts[c.order];
+		const duplicates = state.hands.flatMap(hand => hand.filter(o => {
+			const old_thoughts = old_me.thoughts[o];
+			const thoughts = me.thoughts[o];
 
 			// We need to check old thoughts, since the clue may cause good touch elim that removes earlier notes
-			return old_thoughts.matches(card, { infer: true }) && (old_thoughts.touched || thoughts.touched) && c.order !== card.order;
+			return old_thoughts.matches(card, { infer: true }) && (old_thoughts.touched || thoughts.touched) && o !== order;
 		}));
 
-		if (duplicates.length > 0 && !(duplicates.every(c => c.newly_clued) && card.order < Math.min(...duplicates.map(c => c.order))))
+		if (duplicates.length > 0 && !(duplicates.every(o => state.deck[o].newly_clued) && order < Math.min(...duplicates)))
 			bad_touch.push(card);
 	}
 
@@ -121,7 +122,7 @@ export function playables_result(state, player, hypo_player) {
 	const playables = [];
 
 	for (const order of hypo_player.hypo_plays) {
-		const playerIndex = state.hands.findIndex(hand => hand.findOrder(order));
+		const playerIndex = state.hands.findIndex(hand => hand.includes(order));
 		const old_card = player.thoughts[order];
 		const hypo_card = hypo_player.thoughts[order];
 
@@ -141,8 +142,8 @@ export function playables_result(state, player, hypo_player) {
 /**
  * @param  {Player} player
  * @param  {Player} hypo_player
- * @param  {Hand} hand
+ * @param  {number[]} hand
  */
 export function cm_result(player, hypo_player, hand) {
-	return hand.filter(c => hypo_player.thoughts[c.order].chop_moved && !player.thoughts[c.order].chop_moved);
+	return hand.filter(o => hypo_player.thoughts[o].chop_moved && !player.thoughts[o].chop_moved);
 }

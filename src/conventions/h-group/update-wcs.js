@@ -7,7 +7,9 @@ import { logCard, logConnection } from '../../tools/log.js';
 /**
  * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
+ * @typedef {import('../../types.js').PlayAction} PlayAction
  * @typedef {import('../../types.js').WaitingConnection} WaitingConnection
+ * @typedef {import('../../types.js').INTERP} INTERP
  */
 
 /**
@@ -18,49 +20,52 @@ import { logCard, logConnection } from '../../tools/log.js';
 export function remove_finesse(game, waiting_connection) {
 	const { common, state } = game;
 	const { connections, focused_card, inference, symmetric } = waiting_connection;
-	const focus_thoughts = common.thoughts[focused_card.order];
 
 	// Remove remaining finesses
 	for (const connection of connections) {
-		const card = common.thoughts[connection.card.order];
-
-		if (card === undefined) {
-			logger.warn(`card ${logCard(connection.card)} with order ${connection.card.order} no longer exists in hand to cancel connection`);
-			continue;
-		}
+		const card = common.thoughts[connection.order];
 
 		// Notes are not written on symmetric connections. Thus, no need to remove finesses
 		if (symmetric)
 			continue;
 
+		let new_inferred = card.inferred;
+
 		if (connection.type === 'finesse' || connection.type === 'prompt') {
 			if (card.hidden)
-				card.inferred = card.inferred.intersect([]);
+				new_inferred = card.inferred.intersect([]);
 			else
-				card.inferred = card.inferred.subtract(connection.identities);
+				new_inferred = card.inferred.subtract(connection.identities);
 		}
 
-		if (!card.superposition && card.inferred.length === 0) {
-			card.finessed = false;
-			card.hidden = false;
+		const card_reset = !card.superposition && new_inferred.length === 0;
 
-			if (card.old_inferred !== undefined) {
-				// Restore old inferences
-				card.inferred = card.old_inferred;
-				card.old_inferred = undefined;
-
-				// Don't try to restore old inferences again
-				card.superposition = true;
-			}
-			else {
-				logger.error(`no old inferences on card ${logCard(card)} ${card.order} (while removing finesse)! current inferences ${card.inferred.map(logCard)}`);
-			}
+		if (card_reset) {
+			if (card.old_inferred !== undefined)
+				new_inferred = card.old_inferred;
+			else
+				logger.error(`no old inferences on card ${logCard(card)} ${connection.order} (while removing finesse)! current inferences ${card.inferred.map(logCard)}`);
 		}
+
+		common.updateThoughts(connection.order, (draft) => {
+			draft.inferred = new_inferred;
+
+			if (card_reset) {
+				draft.finessed = false;
+				draft.hidden = false;
+
+				if (draft.old_inferred !== undefined) {
+					// Don't try to restore old inferences again
+					draft.superposition = true;
+					draft.old_inferred = undefined;
+				}
+			}
+		});
 	}
 
 	// Remove inference (if possible)
-	if (focus_thoughts.possible.length > 1)
-		focus_thoughts.inferred = focus_thoughts.inferred.subtract(inference);
+	if (common.thoughts[focused_card.order].possible.length > 1)
+		common.updateThoughts(focused_card.order, (draft) => { draft.inferred = common.thoughts[focused_card.order].inferred.subtract(inference); });
 
 	common.update_hypo_stacks(state);
 }
@@ -90,10 +95,10 @@ export function resolve_card_retained(game, waiting_connection) {
 	const { common, state, me } = game;
 	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback, focused_card } = waiting_connection;
 	const { type, reacting, ambiguous, bluff, identities } = connections[conn_index];
-	const { order } = connections[conn_index].card;
+	const { order } = connections[conn_index];
 
 	// Card may have been updated, so need to find it again
-	const card = state.hands[reacting].findOrder(order);
+	const card = state.deck[order];
 
 	// Determines if we need to pass back an ambiguous finesse.
 	const passback = () => {
@@ -107,11 +112,10 @@ export function resolve_card_retained(game, waiting_connection) {
 	};
 
 	const last_reacting_action = game.last_actions[reacting];
+	const old_finesse = state.deck[connections.find((conn, i) => i >= conn_index && conn.reacting === state.ourPlayerIndex && conn.type === 'finesse')?.order];
 
-	const old_finesse = connections.find((conn, i) => i >= conn_index && conn.reacting === state.ourPlayerIndex && conn.type === 'finesse')?.card;
-
-	const new_finesse_queued = old_finesse !== undefined && state.ourHand.some(c => {
-		const { finessed, finesse_index } = me.thoughts[c.order];
+	const new_finesse_queued = old_finesse !== undefined && state.ourHand.some(o => {
+		const { finessed, finesse_index } = me.thoughts[o];
 		return finessed && finesse_index > me.thoughts[old_finesse.order].finesse_index;
 	});
 
@@ -129,7 +133,7 @@ export function resolve_card_retained(game, waiting_connection) {
 				return { remove: false };
 			}
 
-			if (type === 'prompt' && ![CLUE_INTERP.PLAY, CLUE_INTERP.SAVE, CLUE_INTERP.FIX, CLUE_INTERP.CM_TRASH, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TEMPO]) {
+			if (type === 'prompt' && !/** @type {INTERP[keyof INTERP][]} */([CLUE_INTERP.PLAY, CLUE_INTERP.SAVE, CLUE_INTERP.FIX, CLUE_INTERP.CM_TRASH, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TEMPO]).includes(game.lastMove)) {
 				logger.warn(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a useful clue`);
 				return { remove: false };
 			}
@@ -150,7 +154,7 @@ export function resolve_card_retained(game, waiting_connection) {
 			return { remove: false };
 		}
 
-		const old_finesse = older_queued_finesse(state.hands[reacting], common, order);
+		const old_finesse = older_queued_finesse(state, reacting, common, order);
 
 		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && old_finesse !== undefined) {
 			logger.warn(`${state.playerNames[reacting]} didn't play into ${type}, but they need to play into an older finesse that could be layered`);
@@ -160,19 +164,19 @@ export function resolve_card_retained(game, waiting_connection) {
 		// Didn't play into a self-connection
 		if (!bluff && reacting === target) {
 			const alternate_conn = game.common.waiting_connections.find(wc =>
-				wc.focused_card.order === focused_card.order && wc.connections.every(conn => conn.card.order !== order));
+				wc.focused_card.order === focused_card.order && wc.connections.every(conn => conn.order !== order));
 
 			if (alternate_conn !== undefined) {
 				logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but alternate conn [${alternate_conn.connections.map(logConnection).join(' -> ')}] exists not using this card`);
 				return { remove: false };
 			}
 
-			/** @param {ActualCard} our_finesse */
+			/** @param {number} our_finesse */
 			const allowable_hesitation = (our_finesse) => our_finesse !== undefined && common.thoughts[focused_card.order].inferred.find(i =>
-				!i.matches(inference) && common.thoughts[our_finesse.order].inferred.has(i));
+				!i.matches(inference) && common.thoughts[our_finesse].inferred.has(i));
 
 			if (giver !== state.ourPlayerIndex && reacting !== state.ourPlayerIndex && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
-				const our_finesse = common.find_finesse(state.ourHand);
+				const our_finesse = common.find_finesse(state, state.ourPlayerIndex);
 				const hesitation_possibility = allowable_hesitation(our_finesse);
 
 				if (hesitation_possibility) {
@@ -184,10 +188,10 @@ export function resolve_card_retained(game, waiting_connection) {
 		}
 
 		if (last_reacting_action?.type === 'play') {
-			const { card: reacting_card } = last_reacting_action;
+			const { order: reacting_order } = last_reacting_action;
 
-			if (type === 'finesse' && reacting_card) {
-				const play = common.thoughts[reacting_card.order];
+			if (type === 'finesse') {
+				const play = common.thoughts[reacting_order];
 
 				if (play.finessed && play.finesse_index < common.thoughts[order].finesse_index) {
 					logger.warn(`${state.playerNames[reacting]} played into older finesse ${play.finesse_index} < ${common.thoughts[order].finesse_index}, continuing to wait`);
@@ -204,20 +208,20 @@ export function resolve_card_retained(game, waiting_connection) {
 		const unplayable_connections = common.waiting_connections.filter(wc =>
 			wc !== waiting_connection &&
 			wc.connections.some((conn, index) =>
-				index >= conn_index && conn.card.order === order && conn.identities.some(i => state.playableAway(i) > 0)) &&
+				index >= conn_index && conn.order === order && conn.identities.some(i => state.playableAway(i) > 0)) &&
 			// The reacting player has to wait for someone else, or they already tried to play
 			(wc.connections[wc.conn_index].reacting !== reacting || last_reacting_action?.type === 'play'));
 
 		if (unplayable_connections.length > 0) {
 			logger.warn(last_reacting_action?.type, 'but not all possibilities playable', unplayable_connections.map(wc =>
 				`${wc.connections.map(logConnection).join(' -> ')}  (${wc.connections.find((conn, index) =>
-					index >= conn_index && conn.card.order === order && conn.identities.some(i => state.playableAway(i) > 0)
+					index >= conn_index && conn.order === order && conn.identities.some(i => state.playableAway(i) > 0)
 				).identities.map(logCard).join()})`));
 			return { remove: false };
 		}
 
 		const attempted_bomb = last_reacting_action?.type === 'discard' && last_reacting_action.failed &&
-			identities.some(i => game.players[reacting].thoughts[last_reacting_action.card.order].possible.has(i));
+			identities.some(i => game.players[reacting].thoughts[last_reacting_action.order].possible.has(i));
 
 		if (attempted_bomb) {
 			logger.warn(`${state.playerNames[reacting]} bombed, maybe tried to play into it`);
@@ -226,7 +230,7 @@ export function resolve_card_retained(game, waiting_connection) {
 
 		// We're not playing in a rewind
 		if (!bluff && reacting === state.ourPlayerIndex && game.catchup && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, target)) {
-			const self_delay = common.find_finesse(state.hands[target])?.matches(identities[0]);
+			const self_delay = state.deck[common.find_finesse(state, target)]?.matches(identities[0]);
 
 			if (self_delay && !selfPassback) {
 				logger.warn('delaying for potential self-finesse');
@@ -283,16 +287,15 @@ export function resolve_card_played(game, waiting_connection) {
 	logger.info(`waiting card ${identities.length === 1 ? logCard(identities[0]) : '(unknown)'} played`);
 
 	// Advance waiting connection to next card that still exists
-	waiting_connection.conn_index = connections.findIndex((conn, index) =>
-		index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
+	waiting_connection.conn_index = connections.findIndex((conn, index) => index > conn_index && state.hands[conn.reacting].includes(conn.order));
 
 	if (type === 'finesse' || type === 'prompt') {
 		// Finesses demonstrate that a card must be playable and not save
-		const connection = game.last_actions[reacting].card;
-		const thoughts = common.thoughts[connection.order];
+		const order = /** @type {PlayAction} */(game.last_actions[reacting]).order;
+		const thoughts = common.thoughts[order];
 
 		// Consider a stomped finesse if the played card was focused or they didn't choose to play it first
-		if (type === 'finesse' && stomped_finesse(game, reacting, connection.order, waiting_connection, { played: true })) {
+		if (type === 'finesse' && stomped_finesse(game, reacting, order, waiting_connection, { played: true })) {
 			logger.warn(`connecting card was focused/known playable with a clue (stomped on), not confirming ${logCard(inference)} finesse`);
 
 			if (connections[conn_index + 1]?.self) {
@@ -327,31 +330,29 @@ export function resolve_card_played(game, waiting_connection) {
 export function resolve_giver_play(game, waiting_connection) {
 	const { common, state } = game;
 	const { connections, conn_index, giver } = waiting_connection;
-	const { reacting, identities, card: old_card } = connections[conn_index];
-
-	// Card may have been updated, so need to find it again
-	const card = state.hands[reacting].findOrder(old_card.order);
+	const { identities, order } = connections[conn_index];
 
 	logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`);
 
 	// Advance waiting connection to next card that still exists
-	waiting_connection.conn_index = connections.findIndex((conn, index) =>
-		index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
+	waiting_connection.conn_index = connections.findIndex((conn, index) => index > conn_index && state.hands[conn.reacting].includes(conn.order));
 
-	const thoughts = common.thoughts[card.order];
-	// Remove finesse
-	thoughts.inferred = thoughts.inferred.subtract(identities);
+	common.updateThoughts(order, (draft) => {
+		// Remove finesse
+		draft.inferred = common.thoughts[order].inferred.subtract(identities);
 
-	if (thoughts.inferred.length === 0) {
-		if (thoughts.old_inferred !== undefined) {
-			// Restore old inferences
-			thoughts.inferred = thoughts.old_inferred;
-			thoughts.old_inferred = undefined;
+		if (draft.inferred.length === 0) {
+			if (draft.old_inferred !== undefined) {
+				// Restore old inferences
+				draft.inferred = common.thoughts[order].old_inferred;
+				draft.old_inferred = undefined;
+			}
+			else {
+				logger.error(`no old inferences on card ${logCard(draft)} ${order} (while resolving giver play)! current inferences ${draft.inferred.map(logCard)}`);
+			}
+			draft.finessed = false;
 		}
-		else {
-			logger.error(`no old inferences on card ${logCard(thoughts)} ${card.order} (while resolving giver play)! current inferences ${thoughts.inferred.map(logCard)}`);
-		}
-		thoughts.finessed = false;
-	}
+	});
+
 	return { remove: waiting_connection.conn_index === -1 };
 }

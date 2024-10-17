@@ -62,8 +62,8 @@ export function valid_bluff(game, action, identity, reacting, connected) {
 		((clue.type === CLUE.RANK && clue.value !== nextCard.rank) ||
 			!game.common.thoughts[connected[0]].inferred.has(nextCard)) &&	// must disconnect
 		!(clue.type === CLUE.COLOUR && reacting === target) &&				// must not be self-colour bluff
-		!game.state.hands[reacting].some(c => {								// must not be confused with an existing finesse
-			const card = game.players[reacting].thoughts[c.order];
+		!game.state.hands[reacting].some(o => {								// must not be confused with an existing finesse
+			const card = game.players[reacting].thoughts[o];
 			return card.finessed && card.possible.has(identity);
 		});
 }
@@ -122,8 +122,8 @@ export function find_symmetric_connections(new_game, game, action, inf_possibili
 	const { common, state } = game;
 
 	const { clue, giver, list, target } = action;
-	const { order } = determine_focus(game, state.hands[target], common, list, clue, { beforeClue: true }).focused_card;
-	const focused_card = common.thoughts[order];
+	const { focus } = determine_focus(game, state.hands[target], common, list, clue, { beforeClue: true });
+	const focused_card = common.thoughts[focus];
 
 	/** @type {{ id: Identity, connections: Connection[], fake: boolean }[][]} */
 	const [self_connections, non_self_connections] = inf_possibilities.reduce((acc, fp) => {
@@ -140,7 +140,7 @@ export function find_symmetric_connections(new_game, game, action, inf_possibili
 
 	for (const id of focused_card.inferred) {
 		// Receiver won't consider trash possibilities or ones that are subsumed by real possibilities
-		if (isTrash(state, common, id, focused_card.order) || inf_possibilities.some(fp => fp.suitIndex === id.suitIndex && fp.rank >= id.rank))
+		if (isTrash(state, common, id, focus) || inf_possibilities.some(fp => fp.suitIndex === id.suitIndex && fp.rank >= id.rank))
 			continue;
 
 		// Pink promise
@@ -150,9 +150,9 @@ export function find_symmetric_connections(new_game, game, action, inf_possibili
 		const visible_dupe = state.hands.some((hand, i) => {
 			const useCommon = i === giver || i === target;
 
-			return hand.some(c => {
-				const card = (useCommon ? common : game.players[target]).thoughts[c.order];
-				return card.matches(id, { infer: useCommon }) && c.order !== order && card.touched;
+			return hand.some(o => {
+				const card = (useCommon ? common : game.players[target]).thoughts[o];
+				return card.matches(id, { infer: useCommon }) && o !== focus && card.touched;
 			});
 		});
 
@@ -233,101 +233,107 @@ export function assign_connections(game, connections, giver, focused_card, infer
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
 	for (const conn of connections) {
-		const { type, reacting, bluff, possibly_bluff, hidden, card: conn_card, linked, identities, certain } = conn;
+		const { type, reacting, bluff, possibly_bluff, hidden, order, linked, identities, certain } = conn;
 		// The connections can be cloned, so need to modify the card directly
-		const card = common.thoughts[conn_card.order];
 
 		logger.debug('assigning connection', logConnection(conn));
 
-		// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
-		card.old_inferred ??= card.inferred;
-
-		if (type === 'finesse') {
-			card.finessed = true;
-			card.bluffed ||= bluff;
-			card.possibly_bluffed ||= possibly_bluff;
-			card.finesse_index = state.actionList.length;
-			card.hidden = hidden;
-
-			if (state.hands[giver].some(c => common.thoughts[c.order].finessed))
-				game.finesses_while_finessed[giver].push(state.deck[card.order]);
-
-			card.certain_finessed ||= certain;
-		}
-
-		if (connections.some(conn => conn.type === 'finesse'))
-			card.finesse_index = card.finesse_index ?? state.actionList.length;
-
 		const playable_identities = hypo_stacks
 			.map((stack_rank, index) => ({ suitIndex: index, rank: stack_rank + 1 }))
-			.filter(id => id.rank <= state.max_ranks[id.suitIndex] && !isTrash(state, common, id, card.order, { infer: true }));
+			.filter(id => id.rank <= state.max_ranks[id.suitIndex] && !isTrash(state, common, id, order, { infer: true }));
 
 		const currently_playable_identities = state.play_stacks
 			.map((stack_rank, index) =>({ suitIndex: index, rank: stack_rank + 1 }))
 			.filter(id => id.rank <= state.max_ranks[id.suitIndex]);
 
+		const card = common.thoughts[order];
+		let new_inferred = card.inferred;
+
 		if (bluff || hidden) {
-			card.inferred = card.inferred.intersect(playable_identities);
+			new_inferred = new_inferred.intersect(playable_identities);
 
 			if (bluff)
-				card.inferred = card.inferred.intersect(currently_playable_identities);
-
-			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
-			if (state.deck[card.order].identity() !== undefined) {
-				const { suitIndex, rank } = state.deck[card.order].identity();
-				if (hypo_stacks[suitIndex] + 1 !== rank)
-					logger.warn('trying to connect', logCard(card), 'but hypo stacks at', hypo_stacks[suitIndex]);
-
-				hypo_stacks[suitIndex] = rank;
-			}
+				new_inferred = new_inferred.intersect(currently_playable_identities);
 		}
 		else {
 			// There are multiple possible connections on this card
 			if (card.superposition)
-				card.inferred = card.inferred.union(identities);
+				new_inferred = new_inferred.union(identities);
 			else if (card.uncertain)
-				card.inferred = card.inferred.union(card.finesse_ids.intersect(identities));
+				new_inferred = new_inferred.union(card.finesse_ids.intersect(identities));
 
-			if (type === 'playable' && linked.length > 1 && focused_card.matches(inference)) {
-				const existing_link_index = common.links.find(link => {
-					const { promised } = link;
-					const { suitIndex, rank } = link.identities[0];
-
-					return promised &&
-						identities[0].suitIndex === suitIndex && identities[0].rank === rank &&
-						link.cards.length === linked.length &&
-						link.cards.every(c => linked.some(l => l.order === c.order));
-				});
-
-				if (existing_link_index === undefined) {
-					logger.info('adding promised link with identities', identities.map(logCard), 'and cards', linked.map(c => c.order));
-					common.links.push({ promised: true, identities, cards: linked });
-				}
-			}
-			else if (!card.superposition && !card.uncertain) {
-				card.inferred = IdentitySet.create(state.variant.suits.length, identities);
-			}
-
-			card.superposition = true;
+			if (!(type === 'playable' && linked.length > 1 && focused_card.matches(inference)) && !card.superposition && !card.uncertain)
+				new_inferred = IdentitySet.create(state.variant.suits.length, identities);
 		}
 
-		const uncertain = !card.uncertain && ((reacting === state.ourPlayerIndex) ?
-			// If we're reacting, we are uncertain if the card is not known and there is some other card in our hand that allows for a swap
-			type !== 'known' && identities.some(i => state.ourHand.some(c => c.order !== card.order && me.thoughts[c.order].possible.has(i))) :
-			// If we're not reacting, we are uncertain if the connection is a finesse that could be ambiguous
-			type === 'finesse' && !(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)));
+		common.updateThoughts(order, (draft) => {
+			// Save the old inferences in case the connection doesn't exist (e.g. not finesse)
+			draft.old_inferred ??= common.thoughts[order].inferred;
 
-		if (uncertain) {
-			card.finesse_ids = IdentitySet.create(state.variant.suits.length, bluff ? currently_playable_identities : playable_identities);
-			card.uncertain = true;
+			if (type === 'finesse') {
+				draft.finessed = true;
+				draft.bluffed ||= bluff;
+				draft.possibly_bluffed ||= possibly_bluff;
+				draft.finesse_index = state.actionList.length;
+				draft.hidden = hidden;
+				draft.certain_finessed ||= certain;
+			}
+
+			if (connections.some(conn => conn.type === 'finesse'))
+				draft.finesse_index ??= state.actionList.length;
+
+			draft.inferred = new_inferred;
+			if (!bluff && !hidden)
+				draft.superposition = true;
+
+			const uncertain = !draft.uncertain && ((reacting === state.ourPlayerIndex) ?
+				// If we're reacting, we are uncertain if the card is not known and there is some other card in our hand that allows for a swap
+				type !== 'known' && identities.some(i => state.ourHand.some(o => o !== order && me.thoughts[o].possible.has(i))) :
+				// If we're not reacting, we are uncertain if the connection is a finesse that could be ambiguous
+				type === 'finesse' && !(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)));
+
+			if (uncertain) {
+				draft.finesse_ids = IdentitySet.create(state.variant.suits.length, bluff ? currently_playable_identities : playable_identities);
+				draft.uncertain = true;
+			}
+
+			// Updating notes not on our turn
+			// There might be multiple possible inferences on the same card from a self component
+			// TODO: Examine why this originally had self only?
+			if (draft.old_inferred.length > draft.inferred.length && draft.reasoning.at(-1) !== state.actionList.length - 1) {
+				draft.reasoning.push(state.actionList.length - 1);
+				draft.reasoning_turn.push(state.turn_count);
+			}
+		});
+
+		if (type === 'finesse' && state.hands[giver].some(o => common.thoughts[o].finessed))
+			game.finesses_while_finessed[giver].push(state.deck[order]);
+
+		if (bluff || hidden) {
+			// Temporarily force update hypo stacks so that layered finesses are written properly (?)
+			if (state.deck[order].identity() !== undefined) {
+				const { suitIndex, rank } = state.deck[order].identity();
+				if (hypo_stacks[suitIndex] + 1 !== rank)
+					logger.warn('trying to connect', logCard(state.deck[order]), 'but hypo stacks at', hypo_stacks[suitIndex]);
+
+				hypo_stacks[suitIndex] = rank;
+			}
 		}
+		else if (type === 'playable' && linked.length > 1 && focused_card.matches(inference)) {
+			const existing_link_index = common.links.find(link => {
+				const { promised } = link;
+				const { suitIndex, rank } = link.identities[0];
 
-		// Updating notes not on our turn
-		// There might be multiple possible inferences on the same card from a self component
-		// TODO: Examine why this originally had self only?
-		if (card.old_inferred.length > card.inferred.length && card.reasoning.at(-1) !== state.actionList.length - 1) {
-			card.reasoning.push(state.actionList.length - 1);
-			card.reasoning_turn.push(state.turn_count);
+				return promised &&
+					identities[0].suitIndex === suitIndex && identities[0].rank === rank &&
+					link.orders.length === linked.length &&
+					link.orders.every(o => linked.includes(o));
+			});
+
+			if (existing_link_index === undefined) {
+				logger.info('adding promised link with identities', identities.map(logCard), 'and orders', linked);
+				common.links.push({ promised: true, identities, orders: linked });
+			}
 		}
 	}
 }

@@ -21,7 +21,7 @@ export function check_ocm(game, action) {
 	const { order, playerIndex } = action;
 
 	const ordered_1s = order_1s(state, common, state.hands[playerIndex]);
-	const offset = ordered_1s.findIndex(c => c.order === order);
+	const offset = ordered_1s.findIndex(o => o === order);
 
 	if (offset === -1)
 		return;
@@ -44,7 +44,7 @@ export function check_ocm(game, action) {
 		return;
 	}
 
-	common.thoughts[chop.order].chop_moved = true;
+	common.updateThoughts(chop, (draft) => { draft.chop_moved = true; });
 	logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
 }
 
@@ -85,7 +85,9 @@ export function interpret_play(game, action) {
 	team_elim(game);
 
 	if (playerIndex === state.ourPlayerIndex) {
-		for (const { order } of state.ourHand)
-			common.thoughts[order].uncertain = false;
+		for (const order of state.ourHand) {
+			if (common.thoughts[order].uncertain)
+				common.updateThoughts(order, (draft) => { draft.uncertain = false; });
+		}
 	}
 }

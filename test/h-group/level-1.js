@@ -29,10 +29,20 @@ describe('save clue', () => {
 		const { state } = game;
 
 		// Bob's last 3 cards are clued.
-		[2,3,4].forEach(index => state.hands[PLAYER.BOB][index].clued = true);
+		[2,3,4].forEach(index => {
+			const card = state.deck[state.hands[PLAYER.BOB][index]];
+			card.clued = true;
+			for (const player of game.allPlayers)
+				player.thoughts[card.order].clued = true;
+		});
 
 		// Cathy's last 2 cards are clued.
-		[3,4].forEach(index => state.hands[PLAYER.CATHY][index].clued = true);
+		[3,4].forEach(index => {
+			const card = state.deck[state.hands[PLAYER.CATHY][index]];
+			card.clued = true;
+			for (const player of game.allPlayers)
+				player.thoughts[card.order].clued = true;
+		});
 
 		const action = take_action(game);
 
@@ -51,7 +61,7 @@ describe('save clue', () => {
 		const { state } = game;
 
 		// Bob's p2 is clued.
-		state.hands[PLAYER.BOB][2].clued = true;
+		state.deck[state.hands[PLAYER.BOB][2]].clued = true;
 
 		const action = take_action(game);
 
@@ -75,7 +85,7 @@ describe('save clue', () => {
 		const { common, state } = game;
 
 		// From the common perspective, the saved 2 can be any 2.
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.CATHY][3].order], ['r2', 'y2', 'g2', 'b2', 'p2']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.CATHY][3]], ['r2', 'y2', 'g2', 'b2', 'p2']);
 	});
 
 	it('does not finesse from a 2 Save', () => {
@@ -93,8 +103,8 @@ describe('save clue', () => {
 		const { common, state } = game;
 
 		// Our slot 1 should not only be y1.
-		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0].order].inferred.length > 1, true);
-		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0]].inferred.length > 1, true);
+		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 
 	it('does not give 2 Saves when a duplicate is visible', () => {
@@ -222,7 +232,7 @@ describe('sacrifice discards', () => {
 		const { common, state } = game;
 
 		// Alice should discard slot 2.
-		assert.equal(common.lockedDiscard(state, state.hands[PLAYER.ALICE]).order, 3);
+		assert.equal(common.lockedDiscard(state, state.hands[PLAYER.ALICE]), 3);
 	});
 
 	it('discards the farthest critical card when locked with crits', () => {
@@ -237,12 +247,12 @@ describe('sacrifice discards', () => {
 
 		// Alice knows all of her cards (all crit).
 		['r4', 'b4', 'r5', 'b2', 'y5'].forEach((short, index) => {
-			const card = common.thoughts[state.hands[PLAYER.ALICE][index].order];
+			const card = common.thoughts[state.hands[PLAYER.ALICE][index]];
 			card.inferred = card.inferred.intersect(expandShortCard(short));
 		});
 
 		// Alice should discard y5.
-		assert.equal(common.lockedDiscard(state, state.hands[PLAYER.ALICE]).order, 0);
+		assert.equal(common.lockedDiscard(state, state.hands[PLAYER.ALICE]), 0);
 	});
 });
 

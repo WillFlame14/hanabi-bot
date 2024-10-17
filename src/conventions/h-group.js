@@ -82,7 +82,6 @@ export default class HGroup extends Game {
 
 	minimalCopy() {
 		const newGame = new HGroup(this.tableID, this.state.minimalCopy(), this.in_progress, this.level);
-
 		if (this.copyDepth > 100)
 			throw new Error('Maximum recursive depth reached.');
 
@@ -91,11 +90,6 @@ export default class HGroup extends Game {
 
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);
-
-		for (const player of newGame.players.concat([newGame.common])) {
-			for (const c of newGame.state.hands.flat())
-				player.thoughts[c.order].actualCard = c;
-		}
 
 		newGame.copyDepth = this.copyDepth + 1;
 		return newGame;

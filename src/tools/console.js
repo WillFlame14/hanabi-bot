@@ -57,7 +57,7 @@ export function initConsole() {
 						const playerIndex = state.playerNames.indexOf(playerName);
 						const player = !isNaN(Number(parts[2])) ? game.players[Number(parts[2])] : undefined;
 						console.log('viewing from', player === undefined ? 'common' : state.playerNames[player.playerIndex]);
-						console.log(logHand(state.hands[playerIndex], player), logLinks(game.players[playerIndex].links));
+						console.log(logHand(state.hands[playerIndex].map(o => state.deck[o]), player), logLinks(game.players[playerIndex].links));
 						break;
 					}
 					case 'state':
@@ -123,7 +123,7 @@ export function initConsole() {
 							break;
 						}
 
-						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.PLAY, target: state.ourHand[slot - 1].order });
+						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.PLAY, target: state.ourHand[slot - 1] });
 						break;
 					}
 					case 'discard': {
@@ -134,7 +134,7 @@ export function initConsole() {
 							break;
 						}
 
-						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.DISCARD, target: state.ourHand[slot - 1].order });
+						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.DISCARD, target: state.ourHand[slot - 1] });
 						break;
 					}
 					case 'clue': {

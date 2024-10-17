@@ -29,7 +29,7 @@ describe('stalling', () => {
 		takeTurn(game, 'Donald clues purple to Alice (slot 4)');
 
 		// Can't be a locked hand stall, because getting b1 is available.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['p1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['p1']);
 	});
 
 	it('understands a finesse when there are better clues available', () => {
@@ -47,8 +47,8 @@ describe('stalling', () => {
 		takeTurn(game, 'Donald clues green to Bob');
 
 		// Can't be a locked hand stall, because getting b1 is available.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g1']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['g1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
 
 	it('understands a finesse when there are better clues available', () => {
@@ -69,8 +69,8 @@ describe('stalling', () => {
 		takeTurn(game, 'Donald clues red to Cathy');
 
 		// Can't be a hard burn, because filling in p5 is available.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r3']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
 
 	it('understands a play clue when not in stalling situation', () => {
@@ -90,7 +90,7 @@ describe('stalling', () => {
 		takeTurn(game, 'Donald clues green to Alice (slot 4)');
 
 		// Can't be a locked hand stall, because Donald has a play.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['g1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['g1']);
 	});
 
 	it('correctly finds all clues in stalling situations', () => {
@@ -137,7 +137,7 @@ describe('anxiety plays', () => {
 
 		// Alice should play slot 2 as r5.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][1].order }, `Expected (play slot 2), got ${logPerformAction(action)} instead`);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][1] }, `Expected (play slot 2), got ${logPerformAction(action)} instead`);
 	});
 
 	it(`doesn't assume anxiety if there are clues available`, () => {
@@ -197,7 +197,7 @@ describe('anxiety plays', () => {
 
 		// Alice should play slot 1 as r4.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][0].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][0] });
 	});
 });
 
@@ -223,7 +223,7 @@ describe('double discard avoidance', () => {
 		takeTurn(game, 'Alice clues 5 to Bob');
 
 		// No one should be finessed by this as Alice was simply stalling.
-		const finessed = state.hands.filter(hand => hand.some(c => game.common.thoughts[c.order].finessed));
+		const finessed = state.hands.filter(hand => hand.some(o => game.common.thoughts[o].finessed));
 		assert.equal(finessed.length, 0);
 		assert.equal(game.common.waiting_connections.length, 0);
 	});
@@ -248,7 +248,7 @@ describe('double discard avoidance', () => {
 
 		// However, since Alice can see the other r3, Alice can discard.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][3].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][3] });
 	});
 
 	it(`will give a fill-in clue on double discard avoidance`, () => {
@@ -276,7 +276,7 @@ describe('double discard avoidance', () => {
 		takeTurn(game, 'Alice clues green to Bob');
 
 		// No one should be finessed by this as Alice was simply stalling.
-		const finessed = state.hands.filter(hand => hand.some(c => game.common.thoughts[c.order].finessed));
+		const finessed = state.hands.filter(hand => hand.some(o => game.common.thoughts[o].finessed));
 		assert.equal(finessed.length, 0);
 		assert.equal(game.common.waiting_connections.length, 0);
 	});

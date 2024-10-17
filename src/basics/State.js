@@ -1,6 +1,5 @@
 import { CLUE, HAND_SIZE } from '../constants.js';
-import { Hand } from './Hand.js';
-import { cardCount, colourableSuits } from '../variants.js';
+import { cardCount, cardTouched, colourableSuits } from '../variants.js';
 
 import * as Utils from '../tools/util.js';
 import { IdentitySet } from './IdentitySet.js';
@@ -30,7 +29,7 @@ export class State {
 	generated = false;
 	dda = undefined;
 
-	hands = /** @type {Hand[]} */ ([]);
+	hands = /** @type {number[][]} */ ([]);
 	deck = /** @type {ActualCard[]} */ ([]);
 
 	actionList = /** @type {Action[]} */ ([]);
@@ -77,7 +76,7 @@ export class State {
 		}
 
 		for (let i = 0; i < this.numPlayers; i++)
-			this.hands.push(new Hand());
+			this.hands.push([]);
 
 		this.base_ids = new IdentitySet(variant.suits.length, 0);
 	}
@@ -218,7 +217,6 @@ export class State {
 	 * @param {number} target
 	 */
 	allValidClues(target) {
-		const hand = this.hands[target];
 		const clues = /** @type {Clue[]} */ ([]);
 
 		for (let rank = 1; rank <= 5; rank++)
@@ -227,7 +225,7 @@ export class State {
 		for (let suitIndex = 0; suitIndex < colourableSuits(this.variant).length; suitIndex++)
 			clues.push({ type: CLUE.COLOUR, value: suitIndex, target });
 
-		return clues.filter(clue => hand.clueTouched(clue, this.variant).length > 0);
+		return clues.filter(clue => this.clueTouched(this.hands[target], clue).length > 0);
 	}
 
 	/**
@@ -247,5 +245,14 @@ export class State {
 	 */
 	includesVariant(variantRegex) {
 		return this.variant.suits.some(suit => suit.match(variantRegex));
+	}
+
+	/**
+	 * Returns the orders touched by the clue.
+	 * @param {number[]} orders
+	 * @param {BaseClue} clue
+	 */
+	clueTouched(orders, clue) {
+		return orders.filter(o => this.deck[o].identity() !== undefined && cardTouched(this.deck[o], this.variant, clue));
 	}
 }

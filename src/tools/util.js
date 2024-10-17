@@ -1,6 +1,5 @@
 import { BasicCard, ActualCard, Card } from '../basics/Card.js';
 import { Game } from '../basics/Game.js';
-import { Hand } from '../basics/Hand.js';
 import { Player } from '../basics/Player.js';
 import { State } from '../basics/State.js';
 import { ACTION, CLUE } from '../constants.js';
@@ -119,7 +118,7 @@ export function objClone(obj, depth = 0) {
 	if (typeof obj !== 'object')
 		return obj;
 
-	if (obj instanceof Hand || obj instanceof Player || obj instanceof ActualCard || obj instanceof Card)
+	if (obj instanceof Player || obj instanceof ActualCard || obj instanceof Card)
 		return /** @type {T} */ (obj.clone());
 
 	if (obj instanceof BasicCard || obj instanceof IdentitySet)
@@ -150,7 +149,7 @@ export function shallowCopy (obj) {
 	if (Array.isArray(obj))
 		return /** @type {T} */ (obj.slice());
 
-	if ([ActualCard, Card, Hand, Player, State, Game].some(class_type => obj instanceof class_type))
+	if ([ActualCard, Card, Player, State, Game].some(class_type => obj instanceof class_type))
 		// @ts-ignore
 		return /** @type {T} */ (obj.shallowCopy());
 
@@ -271,16 +270,6 @@ export function cleanAction(action) {
 }
 
 /**
- * Returns the visible hand of the owning player (since it is typically unknown).
- * @param  {State} state
- * @param  {Identity[]} deck
- */
-function get_own_hand(state, deck) {
-	const ind = state.ourPlayerIndex;
-	return new Hand(...state.hands[ind].map(c => new ActualCard(deck[c.order].suitIndex, deck[c.order].rank, c.order)));
-}
-
-/**
  * Converts a PerformAction to an Action.
  * @param  {State} state
  * @param  {PerformAction} action
@@ -306,15 +295,13 @@ export function performToAction(state, action, playerIndex, deck) {
 		}
 		case ACTION.RANK: {
 			const clue = { type: CLUE.RANK, value };
-			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = hand.clueTouched(clue, state.variant).map(c => c.order);
+			const list = state.clueTouched(state.hands[target], clue);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
 		case ACTION.COLOUR: {
 			const clue = { type: CLUE.COLOUR, value };
-			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = hand.clueTouched(clue, state.variant).map(c => c.order);
+			const list = state.clueTouched(state.hands[target], clue);
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}

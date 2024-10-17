@@ -26,19 +26,16 @@ export function update_turn(game, action) {
 
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const { connections, conn_index, focused_card, inference } = common.waiting_connections[i];
-		const { reacting, card: old_card, identities } = connections[conn_index];
-		logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
+		const { reacting, order, identities } = connections[conn_index];
+		const last_action = game.last_actions[reacting];
+		logger.info(`waiting for connecting ${logCard(state.deck[order])} ${order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
 
 		// After the turn we were waiting for, the card was played and matches expectation
-		if (reacting === otherPlayerIndex &&
-			state.hands[reacting].findOrder(old_card.order) === undefined &&
-			game.last_actions[reacting].type === 'play'
-		) {
-			if (!identities.some(identity => game.last_actions[reacting].card.matches(identity))) {
+		if (reacting === otherPlayerIndex && !state.hands[reacting].includes(order) && last_action.type === 'play') {
+			if (!identities.some(identity => state.deck[last_action.order].matches(identity))) {
 				logger.info('card revealed to not be', identities.map(logCard).join(), 'removing connection as', logCard(inference));
 
-				const focus_thoughts = common.thoughts[focused_card.order];
-				focus_thoughts.inferred = focus_thoughts.inferred.subtract(inference);
+				common.updateThoughts(focused_card.order, (draft) => { draft.inferred = common.thoughts[focused_card.order].inferred.subtract(inference); });
 				to_remove.push(i);
 			}
 			else {
@@ -46,7 +43,7 @@ export function update_turn(game, action) {
 
 				// Advance waiting connection to next card that still exists
 				common.waiting_connections[i].conn_index = connections.findIndex((conn, index) =>
-					index > conn_index && state.hands[conn.reacting].findOrder(conn.card.order));
+					index > conn_index && state.hands[conn.reacting].includes(conn.order));
 
 				if (common.waiting_connections[i].conn_index === -1)
 					to_remove.push(i);

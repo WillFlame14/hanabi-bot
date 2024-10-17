@@ -6,7 +6,6 @@ import { globals } from './util.js';
 /**
  * @typedef {import('../basics/Game.js').Game} Game
  * @typedef {import('../basics/State.js').State} State
- * @typedef {import('../basics/Hand.js').Hand} Hand
  * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../basics/Player.js').Player} Player
  * @typedef {import('../types.js').Clue} Clue
@@ -95,14 +94,14 @@ export function logPerformAction(action) {
 
 	switch(type) {
 		case ACTION.PLAY: {
-			const slot = state.ourHand.findIndex(card => card.order === target) + 1;
-			const card = common.thoughts[state.ourHand[slot - 1].order];
+			const slot = state.ourHand.findIndex(o => o === target) + 1;
+			const card = common.thoughts[state.ourHand[slot - 1]];
 
 			return `Play slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}
 		case ACTION.DISCARD: {
-			const slot = state.ourHand.findIndex(card => card.order === target) + 1;
-			const card = common.thoughts[state.ourHand[slot - 1].order];
+			const slot = state.ourHand.findIndex(o => o === target) + 1;
+			const card = common.thoughts[state.ourHand[slot - 1]];
 
 			return `Discard slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}
@@ -213,11 +212,11 @@ export function logAction(action) {
  * @param {Connection} connection
  */
 export function logConnection(connection) {
-	const { type, reacting, identities, card } = connection;
+	const { type, reacting, identities, order } = connection;
 	const identity = identities.length === 1 ? logCard(identities[0]) : `[${identities.map(logCard)}]`;
 	const logType = type === 'finesse' ? (connection.bluff ? 'bluff' : 'finesse') : type;
 
-	return `${card.order} ${identity} ${logType} (${globals.game.state.playerNames[reacting]})${connection.certain ? ' (certain)' : connection.hidden ? ' (hidden)' : ''}`;
+	return `${order} ${identity} ${logType} (${globals.game.state.playerNames[reacting]})${connection.certain ? ' (certain)' : connection.hidden ? ' (hidden)' : ''}`;
 }
 
 /**
@@ -236,10 +235,10 @@ export function logConnections(connections, nextIdentity) {
  */
 export function logLinks(links) {
 	return links.map(link => {
-		const { cards, identities, promised } = link;
+		const { orders, identities, promised } = link;
 
 		return {
-			cards: cards.map(c => c.order),
+			orders,
 			identities: identities.map(logCard),
 			promised
 		};

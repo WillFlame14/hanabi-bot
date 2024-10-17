@@ -23,17 +23,17 @@ describe('simple endgames with 1 card left', () => {
 			play_stacks: [4, 4, 5, 3, 5],
 			init: (game) => {
 				const { common, state } = game;
-				const a_slot1 = common.thoughts[state.hands[PLAYER.ALICE][0].order];
+				const a_slot1 = common.thoughts[state.hands[PLAYER.ALICE][0]];
 				a_slot1.inferred = a_slot1.inferred.intersect(expandShortCard('y5'));
 
-				const [b_slot1, b_slot4] = [0, 3].map(i => common.thoughts[state.hands[PLAYER.BOB][i].order]);
+				const [b_slot1, b_slot4] = [0, 3].map(i => common.thoughts[state.hands[PLAYER.BOB][i]]);
 				b_slot1.inferred = b_slot1.inferred.intersect(expandShortCard('b4'));
 				b_slot4.inferred = b_slot4.inferred.intersect(expandShortCard('b5'));
 
-				const c_slot4 = common.thoughts[state.hands[PLAYER.CATHY][3].order];
+				const c_slot4 = common.thoughts[state.hands[PLAYER.CATHY][3]];
 				c_slot4.inferred = c_slot4.inferred.intersect(expandShortCard('r5'));
 
-				const d_slot1 = common.thoughts[state.hands[PLAYER.DONALD][0].order];
+				const d_slot1 = common.thoughts[state.hands[PLAYER.DONALD][0]];
 				d_slot1.inferred = d_slot1.inferred.intersect(expandShortCard('b4'));
 
 				game.state.cardsLeft = 1;
@@ -54,11 +54,11 @@ describe('simple endgames with 1 card left', () => {
 			play_stacks: [5, 3, 4, 5, 5],
 			init: (game) => {
 				const { common, state } = game;
-				const [b_slot1, b_slot2] = [0, 1].map(i => common.thoughts[state.hands[PLAYER.BOB][i].order]);
+				const [b_slot1, b_slot2] = [0, 1].map(i => common.thoughts[state.hands[PLAYER.BOB][i]]);
 				b_slot1.inferred = b_slot1.inferred.intersect(expandShortCard('g5'));
 				b_slot2.inferred = b_slot2.inferred.intersect(expandShortCard('y4'));
 
-				const [d_slot1, d_slot4] = [0, 3].map(i => common.thoughts[state.hands[PLAYER.DONALD][i].order]);
+				const [d_slot1, d_slot4] = [0, 3].map(i => common.thoughts[state.hands[PLAYER.DONALD][i]]);
 				d_slot1.inferred = d_slot1.inferred.intersect(expandShortCard('y4'));
 				d_slot4.inferred = d_slot4.inferred.intersect(expandShortCard('y5'));
 
@@ -80,14 +80,14 @@ describe('simple endgames with 1 card left', () => {
 			play_stacks: [3, 5, 5, 4, 5],
 			init: (game) => {
 				const { common, state } = game;
-				const [a_slot1, a_slot2] = [0, 1].map(i => common.thoughts[state.hands[PLAYER.ALICE][i].order]);
+				const [a_slot1, a_slot2] = [0, 1].map(i => common.thoughts[state.hands[PLAYER.ALICE][i]]);
 				a_slot1.inferred = a_slot1.inferred.intersect(expandShortCard('r4'));
 				a_slot2.inferred = a_slot2.inferred.intersect(expandShortCard('r4'));
 
-				const b_slot4 = common.thoughts[state.hands[PLAYER.BOB][3].order];
+				const b_slot4 = common.thoughts[state.hands[PLAYER.BOB][3]];
 				b_slot4.inferred = b_slot4.inferred.intersect(expandShortCard('b5'));
 
-				const d_slot4 = common.thoughts[state.hands[PLAYER.DONALD][3].order];
+				const d_slot4 = common.thoughts[state.hands[PLAYER.DONALD][3]];
 				d_slot4.inferred = d_slot4.inferred.intersect(expandShortCard('r5'));
 
 				game.state.cardsLeft = 1;
@@ -96,7 +96,7 @@ describe('simple endgames with 1 card left', () => {
 
 		// Alice should play r4.
 		const action = solve_game(game, PLAYER.ALICE);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 
 	it('plays to start endgame when other has dupes', () => {
@@ -110,14 +110,14 @@ describe('simple endgames with 1 card left', () => {
 			discarded: ['p3'],
 			init: (game) => {
 				const { common, state } = game;
-				const a_slot1 = common.thoughts[state.hands[PLAYER.ALICE][0].order];
+				const a_slot1 = common.thoughts[state.hands[PLAYER.ALICE][0]];
 				a_slot1.inferred = a_slot1.inferred.intersect(expandShortCard('p3'));
 
-				const [b_slot2, b_slot4] = [1, 3].map(i => common.thoughts[state.hands[PLAYER.BOB][i].order]);
+				const [b_slot2, b_slot4] = [1, 3].map(i => common.thoughts[state.hands[PLAYER.BOB][i]]);
 				b_slot2.inferred = b_slot2.inferred.intersect(expandShortCard('p4'));
 				b_slot4.inferred = b_slot4.inferred.intersect(expandShortCard('p4'));
 
-				const d_slot4 = common.thoughts[state.hands[PLAYER.DONALD][3].order];
+				const d_slot4 = common.thoughts[state.hands[PLAYER.DONALD][3]];
 				d_slot4.inferred = d_slot4.inferred.intersect(expandShortCard('p5'));
 
 				game.state.cardsLeft = 1;
@@ -126,7 +126,7 @@ describe('simple endgames with 1 card left', () => {
 
 		// Alice should play p3.
 		const action = solve_game(game, PLAYER.ALICE);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 });
 
@@ -140,14 +140,14 @@ describe('more complex endgames where all cards are seen', () => {
 			play_stacks: [3, 5, 4, 5, 1],
 			init: (game) => {
 				const { common, state } = game;
-				const a_hand = state.hands[PLAYER.ALICE].map(c => common.thoughts[c.order]);
+				const a_hand = state.hands[PLAYER.ALICE].map(o => common.thoughts[o]);
 				['p3', 'p4', 'r5', 'r4'].map((id, i) => a_hand[i + 1].inferred = a_hand[i + 1].inferred.intersect(expandShortCard(id)));
 
-				const [b_slot4, b_slot5] = [3, 4].map(i => common.thoughts[state.hands[PLAYER.BOB][i].order]);
+				const [b_slot4, b_slot5] = [3, 4].map(i => common.thoughts[state.hands[PLAYER.BOB][i]]);
 				b_slot4.inferred = b_slot4.inferred.intersect(expandShortCard('p5'));
 				b_slot5.inferred = b_slot5.inferred.intersect(expandShortCard('p2'));
 
-				const c_slot5 = common.thoughts[state.hands[PLAYER.CATHY][4].order];
+				const c_slot5 = common.thoughts[state.hands[PLAYER.CATHY][4]];
 				c_slot5.inferred = c_slot5.inferred.intersect(expandShortCard('g5'));
 
 				game.state.cardsLeft = 4;
@@ -156,6 +156,6 @@ describe('more complex endgames where all cards are seen', () => {
 
 		// Alice should play r4.
 		const action = solve_game(game, PLAYER.ALICE);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 });

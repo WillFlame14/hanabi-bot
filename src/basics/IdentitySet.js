@@ -89,7 +89,7 @@ export class IdentitySet {
 
 		for (let i = 0; i < this.numSuits * this.maxStackRank; i++) {
 			if ((this.value & run) !== 0)
-				this.#array.push(Object.freeze(new BasicCard(Math.floor(i / this.maxStackRank), (i % this.maxStackRank) + 1)));
+				this.#array.push(new BasicCard(Math.floor(i / this.maxStackRank), (i % this.maxStackRank) + 1));
 			run <<= 1;
 		}
 

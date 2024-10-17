@@ -9,7 +9,6 @@ import { logCard } from '../../tools/log.js';
  * @typedef {import('../../basics/Game.js').Game} Game
  * @typedef {import('../../basics/State.js').State} State
  * @typedef {import('../../basics/Player.js').Player} Player
- * @typedef {import('../../basics/Hand.js').Hand} Hand
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').DiscardAction} DiscardAction
@@ -17,43 +16,45 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * Returns the cards in hand that could be targets for a sarcastic discard.
- * @param {Hand} hand
+ * @param {State} state
+ * @param {number} playerIndex
  * @param {Player} player
  * @param {Identity} identity
  */
-export function find_sarcastics(hand, player, identity) {
+export function find_sarcastics(state, playerIndex, player, identity) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
-	const known_sarcastic = hand.filter(c => player.thoughts[c.order].matches(identity, { infer: true }));
+	const known_sarcastic = state.hands[playerIndex].filter(o => player.thoughts[o].matches(identity, { infer: true }));
 	if (known_sarcastic.length > 0)
 		return known_sarcastic;
 
 	// Otherwise, find all cards that could match that identity
-	return Array.from(hand.filter(c => {
-		const card = player.thoughts[c.order];
+	return state.hands[playerIndex].filter(o => {
+		const card = player.thoughts[o];
 
-		return c.clued && card.possible.has(identity) &&
+		return state.deck[o].clued && card.possible.has(identity) &&
 			!(card.inferred.length === 1 && card.inferred.array[0].rank < identity.rank);		// Do not sarcastic on connecting cards
-	}));
+	});
 }
 
 /**
  * Adds the sarcastic discard inference to the given set of sarcastic cards.
  * @param {Game} game
- * @param {ActualCard[]} sarcastic
+ * @param {number[]} sarcastic
  * @param {Identity} identity
  */
 function apply_unknown_sarcastic(game, sarcastic, identity) {
 	const { common, state } = game;
 
 	// Need to add the inference back if it was previously eliminated due to good touch
-	for (const { order } of sarcastic) {
-		const card = common.thoughts[order];
-		card.inferred = card.inferred.union(identity);
-		card.trash = false;
+	for (const order of sarcastic) {
+		common.updateThoughts(order, (draft) => {
+			draft.inferred = common.thoughts[order].inferred.union(identity);
+			draft.trash = false;
+		});
 	}
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
-	if (sarcastic.length === 0 || sarcastic.some(({ order }) => common.thoughts[order].inferred.some(c => state.playableAway(c) > 0)))
+	if (sarcastic.length === 0 || sarcastic.some(order => common.thoughts[order].inferred.some(c => state.playableAway(c) > 0)))
 		undo_hypo_stacks(game, identity);
 }
 
@@ -63,23 +64,23 @@ function apply_unknown_sarcastic(game, sarcastic, identity) {
  * @param  {number} playerIndex 	The player that performed a sacrifice discard.
  */
 function apply_locked_discard(game, playerIndex) {
-	const { state } = game;
+	const { common, state } = game;
 	const other = (playerIndex + 1) % state.numPlayers;
 
 	logger.highlight('cyan', `sacrifice discard, locking ${state.playerNames[other]}`);
 
 	// Chop move all cards
-	for (const { order } of state.hands[other]) {
-		const card = game.common.thoughts[order];
+	for (const order of state.hands[other]) {
+		const card = common.thoughts[order];
 		if (!card.clued && !card.finessed && !card.chop_moved)
-			card.chop_moved = true;
+			common.updateThoughts(order, (draft) => { draft.chop_moved = true; });
 	}
 }
 
 /**
  * @param {Game} game
  * @param {DiscardAction} discardAction
- * @returns {ActualCard[]} 					The targets for the sarcastic discard
+ * @returns {number[]} 					The targets for the sarcastic discard
  */
 export function interpret_sarcastic(game, discardAction) {
 	const { common, me, state } = game;
@@ -94,13 +95,14 @@ export function interpret_sarcastic(game, discardAction) {
 		if (playerIndex === state.ourPlayerIndex)
 			return [];
 
-		const sarcastics = find_sarcastics(state.ourHand, me, identity);
+		const sarcastics = find_sarcastics(state, state.ourPlayerIndex, me, identity);
 
 		if (sarcastics.length === 1) {
-			logger.info('writing sarcastic on slot', state.ourHand.findIndex(c => c.order === sarcastics[0].order) + 1);
-			const common_sarcastic = common.thoughts[sarcastics[0].order];
-			common_sarcastic.inferred = common_sarcastic.inferred.intersect(identity);
-			common_sarcastic.trash = false;
+			logger.info('writing sarcastic on slot', state.ourHand.findIndex(o => o === sarcastics[0]) + 1);
+			common.updateThoughts(sarcastics[0], (common_sarcastic) => {
+				common_sarcastic.inferred = common_sarcastic.inferred.intersect(identity);
+				common_sarcastic.trash = false;
+			});
 		}
 		else {
 			apply_unknown_sarcastic(game, sarcastics, identity);
@@ -113,12 +115,12 @@ export function interpret_sarcastic(game, discardAction) {
 	// Sarcastic discard to other (or known sarcastic discard to us)
 	for (let i = 0; i < state.numPlayers; i++) {
 		const receiver = (state.ourPlayerIndex + i) % state.numPlayers;
-		const sarcastics = find_sarcastics(state.hands[receiver], common, identity);
+		const sarcastics = find_sarcastics(state, receiver, common, identity);
 
-		if (sarcastics.some(c => me.thoughts[c.order].matches(identity, { infer: receiver === state.ourPlayerIndex }) && c.clued)) {
+		if (sarcastics.some(o => me.thoughts[o].matches(identity, { infer: receiver === state.ourPlayerIndex }) && state.deck[o].clued)) {
 			// The matching card must be the only possible option in the hand to be known sarcastic
 			if (sarcastics.length === 1) {
-				common.thoughts[sarcastics[0].order].inferred = IdentitySet.create(state.variant.suits.length, identity);
+				common.updateThoughts(sarcastics[0], (draft) => { draft.inferred = IdentitySet.create(state.variant.suits.length, identity); });
 				logger.info(`writing ${logCard(identity)} from sarcastic discard`);
 			}
 			else {

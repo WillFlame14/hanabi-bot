@@ -25,7 +25,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Bob clues brown to Alice (slot 5)');
 
 		assert.ok(['n2', 'n5'].every(id =>
-			game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
+			game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard(id))));
 	});
 
 	it('will save n5 with brown', () => {

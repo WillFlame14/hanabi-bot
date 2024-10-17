@@ -6,10 +6,10 @@ import * as Elim from './player-elim.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
+import { produce } from '../StateProxy.js';
 
 /**
  * @typedef {import('./State.js').State} State
- * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').BasicCard} BasicCard
  * @typedef {import('../types.js').Identity} Identity
@@ -68,8 +68,9 @@ export class Player {
 		this.elims = elims;
 	}
 
+	/** @returns {this} */
 	clone() {
-		return new Player(this.playerIndex,
+		return (new /** @type {any} */ (this.constructor)(this.playerIndex,
 			this.all_possible,
 			this.all_inferred,
 			this.hypo_stacks.slice(),
@@ -78,11 +79,12 @@ export class Player {
 			this.play_links.map(link => Utils.objClone(link)),
 			this.unknown_plays,
 			Utils.objClone(this.waiting_connections),
-			Utils.objClone(this.elims));
+			Utils.objClone(this.elims)));
 	}
 
+	/** @returns {this} */
 	shallowCopy() {
-		return new Player(this.playerIndex,
+		return (new /** @type {any} */ (this.constructor)(this.playerIndex,
 			this.all_possible,
 			this.all_inferred,
 			this.hypo_stacks,
@@ -91,7 +93,26 @@ export class Player {
 			this.play_links,
 			this.unknown_plays,
 			this.waiting_connections,
-			this.elims);
+			this.elims));
+	}
+
+	/**
+	 * @param {number} order
+	 * @param {(draft: import('../types.js').Writable<Card>) => void} func
+	 */
+	updateThoughts(order, func) {
+		this.thoughts = this.thoughts.with(order, produce(this.thoughts[order], func));
+	}
+
+	/**
+	 * @param {number} order
+	 * @param {(draft: import('../types.js').Writable<Card>) => void} func
+	 * @returns {typeof this}
+	 */
+	withThoughts(order, func) {
+		const copy = this.shallowCopy();
+		copy.updateThoughts(order, func);
+		return copy;
 	}
 
 	/**
@@ -100,7 +121,7 @@ export class Player {
 	 * @param {number} playerIndex
 	 */
 	thinksLocked(state, playerIndex) {
-		return state.hands[playerIndex].every(c => this.thoughts[c.order].saved) && !this.thinksLoaded(state, playerIndex);
+		return state.hands[playerIndex].every(o => this.thoughts[o].saved) && !this.thinksLoaded(state, playerIndex);
 	}
 
 	/**
@@ -124,28 +145,28 @@ export class Player {
 
 		// TODO: Revisit if the card identity being known is relevant?
 		// (e.g. if I later discover that I did not have a playable when I thought I did)
-		return Array.from(state.hands[playerIndex].filter(c => {
-			const card = this.thoughts[c.order];
-			const unsafe_linked = linked_orders.has(c.order) &&
+		return state.hands[playerIndex].filter(o => {
+			const card = this.thoughts[o];
+			const unsafe_linked = linked_orders.has(o) &&
 				(state.strikes === 2 ||
 					card.possible.some(p => state.play_stacks[p.suitIndex] + 1 < p.rank && p.rank <= state.max_ranks[p.suitIndex]) ||
-					Array.from(linked_orders).some(o => this.thoughts[o].focused && o !== c.order));
+					Array.from(linked_orders).some(o => this.thoughts[o].focused && o !== o));
 
 			return (!card.trash || card.possible.every(p => !state.isBasicTrash(p))) && !unsafe_linked &&
 				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
 				((options?.assume ?? true) || !this.waiting_connections.some((wc, i1) =>
 					// Unplayable target of possible waiting connection
-					(wc.focused_card.order === c.order && !state.isPlayable(wc.inference) && card.possible.has(wc.inference)) ||
-					wc.connections.some((conn, ci) => ci >= wc.conn_index && conn.card.order === c.order && (
+					(wc.focused_card.order === o && !state.isPlayable(wc.inference) && card.possible.has(wc.inference)) ||
+					wc.connections.some((conn, ci) => ci >= wc.conn_index && conn.order === o && (
 						// Unplayable connecting card
 						conn.identities.some(i => !state.isPlayable(i) && card.possible.has(i)) ||
 						// A different connection on the same focus doesn't use this connecting card
 						this.waiting_connections.some((wc2, i2) =>
-							i1 !== i2 && wc2.focused_card.order === wc.focused_card.order && wc2.connections.every(conn2 => conn2.card.order !== c.order))))
+							i1 !== i2 && wc2.focused_card.order === wc.focused_card.order && wc2.connections.every(conn2 => conn2.order !== o))))
 				)) &&
 				state.hasConsistentInferences(card);
-		}));
+		});
 	}
 
 	/**
@@ -156,44 +177,44 @@ export class Player {
 	thinksTrash(state, playerIndex) {
 		/** @type {(identity: Identity, order: number) => boolean} */
 		const visible_elsewhere = (identity, order) =>
-			state.hands.flat().some(c => {
-				const card = this.thoughts[c.order];
+			state.hands.flat().some(o => {
+				const card = this.thoughts[o];
 
 				return card.matches(identity, { infer: true }) &&
-					(c.clued || (card.finessed && !card.uncertain)) &&
-					c.order !== order &&
-					!this.links.some(link => link.cards.some(lc => lc.order === order));
+					(state.deck[o].clued || (card.finessed && !card.uncertain)) &&
+					o !== order &&
+					!this.links.some(link => link.orders.includes(order));
 			});
 
-		return Array.from(state.hands[playerIndex].filter(c => {
-			if (this.thoughts[c.order].trash)
+		return state.hands[playerIndex].filter(o => {
+			if (this.thoughts[o].trash)
 				return true;
 
-			const poss = this.thoughts[c.order].possibilities;
+			const poss = this.thoughts[o].possibilities;
 
 			// Every possibility is trash or duplicated somewhere
-			const trash = poss.every(p => state.isBasicTrash(p) || visible_elsewhere(p, c.order));
+			const trash = poss.every(p => state.isBasicTrash(p) || visible_elsewhere(p, o));
 
 			if (trash)
-				logger.debug(`order ${c.order} is trash, poss ${poss.map(logCard).join()}, ${poss.map(p => state.isBasicTrash(p) + '|' + visible_elsewhere(p, c.order)).join()}`);
+				logger.debug(`order ${o} is trash, poss ${poss.map(logCard).join()}, ${poss.map(p => state.isBasicTrash(p) + '|' + visible_elsewhere(p, o)).join()}`);
 
 			return trash;
-		}));
+		});
 	}
 
 	/**
 	 * Finds the best discard in a locked hand. Breaks ties using the leftmost card.
 	 * @param {State} state
-	 * @param {Hand} hand
+	 * @param {number[]} hand
 	 */
 	lockedDiscard(state, hand) {
 		// If any card's crit% is 0
-		const crit_percents = Array.from(hand.map(c => {
-			const poss = this.thoughts[c.order].possibilities;
+		const crit_percents = hand.map(o => {
+			const poss = this.thoughts[o].possibilities;
 			const percent = poss.filter(p => state.isCritical(p)).length / poss.length;
 
-			return { card: c, percent };
-		})).sort((a, b) => a.percent - b.percent);
+			return { order: o, percent };
+		}).sort((a, b) => a.percent - b.percent);
 
 		const least_crits = crit_percents.filter(({ percent }) => percent === crit_percents[0].percent);
 
@@ -206,27 +227,27 @@ export class Player {
 			return crit_distance < 0 ? 5 : crit_distance;
 		};
 
-		const { card: furthest_card } = Utils.maxOn(least_crits, ({ card }) =>
-			this.thoughts[card.order].possibilities.reduce((sum, p) => sum += distance(p, crit_percents[0].percent === 1), 0));
+		const { order: furthest_order } = Utils.maxOn(least_crits, ({ order }) =>
+			this.thoughts[order].possibilities.reduce((sum, p) => sum += distance(p, crit_percents[0].percent === 1), 0));
 
-		return furthest_card;
+		return furthest_order;
 	}
 
 	/**
 	 * Finds the best play in a locked hand. Breaks ties using the leftmost card.
 	 * @param {State} state
-	 * @param {Hand} hand
+	 * @param {number[]} hand
 	 */
 	anxietyPlay(state, hand) {
-		return Array.from(hand.map((c, i) => {
-			const poss = this.thoughts[c.order].possibilities;
+		return hand.map((o, i) => {
+			const poss = this.thoughts[o].possibilities;
 			const percent = poss.filter(p => state.isPlayable(p)).length / poss.length;
 
-			return { card: c, percent, index: i };
-		})).sort((a, b) => {
+			return { order: o, percent, index: i };
+		}).sort((a, b) => {
 			const diff = b.percent - a.percent;
 			return diff !== 0 ? diff : a.index - b.index;
-		})[0].card;
+		})[0].order;
 	}
 
 	/**
@@ -234,10 +255,10 @@ export class Player {
 	 * @param {State} state
 	 */
 	linkedOrders(state) {
-		const unknownLinks = this.links.filter(({ cards, identities }) =>
-			cards.length > identities.reduce((sum, identity) => sum += unknownIdentities(state, this, identity), 0));
+		const unknownLinks = this.links.filter(({ orders, identities }) =>
+			orders.length > identities.reduce((sum, identity) => sum += unknownIdentities(state, this, identity), 0));
 
-		return new Set(unknownLinks.flatMap(link => link.cards.map(c => c.order)));
+		return new Set(unknownLinks.flatMap(link => link.orders));
 	}
 
 	get hypo_score() {
@@ -246,7 +267,7 @@ export class Player {
 
 	/** @param {number} order */
 	dependentConnections(order) {
-		return this.waiting_connections.filter(wc => wc.connections.some((conn, index) => index >= wc.conn_index && conn.card.order === order));
+		return this.waiting_connections.filter(wc => wc.connections.some((conn, index) => index >= wc.conn_index && conn.order === order));
 	}
 
 	/**
@@ -277,7 +298,7 @@ export class Player {
 		while (found_new_playable) {
 			found_new_playable = false;
 
-			for (const { order } of state.hands.flat()) {
+			for (const order of state.hands.flat()) {
 				const card = this.thoughts[order];
 
 				if (!card.saved || good_touch_elim.has(card) || linked_orders.has(order) || unknown_plays.has(order) || already_played.has(order))
@@ -287,8 +308,7 @@ export class Player {
 					wc.focused_card.order === order && !state.deck[wc.focused_card.order].matches(wc.inference, { assume: true }));
 
 				// Ignore all waiting connections that will be proven wrong
-				const diff = card.clone();
-				diff.inferred = diff.inferred.subtract(fake_wcs.flatMap(wc => wc.inference));
+				const diff = produce(card, (draft) => { draft.inferred = card.inferred.subtract(fake_wcs.flatMap(wc => wc.inference)); });
 
 				const playable = state.hasConsistentInferences(diff) &&
 					(delayed_playable(diff.possible.array) ||
@@ -307,7 +327,7 @@ export class Player {
 					(id && state.deck.filter(c => c?.matches(id) && c.order !== order).length === cardCount(state.variant, id)) ||
 					(actual_id &&
 						(!card.inferred.has(actual_id) ||		// None of the inferences match
-						state.hands.flat().some(c => unknown_plays.has(c.order) && c.matches(actual_id))))
+						state.hands.flat().some(o => unknown_plays.has(o) && state.deck[o].matches(actual_id))))
 				))
 					continue;
 
@@ -317,10 +337,10 @@ export class Player {
 					already_played.add(order);
 					found_new_playable = true;
 
-					const promised_link = this.links.find(link => link.promised && link.cards.some(c => c.order === order));
+					const promised_link = this.links.find(link => link.promised && link.orders.includes(order));
 
 					// All cards in a promised link will be played
-					if (promised_link?.cards.every(c => unknown_plays.has(c.order))) {
+					if (promised_link?.orders.every(o => unknown_plays.has(o))) {
 						const id2 = promised_link.identities[0];
 
 						if (id2.rank !== hypo_stacks[id2.suitIndex] + 1) {

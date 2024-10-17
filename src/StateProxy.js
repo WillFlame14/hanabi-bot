@@ -1,7 +1,10 @@
 import { types } from 'node:util';
-import { ActualCard } from './basics/Card.js';
 import * as Utils from './tools/util.js';
-import { Game } from './basics/Game.js';
+
+/**
+ * @template T
+ * @typedef {import('./types.js').Writable<T>} Writable<T>
+ */
 
 const PROXY_STATE = Symbol();
 
@@ -87,6 +90,8 @@ class StateProxy {
 	 */
 	constructor(parent, base) {
 		this.parent = parent;
+
+		/** @type {T} */
 		this.base = base;
 	}
 
@@ -103,9 +108,6 @@ class StateProxy {
 
 		Object.assign(this.copy, this.proxies);
 
-		if (this.base instanceof ActualCard)
-			changed_cards[this.base.order] = this.copy;
-
 		// Propagate modified status to parents
 		if (this.parent)
 			this.parent.markChanged();
@@ -113,12 +115,12 @@ class StateProxy {
 }
 
 let revokes = [];
-let changed_cards = {};
 
 /**
  * @template T
  * @param {StateProxy} parent
  * @param {T} base
+ * @returns {StateProxy<T>}
  */
 function createProxy(parent, base) {
 	const state = new StateProxy(parent, base);
@@ -131,17 +133,15 @@ function createProxy(parent, base) {
 /**
  * @template T
  * @param {T} base
- * @param {(draft: T) => undefined} producer
+ * @param {(draft: Writable<T>) => void} producer
  */
 export function produce(base, producer) {
 	// Save old revokes/cards in case we're nesting produce() calls
 	const old_revokes = revokes;
-	const old_changed_cards = changed_cards;
 	revokes = [];
-	changed_cards = {};
 
 	const rootClone = createProxy(undefined, base);
-	producer(rootClone);
+	producer(/** @type {Writable<T>} */ (/** @type {unknown} */ (rootClone)));
 	const res = finalize(rootClone);
 
 	// Revoke all proxies created
@@ -149,12 +149,15 @@ export function produce(base, producer) {
 		revoke();
 
 	revokes = old_revokes;
-	changed_cards = old_changed_cards;
 
 	return res;
 }
 
-/** @param {StateProxy} base */
+/**
+ * @template T
+ * @param {StateProxy<T> | T} base
+ * @returns {T}
+ */
 function finalize(base) {
 	if (types.isProxy(base)) {
 		const state = base[PROXY_STATE];
@@ -169,10 +172,13 @@ function finalize(base) {
 	}
 
 	finalizeNonProxiedObject(base);
-	return base;
+	return /** @type {T} */ (base);
 }
 
-/** @param {StateProxy} state */
+/**
+ * @template T
+ * @param {StateProxy<T>} state
+ */
 function finalizeObject(state) {
 	const { base, copy } = state;
 
@@ -181,11 +187,8 @@ function finalizeObject(state) {
 			copy[key] = finalize(value);
 	}
 
-	// At least one ActualCard changed -- we need to update players
-	if (copy instanceof Game && Object.keys(changed_cards).length !== 0)
-		finalizeState(copy);
-
-	return Object.freeze(copy);
+	return copy;
+	// return Object.freeze(copy);
 }
 
 /**
@@ -204,24 +207,5 @@ function finalizeNonProxiedObject(state) {
 			finalizeNonProxiedObject(value);
 
 	}
-	Object.freeze(state);
-}
-
-/** @param {Game} game */
-function finalizeState(game) {
-	game.players = game.players.map(p => {
-		const player = p.shallowCopy();
-
-		// If any ActualCards were changed, re-link all the associated Cards
-		for (const [order, copy] of Object.entries(changed_cards)) {
-			const card_copy = player.thoughts[order].shallowCopy();
-			card_copy.actualCard = copy;
-
-			const thoughts_copy = Utils.shallowCopy(player.thoughts);
-			thoughts_copy[order] = card_copy;
-
-			player.thoughts = thoughts_copy;
-		}
-		return player;
-	});
+	// Object.freeze(state);
 }

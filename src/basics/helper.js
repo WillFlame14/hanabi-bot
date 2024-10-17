@@ -25,23 +25,28 @@ export function team_elim(game) {
 
 	for (const player of game.players) {
 		for (let i = 0; i < game.common.thoughts.length; i++) {
-			const card = player.thoughts[i];
 			const ccard = game.common.thoughts[i];
+			const card = player.thoughts[i];
 
-			card.possible = ccard.possible.intersect(card.possible);
-			card.inferred = ccard.inferred.intersect(card.possible);
+			const new_possible = ccard.possible.intersect(card.possible);
+			let new_inferred = ccard.inferred.intersect(card.possible);
 
 			// Reset to GTP if common interpretation doesn't make sense
-			if (card.inferred.length === 0 && !card.chop_moved)
-				card.inferred = card.possible;
+			if (new_inferred.length === 0 && !card.chop_moved)
+				new_inferred = new_possible;
 
-			for (const property of Object.getOwnPropertyNames(ccard)) {
-				if (!['suitIndex', 'rank', 'possible', 'inferred', 'reasoning', 'reasoning_turn'].includes(property))
-					card[property] = ccard[property];
-			}
+			player.updateThoughts(i, (draft) => {
+				draft.possible = new_possible;
+				draft.inferred = new_inferred;
 
-			card.reasoning = ccard.reasoning.slice();
-			card.reasoning_turn = ccard.reasoning_turn.slice();
+				for (const property of Object.getOwnPropertyNames(ccard)) {
+					if (!['suitIndex', 'rank', 'possible', 'inferred', 'reasoning', 'reasoning_turn'].includes(property))
+						draft[property] = ccard[property];
+				}
+
+				draft.reasoning = ccard.reasoning.slice();
+				draft.reasoning_turn = ccard.reasoning_turn.slice();
+			});
 		}
 
 		player.waiting_connections = game.common.waiting_connections.slice();
@@ -62,9 +67,9 @@ export function checkFix(game, oldThoughts, clueAction) {
 
 	/** @type {Set<number>} */
 	const clue_resets = new Set();
-	for (const { order } of state.hands[target]) {
+	for (const order of state.hands[target]) {
 		if (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
-			common.reset_card(order);
+			common.thoughts = common.thoughts.with(order, common.reset_card(order));
 			clue_resets.add(order);
 		}
 	}
@@ -113,12 +118,12 @@ export function checkFix(game, oldThoughts, clueAction) {
 	}
 
 	// Any clued cards that lost all inferences
-	const clued_reset = list.find(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
+	const clued_reset = list.find(order => all_resets.has(order) && !state.deck[order].newly_clued);
 
 	if (clued_reset)
 		logger.info('clued card', clued_reset, 'was newly reset!');
 
-	const duplicate_reveal = state.hands[target].find(({ order }) => {
+	const duplicate_reveal = state.hands[target].find(order => {
 		const card = common.thoughts[order];
 
 		if (!list.includes(order) || game.common.thoughts[order].identity() === undefined)
@@ -126,10 +131,10 @@ export function checkFix(game, oldThoughts, clueAction) {
 
 		// The fix can be in anyone's hand except the giver's
 		const copy = visibleFind(state, common, card.identity(), { ignore: [giver], infer: true })
-			.find(c => common.thoughts[c.order].touched && c.order !== order);// && !c.newly_clued);
+			.find(o => common.thoughts[o].touched && o !== order);// && !c.newly_clued);
 
 		if (copy)
-			logger.info('duplicate', logCard(card.identity()), 'revealed! copy of order', copy.order, card.possible.map(logCard));
+			logger.info('duplicate', logCard(card.identity()), 'revealed! copy of order', copy, card.possible.map(logCard));
 
 		return copy !== undefined;
 	});
@@ -152,8 +157,8 @@ export function undo_hypo_stacks(game, { suitIndex, rank }) {
  * @param {Game} game
  */
 export function reset_superpositions(game) {
-	for (const { order } of game.state.hands.flat())
-		game.common.thoughts[order].superposition = false;
+	for (const order of game.state.hands.flat())
+		game.common.updateThoughts(order, (draft) => { draft.superposition = false; });
 }
 
 /**
@@ -172,7 +177,7 @@ export function connectable_simple(game, start, target, identity) {
 
 	const playables = game.players[start].thinksPlayables(game.state, start, { assume: false });
 
-	for (const { order } of playables) {
+	for (const order of playables) {
 		const id = game.players[start].thoughts[order].identity({ infer: true });
 
 		if (id === undefined)

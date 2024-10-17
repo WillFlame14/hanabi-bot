@@ -56,20 +56,20 @@ export function evaluate_clue(game, action, clue, target, target_card) {
 	let reason;
 
 	/** @param {Game} game */
-	const get_finessed_cards = (game) =>
-		game.state.hands[action.giver].filter(c => !game.common.thoughts[c.order].clued && game.common.thoughts[c.order].finessed);
+	const get_finessed_orders = (game) =>
+		game.state.hands[action.giver].filter(o => ((c = game.common.thoughts[o]) => !c.clued && c.finessed)());
 
-	const finessed_before_clue = get_finessed_cards(game);
-	const finessed_after_clue = get_finessed_cards(hypo_game);
-	const lost_finesse = finessed_before_clue.filter(c => finessed_after_clue.find(other => other.order == c.order) === undefined);
+	const finessed_before_clue = get_finessed_orders(game);
+	const finessed_after_clue = get_finessed_orders(hypo_game);
+	const lost_finesse = finessed_before_clue.filter(o => !finessed_after_clue.includes(o));
 
 	if (lost_finesse.length > 0) {
-		reason = `cards ${lost_finesse.map(c => logCard(state.deck[c.order])).join(', ')} lost finesse`;
+		reason = `cards ${lost_finesse.map(o => logCard(state.deck[o])).join(', ')} lost finesse`;
 	}
 	else {
 		const { bad_touch } = bad_touch_result(game, hypo_game, hypo_game.common, action.giver, action.target);
 
-		for (const { order, clued } of state.hands[target]) {
+		for (const order of state.hands[target]) {
 			const card = hypo_game.common.thoughts[order];
 			const visible_card = state.deck[order];
 
@@ -91,8 +91,8 @@ export function evaluate_clue(game, action, clue, target, target_card) {
 
 			const allowable_trash = card.chop_moved ||													// Chop moved (might have become trash)
 				old_card.reset || !state.hasConsistentInferences(old_card) || old_card.inferred.length === 0 ||	// Didn't match inference even before clue
-				(clued && isTrash(state, game.me, visible_card, order, { infer: true })) ||				// Previously-clued duplicate or recently became basic trash
-				bad_touch.some(b => b.order === order) ||											// Bad touched
+				(visible_card.clued && isTrash(state, game.me, visible_card, order, { infer: true })) ||		// Previously-clued duplicate or recently became basic trash
+				bad_touch.some(b => b.order === order) ||																// Bad touched
 				(state.includesVariant(variantRegexes.pinkish) && clue.type === CLUE.RANK && clue.value === 1) ||		// 1 clue in pink
 				card.possible.every(id => isTrash(hypo_game.state, hypo_game.common, id, order, { infer: true }));		// Known trash
 
@@ -140,7 +140,7 @@ export function evaluate_clue(game, action, clue, target, target_card) {
  * @param  {Game} hypo_game
  * @param  {Clue} clue
  * @param  {number} giver
- * @param  {{touch?: ActualCard[], list?: number[]}} provisions 	Provided 'touch' and 'list' variables if clued in our hand.
+ * @param  {{list?: number[]}} provisions 	Provided 'list' variable if clued in our hand.
  * @returns {ClueResult}
  */
 export function get_result(game, hypo_game, clue, giver, provisions = {}) {
@@ -150,10 +150,9 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const { target } = clue;
 	const hand = state.hands[target];
 
-	const touch = provisions.touch ?? hand.clueTouched(clue, state.variant);
-	const list = provisions.list ?? touch.map(c => c.order);
+	const list = provisions.list ?? state.clueTouched(hand, clue);
 
-	const { focused_card } = determine_focus(game, hand, hypo_common, list, clue);
+	const { focus } = determine_focus(game, hand, hypo_common, list, clue);
 
 	const { new_touched, fill } = elim_result(hypo_state, common, hypo_common, hand, list);
 	const { bad_touch, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target);
@@ -161,7 +160,7 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const chop_moved = cm_result(common, hypo_common, hand);
 
 	return {
-		focus: focused_card.order,
+		focus,
 		elim: fill,
 		new_touched,
 		bad_touch: bad_touch.length,

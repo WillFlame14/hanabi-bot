@@ -127,7 +127,7 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 		for (let playerIndex = 0; playerIndex < playerNames.length; playerIndex++) {
 			for (let i = 0; i < game.state.handSize; i++) {
 				const order = game.state.cardOrder + 1;
-				const { suitIndex, rank } = playerIndex !== game.state.ourPlayerIndex ? deck[order] : { suitIndex: -1, rank: -1 };
+				const { suitIndex, rank } = deck[order];
 
 				game.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank });
 			}
@@ -163,7 +163,7 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 				const order = state.cardOrder + 1;
 				const action = Utils.performToAction(state, performAction, currentPlayerIndex, deck);
 
-				logger.debug('Action for', state.playerNames[gameIndex]);
+				logger.debug('Action for', state.playerNames[gameIndex], action);
 
 				Utils.globalModify({ game });
 				game.handle_action(action);
@@ -172,7 +172,7 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 					continue;
 
 				if ((action.type === 'play' || action.type === 'discard') && order < deck.length) {
-					const { suitIndex, rank } = (currentPlayerIndex !== state.ourPlayerIndex) ? deck[order] : { suitIndex: -1, rank: -1 };
+					const { suitIndex, rank } = deck[order];
 					game.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank });
 				}
 			}

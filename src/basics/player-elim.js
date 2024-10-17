@@ -5,9 +5,9 @@ import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
+import { produce } from '../StateProxy.js';
 
 /**
- * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').ActualCard} ActualCard
  * @typedef {import('./Player.js').Player} Player
@@ -26,9 +26,9 @@ export function card_elim(state) {
 	let uncertain_ids = state.base_ids;
 	let uncertain_map = /** @type {Map<number, IdentitySet>} */ (new Map());
 
-	const candidates = state.hands.flatMap((hand, playerIndex) => hand.map(c => ({ playerIndex, order: c.order })));
+	const candidates = state.hands.flatMap((hand, playerIndex) => hand.map(order => ({ playerIndex, order })));
 
-	const all_ids = state.hands.flatMap(hand => hand.flatMap(c => this.thoughts[c.order].possible.array));
+	const all_ids = state.hands.flatMap(hand => hand.flatMap(o => this.thoughts[o].possible.array));
 	const identities = state.base_ids.union(all_ids).array;
 
 	/**
@@ -70,22 +70,26 @@ export function card_elim(state) {
 
 			for (let i = candidates.length - 1; i >= 0; i--) {
 				const { order } = candidates[i];
-				const card = this.thoughts[order];
+				const { possible, inferred } = this.thoughts[order];
 
-				if (!card.possible.has(identity) || certain_map.get(id_hash)?.has(order) || uncertain_map.get(order)?.has(identity))
+				if (!possible.has(identity) || certain_map.get(id_hash)?.has(order) || uncertain_map.get(order)?.has(identity))
 					continue;
 
 				changed = true;
 
-				card.possible = card.possible.subtract(identity);
-				card.inferred = card.inferred.subtract(identity);
+				this.updateThoughts(order, (draft) => {
+					draft.possible = possible.subtract(identity);
+					draft.inferred = inferred.subtract(identity);
+				});
 
-				if (card.inferred.length === 0 && !card.reset) {
-					this.reset_card(order);
+				const updated_card = this.thoughts[order];
+
+				if (updated_card.inferred.length === 0 && !updated_card.reset) {
+					this.thoughts[order] = this.reset_card(order);
 				}
 				// Card can be further eliminated
-				else if (card.possible.length === 1) {
-					identities.push(card.identity());
+				else if (updated_card.possible.length === 1) {
+					identities.push(updated_card.identity());
 					addToMap(i);
 				}
 			}
@@ -127,8 +131,11 @@ export function card_elim(state) {
 					if (p1 === p2 || !this.thoughts[o2].possible.has(elim_id))
 						continue;
 
-					this.thoughts[o2].possible = this.thoughts[o2].possible.subtract(elim_id);
-					this.thoughts[o2].inferred = this.thoughts[o2].inferred.intersect(this.thoughts[o2].possible);
+					const { possible, inferred } = this.thoughts[o2];
+					this.updateThoughts(o2, (draft) => {
+						draft.possible = possible.subtract(elim_id);
+						draft.inferred = inferred.intersect(possible);
+					});
 					changed = true;
 				}
 			}
@@ -196,7 +203,7 @@ export function good_touch_elim(state, only_self = false) {
 		}
 
 		if ((state.deck[order].identity() !== undefined && !state.deck[order].matches(id)) ||		// Card is visible and doesn't match
-			(state.baseCount(id) + state.hands.flat().filter(c => c.matches(id) && c.order !== order).length === cardCount(state.variant, id)) ||	// Card cannot match
+			(state.baseCount(id) + state.hands.flat().filter(o => state.deck[o].matches(id) && o !== order).length === cardCount(state.variant, id)) ||	// Card cannot match
 			(!card.matches(id) && card.newly_clued && !card.focused) ||			// Unknown newly clued cards off focus?
 			card.uncertain
 		)
@@ -217,11 +224,11 @@ export function good_touch_elim(state, only_self = false) {
 
 			if (visibles.length > 0) {
 				for (const v of visibles) {
-					const holder = state.hands.findIndex(hand => hand.findOrder(v));
+					const holder = state.hands.findIndex(hand => hand.includes(v));
 
 					// This player can see the identity, so their card must be trash - the player with the identity can see the trash
 					for (const hard_match of hard_matches) {
-						if (state.hands.findIndex(hand => hand.findOrder(hard_match)) !== holder)
+						if (state.hands.findIndex(hand => hand.includes(hard_match)) !== holder)
 							hard_matches.delete(hard_match);
 					}
 				}
@@ -240,7 +247,7 @@ export function good_touch_elim(state, only_self = false) {
 				continue;
 
 			const orders_arr = Array.from(orders);
-			const holders = orders_arr.map(o => state.hands.findIndex(hand => hand.findOrder(o)));
+			const holders = orders_arr.map(o => state.hands.findIndex(hand => hand.includes(o)));
 			let change = false;
 
 			for (let i = 0; i < orders.size; i++) {
@@ -251,7 +258,7 @@ export function good_touch_elim(state, only_self = false) {
 
 					// Globally, a player can subtract identities others have, knowing others can see the identities they have.
 					if (i !== j && holders[i] !== holders[j] && card.inferred.has(other_card)) {
-						card.inferred = card.inferred.subtract(other_card);
+						this.updateThoughts(orders_arr[i], (draft) => { draft.inferred = this.thoughts[orders_arr[i]].inferred.subtract(other_card); });
 						change = true;
 					}
 				}
@@ -273,7 +280,7 @@ export function good_touch_elim(state, only_self = false) {
 		if (only_self && i !== this.playerIndex)
 			continue;
 
-		for (const { order } of state.hands[i]) {
+		for (const order of state.hands[i]) {
 			addToMaps(order);
 
 			if (this.thoughts[order].trash)
@@ -311,15 +318,15 @@ export function good_touch_elim(state, only_self = false) {
 		const matches_arr = Array.from(matches);
 
 		for (const { order, playerIndex, cm } of elim_candidates) {
-			const card = this.thoughts[order];
+			const old_card = this.thoughts[order];
 
-			if (matches.has(order) || card.inferred.length === 0 || !card.inferred.has(identity))
+			if (matches.has(order) || old_card.inferred.length === 0 || !old_card.inferred.has(identity))
 				continue;
 
-			const visible_elim = state.hands.some(hand => hand.some(c => matches.has(c.order) && c.matches(identity, { assume: true }))) &&
+			const visible_elim = state.hands.some(hand => hand.some(o => matches.has(o) && state.deck[o].matches(identity, { assume: true }))) &&
 				state.baseCount(identity) + matches.size >= cardCount(state.variant, identity);
 
-			const original_clue = card.clues[0];
+			const original_clue = old_card.clues[0];
 
 			// Check if every match was from the clue giver (or vice versa)
 			const asymmetric_gt = !(cm && visible_elim) && matches.size > 0 &&
@@ -328,7 +335,7 @@ export function good_touch_elim(state, only_self = false) {
 					return match_orig_clue?.giver === playerIndex && match_orig_clue.turn > (original_clue?.turn ?? 0);
 				}) ||
 				(original_clue?.giver && matches_arr.every(o =>
-					state.hands[original_clue?.giver].some(c => c.order === o) &&
+					state.hands[original_clue?.giver].includes(o) &&
 					this.thoughts[o].possibilities.length > 1
 				)));
 
@@ -336,9 +343,9 @@ export function good_touch_elim(state, only_self = false) {
 				continue;
 
 			// TODO: Temporary stop-gap so that Bob still plays into it. Bob should actually clue instead.
-			if (card.finessed && [0, 1].some(i => card.finesse_index === state.actionList.length - i)) {
+			if (old_card.finessed && [0, 1].some(i => old_card.finesse_index === state.actionList.length - i)) {
 				logger.warn(`tried to gt eliminate ${id_hash} from recently finessed card (player ${this.playerIndex}, order ${order})!`);
-				card.certain_finessed = true;
+				this.updateThoughts(order, (draft) => { draft.certain_finessed = true; });
 				elim_candidates.splice(elim_candidates.findIndex(c => c.order === order), 1);
 				continue;
 			}
@@ -347,8 +354,8 @@ export function good_touch_elim(state, only_self = false) {
 			if (cm && !visible_elim)
 				continue;
 
-			const pre_inferences = card.inferred.length;
-			card.inferred = card.inferred.subtract(identity);
+			this.updateThoughts(order, (draft) => { draft.inferred = this.thoughts[order].inferred.subtract(identity); });
+			const new_card = this.thoughts[order];
 
 			if (this.playerIndex === -1) {
 				this.elims[id_hash] ??= [];
@@ -358,13 +365,13 @@ export function good_touch_elim(state, only_self = false) {
 			}
 
 			if (!cm) {
-				if (card.inferred.length === 0 && !card.reset) {
-					this.reset_card(order);
+				if (new_card.inferred.length === 0 && !new_card.reset) {
+					this.thoughts[order] = this.reset_card(order);
 					resets.add(order);
 				}
 				// Newly eliminated
-				else if (card.inferred.length === 1 && pre_inferences > 1 && !state.isBasicTrash(card.inferred.array[0])) {
-					identities.push(card.inferred.array[0]);
+				else if (new_card.inferred.length === 1 && old_card.inferred.length > 1 && !state.isBasicTrash(new_card.inferred.array[0])) {
+					identities.push(new_card.inferred.array[0]);
 				}
 			}
 
@@ -383,30 +390,33 @@ export function good_touch_elim(state, only_self = false) {
  * @param {number} order
  */
 export function reset_card(order) {
-	const card = this.thoughts[order];
-	card.reset = true;
+	const { possible, old_inferred } = this.thoughts[order];
 
-	if (card.finessed) {
-		card.finessed = false;
-		card.hidden = false;
-		if (card.old_inferred !== undefined) {
-			card.inferred = card.old_inferred.intersect(card.possible);
+	return produce(this.thoughts[order], (draft) => {
+		draft.reset = true;
+
+		if (draft.finessed) {
+			draft.finessed = false;
+			draft.hidden = false;
+			if (draft.old_inferred !== undefined) {
+				draft.inferred = old_inferred.intersect(possible);
+			}
+			else {
+				logger.error(`no old inferred on card with order ${order}! player ${this.playerIndex}`);
+				draft.inferred = possible;
+			}
 		}
 		else {
-			logger.error(`no old inferred on card with order ${order}! player ${this.playerIndex}`);
-			card.inferred = card.possible;
+			draft.inferred = possible;
 		}
-	}
-	else {
-		card.inferred = card.possible;
-	}
+	});
 }
 
 /**
  * Finds good touch (non-promised) links in the hand.
  * @this {Player}
  * @param {State} state
- * @param {Hand} [hand]
+ * @param {number[]} [hand]
  */
 export function find_links(state, hand = state.hands[this.playerIndex]) {
 	if (this.playerIndex === -1 && hand === undefined) {
@@ -416,9 +426,9 @@ export function find_links(state, hand = state.hands[this.playerIndex]) {
 		return;
 	}
 
-	const linked_orders = new Set(this.links.flatMap(link => link.cards.map(c => c.order)));
+	const linked_orders = new Set(this.links.flatMap(link => link.orders));
 
-	for (const { order } of hand) {
+	for (const order of hand) {
 		const card = this.thoughts[order];
 
 		if (linked_orders.has(order) ||									// Already in a link
@@ -430,21 +440,18 @@ export function find_links(state, hand = state.hands[this.playerIndex]) {
 		}
 
 		// Find all unknown cards with the same inferences
-		const linked_cards = Array.from(hand.filter(c =>
-			card.identity() === undefined && card.inferred.equals(this.thoughts[c.order].inferred)
-		));
-
-		if (linked_cards.length === 1)
+		const orders = hand.filter(o => card.identity() === undefined && card.inferred.equals(this.thoughts[o].inferred));
+		if (orders.length === 1)
 			continue;
 
 		// We have enough inferred cards to eliminate elsewhere
 		// TODO: Sudoku elim from this
-		if (linked_cards.length > card.inferred.reduce((sum, inf) => sum += unknownIdentities(state, this, inf), 0)) {
-			logger.info('adding link', linked_cards.map(c => c.order), 'inferences', card.inferred.map(logCard), state.playerNames[this.playerIndex]);
+		if (orders.length > card.inferred.reduce((sum, inf) => sum += unknownIdentities(state, this, inf), 0)) {
+			logger.info('adding link', orders, 'inferences', card.inferred.map(logCard), state.playerNames[this.playerIndex]);
 
-			this.links.push({ cards: linked_cards, identities: card.inferred.map(c => c.raw()), promised: false });
-			for (const c of linked_cards)
-				linked_orders.add(c.order);
+			this.links.push({ orders, identities: card.inferred.map(c => c.raw()), promised: false });
+			for (const o of orders)
+				linked_orders.add(o);
 		}
 	}
 }
@@ -459,38 +466,35 @@ export function refresh_links(state) {
 	const remove_indices = [];
 
 	for (let i = 0; i < this.links.length; i++) {
-		const { cards, identities, promised } = this.links[i];
+		const { orders, identities, promised } = this.links[i];
 
 		if (promised) {
 			if (identities.length > 1)
-				throw new Error(`found promised link with cards ${cards.map(c => c.order)} but multiple identities ${identities.map(logCard)}`);
+				throw new Error(`found promised link with orders ${orders} but multiple identities ${identities.map(logCard)}`);
 
 			// At least one card matches, promise resolved
-			if (cards.some(c => this.thoughts[c.order].identity()?.matches(identities[0]))) {
+			if (orders.some(o => this.thoughts[o].identity()?.matches(identities[0]))) {
 				remove_indices.push(i);
 			}
 			else {
 				// Reduce cards to ones that still have the identity as a possibility
-				const viable_cards = cards.filter(c => this.thoughts[c.order].possible.has(identities[0]));
+				const viable_orders = orders.filter(o => this.thoughts[o].possible.has(identities[0]));
 
-				if (viable_cards.length <= 1) {
-					if (viable_cards.length === 0) {
-						logger.warn(`promised identity ${logCard(identities[0])} not found among cards ${cards.map(c => c.order)}, rewind?`);
-					}
-					else {
-						const viable_card = this.thoughts[viable_cards[0].order];
-						viable_card.inferred = viable_card.inferred.intersect(identities[0]);
-					}
+				if (viable_orders.length <= 1) {
+					if (viable_orders.length === 0)
+						logger.warn(`promised identity ${logCard(identities[0])} not found among cards ${orders}, rewind?`);
+					else
+						this.updateThoughts(viable_orders[0], (draft) => { draft.inferred = this.thoughts[viable_orders[0]].inferred.intersect(identities[0]); });
 					remove_indices.push(i);
 				}
 				else {
-					this.links[i].cards = viable_cards;
+					this.links[i].orders = viable_orders;
 				}
 			}
 		}
 		else {
-			const revealed = cards.filter(c => {
-				const card = this.thoughts[c.order];
+			const revealed = orders.filter(o => {
+				const card = this.thoughts[o];
 
 				// The card is globally known or an identity is no longer possible
 				return card.identity() || identities.some(id => !card.possible.has(id));
@@ -501,19 +505,17 @@ export function refresh_links(state) {
 				continue;
 			}
 
-			const focused_cards = cards.filter(c => this.thoughts[c.order].focused);
+			const focused_orders = orders.filter(o => this.thoughts[o].focused);
 
-			if (focused_cards.length === 1) {
-				logger.info('eliminating link with inferences', identities.map(logCard), 'from focus! final', focused_cards[0].order);
-
-				const viable_card = this.thoughts[cards[0].order];
-				viable_card.inferred = viable_card.inferred.intersect(identities[0]);
+			if (focused_orders.length === 1) {
+				logger.info('eliminating link with inferences', identities.map(logCard), 'from focus! final', focused_orders[0]);
+				this.updateThoughts(orders[0], (draft) => { draft.inferred = this.thoughts[orders[0]].inferred.intersect(identities[0]); });
 				remove_indices.push(i);
 			}
 
-			const lost_inference = identities.find(i => cards.every(c => !this.thoughts[c.order].inferred.has(i)));
+			const lost_inference = identities.find(i => orders.every(o => !this.thoughts[o].inferred.has(i)));
 			if (lost_inference !== undefined) {
-				logger.info('linked cards', cards.map(c => c.order), 'lost inference', logCard(lost_inference));
+				logger.info('linked orders', orders, 'lost inference', logCard(lost_inference));
 				remove_indices.push(i);
 			}
 		}
@@ -536,11 +538,9 @@ export function restore_elim(identity) {
 		logger.warn('adding back inference', id, 'which was falsely eliminated from', elims);
 
 		for (const order of elims) {
-			const card = this.thoughts[order];
-
 			// Add the inference back if it's still a possibility
-			if (card.possible.has(identity))
-				card.inferred = card.inferred.union(identity);
+			if (this.thoughts[order].possible.has(identity))
+				this.updateThoughts(order, (draft) => { draft.inferred = this.thoughts[order].inferred.union(identity); });
 		}
 
 		this.all_inferred = this.all_inferred.union(identity);

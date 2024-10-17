@@ -37,16 +37,16 @@ const stall_to_severity = {
 function isStall(game, action, giver, severity, prev_game) {
 	const { common, me, state } = game;
 	const { clue, list, target } = action;
-	const { focused_card, chop } = determine_focus(game, state.hands[target], common, list, clue);
-	const focus_thoughts = common.thoughts[focused_card.order];
-	const hand = state.hands[target];
+	const { focus, chop } = determine_focus(game, state.hands[target], common, list, clue);
+	const focus_thoughts = common.thoughts[focus];
+	const focused_card = state.deck[focus];
 
 	if (severity === 0)
 		return;
 
 	const trash = target !== state.ourPlayerIndex ?
 		state.isBasicTrash(focused_card) :
-		me.thoughts[focused_card.order].possible.every(c => state.isBasicTrash(c));
+		me.thoughts[focus].possible.every(c => state.isBasicTrash(c));
 
 	if (trash && focused_card.newly_clued)
 		return;
@@ -57,8 +57,7 @@ function isStall(game, action, giver, severity, prev_game) {
 		return CLUE_INTERP.STALL_5;
 	}
 
-	const provisions = { touch: list.map(order => hand.findOrder(order)), list };
-	const clue_result = get_result(prev_game, game, Object.assign({}, action.clue, { target }), giver, provisions);
+	const clue_result = get_result(prev_game, game, Object.assign({}, action.clue, { target }), giver, { list });
 	const { new_touched, playables, elim } = clue_result;
 
 	if (severity >= 2) {
@@ -76,14 +75,14 @@ function isStall(game, action, giver, severity, prev_game) {
 
 		if (severity >= 3) {
 			// Locked hand stall given, not touching slot 1 and not locked
-			if (chop && state.hands[target].findIndex(c => c.order === focused_card.order) !== 0 && !common.thinksLocked(state, target)) {
+			if (chop && !list.includes(state.hands[target][0]) && !common.thinksLocked(state, target)) {
 				logger.info('locked hand stall!');
 				return CLUE_INTERP.STALL_LOCKED;
 			}
 
 			if (severity === 4) {
 				// 8 clue save given
-				if (state.clue_tokens === 7 && focused_card.newly_clued && !list.includes(state.hands[target][0].order)) {
+				if (state.clue_tokens === 7 && focused_card.newly_clued && !list.includes(state.hands[target][0])) {
 					logger.info('8 clue stall!');
 					return CLUE_INTERP.STALL_8CLUES;
 				}
@@ -131,7 +130,7 @@ export function stalling_situation(game, action, prev_game) {
 	const { common, state, me } = game;
 	const { clue, giver, list, target, noRecurse } = action;
 
-	const { focused_card } = determine_focus(game, state.hands[target], common, list, clue);
+	const { focus } = determine_focus(game, state.hands[target], common, list, clue);
 	const severity = stall_severity(prev_game.state, prev_game.common, giver);
 
 	logger.info('severity', severity);
@@ -152,19 +151,19 @@ export function stalling_situation(game, action, prev_game) {
 	logger.flush(false);
 
 	const expected_play = () => play_clues.flat().find(cl =>
-		cl.result.playables.some(({ card }) => card.newly_clued) && cl.result.bad_touch === 0 && focused_card.order !== cl.result.focus);
+		cl.result.playables.some(({ card }) => card.newly_clued) && cl.result.bad_touch === 0 && focus !== cl.result.focus);
 
 	const expected_save = () => save_clues.find((cl, target) => {
-		if (cl === undefined || cl.cm?.length > 0 || focused_card.order === cl.result.focus)
+		if (cl === undefined || cl.cm?.length > 0 || focus === cl.result.focus)
 			return false;
 
 		const chop = common.chop(state.hands[target]);
 
 		// Not a 2 save that could be duplicated in our hand
-		return !(cl.type === CLUE.RANK && cl.value === 2 && state.ourHand.some(c => me.thoughts[c.order].possible.has(chop)));
+		return !(cl.type === CLUE.RANK && cl.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[chop])));
 	});
 
-	const expected_stall = () => stall_clues.slice(0, stall_to_severity[stall]).find(clues => clues.some(cl => focused_card.order !== cl.result.focus))?.[0];
+	const expected_stall = () => stall_clues.slice(0, stall_to_severity[stall]).find(clues => clues.some(cl => focus !== cl.result.focus))?.[0];
 
 	const expected = expected_play() ?? expected_save() ?? expected_stall();
 

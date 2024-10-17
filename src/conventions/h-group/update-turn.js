@@ -21,19 +21,14 @@ import { logCard, logConnection } from '../../tools/log.js';
 
 /**
  * @param {Game} game
- * @param {WaitingConnection} waiting_connection
- * @param {number} lastPlayerIndex
- * @returns {{remove?: boolean, remove_finesse?: boolean, quit?: boolean, demonstration?: Demonstration}}
+ * @param {Connection[]} connections
  */
-function update_wc(game, waiting_connection, lastPlayerIndex) {
-	const { common, state, me } = game;
-	const { connections, conn_index, focused_card, inference, giver, action_index } = waiting_connection;
-	const { reacting, card: old_card, identities } = connections[conn_index];
-	logger.info(`waiting for connecting ${logCard(old_card)} ${old_card.order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
+export function find_impossible_conn(game, connections) {
+	const { common, state } = game;
 
-	const impossible_conn = connections.find((conn, index) => {
-		const { reacting, card, identities } = conn;
-		const current_card = common.thoughts[card.order];
+	return connections.find(conn => {
+		const { reacting, order, identities } = conn;
+		const current_card = common.thoughts[order];
 
 		// No intersection between connection's identities and current card's possibilities
 		if (current_card.possible.intersect(identities).value === 0)
@@ -41,12 +36,26 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 
 		const last_reacting_action = game.last_actions[reacting];
 
-		return index >= conn_index &&
-			last_reacting_action?.type === 'play' &&
-			last_reacting_action?.card.order === card.order &&
-			!identities.some(id => last_reacting_action.card.matches(id));
+		return last_reacting_action?.type === 'play' &&
+			last_reacting_action?.order === order &&
+			!identities.some(id => state.deck[last_reacting_action.order].matches(id));
 	});
+}
 
+/**
+ * @param {Game} game
+ * @param {WaitingConnection} waiting_connection
+ * @param {number} lastPlayerIndex
+ * @returns {{remove?: boolean, remove_finesse?: boolean, quit?: boolean, demonstration?: Demonstration}}
+ */
+function update_wc(game, waiting_connection, lastPlayerIndex) {
+	const { common, state, me } = game;
+	const { connections, conn_index, focused_card, inference, giver, action_index } = waiting_connection;
+	const { reacting, order: old_order, identities } = connections[conn_index];
+	const old_card = state.deck[old_order];
+	logger.info(`waiting for connecting ${logCard(state.deck[old_order])} ${old_order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
+
+	const impossible_conn = find_impossible_conn(game, connections.slice(conn_index));
 	if (impossible_conn !== undefined) {
 		logger.warn(`future connection depends on revealed card having identities ${impossible_conn.identities.map(logCard)}, removing`);
 		return { remove_finesse: true, remove: true };
@@ -62,7 +71,7 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 	// After the turn we were waiting for
 	if (lastPlayerIndex === reacting) {
 		// They still have the card
-		if (state.hands[reacting].findOrder(old_card.order) !== undefined)
+		if (state.hands[reacting].includes(old_order))
 			return resolve_card_retained(game, waiting_connection);
 
 		// The card was played
@@ -81,9 +90,9 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 		const last_action = game.last_actions[giver];
 
 		// The giver's card must have been known before the finesse was given
-		if (last_action.type === 'play' && me.thoughts[old_card.order].matches(last_action, { infer: true }) &&
-			common.thoughts[old_card.order].finessed &&
-			common.thoughts[last_action.card.order].reasoning[0] < action_index
+		if (last_action.type === 'play' && me.thoughts[old_order].matches(last_action, { infer: true }) &&
+			common.thoughts[old_order].finessed &&
+			common.thoughts[last_action.order].reasoning[0] < action_index
 		)
 			return resolve_giver_play(game, waiting_connection);
 	}
@@ -135,41 +144,43 @@ export function update_turn(game, action) {
 
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
 	for (const { card, inferences, connections } of demonstrated) {
-		const thoughts = common.thoughts[card.order];
-		logger.info(`intersecting card ${logCard(thoughts)} with inferences ${inferences.map(logCard).join(',')}`);
+		logger.info(`intersecting card ${logCard(state.deck[card.order])} with inferences ${inferences.map(logCard).join(',')}`);
 
 		for (const connection of connections) {
 			const { reacting, identities } = connection;
-			const connecting_card = common.thoughts[connection.card.order];
 
-			if (!state.hands[reacting].some(c => c.order === connection.card.order))
+			if (!state.hands[reacting].includes(connection.order))
 				continue;
 
-			if (!connecting_card.superposition) {
-				connecting_card.inferred = connecting_card.inferred.intersect(identities);
-				connecting_card.superposition = true;
-			}
-			else {
-				connecting_card.inferred = connecting_card.inferred.union(identities);
-			}
-			connecting_card.uncertain = false;
+			common.updateThoughts(connection.order, (draft) => {
+				if (!draft.superposition) {
+					draft.inferred = common.thoughts[connection.order].inferred.intersect(identities);
+					draft.superposition = true;
+				}
+				else {
+					draft.inferred = common.thoughts[connection.order].inferred.union(identities);
+				}
+				draft.uncertain = false;
+			});
 		}
 
-		if (!thoughts.superposition) {
-			thoughts.inferred = thoughts.inferred.intersect(inferences);
-			thoughts.superposition = true;
-		}
-		else {
-			thoughts.inferred = thoughts.inferred.union(inferences);
-		}
-		thoughts.uncertain = false;
+		common.updateThoughts(card.order, (draft) => {
+			if (!draft.superposition) {
+				draft.inferred = common.thoughts[card.order].inferred.intersect(inferences);
+				draft.superposition = true;
+			}
+			else {
+				draft.inferred = common.thoughts[card.order].inferred.union(inferences);
+			}
+			draft.uncertain = false;
+		});
 	}
 
 	let min_drawn_index = state.actionList.length;
 
 	// Rewind any confirmed finesse connections we have now
 	const rewind_actions = demonstrated.reduce((acc, { card }) => {
-		const playerIndex = state.hands.findIndex(hand => hand.findOrder(card.order));
+		const playerIndex = state.hands.findIndex(hand => hand.includes(card.order));
 
 		if (playerIndex !== state.ourPlayerIndex || common.thoughts[card.order].rewinded)
 			return acc;
@@ -219,12 +230,11 @@ export function update_turn(game, action) {
 		// Find an anxiety play
 		if (state.clue_tokens === 0 && me.thinksLocked(state, state.ourPlayerIndex)) {
 			const anxiety = me.anxietyPlay(state, state.ourHand);
-			const anxiety_card = common.thoughts[anxiety.order];
-			const playable_poss = me.thoughts[anxiety.order].possible.filter(p => state.isPlayable(p));
+			const playable_poss = me.thoughts[anxiety].possible.filter(p => state.isPlayable(p));
 
 			if (playable_poss.length > 0) {
-				logger.info('writing anxiety on order', anxiety.order, playable_poss.map(logCard));
-				anxiety_card.inferred = anxiety_card.possible.intersect(playable_poss);
+				logger.info('writing anxiety on order', anxiety, playable_poss.map(logCard));
+				common.updateThoughts(anxiety, (draft) => { draft.inferred = common.thoughts[anxiety].possible.intersect(playable_poss); });
 			}
 		}
 	}

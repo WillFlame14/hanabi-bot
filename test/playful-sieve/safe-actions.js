@@ -34,7 +34,7 @@ describe('direct rank playables', () => {
 
 		takeTurn(game, 'Bob clues 1 to Alice (slots 2,3)');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order].called_to_discard, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]].called_to_discard, false);
 	});
 
 	it('eliminates direct ranks from focus', () => {
@@ -48,12 +48,12 @@ describe('direct rank playables', () => {
 
 		takeTurn(game, 'Bob clues 1 to Alice (slots 2,3)');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order].called_to_discard, false);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]].called_to_discard, false);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['g1']);
 
 		// Alice's slot 3 should be trash
 		const trash = game.common.thinksTrash(game.state, PLAYER.ALICE);
-		assert.ok(trash.some(c => c.order === game.state.hands[PLAYER.ALICE][2].order));
+		assert.ok(trash.includes(game.state.hands[PLAYER.ALICE][2]));
 	});
 
 	it('understands playable fill-ins are not referential', () => {
@@ -72,7 +72,7 @@ describe('direct rank playables', () => {
 		takeTurn(game, 'Bob clues 2 to Alice (slots 1,4)');
 
 		// Alice's slot 2 should not be called to discard.
-		const slot2 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order];
+		const slot2 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1]];
 		assert.equal(slot2.called_to_discard, false);
 	});
 });
@@ -102,7 +102,7 @@ describe('connecting cards', () => {
 
 		// Alice should play g2 to automatically cm r5.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1].order }, logPerformAction(action));
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1] }, logPerformAction(action));
 	});
 
 	it('plays connections to a 1-away chop', () => {
@@ -112,7 +112,7 @@ describe('connecting cards', () => {
 		]);
 
 		// Alice has a fully known g1 in slot 2
-		const card = game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order];
+		const card = game.common.thoughts[game.state.hands[PLAYER.ALICE][1]];
 		card.clued = true;
 		for (const poss of /** @type {const} */ (['possible', 'inferred']))
 			card[poss] = card[poss].intersect([{ suitIndex: 2, rank: 1 }]);
@@ -122,7 +122,7 @@ describe('connecting cards', () => {
 
 		// Alice should play g1 to make g2 playable.
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1].order }, logPerformAction(action));
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1] }, logPerformAction(action));
 	});
 });
 
@@ -134,7 +134,7 @@ describe('urgency principle', () => {
 		]);
 
 		// Alice has a fully known r1 in slot 2
-		const card = game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order];
+		const card = game.common.thoughts[game.state.hands[PLAYER.ALICE][1]];
 		card.clued = true;
 		for (const poss of /** @type {const} */ (['possible', 'inferred']))
 			card[poss] = card[poss].intersect([{ suitIndex: 0, rank: 1 }]);

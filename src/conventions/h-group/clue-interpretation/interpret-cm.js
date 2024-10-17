@@ -21,7 +21,7 @@ import { CLUE_INTERP } from '../h-constants.js';
  */
 export function interpret_tcm(game, target, focus_order) {
 	const { common, state } = game;
-	const focused_card = state.hands[target].findOrder(focus_order);
+	const focused_card = state.deck[focus_order];
 	const focus_thoughts = common.thoughts[focus_order];
 
 	if (!focused_card.newly_clued ||
@@ -29,24 +29,25 @@ export function interpret_tcm(game, target, focus_order) {
 		focus_thoughts.inferred.every(i => state.isPlayable(i) && !isTrash(state, common, i, focus_order, { infer: true })))
 		return false;
 
-	const oldest_trash_index = state.hands[target].findLastIndex(card =>
-		card.newly_clued && common.thoughts[card.order].possible.every(c => isTrash(state, common, c, card.order, { infer: true })));
+	const oldest_trash_index = state.hands[target].findLastIndex(o =>
+		state.deck[o].newly_clued && common.thoughts[o].possible.every(c => isTrash(state, common, c, o, { infer: true })));
 
-	logger.info(`oldest trash card is ${logCard(state.hands[target][oldest_trash_index])}`);
+	logger.info(`oldest trash card is ${logCard(state.deck[state.hands[target][oldest_trash_index]])}`);
 
 	const cm_cards = [];
 
 	// Chop move every unclued card to the right of this
 	for (let i = oldest_trash_index + 1; i < state.hands[target].length; i++) {
-		const card = state.hands[target][i];
-		const common_card = common.thoughts[card.order];
+		const order = state.hands[target][i];
 
-		if (!card.clued && !common_card.chop_moved) {
-			common_card.chop_moved = true;
-
-			// Remove all commonly trash identities
-			common_card.inferred = common_card.inferred.subtract(common_card.inferred.filter(i => isTrash(state, common, i, card.order, { infer: true })));
-			cm_cards.push(logCard(card));
+		if (!state.deck[state.hands[target][i]].clued && !common.thoughts[order].chop_moved) {
+			const { inferred } = common.thoughts[order];
+			common.updateThoughts(order, (draft) => {
+				// Remove all commonly trash identities
+				draft.inferred = inferred.subtract(inferred.filter(i => isTrash(state, common, i, order, { infer: true })));
+				draft.chop_moved = true;
+			});
+			cm_cards.push(logCard(common.thoughts[order]));
 		}
 	}
 	logger.warn(cm_cards.length === 0 ? 'no cards to tcm' : `trash chop move on ${cm_cards.join(',')}`);
@@ -54,7 +55,7 @@ export function interpret_tcm(game, target, focus_order) {
 	if (cm_cards.length === 0)
 		return false;
 
-	focus_thoughts.trash = true;
+	common.updateThoughts(focus_order, (draft) => { draft.trash = true; });
 	return true;
 }
 
@@ -68,7 +69,7 @@ export function interpret_tcm(game, target, focus_order) {
  */
 export function interpret_5cm(game, target, focus_order, clue) {
 	const { common, state } = game;
-	const focused_card = state.hands[target].findOrder(focus_order);
+	const focused_card = state.deck[focus_order];
 
 	// 5cm can't be done in early game for now
 	if (clue.type !== CLUE.RANK || clue.value !== 5 || !focused_card.newly_clued || state.early_game)
@@ -81,7 +82,7 @@ export function interpret_5cm(game, target, focus_order, clue) {
 	// Find the oldest 5 clued and its distance from chop
 	let distance_from_chop = 0;
 	for (let i = chopIndex; i >= 0; i--) {
-		const card = hand[i];
+		const card = state.deck[hand[i]];
 
 		// Skip previously clued cards
 		if (card.clued && !card.newly_clued)
@@ -92,7 +93,7 @@ export function interpret_5cm(game, target, focus_order, clue) {
 		// However, this requires that there is some kind of finesse/prompt to prove it is not 5cm
 		if (card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5)) {
 			if (distance_from_chop === 1) {
-				const { order } = state.hands[target][chopIndex];
+				const order = state.hands[target][chopIndex];
 				const saved_card = common.thoughts[order];
 
 				if (saved_card.possible.every(p => isTrash(state, common, p, order, { infer: true }))) {
@@ -101,10 +102,12 @@ export function interpret_5cm(game, target, focus_order, clue) {
 				}
 
 				logger.info(`5cm, saving ${logCard(saved_card)}`);
-				saved_card.chop_moved = true;
-
-				// Remove all commonly trash identities
-				saved_card.inferred = saved_card.inferred.subtract(saved_card.inferred.filter(i => isTrash(state, common, i, card.order, { infer: true })));
+				const { inferred } = common.thoughts[order];
+				common.updateThoughts(order, (draft) => {
+					// Remove all commonly trash identities
+					draft.inferred = inferred.subtract(inferred.filter(i => isTrash(state, common, i, order, { infer: true })));
+					draft.chop_moved = true;
+				});
 				return true;
 			}
 			else {
@@ -136,14 +139,13 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 	}
 
 	const chop = common.chop(state.hands[target], { afterClue: true });
-	const touched_cards = state.hands[target].filter(card => list.includes(card.order));
 
 	if (chop === undefined) {
 		logger.info('target was locked, not tccm');
 		return false;
 	}
 
-	if (touched_cards.some(card => card.newly_clued)) {
+	if (list.some(o => state.deck[o].newly_clued)) {
 		logger.info('touched at least 1 new card, not tccm');
 		return false;
 	}
@@ -162,8 +164,8 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 
 	const focus_thoughts = common.thoughts[focused_card.order];
 	const not_promptable = focus_thoughts.inferred.every(i => {
-		const prompt = oldCommon.find_prompt(state.hands[target], i, state.variant);
-		return prompt && prompt.order !== focused_card.order;
+		const prompt = oldCommon.find_prompt(state, target, i);
+		return prompt !== undefined && prompt !== focused_card.order;
 	});
 	const identity = focus_thoughts.identity({ infer: true });
 
@@ -195,14 +197,14 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 		}
 	} */
 
-	if (state.hands.some(hand => hand.some(c => !oldCommon.thoughts[c.order].finessed && common.thoughts[c.order].finessed))) {
+	if (state.hands.some(hand => hand.some(o => !oldCommon.thoughts[o].finessed && common.thoughts[o].finessed))) {
 		logger.info('caused finesse, not tccm');
 		return false;
 	}
 
 	// Valid tempo clue chop move
-	common.thoughts[chop.order].chop_moved = true;
-	logger.info('tccm, chop moving', target === state.ourPlayerIndex ? `slot ${state.hands[target].findIndex(c => c.order === chop.order) + 1}` : logCard(chop));
+	common.updateThoughts(chop, (draft) => { draft.chop_moved = true; });
+	logger.info('tccm, chop moving', target === state.ourPlayerIndex ? `slot ${state.hands[target].findIndex(o => o === chop) + 1}` : logCard(state.deck[chop]));
 	game.interpretMove(CLUE_INTERP.CM_TEMPO);
 	return true;
 }

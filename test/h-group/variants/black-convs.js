@@ -25,7 +25,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Bob clues black to Alice (slots 1,5)');
 
 		assert.ok(['k2', 'k5'].every(id =>
-			game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
+			game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands k2/5 save with black for filling in', () => {
@@ -44,7 +44,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Bob clues black to Alice (slots 3,5)');
 
 		assert.ok(['k2', 'k5'].every(id =>
-			game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
+			game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands not k2/5 save with black if not multiple touches', () => {
@@ -61,7 +61,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Bob clues black to Alice (slot 5)');
 
 		assert.ok(['k2', 'k5'].every(id =>
-			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
+			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands not k2/5 save with black if not filling in', () => {
@@ -75,13 +75,14 @@ describe('save clue interpretation', () => {
 			variant: VARIANTS.BLACK
 		});
 
-		game.state.hands[PLAYER.ALICE][0].clued = true;
-		game.state.hands[PLAYER.ALICE][0].clues.push({ type: CLUE.COLOUR, value: 4, giver: PLAYER.BOB, turn: -1 });
+		const a_slot1 = game.state.deck[game.state.hands[PLAYER.ALICE][0]];
+		a_slot1.clued = true;
+		a_slot1.clues.push({ type: CLUE.COLOUR, value: 4, giver: PLAYER.BOB, turn: -1 });
 
 		takeTurn(game, 'Bob clues black to Alice (slot 1,5)');
 
 		assert.ok(['k2', 'k5'].every(id =>
-			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
+			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands k2 save to avoid bad touch', () => {
@@ -100,7 +101,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Cathy clues black to Bob');
 
 		// Alice should not be finessed for k1.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 
 	it('finesses when k2 is saved with black without exceptions', () => {
@@ -118,7 +119,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Cathy clues black to Bob');
 
 		// Alice should be finessed for k1.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['k1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['k1']);
 	});
 });

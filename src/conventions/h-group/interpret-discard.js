@@ -12,7 +12,6 @@ import { check_ocm } from './interpret-play.js';
 /**
  * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../h-player.js').HGroup_Player} Player
- * @typedef {import('../../basics/Hand.js').Hand} Hand
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').Identity} Identity
@@ -23,17 +22,15 @@ import { check_ocm } from './interpret-play.js';
  * Interprets (writes notes) for a discard of the given card.
  * @param {Game} game
  * @param {DiscardAction} action
- * @param {ActualCard} card
  */
-export function interpret_discard(game, action, card) {
+export function interpret_discard(game, action) {
 	const { common, state, me } = game;
 	const { order, playerIndex, suitIndex, rank, failed } = action;
 	const identity = { suitIndex, rank };
-	const thoughts = common.thoughts[order];
 
-	const before_trash = common.thinksTrash(state, playerIndex).filter(c => common.thoughts[c.order].saved);
+	const before_trash = common.thinksTrash(state, playerIndex).filter(o => common.thoughts[o].saved);
 	const old_chop = common.chop(state.hands[playerIndex]);
-	const slot = state.hands[playerIndex].findIndex(c => c.order === order) + 1;
+	const slot = state.hands[playerIndex].findIndex(o => o === order) + 1;
 
 	if (game.level >= LEVEL.BASIC_CM && rank === 1 && failed)
 		check_ocm(game, action);
@@ -44,7 +41,7 @@ export function interpret_discard(game, action, card) {
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const { connections, conn_index, inference, action_index } = common.waiting_connections[i];
 
-		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.card.order === order);
+		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.order === order);
 		if (dc_conn_index === -1)
 			continue;
 
@@ -54,8 +51,7 @@ export function interpret_discard(game, action, card) {
 			continue;
 		}
 
-		const { card } = connections[dc_conn_index];
-		logger.info(`discarded connecting card ${logCard(card)}, cancelling waiting connection for inference ${logCard(inference)}`);
+		logger.info(`discarded connecting card ${logCard({ suitIndex, rank })}, cancelling waiting connection for inference ${logCard(inference)}`);
 
 		to_remove.push(i);
 
@@ -64,14 +60,14 @@ export function interpret_discard(game, action, card) {
 			continue;
 
 		// Check if sarcastic
-		if (card.clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !failed) {
+		if (state.deck[order].clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !failed) {
 			const sarcastics = interpret_sarcastic(game, action);
 
 			// Sarcastic, rewrite connection onto this person
 			if (sarcastics.length === 1) {
-				logger.info('rewriting connection to use sarcastic on order', sarcastics[0].order);
+				logger.info('rewriting connection to use sarcastic on order', sarcastics[0]);
 				Object.assign(connections[dc_conn_index], {
-					reacting: state.hands.findIndex(hand => hand.findOrder(sarcastics[0].order)),
+					reacting: state.hands.findIndex(hand => hand.includes(sarcastics[0])),
 					card: sarcastics[0]
 				});
 				to_remove.pop();
@@ -91,16 +87,18 @@ export function interpret_discard(game, action, card) {
 		common.waiting_connections = common.waiting_connections.filter((_, index) => !to_remove.includes(index));
 
 	// End early game?
-	if (state.early_game && !action.failed && !card.clued) {
-		logger.warn('ending early game from discard of', logCard(card));
+	if (state.early_game && !action.failed && !state.deck[order].clued) {
+		logger.warn('ending early game from discard of', logCard(state.deck[order]));
 		state.early_game = false;
 	}
 
+	const thoughts = common.thoughts[order];
+
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
-	if (!thoughts.rewinded && playerIndex === state.ourPlayerIndex && (failed || (!state.hasConsistentInferences(thoughts) && !isTrash(state, me, card, card.order)))) {
+	if (!thoughts.rewinded && playerIndex === state.ourPlayerIndex && (failed || (!state.hasConsistentInferences(thoughts) && !isTrash(state, me, state.deck[order], order)))) {
 		logger.info('all inferences', thoughts.inferred.map(logCard));
 
-		const action_index = card.drawn_index;
+		const action_index = state.deck[order].drawn_index;
 		const new_game = game.rewind(action_index, [{ type: 'identify', order, playerIndex, identities: [{ suitIndex, rank }] }], thoughts.finessed);
 		if (new_game) {
 			Object.assign(game, new_game);
@@ -114,9 +112,9 @@ export function interpret_discard(game, action, card) {
 	// Note: we aren't including chop moved and finessed cards here since those can be asymmetric.
 	// Discarding with a finesse will trigger the waiting connection to resolve.
 	if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
-		if (card.clued) {
+		if (state.deck[order].clued) {
 			logger.warn('discarded useful clued card!');
-			common.restore_elim(card);
+			common.restore_elim(state.deck[order]);
 
 			// Card was bombed
 			if (failed)
@@ -131,8 +129,8 @@ export function interpret_discard(game, action, card) {
 			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
 			const chop = common.chop(state.hands[nextPlayerIndex]);
 
-			if (state.isCritical({ suitIndex, rank }) && common.thoughts[chop?.order]?.possible.has(card.identity()))
-				state.dda = card.identity();
+			if (state.isCritical({ suitIndex, rank }) && common.thoughts[chop]?.possible.has(state.deck[order].identity()))
+				state.dda = state.deck[order].identity();
 		}
 	}
 
@@ -151,7 +149,7 @@ export function interpret_discard(game, action, card) {
 				if (chop === undefined)
 					logger.warn(`${state.playerNames[nextPlayerIndex]} has no chop!`);
 				else
-					common.thoughts[chop.order].chop_moved = true;
+					common.updateThoughts(chop, (draft) => { draft.chop_moved = true; });
 			}
 			else if (result === 'generation') {
 				state.generated = true;
@@ -165,16 +163,18 @@ export function interpret_discard(game, action, card) {
 	team_elim(game);
 
 	if (playerIndex === state.ourPlayerIndex) {
-		for (const { order } of state.ourHand)
-			common.thoughts[order].uncertain = false;
+		for (const order of state.ourHand) {
+			if (common.thoughts[order].uncertain)
+				common.updateThoughts(order, (draft) => { draft.uncertain = false; });
+		}
 	}
 }
 
 /**
  * @param {Game} game
  * @param {DiscardAction} action
- * @param {ActualCard[]} before_trash
- * @param {ActualCard} old_chop
+ * @param {number[]} before_trash
+ * @param {number} old_chop
  * @param {number} slot
  */
 function check_positional_discard(game, action, before_trash, old_chop, slot) {
@@ -186,12 +186,12 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 	// Locked hand, blind played a chop moved card that could be good, discarded expected card
 	const not_intended = expected_discard === undefined || (action.failed ?
 		(card.chop_moved && card.possible.some(i => !isTrash(state, common, i, order, { infer: true }))) :
-		order === expected_discard.order);
+		order === expected_discard);
 
 	if (not_intended)
 		return;
 
-	const num_plays = (action.failed && order !== expected_discard.order) ? 2 : 1;
+	const num_plays = (action.failed && order !== expected_discard) ? 2 : 1;
 
 	const playable_possibilities = game.players[playerIndex].hypo_stacks
 		.map((rank, suitIndex) => ({ suitIndex, rank: rank + 1 }))
@@ -201,20 +201,20 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 
 	for (let i = 1; i < state.numPlayers; i++) {
 		const index = (playerIndex + i) % state.numPlayers;
-		const target_card = state.hands[index][slot - 1];
+		const target_order = state.hands[index][slot - 1];
 
-		if (target_card === undefined || index === state.ourPlayerIndex || game.next_ignore[0]?.some(({ order }) => order === target_card.order))
+		if (target_order === undefined || index === state.ourPlayerIndex || game.next_ignore[0]?.some(({ order }) => order === target_order))
 			continue;
 
 		// Find the latest player with an unknown playable
-		if (playable_possibilities.some(i => target_card.matches(i)) && !common.thinksPlayables(state, index).some(c => c.order === target_card.order))
+		if (playable_possibilities.some(i => state.deck[target_order].matches(i)) && !common.thinksPlayables(state, index).includes(target_order))
 			reacting.push(index);
 	}
 
 	// If we haven't found a target, check if we can be the target.
 	if (reacting.length < num_plays) {
 		if (state.ourHand.length >= slot &&
-			me.thoughts[state.ourHand[slot - 1].order].inferred.some(i => playable_possibilities.some(p => i.matches(p)))
+			me.thoughts[state.ourHand[slot - 1]].inferred.some(i => playable_possibilities.some(p => i.matches(p)))
 		)
 			reacting.push(state.ourPlayerIndex);
 
@@ -231,14 +231,18 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 	const connections = [];
 
 	for (const r of reacting) {
-		const target_card = common.thoughts[state.hands[r][slot - 1].order];
-		target_card.finessed = true;
-		target_card.focused = true;
-		target_card.inferred = target_card.inferred.intersect(playable_possibilities);
+		const order = state.hands[r][slot - 1];
+		common.updateThoughts(order, (draft) => {
+			draft.finessed = true;
+			draft.focused = true;
+			draft.inferred = common.thoughts[order].inferred.intersect(playable_possibilities);
+		});
 
 		logger.info('interpreting pos on', state.playerNames[r], 'slot', slot);
-		connections.push({ type: 'positional', reacting: r, card: target_card, identities: target_card.inferred.array });
+		connections.push({ type: 'positional', reacting: r, order, identities: common.thoughts[order].inferred.array });
 	}
+
+	const actual_card = state.deck[connections.at(-1).order];
 
 	common.waiting_connections.push({
 		connections,
@@ -246,8 +250,8 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 		target: reacting.at(-1),
 		conn_index: 0,
 		turn: state.turn_count,
-		focused_card: connections.at(-1).card,
-		inference: connections.at(-1).card.raw(),
+		focused_card: actual_card,
+		inference: actual_card.raw(),
 		action_index: state.actionList.length - 1
 	});
 }
@@ -255,8 +259,8 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 /**
  * @param {Game} game
  * @param {DiscardAction} action
- * @param {ActualCard[]} before_trash
- * @param {ActualCard} old_chop
+ * @param {number[]} before_trash
+ * @param {number} old_chop
  * @returns {'scream' | 'shout' | 'generation' | undefined}
  */
 function check_sdcm(game, action, before_trash, old_chop) {
@@ -270,10 +274,10 @@ function check_sdcm(game, action, before_trash, old_chop) {
 		return;
 
 	const scream = state.clue_tokens === 1 && old_chop &&
-		(common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 || before_trash.length > 0) && order === old_chop.order;
+		(common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 || before_trash.length > 0) && order === old_chop;
 
 	const shout = common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 &&
-		before_trash.some(c => c.order === order) &&
+		before_trash.includes(order) &&
 		isTrash(state, common, { suitIndex, rank }, order, { infer: true });
 
 	if (!scream && !shout)
@@ -296,7 +300,7 @@ function check_sdcm(game, action, before_trash, old_chop) {
 	if (nextPlayerIndex2 === state.ourPlayerIndex && common.chopValue(state, nextPlayerIndex) < 4)
 		return 'generation';
 
-	const next2ChopValue = cardValue(state, game.players[playerIndex], state.deck[next2Chop.order], next2Chop.order);
+	const next2ChopValue = cardValue(state, game.players[playerIndex], state.deck[next2Chop], next2Chop);
 
 	if (next2ChopValue < 4)
 		return scream ? 'scream' : 'shout';

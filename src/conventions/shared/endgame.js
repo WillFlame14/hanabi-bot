@@ -1,5 +1,6 @@
 import { ActualCard } from '../../basics/Card.js';
 import { ACTION } from '../../constants.js';
+import { produce } from '../../StateProxy.js';
 import { logCard, logClue, logObjectiveAction } from '../../tools/log.js';
 import logger from '../../tools/logger.js';
 
@@ -43,13 +44,14 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 	const unknown_own = [];
 
 	// Write identities on our own cards
-	for (const { order } of state.ourHand) {
+	for (const order of state.ourHand) {
 		const id = me.thoughts[order].identity({ infer: true });
 
 		if (id !== undefined) {
-			const identity = { suitIndex: id.suitIndex, rank: id.rank };
-			Object.assign(common_state.ourHand.findOrder(order), identity);
-			Object.assign(common_state.deck[order], identity);
+			common_state.deck = common_state.deck.with(order, produce(common_state.deck[order], (draft) => {
+				draft.suitIndex = id.suitIndex;
+				draft.rank = id.rank;
+			}));
 		}
 		else {
 			unknown_own.push(order);
@@ -57,7 +59,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 	}
 
 	timeout = new Date();
-	timeout.setSeconds(timeout.getSeconds() + 5);
+	timeout.setSeconds(timeout.getSeconds() + 10);
 
 	if (unseen_identities.length > 0) {
 		logger.debug('unseen identities', unseen_identities.map(logCard));
@@ -80,8 +82,10 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 				const order = locs[i];
 
 				if (unknown_own.includes(order)) {
-					Object.assign(new_state.ourHand.findOrder(order), identity);
-					Object.assign(new_state.deck[order], identity);
+					new_state.deck = new_state.deck.with(order, produce(new_state.deck[order], (draft) => {
+						draft.suitIndex = identity.suitIndex;
+						draft.rank = identity.rank;
+					}));
 				}
 				else {
 					new_state.deck[order] = new ActualCard(identity.suitIndex, identity.rank, order);
@@ -147,8 +151,8 @@ function hash_state(game, infer = true) {
 	const { common, state } = game;
 
 	const { clue_tokens, endgameTurns } = state;
-	const hands = state.hands.flatMap(hand => hand.map(c => {
-		const id = (infer ? common.thoughts[c.order]: c).identity({ infer: true });
+	const hands = state.hands.flatMap(hand => hand.map(o => {
+		const id = (infer ? common.thoughts[o]: state.deck[o]).identity({ infer: true });
 		return id ? logCard(id) : 'xx';
 	})).join();
 
@@ -164,8 +168,8 @@ function find_unseen_identities(game) {
 
 	/** @type {Record<string, number>} */
 	const seen_identities = state.hands.reduce((id_map, hand) => {
-		for (const c of hand) {
-			const id = me.thoughts[c.order].identity({ infer: true, symmetric: false });
+		for (const o of hand) {
+			const id = me.thoughts[o].identity({ infer: true, symmetric: false });
 			if (id !== undefined) {
 				id_map[logCard(id)] ??= 0;
 				id_map[logCard(id)]++;
@@ -198,7 +202,7 @@ function unwinnable_state(game, playerTurn, infer = true) {
 
 	const void_players = Utils.range(0, state.numPlayers).filter(i => (infer && i === state.ourPlayerIndex) ?
 		me.thinksTrash(state, i).length === state.hands[i].length :
-		state.hands[i].every(c => c.identity() === undefined || state.isBasicTrash(c)));
+		state.hands[i].every(o => ((c = state.deck[o]) => c.identity() === undefined || state.isBasicTrash(c))()));
 
 	if (void_players.length > state.pace)
 		return true;
@@ -234,19 +238,23 @@ export function winnable_simpler(game, playerTurn, cache = new Map()) {
 
 	const nextPlayerIndex = state.nextPlayerIndex(playerTurn);
 
-	for (const card of state.hands[playerTurn].filter(c => state.isPlayable(c))) {
+	for (const order of state.hands[playerTurn]) {
+		const card = state.deck[order];
+
+		if (!state.isPlayable(card))
+			continue;
+
 		const old_rank = state.play_stacks[card.suitIndex];
 		const oldEndgameTurns = state.endgameTurns;
-		const card_index = state.hands[playerTurn].findIndex(c => c.order === card.order);
+		const card_index = state.hands[playerTurn].findIndex(o => o === order);
 		const newCardOrder = state.cardOrder + 1;
 
 		state.play_stacks[card.suitIndex] = card.rank;
-		state.hands[playerTurn] = state.hands[playerTurn].removeOrder(card.order);
+		state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(order), 1);
 
 		if (state.endgameTurns === -1) {
-			const newCard = game.state.deck[newCardOrder] ?? new ActualCard(-1, -1, newCardOrder, game.state.actionList.length);
-			state.hands[playerTurn].unshift(newCard);
-			state.deck[newCardOrder] = newCard;
+			state.hands[playerTurn].unshift(newCardOrder);
+			state.deck[newCardOrder] ??= new ActualCard(-1, -1, newCardOrder, game.state.actionList.length);
 			state.cardOrder++;
 			state.cardsLeft--;
 
@@ -260,13 +268,13 @@ export function winnable_simpler(game, playerTurn, cache = new Map()) {
 		const winnable = winnable_simpler(game, nextPlayerIndex, cache);
 
 		if (oldEndgameTurns === -1) {
-			state.hands[playerTurn] = state.hands[playerTurn].removeOrder(newCardOrder);
+			state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(newCardOrder), 1);
 			state.cardOrder--;
 			state.cardsLeft++;
 		}
 
 		state.play_stacks[card.suitIndex] = old_rank;
-		state.hands[playerTurn].splice(card_index, 0, card);
+		state.hands[playerTurn].splice(card_index, 0, order);
 		state.endgameTurns = oldEndgameTurns;
 
 		if (winnable)
@@ -289,21 +297,20 @@ export function winnable_simpler(game, playerTurn, cache = new Map()) {
 			return true;
 	}
 
-	const discardable = state.hands[playerTurn].find(c => c.identity() === undefined || state.isBasicTrash(c));
+	const discardable = state.hands[playerTurn].find(o => ((c = state.deck[o]) => c.identity() === undefined || state.isBasicTrash(c))());
 
 	if (state.pace >= 0 && discardable !== undefined) {
 		const oldEndgameTurns = state.endgameTurns;
 		const oldClueTokens = state.clue_tokens;
 		const oldCardsLeft = state.cardsLeft;
-		const card_index = state.hands[playerTurn].findIndex(c => c.order === discardable.order);
+		const card_index = state.hands[playerTurn].findIndex(o => o === discardable);
 		const newCardOrder = state.cardOrder + 1;
 
-		state.hands[playerTurn] = state.hands[playerTurn].removeOrder(discardable.order);
+		state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(discardable), 1);
 
 		if (state.endgameTurns === -1) {
-			const newCard = game.state.deck[newCardOrder] ?? new ActualCard(-1, -1, newCardOrder, game.state.actionList.length);
-			state.hands[playerTurn].unshift(newCard);
-			state.deck[newCardOrder] = newCard;
+			state.hands[playerTurn].unshift(newCardOrder);
+			state.deck[newCardOrder] ??= new ActualCard(-1, -1, newCardOrder, game.state.actionList.length);
 			state.cardOrder++;
 			state.cardsLeft--;
 
@@ -318,7 +325,7 @@ export function winnable_simpler(game, playerTurn, cache = new Map()) {
 		const winnable = winnable_simpler(game, nextPlayerIndex, cache);
 
 		if (oldEndgameTurns === -1) {
-			state.hands[playerTurn] = state.hands[playerTurn].removeOrder(newCardOrder);
+			state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(newCardOrder), 1);
 			state.cardOrder--;
 			state.cardsLeft++;
 		}
@@ -369,7 +376,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 	const playables = game.players[playerTurn].thinksPlayables(state, playerTurn);
 
 	let best_actions = [], best_winrate = 0;
-	const not_useful = state.hands[playerTurn].find(c => state.isBasicTrash(c));
+	const not_useful = state.hands[playerTurn].find(o => state.isBasicTrash(state.deck[o]));
 
 	const attempt_discard = () => {
 		game.state.clue_tokens++;
@@ -383,7 +390,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 		const discards = find_discards(game, playerTurn);
 
 		if (discards.length === 0 && not_useful !== undefined)
-			discards.push({ misplay: false, order: not_useful.order });
+			discards.push({ misplay: false, order: not_useful });
 
 		for (const { misplay, order } of discards) {
 			const perform_action = { type: ACTION.DISCARD, target: order, playerIndex: playerTurn };
@@ -391,8 +398,8 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 			if (exclude.some(action => Utils.objEquals(action, perform_action)))
 				continue;
 
-			const { suitIndex, rank } = state.hands[playerTurn].find(c => c.order === order);
-			logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to discard slot', state.hands[playerTurn].findIndex(c => c.order === order) + 1);
+			const { suitIndex, rank } = state.deck[order];
+			logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to discard slot', state.hands[playerTurn].findIndex(o => o === order) + 1);
 
 			const new_game = game.simulate_action({ type: 'discard', order, playerIndex: playerTurn, suitIndex, rank, failed: misplay });
 			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
@@ -433,7 +440,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 	};
 
 	if (playables.length > 0) {
-		for (const { order } of playables) {
+		for (const order of playables) {
 			if (state.deck[order].identity() === undefined)
 				continue;
 
@@ -479,7 +486,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 			logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to clue', logClue(clue));
 			attempted_clue = true;
 
-			const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
+			const list = state.clueTouched(state.hands[clue.target], clue);
 			const new_game = game.simulate_clue({ type: 'clue', clue, list, giver: playerTurn, target: clue.target });
 
 			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);

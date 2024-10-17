@@ -38,22 +38,22 @@ export function find_fix_clues(game, play_clues, save_clues) {
 		if (game.level < LEVEL.FIX)
 			continue;
 
-		for (const { clued, order } of state.hands[target]) {
+		for (const order of state.hands[target]) {
 			const card = me.thoughts[order];
 
 			const pink_1s = () => {
 				if (!state.includesVariant(variantRegexes.pinkish))
 					return false;
 
-				const unknown_1s = state.hands[target].filter(c => c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+				const unknown_1s = state.hands[target].filter(o => state.deck[o].clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
 				const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
 
-				return ordered_1s[0] !== undefined && state.isPlayable(ordered_1s[0]);
+				return ordered_1s[0] !== undefined && state.isPlayable(state.deck[ordered_1s[0]]);
 			};
 
 			const fix_unneeded = card.possible.length === 1 ||
 				card.possible.every(p => state.isBasicTrash(p)) ||
-				(card.chop_moved && !clued) ||										// Card chop moved but not clued, don't fix
+				(card.chop_moved && !state.deck[order].clued) ||										// Card chop moved but not clued, don't fix
 				common.dependentConnections(order).some(wc => wc.symmetric)	||		// Part of a symmetric waiting connection
 				card.inferred.length === 0 ||
 				pink_1s();
@@ -66,17 +66,17 @@ export function find_fix_clues(game, play_clues, save_clues) {
 
 				// Possibility is immediately playable or 1-away and we have the connecting card
 				return away === 0 ||
-					(away === 1 && state.ourHand.some(c => me.thoughts[c.order].matches({ suitIndex: p.suitIndex, rank: p.rank - 1 }, { infer: true })));
+					(away === 1 && state.ourHand.some(o => me.thoughts[o].matches({ suitIndex: p.suitIndex, rank: p.rank - 1 }, { infer: true })));
 			});
 
 			// We don't need to fix cards where we hold one copy, since we can just sarcastic discard
-			if (state.ourHand.some(c => me.thoughts[c.order].matches(card, { infer: true })))
+			if (state.ourHand.some(o => me.thoughts[o].matches(card, { infer: true })))
 				continue;
 
 			const wrong_inference = !state.hasConsistentInferences(card) && state.playableAway(card) !== 0;
 
-			const duplicate = visibleFind(state, me, card).find(c => c.order !== order && common.thoughts[c.order].touched);
-			const unknown_duplicated = clued && card.inferred.length > 1 && duplicate !== undefined;
+			const duplicate = visibleFind(state, me, card).find(o => o !== order && common.thoughts[o].touched);
+			const unknown_duplicated = card.clued && card.inferred.length > 1 && duplicate !== undefined;
 
 			let fix_criteria;
 			if (wrong_inference) {
@@ -86,12 +86,12 @@ export function find_fix_clues(game, play_clues, save_clues) {
 			// We only want to give a fix clue to the player whose turn comes sooner
 			else if (unknown_duplicated && !duplicated_cards.some(c => c.matches(card))) {
 
-				const matching_connection = common.waiting_connections.find(({ connections }) => connections.some(conn => conn.card.order === duplicate.order));
+				const matching_connection = common.waiting_connections.find(({ connections }) => connections.some(conn => conn.order === duplicate));
 				let needs_fix = true;
 
 				if (matching_connection !== undefined) {
 					const { connections, conn_index } = matching_connection;
-					const connection_index = connections.findIndex(conn => conn.card.order === duplicate.order);
+					const connection_index = connections.findIndex(conn => conn.order === duplicate);
 
 					// The card is part of a finesse connection that hasn't been played yet
 					if (conn_index <= connection_index) {
@@ -146,9 +146,8 @@ export function find_fix_clues(game, play_clues, save_clues) {
 function inference_corrected(game, order, _target) {
 	const { common, state } = game;
 	const card = common.thoughts[order];
-	const actualCard = state.hands.flat().find(c => c.order === order);
 
-	if (state.isBasicTrash(actualCard))
+	if (state.isBasicTrash(state.deck[order]))
 		return card.possible.every(p => state.isBasicTrash(p));
 
 	// Revealed to be pink
@@ -180,9 +179,9 @@ function duplication_known(game, order, _target) {
  */
 function check_fixed(game, target, order, clue, fix_criteria) {
 	const { state } = game;
-	const touch = state.hands[target].clueTouched(clue, state.variant);
+	const list = state.clueTouched(state.hands[target], clue);
 
-	const action = /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue });
+	const action = /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
 
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();

@@ -30,7 +30,7 @@ describe('reverse finesse', () => {
 
 		const action = take_action(game);
 
-		// Alice should give green to Bob to finesse over save
+		// // Alice should give green to Bob to finesse over save
 		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN }, `Expected (green to Bob), got ${logPerformAction(action)}`);
 	});
 
@@ -50,7 +50,7 @@ describe('reverse finesse', () => {
 		takeTurn(game, 'Donald clues red to Bob');				// r5
 
 		// We don't need to finesse anything.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
 		assert.equal(game.common.hypo_stacks[COLOUR.RED], 5);
 	});
 
@@ -111,7 +111,7 @@ describe('self-finesse', () => {
 		const { common, state } = game;
 
 		// Slot 2 should be g2.
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][1].order], ['g2']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][1]], ['g2']);
 	});
 
 	it('interprets self-finesses correctly when giver knows less', () => {
@@ -127,8 +127,8 @@ describe('self-finesse', () => {
 		const { common, state } = game;
 
 		// Cathy's slot 1 should be finessed, Alice's slot 1 should not.
-		assert.equal(common.thoughts[state.hands[PLAYER.CATHY][0].order].finessed, true);
-		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(common.thoughts[state.hands[PLAYER.CATHY][0]].finessed, true);
+		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 
 	it('interprets self-finesses correctly when other possibilities are impossible', () => {
@@ -152,8 +152,8 @@ describe('self-finesse', () => {
 		takeTurn(game, 'Bob clues 2 to Alice (slot 3)');			// 2 is neg purple, b2 is clued in Cathy's hand
 
 		// Alice's slot 1 should be finessed.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r2','y2','g2']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['r2','y2','g2']);
 	});
 
 	it(`doesn't give self-finesses that look like prompts`, () => {
@@ -211,7 +211,7 @@ describe('self-finesse', () => {
 		takeTurn(game, 'Bob plays y1', 'p4');
 		takeTurn(game, 'Cathy clues 3 to Alice (slot 2)');
 
-		const slot1_order = game.state.hands[PLAYER.ALICE][0].order;
+		const slot1_order = game.state.hands[PLAYER.ALICE][0];
 
 		// All of these are valid self-finesse possibilities.
 		ExAsserts.cardHasInferences(game.common.thoughts[slot1_order], ['y2', 'g2', 'b2']);
@@ -241,7 +241,7 @@ describe('self-finesse', () => {
 		takeTurn(game, 'Cathy clues 3 to Alice (slot 1)');
 
 		// y3 is the simplest possibility.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['y3']);
 	});
 
 	it(`doesn't give self-finesses that are not symmetrically the simplest interpretation`, () => {
@@ -282,7 +282,7 @@ describe('self-finesse', () => {
 		takeTurn(game, 'Cathy clues 4 to Alice (slot 1)');		// y3 (prompt) -> y4 is simpler than b2 (playable) -> b3 (self-finesse) -> b4
 
 		// y4 is the simplest possibility.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['y4']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['y4']);
 	});
 
 	it('trusts the clue giver to give asymmetric self-finesses', () => {
@@ -302,8 +302,8 @@ describe('self-finesse', () => {
 		takeTurn(game, 'Donald clues 5 to Bob');	// r3, r4, r5 finesse (but could look like g5 direct)
 
 		// Assume Donald is not making a mistake, and we have g5. Then Bob will know to play into the finesse.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['r3']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0]], ['r3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].finessed, true);
 	});
 
 	it('correctly realizes self-finesses after symmetric possibilities are directly stomped', () => {
@@ -325,8 +325,8 @@ describe('self-finesse', () => {
 		takeTurn(game, 'Alice discards y3 (slot 4)');
 		takeTurn(game, 'Bob clues red to Donald');				// finessing r2, proving the earlier finesse wasn't red
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['y4', 'g4', 'p4']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['y4', 'g4', 'p4']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
 	});
 });
 
@@ -348,7 +348,7 @@ describe('direct clues', () => {
 		const { common, state } = game;
 
 		// Alice's slot 1 should only be [b2,b3], not [b2,b3,b4].
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][0].order], ['b2', 'b3']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][0]], ['b2', 'b3']);
 	});
 
 	it('allows finesses to look direct if someone else plays into it first', () => {
@@ -367,7 +367,7 @@ describe('direct clues', () => {
 		const { common, state } = game;
 
 		// While ALice's slot 2 could be y3, it could also be g3 (reverse finesse on Bob + self-finesse).
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][1].order], ['y3', 'g3']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][1]], ['y3', 'g3']);
 	});
 
 	it(`assumes direct play over a "stomped" finesse involving a self-component`, () => {
@@ -387,10 +387,10 @@ describe('direct clues', () => {
 		takeTurn(game, 'Donald plays g1', 'g4');
 
 		// Alice should assume the simpler explanation that she doesn't have to play g2.
-		const slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
+		const slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0]];
 		assert.equal(slot1.finessed, false);
 		assert.ok(slot1.inferred.length > 1);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['y3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['y3']);
 	});
 });
 
@@ -410,7 +410,7 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Donald clues 4 to Bob'); 	// Donald knows that he has b3, not b2 since he can see Bob's b2 and ours.
 
 		// We think we have b3 in slot 1, as a Certain Finesse. 
-		// ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][0].order], ['b3']);
+		// ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][0]], ['b3']);
 
 		takeTurn(game, 'Alice clues 5 to Bob');	// 5 Save
 		takeTurn(game, 'Bob plays b2', 'y5');
@@ -420,7 +420,7 @@ describe('asymmetric clues', () => {
 		const { common, state } = game;
 
 		// We should no longer think that we have b3 in slot 1.
-		const slot1 = common.thoughts[state.hands[PLAYER.ALICE][0].order];
+		const slot1 = common.thoughts[state.hands[PLAYER.ALICE][0]];
 		assert.equal(slot1.inferred.length > 1, true);
 		assert.equal(slot1.finessed, false);
 	});
@@ -462,7 +462,7 @@ describe('asymmetric clues', () => {
 		const { common, state } = game;
 
 		// Bob's slot 1 must be y3, since it only requires one blind play (y3) instead of two (g2,g3).
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.BOB][0].order], ['y3']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.BOB][0]], ['y3']);
 	});
 
 	it('prefers not starting with self, even if there are known playables before', () => {
@@ -481,10 +481,10 @@ describe('asymmetric clues', () => {
 
 		const { common, state } = game;
 
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][1].order], ['y4']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][1]], ['y4']);
 
 		// Alice's slot 1 should not be finessed.
-		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(common.thoughts[state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 
 	it('prefers not starting with self (symmetrically), even if there are known playables before', () => {
@@ -508,7 +508,7 @@ describe('asymmetric clues', () => {
 		const { common, state } = game;
 
 		// g4 (g2 known -> g3 finesse, self) requires a self-component, compared to y3 (prompt) which does not.
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.DONALD][2].order], ['y4']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.DONALD][2]], ['y4']);
 	});
 
 	it('includes the correct interpretation, even if it requires more blind plays', () => {
@@ -547,7 +547,7 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Bob clues 3 to Cathy');				// connecting on y1 (Donald, playable) and y2 (Alice, prompt)
 
 		// The clued card is likely g3 or y3, since that requires the least number of blind plays.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2].order], ['y3', 'g3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2]], ['y3', 'g3']);
 
 		takeTurn(game, 'Cathy clues 5 to Donald');		// 5 Save
 		takeTurn(game, 'Donald plays y1', 'r4');
@@ -556,7 +556,7 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Alice plays y2 (slot 4)');
 
 		// y3 should be known, since y2 played before g1 played.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2].order], ['y3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2]], ['y3']);
 	});
 
 	it('connects to a finesse after a fake finesse was just disproven', () => {
@@ -575,7 +575,7 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Bob clues purple to Cathy');
 
 		// Alice's slot 2 can be any 3 (not prompted to be p3).
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r3', 'y3', 'g3', 'b3', 'p3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r3', 'y3', 'g3', 'b3', 'p3']);
 	});
 
 	it(`doesn't consider already-finessed possibilities`, () => {
@@ -597,7 +597,7 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
 
 		// Alice's slot 2 should be [y2,g2] (not r2).
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['y2', 'g2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['y2', 'g2']);
 	});
 
 	it('prefers to self-finesse over assuming asymmetric information', () => {
@@ -617,8 +617,8 @@ describe('asymmetric clues', () => {
 		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
 
 		// Alice's slot 1 should be finessed as g3.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g3']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['g3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
 });
 
@@ -683,8 +683,8 @@ describe(`occam's razor`, () => {
 		takeTurn(game, 'Donald clues 4 to Alice (slot 2)');
 
 		// Even if Donald has [g3,b3], Alice's slot 2 should be g4 (g3 self-finesse) rather than b4 (b2 prompt + b3 finesse on Bob)
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['g4']);
-		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].inferred.length > 1);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['g4']);
+		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].inferred.length > 1);
 	});
 });
 

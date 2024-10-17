@@ -30,10 +30,10 @@ describe('visible elim', () => {
 
 		const { common, state } = game;
 
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.ALICE][2].order], ['p5', 't5']);
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.ALICE][3].order], ['p5', 't5']);
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.BOB][3].order], ['g5']);
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.CATHY][3].order], ['b5']);
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.DONALD][3].order], ['y5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.ALICE][2]], ['p5', 't5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.ALICE][3]], ['p5', 't5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.BOB][3]], ['g5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.CATHY][3]], ['b5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.DONALD][3]], ['y5']);
 	});
 });

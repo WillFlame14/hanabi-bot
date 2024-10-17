@@ -23,7 +23,7 @@ describe('play clue', () => {
 
 		// Target card should be inferred as r1.
 		const targetCard = game.state.hands[PLAYER.BOB][1];
-		ExAsserts.cardHasInferences(game.common.thoughts[targetCard.order], ['r1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[targetCard], ['r1']);
 	});
 
 	it('can interpret a colour play clue touching multiple cards', () => {
@@ -36,7 +36,7 @@ describe('play clue', () => {
 
 		// Bob's slot 1 should be inferred as r1.
 		const targetCard = game.state.hands[PLAYER.BOB][0];
-		ExAsserts.cardHasInferences(game.common.thoughts[targetCard.order], ['r1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[targetCard], ['r1']);
 	});
 
 	it('can interpret a colour play clue touching chop', () => {
@@ -49,7 +49,7 @@ describe('play clue', () => {
 
 		// Bob's slot 5 (chop) should be inferred as r1.
 		const targetCard = game.state.hands[PLAYER.BOB][4];
-		ExAsserts.cardHasInferences(game.common.thoughts[targetCard.order], ['r1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[targetCard], ['r1']);
 	});
 
 	it('can interpret a colour play clue on a partial stack', () => {
@@ -65,7 +65,7 @@ describe('play clue', () => {
 
 		// Bob's slot 3 should be inferred as r3.
 		const targetCard = game.state.hands[PLAYER.BOB][2];
-		ExAsserts.cardHasInferences(game.common.thoughts[targetCard.order], ['r3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[targetCard], ['r3']);
 	});
 
 	it('can interpret a colour play clue through someone\'s hand', () => {
@@ -78,15 +78,17 @@ describe('play clue', () => {
 		const { state } = game;
 
 		// Cathy's r1 is clued and inferred.
-		state.hands[PLAYER.CATHY][1].clued = true;
-		const card = game.common.thoughts[state.hands[PLAYER.CATHY][1].order];
+		state.deck[state.hands[PLAYER.CATHY][1]].clued = true;
+		for (const player of game.allPlayers)
+			player.thoughts[state.hands[PLAYER.CATHY][1]].clued = true;
+		const card = game.common.thoughts[state.hands[PLAYER.CATHY][1]];
 		card.possible = card.possible.intersect(['r1', 'r2', 'r3', 'r4', 'r5'].map(expandShortCard));
 		card.inferred = card.inferred.intersect(['r1'].map(expandShortCard));
 
 		takeTurn(game, 'Alice clues red to Bob');
 
 		// Bob's slot 3 should be inferred as r2.
-		const targetOrder = state.hands[PLAYER.BOB][2].order;
+		const targetOrder = state.hands[PLAYER.BOB][2];
 		ExAsserts.cardHasInferences(game.common.thoughts[targetOrder], ['r2']);
 	});
 
@@ -99,15 +101,17 @@ describe('play clue', () => {
 		const { common, state } = game;
 
 		// Bob has a 1 in slot 2.
-		state.hands[PLAYER.BOB][1].clued = true;
-		const card = common.thoughts[state.hands[PLAYER.BOB][1].order];
+		state.deck[state.hands[PLAYER.BOB][1]].clued = true;
+		for (const player of game.allPlayers)
+			player.thoughts[state.hands[PLAYER.BOB][1]].clued = true;
+		const card = common.thoughts[state.hands[PLAYER.BOB][1]];
 		card.possible = card.possible.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
 		card.inferred = card.inferred.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
 
 		takeTurn(game, 'Alice clues red to Bob');
 
 		// Bob's slot 1 should be inferred as r2.
-		const targetOrder = state.hands[PLAYER.BOB][0].order;
+		const targetOrder = state.hands[PLAYER.BOB][0];
 		ExAsserts.cardHasInferences(common.thoughts[targetOrder], ['r2']);
 	});
 
@@ -128,16 +132,16 @@ describe('play clue', () => {
 		takeTurn(game, 'Bob clues 5 to Alice (slot 4)');
 
 		// Alice's slot 4 can be r5 (finesse on Donald) or g5 (prompt on Cathy).
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r5', 'g5']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r5', 'g5']);
 
 		takeTurn(game, 'Cathy plays g3', 'p1');
 		takeTurn(game, 'Donald plays r4', 'y3');
 
 		// Alice's slot 4 should be exactly r5.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r5']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r5']);
 
 		// Cathy's slot 4 (used to be slot 3) can still be g4,g5.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][3].order], ['g4', 'g5']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][3]], ['g4', 'g5']);
 	});
 
 	it('correctly writes inferences after playing when connecting on own playables', () => {
@@ -160,7 +164,7 @@ describe('play clue', () => {
 		takeTurn(game, 'Alice plays y1 (slot 3)');
 
 		// Bob's 2 is [r2,y2,b2].
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order], ['r2', 'y2', 'b2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][1]], ['r2', 'y2', 'b2']);
 	});
 
 	it(`doesn't erroneously assume red connections`, () => {
@@ -212,7 +216,7 @@ describe('counting playables', () => {
 		});
 
 		const clue = { type: CLUE.RANK, target: PLAYER.BOB, value: 3 };
-		const list = game.state.hands[PLAYER.BOB].clueTouched(clue, game.state.variant).map(c => c.order);
+		const list = game.state.clueTouched(game.state.hands[PLAYER.BOB], clue);
 		const hypo_state = game.simulate_clue({ type: 'clue', clue, list, giver: PLAYER.ALICE, target: PLAYER.BOB });
 		const { playables, trash } = get_result(game, hypo_state, clue, PLAYER.ALICE);
 
@@ -235,7 +239,7 @@ describe('counting playables', () => {
 		takeTurn(game, 'Cathy clues 1 to Bob');
 
 		const clue = { type: CLUE.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN };
-		const list = state.hands[PLAYER.CATHY].clueTouched(clue, state.variant).map(c => c.order);
+		const list = state.clueTouched(state.hands[PLAYER.CATHY], clue);
 		const hypo_state = game.simulate_clue({ type: 'clue', clue, list, giver: PLAYER.ALICE, target: PLAYER.CATHY });
 		const { playables } = get_result(game, hypo_state, clue, PLAYER.ALICE);
 
@@ -277,7 +281,7 @@ describe('counting playables', () => {
 		takeTurn(game, 'Cathy clues 2 to Bob');
 
 		// Bob's g2 is unknown playable.
-		assert.ok(game.common.unknown_plays.has(game.state.hands[PLAYER.BOB][0].order));
+		assert.ok(game.common.unknown_plays.has(game.state.hands[PLAYER.BOB][0]));
 	});
 
 	it('correctly counts the number of playables when connecting on unknown plays 3', () => {
@@ -301,7 +305,7 @@ describe('counting playables', () => {
 		assert.equal(game.common.hypo_stacks[COLOUR.PURPLE], 3);
 
 		// Bob's y2 is unknown playable.
-		assert.ok(game.common.unknown_plays.has(game.state.hands[PLAYER.BOB][1].order));
+		assert.ok(game.common.unknown_plays.has(game.state.hands[PLAYER.BOB][1]));
 	});
 
 	it('correctly counts the number of playables when fake connecting on unknown plays', () => {

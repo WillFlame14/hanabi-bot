@@ -28,7 +28,7 @@ describe('pink promise', () => {
 		takeTurn(game, 'Bob clues 3 to Alice (slot 5)');
 
 		// This should be known r3.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order], ['r3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]], ['r3']);
 	});
 
 	it('gives play clues with pink promise', () => {
@@ -66,7 +66,7 @@ describe('pink 1s assumption', () => {
 		takeTurn(game, 'Bob discards g4', 'g5');
 
 		const playables = game.common.thinksPlayables(game.state, PLAYER.ALICE);
-		assert.ok(playables.some(p => p.order === game.state.hands[PLAYER.ALICE][4].order));
+		assert.ok(playables.includes(game.state.hands[PLAYER.ALICE][4]));
 	});
 
 	it('fixes a pink 1s assumption with pink fix promise', () => {
@@ -88,7 +88,7 @@ describe('pink 1s assumption', () => {
 		takeTurn(game, 'Alice clues 4 to Bob');
 
 		// Bob's slot 3 is promised to be i4.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][2].order], ['i4']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][2]], ['i4']);
 	});
 
 	it('fixes a pink 1s assumption without pink fix promise', () => {
@@ -106,7 +106,7 @@ describe('pink 1s assumption', () => {
 		takeTurn(game, 'Alice clues 5 to Bob');
 
 		// Bob's slot 3 is not promised to be i5.
-		assert.ok(game.common.thoughts[game.state.hands[PLAYER.BOB][2].order].inferred.length > 1);
+		assert.ok(game.common.thoughts[game.state.hands[PLAYER.BOB][2]].inferred.length > 1);
 	});
 
 	it(`doesn't perform OCMs in pink`, () => {
@@ -125,7 +125,7 @@ describe('pink 1s assumption', () => {
 
 		// Alice must play slot 5 (not allowed to OCM by playing slot 4).
 		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 });
 
@@ -147,7 +147,7 @@ describe('pink prompts', () => {
 		takeTurn(game, 'Cathy clues red to Bob');
 
 		// Alice should prompt slot 3 as r2.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order], ['r2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['r2']);
 	});
 
 	it('finesses when rank mismatches', () => {
@@ -168,8 +168,8 @@ describe('pink prompts', () => {
 		takeTurn(game, 'Bob clues pink to Cathy');
 
 		// Alice should finesse slot 1 as i2.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['i2']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['i2']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
 });
 
@@ -210,10 +210,10 @@ describe('pink choice tempo clues', () => {
 		takeTurn(game, 'Alice clues blue to Bob');
 		takeTurn(game, 'Bob clues 4 to Alice (slots 3,4,5)');
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['i1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['i1']);
 
 		// Alice is not TCCM'd.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].chop_moved, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].chop_moved, false);
 	});
 
 	it('understands a pink choice finesse', () => {
@@ -233,12 +233,12 @@ describe('pink choice tempo clues', () => {
 		takeTurn(game, 'Bob clues 4 to Alice (slots 3,4,5)');
 
 		// Cathy might be finessed for i1.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['i2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['i2']);
 
 		takeTurn(game, 'Cathy clues green to Alice (slot 1)');
 
 		// Alice knows that she only has i1, and she is not TCCM'd.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['i1']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2].order].chop_moved, false);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['i1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].chop_moved, false);
 	});
 });

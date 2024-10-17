@@ -52,11 +52,6 @@ export default class PlayfulSieve extends Game {
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);
 
-		for (const player of newGame.players.concat([newGame.common])) {
-			for (const c of newGame.state.hands.flat())
-				player.thoughts[c.order].actualCard = c;
-		}
-
 		newGame.copyDepth = this.copyDepth + 1;
 		return newGame;
 	}

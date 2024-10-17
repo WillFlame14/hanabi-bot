@@ -305,7 +305,7 @@ export function parseAction(state, rawAction) {
 				throw new Error(`Couldn't parse target ${playerName}, not in list of players ${state.playerNames}.`);
 
 			if (target !== state.ourPlayerIndex) {
-				const list = state.hands[target].clueTouched(clue, state.variant).map(c => c.order);
+				const list = state.clueTouched(state.hands[target], clue);
 
 				if (list.length === 0)
 					throw new Error(`Clue ${logClue(Object.assign({}, clue, { target }))} touches no cards.`);
@@ -315,7 +315,7 @@ export function parseAction(state, rawAction) {
 			else {
 				// e.g. "Bob clues 2 to Alice (slots 2,4)"
 				const slots = parseSlots(state, parts, 6, false, '(clue to us)');
-				const list = slots.map(slot => state.ourHand[slot - 1].order);
+				const list = slots.map(slot => state.ourHand[slot - 1]);
 
 				return { type: 'clue', clue, giver: playerIndex, target, list };
 			}
@@ -324,7 +324,7 @@ export function parseAction(state, rawAction) {
 			const { suitIndex, rank } = expandShortCard(parts[2]);
 
 			if (playerIndex !== state.ourPlayerIndex) {
-				const matching = state.hands[playerIndex].filter(c => c.matches({ suitIndex, rank }));
+				const matching = state.hands[playerIndex].filter(o => state.deck[o].matches({ suitIndex, rank }));
 
 				if (matching.length === 0) {
 					throw new Error(`Unable to find card ${parts[2]} to play in ${playerName}'s hand.`);
@@ -333,27 +333,27 @@ export function parseAction(state, rawAction) {
 					// Brief check to make sure that if slot provided, it is correct
 					if (parts.length >= 4) {
 						const slot = parseSlots(state, parts, 4, true)[0];
-						if (state.hands[playerIndex][slot - 1].order !== matching[0].order)
+						if (state.hands[playerIndex][slot - 1] !== matching[0])
 							throw new Error(`Identity ${parts[2]} is not in slot ${slot}, test written incorrectly?`);
 
 					}
-					return { type: 'play', playerIndex, suitIndex, rank, order: matching[0].order };
+					return { type: 'play', playerIndex, suitIndex, rank, order: matching[0] };
 				}
 				else {
 					// e.g. "Bob plays b3 (slot 1)"
 					const slot = parseSlots(state, parts, 4, true, '(ambiguous identity)')[0];
-					const card = state.hands[playerIndex][slot - 1];
+					const order = state.hands[playerIndex][slot - 1];
 
-					if (!card.matches({ suitIndex, rank }))
+					if (!state.deck[order].matches({ suitIndex, rank }))
 						throw new Error(`Identity ${parts[2]} is not in slot ${slot}, test written incorrectly?`);
 
-					return { type: 'play', playerIndex, suitIndex, rank, order: card.order };
+					return { type: 'play', playerIndex, suitIndex, rank, order };
 				}
 			}
 			else {
 				// e.g. "Alice plays y5 (slot 1)"
 				const slot = parseSlots(state, parts, 4, true, '(play from us)')[0];
-				const { order } = state.ourHand[slot - 1];
+				const order = state.ourHand[slot - 1];
 
 				return { type: 'play', playerIndex, suitIndex, rank, order };
 			}
@@ -362,7 +362,7 @@ export function parseAction(state, rawAction) {
 		case 'bombs': {
 			const { suitIndex, rank } = expandShortCard(parts[2]);
 			if (playerIndex !== state.ourPlayerIndex) {
-				const orders = state.hands[playerIndex].filter(c => c.matches({ suitIndex, rank })).map(c => c.order);
+				const orders = state.hands[playerIndex].filter(o => state.deck[o].matches({ suitIndex, rank }));
 
 				if (orders.length === 0)
 					throw new Error(`Unable to find card ${parts[2]} to discard in ${playerName}'s hand.`);
@@ -372,12 +372,13 @@ export function parseAction(state, rawAction) {
 
 				// e.g. "Bob discards b3 (slot 1)"
 				const slot = parseSlots(state, parts, 4, true, '(ambiguous identity)')[0];
-				const card = state.hands[playerIndex][slot - 1];
+				const order = state.hands[playerIndex][slot - 1];
+				const card = state.deck[order];
 
 				if (!card.matches({ suitIndex, rank }))
 					throw new Error(`Identity ${parts[2]} is not in slot ${slot} (found ${logCard(card)}), test written incorrectly?`);
 
-				return { type: 'discard', playerIndex, suitIndex, rank, order: card.order, failed: parts[1] === 'bombs' };
+				return { type: 'discard', playerIndex, suitIndex, rank, order, failed: parts[1] === 'bombs' };
 			}
 			else {
 				// e.g. "Alice discards y5 (slot 1)"
@@ -385,7 +386,7 @@ export function parseAction(state, rawAction) {
 					throw new Error(`Not enough arguments provided for a discard action from us, needs '(slot x)' at the end.`);
 
 				const slot = parseSlots(state, parts, 4, true, '(discard from us)')[0];
-				const { order } = state.ourHand[slot - 1];
+				const order = state.ourHand[slot - 1];
 
 				return { type: 'discard', playerIndex, suitIndex, rank, order, failed: parts[1] === 'bombs' };
 			}

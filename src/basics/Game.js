@@ -1,5 +1,4 @@
 import { IdentitySet } from './IdentitySet.js';
-import { Hand } from './Hand.js';
 import { Player } from './Player.js';
 import { ActualCard } from '../basics/Card.js';
 import { handle_action } from '../action-handler.js';
@@ -33,8 +32,8 @@ export class Game {
 	/** @type {Player} */
 	common;
 
-	last_actions = /** @type {(Action & {card?: ActualCard, lock?: boolean})[]} */ ([]);
-	handHistory = /** @type {Hand[]} */ ([]);
+	last_actions = /** @type {((ClueAction | PlayAction | DiscardAction) & {lock?: boolean})[]} */ ([]);
+	handHistory = /** @type {number[][]} */ ([]);
 
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
 
@@ -92,10 +91,11 @@ export class Game {
 
 	get hash() {
 		const { clue_tokens, turn_count, actionList } = this.state;
+		const hands = this.state.hands.flat();
 		const player_thoughts = this.common.thoughts.flatMap(c => c.inferred.map(logCard).join()).join();
 		const deck = this.state.deck.map(c => c.identity() !== undefined ? logCard(c.identity()) : 'xx');
 
-		return `${player_thoughts},${deck},${JSON.stringify(actionList.at(-1))},${clue_tokens},${turn_count}`;
+		return `${hands},${player_thoughts},${deck},${JSON.stringify(actionList.at(-1))},${clue_tokens},${turn_count}`;
 	}
 
 	/**
@@ -128,17 +128,8 @@ export class Game {
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);
 
-		newGame.restoreCardBindings();
-
 		newGame.copyDepth = this.copyDepth + 1;
 		return newGame;
-	}
-
-	restoreCardBindings() {
-		for (const player of this.allPlayers) {
-			for (const card of this.state.hands.flat())
-				player.thoughts[card.order].actualCard = card;
-		}
 	}
 
 	/**
@@ -154,9 +145,8 @@ export class Game {
 	 * @abstract
 	 * @param {Game} _game
 	 * @param {Omit<DiscardAction, "type">} _action
-	 * @param {ActualCard} _card
 	 */
-	interpret_discard(_game, _action, _card) {
+	interpret_discard(_game, _action) {
 		throw new Error('must be implemented by subclass!');
 	}
 
@@ -259,7 +249,6 @@ export class Game {
 			const hypoGame = newGame.minimalCopy();
 
 			newGame.state.hands[this.state.ourPlayerIndex] = this.handHistory[newGame.state.turn_count];
-			newGame.restoreCardBindings();
 
 			newGame.handle_action(action);
 
@@ -271,7 +260,6 @@ export class Game {
 			logger.flush(false);
 
 			newGame.state.hands[this.state.ourPlayerIndex] = hypoGame.state.hands[this.state.ourPlayerIndex];
-			newGame.restoreCardBindings();
 		};
 
 		logger.wrapLevel(logger.LEVELS.ERROR, () => {

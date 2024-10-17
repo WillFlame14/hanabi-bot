@@ -8,7 +8,10 @@
  * @typedef {typeof import('./conventions/h-group/h-constants.js').DISCARD_INTERP} DISCARD_INTERP
  * @typedef {CLUE_INTERP[keyof CLUE_INTERP] | PLAY_INTERP[keyof PLAY_INTERP] | DISCARD_INTERP[keyof DISCARD_INTERP]} INTERP
  */
-
+/**
+ * @template T
+ * @typedef {{ -readonly [P in keyof T]: T[P] }} Writable
+ */
 /**
  * @typedef Identity
  * @property {number} suitIndex
@@ -20,7 +23,7 @@
  * @property {number} value
  * 
  * @typedef {BaseClue & {target: number, result?: ClueResult}} Clue
- * @typedef {Clue & {playable: boolean, cm: ActualCard[], safe: boolean}} SaveClue
+ * @typedef {Clue & {playable: boolean, cm: number[], safe: boolean}} SaveClue
  * @typedef {Clue & {urgent: boolean, trash: boolean}} FixClue
  */
 /**
@@ -32,10 +35,10 @@
  * @property {number} trash
  * @property {number} avoidable_dupe
  * @property {number} remainder
- * @property {Card | undefined} discard
+ * @property {number | undefined} discard
  * @property {{playerIndex: number, card: Card}[]} playables
  * @property {{playerIndex: number, card: Card}[]} finesses
- * @property {ActualCard[]} chop_moved
+ * @property {number[]} chop_moved
  */
 /**
  * @typedef StatusAction
@@ -93,13 +96,13 @@
  * @typedef Connection
  * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate' | 'positional'} type
  * @property {number} reacting
- * @property {ActualCard} card
+ * @property {number} order
  * @property {Identity[]} identities	The possible identities this card could be playing as (can be multiple, if we're playing into a layered finesse or known bluff).
  * @property {boolean} [self]
  * @property {boolean} [hidden]
  * @property {boolean} [bluff]
  * @property {boolean} [possibly_bluff]
- * @property {ActualCard[]} [linked]	Only used in 'playable' connections.
+ * @property {number[]} [linked]	Only used in 'playable' connections.
  * @property {boolean} [certain]
  * @property {boolean} [ambiguous]
  * @property {boolean} [asymmetric]		Only used in 'known' connections.
@@ -129,7 +132,7 @@
  */
 /**
  * @typedef Link
- * @property {ActualCard[]} cards
+ * @property {number[]} orders
  * @property {Identity[]} identities
  * @property {boolean} promised
  */
