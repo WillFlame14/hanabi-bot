@@ -14,7 +14,7 @@ import { logCard, logConnection } from '../../tools/log.js';
  * @typedef {import('../../types.js').WaitingConnection} WaitingConnection
  * 
  * @typedef Demonstration
- * @property {ActualCard} card
+ * @property {number} order
  * @property {Identity[]} inferences
  * @property {Connection[]} connections
  */
@@ -50,10 +50,10 @@ export function find_impossible_conn(game, connections) {
  */
 function update_wc(game, waiting_connection, lastPlayerIndex) {
 	const { common, state, me } = game;
-	const { connections, conn_index, focused_card, inference, giver, action_index } = waiting_connection;
+	const { connections, conn_index, focus, inference, giver, action_index } = waiting_connection;
 	const { reacting, order: old_order, identities } = connections[conn_index];
 	const old_card = state.deck[old_order];
-	logger.info(`waiting for connecting ${logCard(state.deck[old_order])} ${old_order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
+	logger.info(`waiting for connecting ${logCard(old_card)} ${old_order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}`);
 
 	const impossible_conn = find_impossible_conn(game, connections.slice(conn_index));
 	if (impossible_conn !== undefined) {
@@ -61,7 +61,7 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 		return { remove_finesse: true, remove: true };
 	}
 
-	if (connections[0]?.type !== 'positional' && !common.thoughts[focused_card.order].possible.has(inference)) {
+	if (connections[0]?.type !== 'positional' && !common.thoughts[focus].possible.has(inference)) {
 		logger.warn(`connection depends on focused card having identity ${logCard(inference)}, removing`);
 		return { remove_finesse: true, remove: true };
 	}
@@ -132,46 +132,33 @@ export function update_turn(game, action) {
 			remove_finesses.add(i);
 
 		if (demonstration !== undefined) {
-			const prev_card = demonstrated.find(({ card }) => card.order === demonstration.card.order);
-			if (prev_card === undefined)
+			const prev_demo = demonstrated.find(({ order }) => order === demonstration.order);
+			if (prev_demo === undefined)
 				demonstrated.push(demonstration);
 			else
-				prev_card.inferences.push(waiting_connection.inference);
+				prev_demo.inferences.push(waiting_connection.inference);
 		}
 	}
 
 	reset_superpositions(game);
 
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
-	for (const { card, inferences, connections } of demonstrated) {
-		logger.info(`intersecting card ${logCard(state.deck[card.order])} with inferences ${inferences.map(logCard).join(',')}`);
-
-		for (const connection of connections) {
-			const { reacting, identities } = connection;
-
-			if (!state.hands[reacting].includes(connection.order))
+	for (const { order, inferences, connections } of demonstrated) {
+		logger.info(`intersecting card ${logCard(state.deck[order])} with inferences ${inferences.map(logCard).join(',')}`);
+		for (const { reacting, identities, order: conn_order } of connections) {
+			if (!state.hands[reacting].includes(conn_order))
 				continue;
 
-			common.updateThoughts(connection.order, (draft) => {
-				if (!draft.superposition) {
-					draft.inferred = common.thoughts[connection.order].inferred.intersect(identities);
-					draft.superposition = true;
-				}
-				else {
-					draft.inferred = common.thoughts[connection.order].inferred.union(identities);
-				}
+			common.updateThoughts(conn_order, (draft) => {
+				draft.inferred = common.thoughts[conn_order].inferred[draft.superposition ? 'union' : 'intersect'](identities);
+				draft.superposition = true;
 				draft.uncertain = false;
 			});
 		}
 
-		common.updateThoughts(card.order, (draft) => {
-			if (!draft.superposition) {
-				draft.inferred = common.thoughts[card.order].inferred.intersect(inferences);
-				draft.superposition = true;
-			}
-			else {
-				draft.inferred = common.thoughts[card.order].inferred.union(inferences);
-			}
+		common.updateThoughts(order, (draft) => {
+			draft.inferred = common.thoughts[order].inferred[draft.superposition ? 'union' : 'intersect'](inferences);
+			draft.superposition = true;
 			draft.uncertain = false;
 		});
 	}
@@ -179,20 +166,20 @@ export function update_turn(game, action) {
 	let min_drawn_index = state.actionList.length;
 
 	// Rewind any confirmed finesse connections we have now
-	const rewind_actions = demonstrated.reduce((acc, { card }) => {
-		const playerIndex = state.hands.findIndex(hand => hand.includes(card.order));
+	const rewind_actions = demonstrated.reduce((acc, { order }) => {
+		const playerIndex = state.hands.findIndex(hand => hand.includes(order));
 
-		if (playerIndex !== state.ourPlayerIndex || common.thoughts[card.order].rewinded)
+		if (playerIndex !== state.ourPlayerIndex || common.thoughts[order].rewinded)
 			return acc;
 
-		const id = common.thoughts[card.order].identity({ infer: true });
+		const id = common.thoughts[order].identity({ infer: true });
 		if (id === undefined)
 			return acc;
 
-		acc.push({ type: 'identify', order: card.order, playerIndex: state.ourPlayerIndex, identities: [id] });
+		acc.push({ type: 'identify', order: order, playerIndex: state.ourPlayerIndex, identities: [id] });
 
-		if (card.drawn_index < min_drawn_index)
-			min_drawn_index = card.drawn_index;
+		if (state.deck[order].drawn_index < min_drawn_index)
+			min_drawn_index = state.deck[order].drawn_index;
 
 		return acc;
 	}, []);
@@ -206,10 +193,10 @@ export function update_turn(game, action) {
 	}
 
 	for (let i = 0; i < common.waiting_connections.length; i++) {
-		const { focused_card, inference } = common.waiting_connections[i];
+		const { focus, inference } = common.waiting_connections[i];
 
 		// Filter out connections that have been removed (or connections to the same card where others have been demonstrated)
-		if (demonstrated.some(d => d.card.order === focused_card.order &&
+		if (demonstrated.some(d => d.order === focus &&
 			!d.inferences.some(inf => inference.suitIndex === inf.suitIndex && inference.rank === inf.rank))
 		) {
 			to_remove.add(i);

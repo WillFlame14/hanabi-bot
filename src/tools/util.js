@@ -6,6 +6,7 @@ import { ACTION, CLUE } from '../constants.js';
 import { types } from 'node:util';
 import logger from './logger.js';
 import { IdentitySet } from '../basics/IdentitySet.js';
+import { cardTouched } from '../variants.js';
 
 /**
  * @typedef {typeof import('../constants.js').ACTION} ACTION
@@ -295,13 +296,13 @@ export function performToAction(state, action, playerIndex, deck) {
 		}
 		case ACTION.RANK: {
 			const clue = { type: CLUE.RANK, value };
-			const list = state.clueTouched(state.hands[target], clue);
+			const list = state.hands[target].filter(o => cardTouched(deck[o], state.variant, clue)).sort();
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
 		case ACTION.COLOUR: {
 			const clue = { type: CLUE.COLOUR, value };
-			const list = state.clueTouched(state.hands[target], clue);
+			const list = state.hands[target].filter(o => cardTouched(deck[o], state.variant, clue)).sort();
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
@@ -481,4 +482,15 @@ export function permutations(arr) {
  */
 export function clampBetween(num, min, max) {
 	return Math.min(max, Math.max(num, min));
+}
+
+/**
+ * @param {Identity} identity
+ */
+export function assignId({ suitIndex, rank }) {
+	/** @param {import('../types.js').Writable<ActualCard>} draft */
+	return (draft) => {
+		draft.suitIndex = suitIndex;
+		draft.rank = rank;
+	};
 }

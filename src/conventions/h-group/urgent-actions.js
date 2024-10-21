@@ -10,7 +10,7 @@ import { cardTouched } from '../../variants.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
-import { logClue } from '../../tools/log.js';
+import { logCard, logClue } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -333,7 +333,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && (!save.playable || state.clue_tokens === 1)) {
 				const tccm = Utils.maxOn(stall_clues[1].filter(clue => clue.target === target), clue => {
 					const { playables, focus } = clue.result;
-					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, state.deck[focus]);
+					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focus);
 
 					if (tempo && !valuable && clue_safe(game, me, clue).safe)
 						return find_clue_value(clue.result);
@@ -365,17 +365,17 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			const bad_save = hypo_me.thinksLocked(hypo_state, target) ?
 				me.chopValue(state, target) < cardValue(state, hypo_me, state.deck[hypo_common.lockedDiscard(hypo_state, hypo_state.hands[target])]) :
-				me.chopValue(state, target) < hypo_me.chopValue(hypo_state, target);
+				me.chopValue(state, target) < hypo_me.chopValue(hypo_state, target, { afterClue: true });
 
 			// Do not save at 1 clue if new chop or sacrifice discard are better than old chop
 			if (state.clue_tokens === 1 && save.cm.length === 0 && bad_save)
 				continue;
 
-			if (hypo_me.chopValue(hypo_state, target) >= 4 && potential_cluers > 0 && state.clue_tokens > 1) {
+			if (hypo_me.chopValue(hypo_state, target, { afterClue: true }) >= 4 && potential_cluers > 0 && state.clue_tokens > 1) {
 				const urgent = !early_expected_clue && potential_cluers === 1;
 
 				if (urgent)
-					logger.info('setting up double save!');
+					logger.info('setting up double save!', logCard(state.deck[hypo_me.chop(hypo_state.hands[target], { afterClue: true })]));
 
 				urgent_actions[PRIORITY.ONLY_SAVE + (urgent ? 0 : prioritySize)].push(Utils.clueToAction(save_clues[target], tableID));
 				continue;

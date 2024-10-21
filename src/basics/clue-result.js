@@ -51,28 +51,23 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 	const dupe_scores = game.players.map((player, pi) => {
 		if (pi == target)
 			return Infinity;
-		let possible_dupe = 0;
+
 		// Check if the giver may have a touched duplicate card.
-		// TODO: Should we consider chop moved cards?
-		for (const order of state.hands[target]) {
+		return state.hands[target].reduce((acc, order) => {
 			const card = state.deck[order];
-			// Ignore cards that aren't newly clued
 			if (!card.newly_clued)
-				continue;
+				return acc;
 
 			const identity = card.identity();
 			// TODO: Should we cluing cards where receiver knows they are duplicated?
 			if (!identity || hypo_game.state.isBasicTrash(identity))
-				continue;
-			for (const giverOrder of state.hands[pi]) {
-				// Allow known duplication since we can discard to resolve it.
-				if (state.deck[giverOrder].clued &&
-					player.thoughts[giverOrder].inferred.length > 1 &&
-					player.thoughts[giverOrder].inferred.has(identity))
-					possible_dupe++;
-			}
-		}
-		return possible_dupe;
+				return acc;
+
+			// Allow known duplication since we can discard to resolve it.
+			acc += state.hands[pi].filter(o => ((c = player.thoughts[o]) =>
+				c.clued && c.inferred.length > 1 && c.inferred.has(identity))()).length;
+			return acc;
+		}, 0);
 	});
 
 	const min_dupe = Math.min(...dupe_scores);
@@ -102,7 +97,7 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 			const thoughts = me.thoughts[o];
 
 			// We need to check old thoughts, since the clue may cause good touch elim that removes earlier notes
-			return old_thoughts.matches(card, { infer: true }) && (old_thoughts.touched || thoughts.touched) && o !== order;
+			return o !== order && old_thoughts.matches(card, { infer: true }) && (old_thoughts.touched || thoughts.touched);
 		}));
 
 		if (duplicates.length > 0 && !(duplicates.every(o => state.deck[o].newly_clued) && order < Math.min(...duplicates)))

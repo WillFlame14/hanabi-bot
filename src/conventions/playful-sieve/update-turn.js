@@ -25,17 +25,17 @@ export function update_turn(game, action) {
 	const to_remove = [];
 
 	for (let i = 0; i < common.waiting_connections.length; i++) {
-		const { connections, conn_index, focused_card, inference } = common.waiting_connections[i];
+		const { connections, conn_index, focus, inference } = common.waiting_connections[i];
 		const { reacting, order, identities } = connections[conn_index];
 		const last_action = game.last_actions[reacting];
-		logger.info(`waiting for connecting ${logCard(state.deck[order])} ${order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focused_card.order}`);
+		logger.info(`waiting for connecting ${logCard(state.deck[order])} ${order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}`);
 
 		// After the turn we were waiting for, the card was played and matches expectation
 		if (reacting === otherPlayerIndex && !state.hands[reacting].includes(order) && last_action.type === 'play') {
 			if (!identities.some(identity => state.deck[last_action.order].matches(identity))) {
 				logger.info('card revealed to not be', identities.map(logCard).join(), 'removing connection as', logCard(inference));
 
-				common.updateThoughts(focused_card.order, (draft) => { draft.inferred = common.thoughts[focused_card.order].inferred.subtract(inference); });
+				common.updateThoughts(focus, (draft) => { draft.inferred = common.thoughts[focus].inferred.subtract(inference); });
 				to_remove.push(i);
 			}
 			else {

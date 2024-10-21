@@ -39,7 +39,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 
 	if (chop_moved.length === 0) {
 		// Chop can be clued later
-		if (state.hands.some(hand => hand.some(o => state.deck[o].matches(old_chop_card) && o !== old_chop)))
+		if (state.hands.some(hand => hand.some(o => o !== old_chop && state.deck[o].matches(old_chop_card))))
 			return -10;
 
 		return Math.max(find_clue_value(result), state.isCritical(old_chop_card) ? 0.1 : -Infinity);
@@ -129,8 +129,8 @@ export function find_clues(game, options = {}) {
 			const focused_card = state.deck[focus];
 
 			const in_finesse = common.waiting_connections.some(w_conn => {
-				const { focused_card: wc_focus, inference } = w_conn;
-				const matches = player.thoughts[wc_focus.order].matches(inference, { assume: true });
+				const { focus: wc_focus, inference } = w_conn;
+				const matches = player.thoughts[wc_focus].matches(inference, { assume: true });
 
 				return matches && focused_card.playedBefore(inference, { equal: true });
 			});
@@ -152,8 +152,8 @@ export function find_clues(game, options = {}) {
 				continue;
 
 			const stomped_finesse = common.waiting_connections.some(w_conn => {
-				const { focused_card: wc_focus, connections, conn_index, inference } = w_conn;
-				const matches = player.thoughts[wc_focus.order].matches(inference, { assume: true });
+				const { focus: wc_focus, connections, conn_index, inference } = w_conn;
+				const matches = player.thoughts[wc_focus].matches(inference, { assume: true });
 
 				return matches && list.some(o => {
 					const card = hypo_game.common.thoughts[o];
@@ -218,7 +218,7 @@ export function find_clues(game, options = {}) {
 					break;
 
 				case CLUE_INTERP.CM_TEMPO: {
-					const { tempo, valuable } = valuable_tempo_clue(game, clue, clue.result.playables, focused_card);
+					const { tempo, valuable } = valuable_tempo_clue(game, clue, clue.result.playables, focus);
 
 					if (!safe) {
 						logger.highlight('yellow', 'unsafe!');

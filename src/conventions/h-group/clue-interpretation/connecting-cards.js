@@ -63,7 +63,7 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 				inferences = old_card.inferred.subtract(old_card.inferred.filter(inf => inf.playedBefore(identity)));
 
 				// If a waiting connection will reveal this card, assume it will be known in time.
-				const connection = common.waiting_connections.find(conn => !conn.symmetric && conn.focused_card.order == order && conn.target !== state.ourPlayerIndex);
+				const connection = common.waiting_connections.find(conn => !conn.symmetric && conn.focus == order && conn.target !== state.ourPlayerIndex);
 				if (connection !== undefined)
 					inferences = inferences.intersect(connection.inference);
 			}
@@ -186,7 +186,7 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 
 			return card.touched && !card.newly_clued &&
 				(state.deck[order].identity() !== undefined || common.dependentConnections(order).every(wc =>
-					!wc.symmetric && wc.focused_card.matches(wc.inference, { assume: true })));
+					!wc.symmetric && state.deck[wc.focus].matches(wc.inference, { assume: true })));
 		};
 
 		if (state.hands.some((hand, index) => index !== giver && hand.some(o => order_touched(o) && state.deck[o].matches(finesse_card)))) {

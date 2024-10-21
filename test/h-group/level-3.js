@@ -8,7 +8,6 @@ import HGroup from '../../src/conventions/h-group.js';
 import logger from '../../src/tools/logger.js';
 
 import { order_1s } from '../../src/conventions/h-group/action-helper.js';
-import { logHand } from '../../src/tools/log.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
@@ -163,8 +162,6 @@ describe('sarcastic discard', () => {
 
 		takeTurn(game, 'Bob clues yellow to Alice (slots 4,5)');
 		takeTurn(game, 'Cathy clues 4 to Alice (slots 4,5)');
-
-		logger.info('hand', logHand(state.hands[PLAYER.ALICE].map(o => game.state.deck[o])));
 
 		// Alice should play slot 4 instead of discarding for tempo.
 		const action = game.take_action(game);

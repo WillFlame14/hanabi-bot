@@ -205,33 +205,35 @@ export function take_action(game) {
 	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
 
 	// Look for playables, trash and important discards in own hand
-	let playable_cards = me.thinksPlayables(state, state.ourPlayerIndex).map(order => me.thoughts[order]);
-	let trash_cards = me.thinksTrash(state, state.ourPlayerIndex).filter(o => common.thoughts[o].saved).map(order => me.thoughts[order]);
+	let playable_orders = me.thinksPlayables(state, state.ourPlayerIndex);
+	let trash_orders = me.thinksTrash(state, state.ourPlayerIndex).filter(o => common.thoughts[o].saved);
 
 	// Discards must be inferred, playable, trash, not duplicated in our hand and not part of a connection
-	const discards = playable_cards.filter(card => {
+	const discards = playable_orders.filter(order => {
+		const card = me.thoughts[order];
 		const id = card.identity({ infer: true });
 
 		return game.level >= LEVEL.SARCASTIC &&
 			id !== undefined &&
-			trash_cards.some(c => c.order === card.order) &&
-			!playable_cards.some(c => c.matches(id, { infer: true }) && c.order !== card.order) &&
-			!common.dependentConnections(card.order).some(wc => !wc.symmetric);
+			trash_orders.includes(order) &&
+			!playable_orders.some(o => card.matches(id, { infer: true }) && o !== order) &&
+			!common.dependentConnections(order).some(wc => !wc.symmetric);
 	});
 
-	const playable_trash = playable_cards.filter(card => {
-		const id = card.identity({ infer: true });
+	const playable_trash = playable_orders.filter(order => {
+		const id = me.thoughts[order].identity({ infer: true });
 
 		// Pick the leftmost of all playable trash cards
-		return id !== undefined && !playable_cards.some(c => c.matches(id, { infer: true }) && c.order > card.order);
+		return id !== undefined && !playable_orders.some(o => me.thoughts[o].matches(id, { infer: true }) && o > order);
 	});
 
 	// Remove trash from playables (but not playable trash) and discards and playable trash from trash cards
-	playable_cards = playable_cards.filter(pc => !trash_cards.some(tc => tc.order === pc.order) || playable_trash.some(pt => pt.order === pc.order));
-	trash_cards = trash_cards.filter(tc => !discards.some(dc => dc.order === tc.order) && !playable_trash.some(pt => pt.order === tc.order));
+	playable_orders = playable_orders.filter(o => !trash_orders.includes(o) || playable_trash.includes(o));
+	trash_orders = trash_orders.filter(o => !discards.includes(o) && !playable_trash.includes(o));
 
-	if (playable_cards.length > 0 && state.endgameTurns > 0) {
-		const best_connector = Utils.maxOn(playable_cards, card => {
+	if (playable_orders.length > 0 && state.endgameTurns > 0) {
+		const best_connector = Utils.maxOn(playable_orders, order => {
+			const card = me.thoughts[order];
 			const old_play_stacks = state.play_stacks.slice();
 			let connectables = 0;
 
@@ -253,34 +255,34 @@ export function take_action(game) {
 		}, 1);
 
 		const best_playable = best_connector ??
-			playable_cards.find(c => c.inferred.every(i => i.rank === 5)) ??
-			playable_cards.find(c => c.inferred.every(i => state.isCritical(i))) ??
-			playable_cards[0];
+			playable_orders.find(o => me.thoughts[o].inferred.every(i => i.rank === 5)) ??
+			playable_orders.find(o => me.thoughts[o].inferred.every(i => state.isCritical(i))) ??
+			playable_orders[0];
 
-		return { tableID, type: ACTION.PLAY, target: best_playable.order };
+		return { tableID, type: ACTION.PLAY, target: best_playable };
 	}
 
 	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
 
-	if (playable_cards.length > 0)
-		logger.info('playable cards', logHand(playable_cards));
+	if (playable_orders.length > 0)
+		logger.info('playable cards', logHand(playable_orders));
 
-	if (trash_cards.length > 0)
-		logger.info('trash cards', logHand(trash_cards));
+	if (trash_orders.length > 0)
+		logger.info('trash cards', logHand(trash_orders));
 
 	if (discards.length > 0)
 		logger.info('discards', logHand(discards));
 
-	const playable_priorities = determine_playable_card(game, playable_cards.map(c => c.order));
+	const playable_priorities = determine_playable_card(game, playable_orders);
 
 	const actionPrioritySize = Object.keys(ACTION_PRIORITY).length;
 	const { priority, best_playable_order } = playable_priorities.some(playables => playables.length > 0) ?
-		find_best_playable(game, playable_cards.map(c => c.order), playable_priorities) :
+		find_best_playable(game, playable_orders, playable_priorities) :
 		{ priority: -1, best_playable_order: undefined };
-	const is_finessed = playable_cards.length > 0 && priority === 0 && !state.deck[best_playable_order].clued;
+	const is_finessed = playable_orders.length > 0 && priority === 0 && !state.deck[best_playable_order].clued;
 
 	// Bluffs should never be deferred as they can lead to significant desync with human players
-	if (is_finessed && playable_cards.some(c => common.thoughts[c.order].bluffed || common.thoughts[c.order].possibly_bluffed))
+	if (is_finessed && playable_orders.some(o => common.thoughts[o].bluffed || common.thoughts[o].possibly_bluffed))
 		return { tableID, type: ACTION.PLAY, target: best_playable_order };
 
 	// ALways give a save clue after a Generation Discard to avoid desync
@@ -306,7 +308,7 @@ export function take_action(game) {
 			return action;
 	}
 
-	const discardable = trash_cards[0]?.order ?? common.chop(state.ourHand);
+	const discardable = trash_orders[0] ?? common.chop(state.ourHand);
 
 	if (!is_finessed && state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
 		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
@@ -427,7 +429,7 @@ export function take_action(game) {
 		return Utils.clueToAction(best_play_clue, tableID);
 
 	// If we have a finesse and no urgent high value clues to give, play into the finesse.
-	if (playable_cards.length > 0 && priority === 0)
+	if (playable_orders.length > 0 && priority === 0)
 		return { tableID, type: ACTION.PLAY, target: best_playable_order };
 
 	// Blind play a missing card in the endgame
@@ -448,7 +450,7 @@ export function take_action(game) {
 
 	// Sarcastic discard to someone else
 	if (game.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {
-		const identity = discards[0].identity({ infer: true });
+		const identity = me.thoughts[discards[0]].identity({ infer: true });
 
 		const duplicates = state.hands.reduce((cards, hand, index) => {
 			if (index === state.ourPlayerIndex)
@@ -459,9 +461,9 @@ export function take_action(game) {
 		if (!duplicates.every(c => c.inferred.every(p => p.matches(identity) || state.isBasicTrash(p)))) {
 			// If playing reveals duplicates are trash, playing is better for tempo
 			if (duplicates.every(c => c.possible.every(p => p.matches(identity) || state.isBasicTrash(p))))
-				return { tableID, type: ACTION.PLAY, target: discards[0].order };
+				return { tableID, type: ACTION.PLAY, target: discards[0] };
 
-			return { tableID, type: ACTION.DISCARD, target: discards[0].order };
+			return { tableID, type: ACTION.DISCARD, target: discards[0] };
 		}
 	}
 
@@ -470,23 +472,23 @@ export function take_action(game) {
 		return urgent_actions[ACTION_PRIORITY.UNLOCK + actionPrioritySize][0];
 
 	// Forced discard if next player is locked
-	if ((state.clue_tokens === 0 || (state.clue_tokens === 1 && playable_cards.length === 0)) && common.thinksLocked(state, nextPlayerIndex))
-		return take_discard(game, state.ourPlayerIndex, trash_cards);
+	if ((state.clue_tokens === 0 || (state.clue_tokens === 1 && playable_orders.length === 0)) && common.thinksLocked(state, nextPlayerIndex))
+		return take_discard(game, state.ourPlayerIndex, trash_orders);
 
 	// Playing a connecting card or playing a 5
 	if (best_playable_order !== undefined && priority <= 3)
 		return { tableID, type: ACTION.PLAY, target: best_playable_order };
 
 	// Discard known trash at high pace, low clues
-	if (best_playable_order === undefined && trash_cards.length > 0 && state.pace > state.numPlayers * 2 && state.clue_tokens <= 2)
-		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
+	if (best_playable_order === undefined && trash_orders.length > 0 && state.pace > state.numPlayers * 2 && state.clue_tokens <= 2)
+		return { tableID, type: ACTION.DISCARD, target: trash_orders[0] };
 
 	// Shout Discard on a valuable card that moves chop to trash
 	const next_chop = me.chop(state.hands[nextPlayerIndex]);
 	const should_shout = game.level >= LEVEL.LAST_RESORTS &&
 		best_playable_order !== undefined &&
 		!me.thinksLoaded(state, nextPlayerIndex, { assume: true }) &&
-		trash_cards.length > 0 &&
+		trash_orders.length > 0 &&
 		next_chop !== undefined &&
 		state.clue_tokens <= 2;
 
@@ -495,7 +497,7 @@ export function take_action(game) {
 
 		if (cardValue(state, me, state.deck[next_chop], next_chop) >= 1 && new_chop_value === 0) {
 			logger.highlight('yellow', `performing shout discard on ${logCard(state.deck[next_chop])}`);
-			return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
+			return { tableID, type: ACTION.DISCARD, target: trash_orders[0] };
 		}
 	}
 
@@ -569,8 +571,8 @@ export function take_action(game) {
 	}
 
 	// Discard known trash (no pace requirement)
-	if (trash_cards.length > 0 && !state.inEndgame() && state.clue_tokens < 8)
-		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
+	if (trash_orders.length > 0 && !state.inEndgame() && state.clue_tokens < 8)
+		return { tableID, type: ACTION.DISCARD, target: trash_orders[0] };
 
 	// Early save
 	if (state.clue_tokens > 0 && urgent_actions[actionPrioritySize * 2].length > 0)
@@ -605,36 +607,21 @@ export function take_action(game) {
 		logger.info('no valid stall! severity', common_severity);
 	}
 
-	return take_discard(game, state.ourPlayerIndex, trash_cards);
+	return take_discard(game, state.ourPlayerIndex, trash_orders);
 }
 
 /**
  * Takes the best discard in hand for the given playerIndex.
- * @template {{order: number}} T
  * @param {Game} game
  * @param {number} playerIndex
- * @param {T[]} trash_cards
+ * @param {number[]} trash_orders
  */
-function take_discard(game, playerIndex, trash_cards) {
-	const { tableID } = game;
+function take_discard(game, playerIndex, trash_orders) {
+	const { common, state, tableID } = game;
+	const hand = state.hands[playerIndex];
 
 	// Discarding known trash is preferable to chop
-	if (trash_cards.length > 0)
-		return { tableID, type: ACTION.DISCARD, target: trash_cards[0].order };
-
-	return discard_chop(game, playerIndex);
-}
-
-/**
- * Discards the card on chop for the given playerIndex.
- * @param {Game} game
- * @param {number} playerIndex
- */
-function discard_chop(game, playerIndex) {
-	const { common, state, tableID } = game;
-
-	// Nothing else to do, so discard chop
-	const discard = common.chop(state.hands[playerIndex]) ?? common.lockedDiscard(state, state.hands[playerIndex]);
+	const discard = trash_orders[0] ?? common.chop(hand) ?? common.lockedDiscard(state, hand);
 
 	return { tableID, type: ACTION.DISCARD, target: discard };
 }

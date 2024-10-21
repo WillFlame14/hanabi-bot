@@ -47,15 +47,10 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 	for (const order of state.ourHand) {
 		const id = me.thoughts[order].identity({ infer: true });
 
-		if (id !== undefined) {
-			common_state.deck = common_state.deck.with(order, produce(common_state.deck[order], (draft) => {
-				draft.suitIndex = id.suitIndex;
-				draft.rank = id.rank;
-			}));
-		}
-		else {
+		if (id !== undefined)
+			common_state.deck = common_state.deck.with(order, produce(common_state.deck[order], Utils.assignId(id)));
+		else
 			unknown_own.push(order);
-		}
 	}
 
 	timeout = new Date();
@@ -81,15 +76,10 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 				const identity = unseen_identities[i];
 				const order = locs[i];
 
-				if (unknown_own.includes(order)) {
-					new_state.deck = new_state.deck.with(order, produce(new_state.deck[order], (draft) => {
-						draft.suitIndex = identity.suitIndex;
-						draft.rank = identity.rank;
-					}));
-				}
-				else {
+				if (unknown_own.includes(order))
+					new_state.deck = new_state.deck.with(order, produce(new_state.deck[order], Utils.assignId(identity)));
+				else
 					new_state.deck[order] = new ActualCard(identity.suitIndex, identity.rank, order);
-				}
 			}
 
 			let found_solution = true;

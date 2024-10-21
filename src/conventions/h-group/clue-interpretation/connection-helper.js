@@ -73,12 +73,12 @@ export function valid_bluff(game, action, identity, reacting, connected) {
  * @param {State} state
  * @param {SymFocusPossibility[]} sym_possibilities
  * @param {FocusPossibility[]} existing_connections
- * @param {ActualCard} focused_card
+ * @param {number} focus
  * @param {number} giver
  * @param {number} target
  * @returns {WaitingConnection[]}
  */
-export function generate_symmetric_connections(state, sym_possibilities, existing_connections, focused_card, giver, target) {
+export function generate_symmetric_connections(state, sym_possibilities, existing_connections, focus, giver, target) {
 	const symmetric_connections = [];
 
 	for (const sym of sym_possibilities) {
@@ -95,7 +95,7 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
 		symmetric_connections.push({
 			connections,
 			conn_index: 0,
-			focused_card,
+			focus,
 			inference: { suitIndex, rank },
 			giver,
 			target,

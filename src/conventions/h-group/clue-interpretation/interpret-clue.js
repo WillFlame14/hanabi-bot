@@ -123,7 +123,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			common.waiting_connections.push({
 				connections,
 				conn_index: 0,
-				focused_card,
+				focus,
 				inference,
 				giver,
 				target,
@@ -143,7 +143,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		));
 		const ownBlindPlays = correct_match?.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length || 0;
 		const symmetric_fps = find_symmetric_connections(game, old_game, action, inf_possibilities, selfRanks, ownBlindPlays);
-		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focused_card, giver, target);
+		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focus, giver, target);
 
 		if (correct_match?.connections[0]?.bluff) {
 			const { reacting } = correct_match.connections[0];
@@ -363,7 +363,7 @@ export function interpret_clue(game, action) {
 	const to_remove = new Set();
 
 	for (const [i, waiting_connection] of Object.entries(common.waiting_connections)) {
-		const { connections, conn_index, action_index, focused_card: wc_focus, inference, target: wc_target } = waiting_connection;
+		const { connections, conn_index, action_index, focus: wc_focus, inference, target: wc_target } = waiting_connection;
 		const focus_id = state.deck[focus].identity();
 
 		if (focus_id !== undefined && list.length === 1) {
@@ -387,17 +387,17 @@ export function interpret_clue(game, action) {
 		if (impossible_conn !== undefined)
 			logger.warn(`connection [${connections.map(logConnection)}] depends on revealed card having identities ${impossible_conn.identities.map(logCard)}`);
 
-		else if (!common.thoughts[wc_focus.order].possible.has(inference))
+		else if (!common.thoughts[wc_focus].possible.has(inference))
 			logger.warn(`connection [${connections.map(logConnection)}] depends on focused card having identity ${logCard(inference)}`);
 
 		else
 			continue;
 
-		const rewind_card = state.deck[impossible_conn?.order] ?? wc_focus;
-		const rewind_identity = common.thoughts[rewind_card.order]?.identity();
+		const rewind_order = impossible_conn?.order ?? wc_focus;
+		const rewind_identity = common.thoughts[rewind_order]?.identity();
 
-		if (rewind_identity !== undefined && !common.thoughts[rewind_card.order].rewinded && wc_target === state.ourPlayerIndex && state.ourHand.includes(rewind_card.order)) {
-			const new_game = game.rewind(rewind_card.drawn_index, [{ type: 'identify', order: rewind_card.order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] }]);
+		if (rewind_identity !== undefined && !common.thoughts[rewind_order].rewinded && wc_target === state.ourPlayerIndex && state.ourHand.includes(rewind_order)) {
+			const new_game = game.rewind(state.deck[rewind_order].drawn_index, [{ type: 'identify', order: rewind_order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] }]);
 			if (new_game) {
 				Object.assign(game, new_game);
 				return;
@@ -680,7 +680,7 @@ export function interpret_clue(game, action) {
 	}
 
 	try {
-		logger.debug('hand state after clue', logHand(state.hands[target].map(o => state.deck[o])));
+		logger.debug('hand state after clue', logHand(state.hands[target]));
 	}
 	catch (err) {
 		logger.info('Failed to debug hand state', err, state.hands[target], Utils.globals.game.common.thoughts.map(c => c.order));

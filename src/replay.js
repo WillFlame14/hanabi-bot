@@ -82,12 +82,12 @@ async function main() {
 	const game = new conventions[/** @type {keyof typeof conventions} */(convention)](Number(id), state, false, Number(level ?? 1));
 	game.catchup = true;
 
-	Utils.globalModify({ game,  cache: new Map() });
+	Utils.globalModify({ game, cache: new Map() });
 
 	// Draw cards in starting hands
 	for (let playerIndex = 0; playerIndex < state.numPlayers; playerIndex++) {
 		for (let i = 0; i < state.handSize; i++) {
-			const { suitIndex, rank } = deck[order];
+			const { suitIndex, rank } = playerIndex !== state.ourPlayerIndex ? deck[order] : { suitIndex: -1, rank: -1 };
 			game.handle_action({ type: 'draw', playerIndex, order, suitIndex, rank });
 			order++;
 		}
@@ -103,7 +103,7 @@ async function main() {
 		game.handle_action(Utils.performToAction(game.state, action, currentPlayerIndex, deck));
 
 		if ((action.type === ACTION.PLAY || action.type === ACTION.DISCARD) && order < deck.length) {
-			const { suitIndex, rank } = deck[order];
+			const { suitIndex, rank } = currentPlayerIndex !== state.ourPlayerIndex ? deck[order] : { suitIndex: -1, rank: -1 };
 			game.handle_action({ type: 'draw', playerIndex: currentPlayerIndex, order, suitIndex, rank });
 			order++;
 		}

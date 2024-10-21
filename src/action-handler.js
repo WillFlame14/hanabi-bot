@@ -25,11 +25,6 @@ export function handle_action(action) {
 	if (action.type === 'clue' && action.giver === state.ourPlayerIndex)
 		this.handHistory[state.turn_count] = Utils.objClone(state.ourHand);
 
-	const update_func = (suitIndex, rank) => (draft) => {
-		draft.suitIndex = suitIndex;
-		draft.rank = rank;
-	};
-
 	switch(action.type) {
 		case 'clue': {
 			// {type: 'clue', clue: { type: 1, value: 1 }, giver: 0, list: [ 8, 9 ], target: 1, turn: 0}
@@ -61,8 +56,8 @@ export function handle_action(action) {
 			const card = state.deck[order];
 
 			if (card.identity() === undefined)
-				state.deck = state.deck.with(order, produce(card, update_func(suitIndex, rank)));
-			this.players[playerIndex].updateThoughts(order, update_func(suitIndex, rank));
+				state.deck = state.deck.with(order, produce(card, Utils.assignId({ suitIndex, rank })));
+			this.players[playerIndex].updateThoughts(order, Utils.assignId({ suitIndex, rank }));
 
 			logger.highlight('yellowb', `Turn ${state.turn_count}: ${logAction(action)}`);
 
@@ -138,8 +133,8 @@ export function handle_action(action) {
 			const card = state.deck[order];
 
 			if (card.identity() === undefined)
-				state.deck = state.deck.with(order, produce(card, update_func(suitIndex, rank)));
-			this.players[playerIndex].updateThoughts(order, update_func(suitIndex, rank));
+				state.deck = state.deck.with(order, produce(card, Utils.assignId({ suitIndex, rank })));
+			this.players[playerIndex].updateThoughts(order, Utils.assignId({ suitIndex, rank }));
 
 			logger.highlight('yellowb', `Turn ${state.turn_count}: ${logAction(action)}`);
 
@@ -174,8 +169,9 @@ export function handle_action(action) {
 			});
 
 			if (!infer && identities.length === 1) {
-				this.me.updateThoughts(order, update_func(identities[0].suitIndex, identities[0].rank));
-				state.deck = state.deck.with(order, produce(state.deck[order], update_func(identities[0].suitIndex, identities[0].rank)));
+				const { suitIndex, rank } = identities[0];
+				this.me.updateThoughts(order, Utils.assignId({ suitIndex, rank }));
+				state.deck = state.deck.with(order, produce(state.deck[order], Utils.assignId({ suitIndex, rank })));
 			}
 			team_elim(this);
 			break;

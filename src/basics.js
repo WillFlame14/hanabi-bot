@@ -1,5 +1,6 @@
 import { ActualCard, Card } from './basics/Card.js';
 import { cardCount, find_possibilities } from './variants.js';
+import * as Utils from './tools/util.js';
 import { produce } from './StateProxy.js';
 
 /**
@@ -78,17 +79,15 @@ export function onDiscard(game, action) {
 
 	if (suitIndex !== -1 && rank !== -1) {
 		state.discard_stacks[suitIndex][rank - 1]++;
-		state.deck[order] = produce(state.deck[order], (draft) => {
-			draft.suitIndex = suitIndex;
-			draft.rank = rank;
-		});
+		state.deck[order] = produce(state.deck[order], Utils.assignId({ suitIndex, rank }));
 
 		for (const player of game.allPlayers) {
+			const { possible, inferred } = player.thoughts[order];
 			player.updateThoughts(order, (draft) => {
 				draft.suitIndex = suitIndex;
 				draft.rank = rank;
-				draft.possible = player.thoughts[order].possible.intersect(identity);
-				draft.inferred = player.thoughts[order].inferred.intersect(identity);
+				draft.possible = possible.intersect(identity);
+				draft.inferred = inferred.intersect(identity);
 			});
 
 			player.card_elim(state);
@@ -158,10 +157,7 @@ export function onPlay(game, action) {
 
 	if (suitIndex !== undefined && rank !== undefined) {
 		state.play_stacks[suitIndex] = rank;
-		state.deck[order] = produce(state.deck[order], (draft) => {
-			draft.suitIndex = suitIndex;
-			draft.rank = rank;
-		});
+		state.deck[order] = produce(state.deck[order], Utils.assignId({ suitIndex, rank }));
 
 		for (const player of game.allPlayers) {
 			const { possible, inferred } = player.thoughts[order];

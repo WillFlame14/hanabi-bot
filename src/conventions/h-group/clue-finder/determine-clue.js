@@ -76,7 +76,7 @@ export function evaluate_clue(game, action, clue, target, target_card) {
 			// The focused card must not have been reset and must match inferences
 			if (order === target_card.order) {
 				if (card.reset && !game.common.thoughts[order].reset) {
-					reason = `card ${logCard(state.deck[card.order])} ${card.order} lost all inferences and was reset`;
+					reason = `card ${logCard(state.deck[order])} ${order} lost all inferences and was reset`;
 					break;
 				}
 
@@ -103,7 +103,7 @@ export function evaluate_clue(game, action, clue, target, target_card) {
 
 			// For non-focused cards:
 			if (card.reset) {
-				reason = `card ${logCard(state.deck[card.order])} ${card.order} lost all inferences and was reset`;
+				reason = `card ${logCard(state.deck[order])} ${order} lost all inferences and was reset`;
 				break;
 			}
 
@@ -117,7 +117,7 @@ export function evaluate_clue(game, action, clue, target, target_card) {
 				card.inferred.every(i => i.rank <= hypo_game.common.hypo_stacks[i.suitIndex] + 1);
 
 			if (looks_playable && !card.inferred.has(visible_card)) {
-				reason = `card ${logCard(visible_card)} ${visible_card.order} looks incorrectly playable with inferences [${card.inferred.map(logCard).join(',')}]`;
+				reason = `card ${logCard(visible_card)} ${order} looks incorrectly playable with inferences [${card.inferred.map(logCard).join(',')}]`;
 				break;
 			}
 		}

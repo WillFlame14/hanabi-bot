@@ -250,7 +250,7 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 		target: reacting.at(-1),
 		conn_index: 0,
 		turn: state.turn_count,
-		focused_card: actual_card,
+		focus: connections.at(-1).order,
 		inference: actual_card.raw(),
 		action_index: state.actionList.length - 1
 	});

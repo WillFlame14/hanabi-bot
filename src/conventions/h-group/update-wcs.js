@@ -19,7 +19,7 @@ import { logCard, logConnection } from '../../tools/log.js';
  */
 export function remove_finesse(game, waiting_connection) {
 	const { common, state } = game;
-	const { connections, focused_card, inference, symmetric } = waiting_connection;
+	const { connections, focus, inference, symmetric } = waiting_connection;
 
 	// Remove remaining finesses
 	for (const connection of connections) {
@@ -64,8 +64,8 @@ export function remove_finesse(game, waiting_connection) {
 	}
 
 	// Remove inference (if possible)
-	if (common.thoughts[focused_card.order].possible.length > 1)
-		common.updateThoughts(focused_card.order, (draft) => { draft.inferred = common.thoughts[focused_card.order].inferred.subtract(inference); });
+	if (common.thoughts[focus].possible.length > 1)
+		common.updateThoughts(focus, (draft) => { draft.inferred = common.thoughts[focus].inferred.subtract(inference); });
 
 	common.update_hypo_stacks(state);
 }
@@ -93,7 +93,7 @@ function stomped_finesse(game, reacting, order, waiting_connection, options) {
  */
 export function resolve_card_retained(game, waiting_connection) {
 	const { common, state, me } = game;
-	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback, focused_card } = waiting_connection;
+	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback, focus } = waiting_connection;
 	const { type, reacting, ambiguous, bluff, identities } = connections[conn_index];
 	const { order } = connections[conn_index];
 
@@ -164,7 +164,7 @@ export function resolve_card_retained(game, waiting_connection) {
 		// Didn't play into a self-connection
 		if (!bluff && reacting === target) {
 			const alternate_conn = game.common.waiting_connections.find(wc =>
-				wc.focused_card.order === focused_card.order && wc.connections.every(conn => conn.order !== order));
+				wc.focus === focus && wc.connections.every(conn => conn.order !== order));
 
 			if (alternate_conn !== undefined) {
 				logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but alternate conn [${alternate_conn.connections.map(logConnection).join(' -> ')}] exists not using this card`);
@@ -172,7 +172,7 @@ export function resolve_card_retained(game, waiting_connection) {
 			}
 
 			/** @param {number} our_finesse */
-			const allowable_hesitation = (our_finesse) => our_finesse !== undefined && common.thoughts[focused_card.order].inferred.find(i =>
+			const allowable_hesitation = (our_finesse) => our_finesse !== undefined && common.thoughts[focus].inferred.find(i =>
 				!i.matches(inference) && common.thoughts[our_finesse].inferred.has(i));
 
 			if (giver !== state.ourPlayerIndex && reacting !== state.ourPlayerIndex && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
@@ -281,7 +281,7 @@ export function resolve_card_retained(game, waiting_connection) {
  */
 export function resolve_card_played(game, waiting_connection) {
 	const { common, state } = game;
-	const { connections, conn_index, inference, target, focused_card } = waiting_connection;
+	const { connections, conn_index, inference, target, focus } = waiting_connection;
 	const { type, reacting, identities } = connections[conn_index];
 
 	logger.info(`waiting card ${identities.length === 1 ? logCard(identities[0]) : '(unknown)'} played`);
@@ -309,7 +309,7 @@ export function resolve_card_played(game, waiting_connection) {
 		else {
 			// Should prompts demonstrate connections? Sometimes acting on asymmetric info can look like a prompt.
 			const demonstration = (type === 'finesse' || game.level < LEVEL.INTERMEDIATE_FINESSES) ?
-				{ card: focused_card, inferences: [inference], connections: connections.slice(conn_index + 1) } :
+				{ order: focus, inferences: [inference], connections: connections.slice(conn_index + 1) } :
 				undefined;
 
 			const only_clued_connections_left = waiting_connection.connections.every((conn, index) =>

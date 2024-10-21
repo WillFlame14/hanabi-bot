@@ -226,7 +226,7 @@ export function interpret_clue(game, action) {
 									target,
 									conn_index: 0,
 									turn: state.turn_count,
-									focused_card: state.deck[state.hands[target][target_index]],
+									focus: state.hands[target][target_index],
 									inference: { suitIndex: inf.suitIndex, rank: inf.rank + 1 },
 									action_index: state.actionList.length
 								});

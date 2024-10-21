@@ -40,7 +40,7 @@ export function interpret_tcm(game, target, focus_order) {
 	for (let i = oldest_trash_index + 1; i < state.hands[target].length; i++) {
 		const order = state.hands[target][i];
 
-		if (!state.deck[state.hands[target][i]].clued && !common.thoughts[order].chop_moved) {
+		if (!state.deck[order].clued && !common.thoughts[order].chop_moved) {
 			const { inferred } = common.thoughts[order];
 			common.updateThoughts(order, (draft) => {
 				// Remove all commonly trash identities

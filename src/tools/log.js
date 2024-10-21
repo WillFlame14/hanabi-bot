@@ -42,17 +42,17 @@ export function logCard(card) {
 
 /**
  * Returns a log-friendly representation of a hand.
- * @param {{ order: number }[]} hand
+ * @param {number[]} hand
  * @param {Player} [player]
  */
 export function logHand(hand, player = globals.game.common) {
 	const new_hand = [];
 
-	for (const { order } of hand) {
+	for (const order of hand) {
 		const card = player.thoughts[order];
 		const new_card = {};
 		new_card.visible = (card.suitIndex === -1 ? 'unknown' : logCard(card));
-		new_card.order = card.order;
+		new_card.order = order;
 
 		new_card.flags = ['clued', 'newly_clued', 'prompted', 'finessed', 'bluffed', 'certain_finessed', 'chop_moved', 'rewinded', 'hidden', 'trash', 'called_to_discard'].filter(flag => card[flag]);
 

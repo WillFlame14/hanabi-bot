@@ -1,6 +1,5 @@
 /**
  * @typedef {import('./basics/Card.js').Card} Card
- * @typedef {import('./basics/Card.js').ActualCard} ActualCard
  * @typedef {typeof import('./constants.js').CLUE} CLUE
  * @typedef {typeof import('./constants.js').ACTION} ACTION
  * @typedef {typeof import('./conventions/h-group/h-constants.js').CLUE_INTERP} CLUE_INTERP
@@ -123,7 +122,7 @@
  * @property {number} target
  * @property {number} conn_index
  * @property {number} turn
- * @property {ActualCard} focused_card
+ * @property {number} focus
  * @property {Identity} inference
  * @property {number} action_index
  * @property {boolean} [ambiguousPassback]

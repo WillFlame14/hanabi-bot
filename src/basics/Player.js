@@ -157,13 +157,13 @@ export class Player {
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
 				((options?.assume ?? true) || !this.waiting_connections.some((wc, i1) =>
 					// Unplayable target of possible waiting connection
-					(wc.focused_card.order === o && !state.isPlayable(wc.inference) && card.possible.has(wc.inference)) ||
+					(wc.focus === o && !state.isPlayable(wc.inference) && card.possible.has(wc.inference)) ||
 					wc.connections.some((conn, ci) => ci >= wc.conn_index && conn.order === o && (
 						// Unplayable connecting card
 						conn.identities.some(i => !state.isPlayable(i) && card.possible.has(i)) ||
 						// A different connection on the same focus doesn't use this connecting card
 						this.waiting_connections.some((wc2, i2) =>
-							i1 !== i2 && wc2.focused_card.order === wc.focused_card.order && wc2.connections.every(conn2 => conn2.order !== o))))
+							i1 !== i2 && wc2.focus === wc.focus && wc2.connections.every(conn2 => conn2.order !== o))))
 				)) &&
 				state.hasConsistentInferences(card);
 		});
@@ -305,7 +305,7 @@ export class Player {
 					continue;
 
 				const fake_wcs = this.waiting_connections.filter(wc =>
-					wc.focused_card.order === order && !state.deck[wc.focused_card.order].matches(wc.inference, { assume: true }));
+					wc.focus === order && !state.deck[wc.focus].matches(wc.inference, { assume: true }));
 
 				// Ignore all waiting connections that will be proven wrong
 				const diff = produce(card, (draft) => { draft.inferred = card.inferred.subtract(fake_wcs.flatMap(wc => wc.inference)); });
@@ -358,7 +358,7 @@ export class Player {
 
 				if (rank !== hypo_stacks[suitIndex] + 1) {
 					// e.g. a duplicated 1 before any 1s have played will have all bad possibilities eliminated by good touch
-					logger.warn(`tried to add new playable card ${logCard(id)} ${card.order}, hypo stacks at ${hypo_stacks[suitIndex]}`);
+					logger.warn(`tried to add new playable card ${logCard(id)} ${order}, hypo stacks at ${hypo_stacks[suitIndex]}`);
 					continue;
 				}
 

@@ -54,10 +54,11 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 			return { focus: ordered_1s[0], chop: false, positional: false };
 	}
 
+	const sorted_list = list.toSorted((a, b) => b - a);
 	const focus =
-		list.find(o => (options.beforeClue ? !state.deck[o].clued : state.deck[o].newly_clued)) ??		// leftmost newly clued
-		list.find(o => player.thoughts[o].chop_moved) ??					// leftmost chop moved
-		list[0];																// leftmost reclued
+		sorted_list.find(o => (options.beforeClue ? !state.deck[o].clued : state.deck[o].newly_clued)) ??		// leftmost newly clued
+		sorted_list.find(o => player.thoughts[o].chop_moved) ??					// leftmost chop moved
+		sorted_list[0];															// leftmost reclued
 
 	if (focus === undefined) {
 		console.log('list', list, 'hand', hand.map(o => state.deck[o]), logClue(/** @type {Clue} */ (clue)));
@@ -145,11 +146,11 @@ export function rankLooksPlayable(game, rank, giver, target, order) {
  * @param {Game} game
  * @param {Clue} clue
  * @param {{playerIndex: number, card: Card}[]} playables
- * @param {ActualCard} focused_card
+ * @param {number} focus
  * 
  * Returns whether a clue is a tempo clue, and if so, whether it's valuable.
  */
-export function valuable_tempo_clue(game, clue, playables, focused_card) {
+export function valuable_tempo_clue(game, clue, playables, focus) {
 	const { state, common } = game;
 	const { target } = clue;
 
@@ -162,7 +163,7 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 	if ([variantRegexes.pinkish, variantRegexes.brownish].some(v => state.includesVariant(v) && list.every(o => knownAs(game, o, v))))
 		return { tempo: true, valuable: true };
 
-	const prompt = common.find_prompt(state, target, focused_card);
+	const prompt = common.find_prompt(state, target, state.deck[focus]);
 
 	// No prompt exists for this card (i.e. it is a hard burn)
 	if (prompt === undefined)
@@ -179,8 +180,8 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 		return { tempo: false, valuable: false };
 
 	const valuable = playables.length > 1 ||
-		(focused_card.rank !== 5 && prompt !== focused_card.order) ||
-		playables.some(({ card }) => card.chop_moved && card.newly_clued);
+		(state.deck[focus].rank !== 5 && prompt !== focus) ||
+		playables.some(p => ((card = common.thoughts[p.card.order]) => card.chop_moved && card.newly_clued)());
 
 	return { tempo: true, valuable };
 }
