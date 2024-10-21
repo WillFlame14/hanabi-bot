@@ -20,9 +20,9 @@ A game played at H-Group level 5 can be seen [here](https://github.com/WillFlame
 If you're interested in understanding how the bot works, I've written [some documentation](https://docs.google.com/document/d/1JMXtNnv3Bw_4Lf6uW_KIllp-Eb7d2wqa_vFaPJzWbDw/edit?usp=sharing).
 
 ## Running locally
-- You'll need to have NodeJS v20 or above. You can download it [here](https://nodejs.org/en/download/).
+- You'll need to have NodeJS v22 or above. You can download it [here](https://nodejs.org/en/download/).
 - Clone the repository to your own computer. There are lots of tutorials online on using Git if you don't know how that works.
-- Navigate to the cloned repository in a terminal and run `npm install` to install required dependencies.
+- Navigate to the cloned repository in a terminal. This project has no required dependencies, so `npm install` is only needed if you plan to develop locally.
 - If you want to run on an alternate hanabi-live server, export the server hostname as `HANABI_HOSTNAME`.
 - Export the environment variables `HANABI_USERNAME` and `HANABI_PASSWORD` for the bot to log in.
     - You'll need to create its account on hanab.live first.

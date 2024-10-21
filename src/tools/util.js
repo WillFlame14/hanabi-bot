@@ -375,53 +375,6 @@ export function setEquals(set1, set2) {
 }
 
 /**
- * Returns the intersection of two sets.
- * @template T
- * @param {Set<T>} set1
- * @param {Set<T>} set2
- */
-export function setIntersect(set1, set2) {
-	const [smallerSet, largerSet] = set1.size < set2.size ? [set1, set2] : [set2, set1];
-
-	const result = new Set();
-
-	for (const item of smallerSet) {
-		if (largerSet.has(item))
-			result.add(item);
-	}
-}
-
-/**
- * Returns (set1 \diff set2).
- * @template T
- * @param {Set<T>} set1
- * @param {Set<T>} set2
- */
-export function setDifference(set1, set2) {
-	const result = new Set();
-
-	for (const item of set1) {
-		if (!set2.has(item))
-			result.add(item);
-	}
-}
-
-/**
- * Returns the union of two sets.
- * @template T
- * @param {Set<T>} set1
- * @param {Set<T>} set2
- */
-export function setUnion(set1, set2) {
-	const [smallerSet, largerSet] = set1.size < set2.size ? [set1, set2] : [set2, set1];
-
-	const result = new Set(largerSet);
-
-	for (const item of smallerSet)
-		result.add(item);
-}
-
-/**
  * Groups the items in the array by the function provided.
  * @template T1
  * @template {string | number} T2

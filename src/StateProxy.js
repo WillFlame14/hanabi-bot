@@ -1,11 +1,6 @@
 import { types } from 'node:util';
 import * as Utils from './tools/util.js';
 
-/**
- * @template T
- * @typedef {import('./types.js').Writable<T>} Writable<T>
- */
-
 const PROXY_STATE = Symbol();
 
 const objectTraps = {
@@ -133,7 +128,7 @@ function createProxy(parent, base) {
 /**
  * @template T
  * @param {T} base
- * @param {(draft: Writable<T>) => void} producer
+ * @param {(draft: { -readonly [P in keyof T]: T[P] }) => void} producer
  */
 export function produce(base, producer) {
 	// Save old revokes/cards in case we're nesting produce() calls
@@ -141,7 +136,7 @@ export function produce(base, producer) {
 	revokes = [];
 
 	const rootClone = createProxy(undefined, base);
-	producer(/** @type {Writable<T>} */ (/** @type {unknown} */ (rootClone)));
+	producer(/** @type {{ -readonly [P in keyof T]: T[P] }} */ (/** @type {unknown} */ (rootClone)));
 	const res = finalize(rootClone);
 
 	// Revoke all proxies created

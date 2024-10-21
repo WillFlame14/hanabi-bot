@@ -51,7 +51,7 @@ export class HGroup_Player extends Player {
 		const hand = state.hands[playerIndex];
 		const chop = this.chop(hand, options);
 
-		return chop ? cardValue(state, this, state.deck[chop], chop) : (this.thinksLoaded(state, playerIndex) ? 0 : 4);
+		return chop !== undefined ? cardValue(state, this, state.deck[chop], chop) : (this.thinksLoaded(state, playerIndex) ? 0 : 4);
 	}
 
 	/**

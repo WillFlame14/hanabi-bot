@@ -1,8 +1,5 @@
 // @ts-nocheck
 import * as https from 'https';
-import WebSocket from 'ws';
-import * as dotenv from 'dotenv';
-dotenv.config();
 
 import { handle } from './command-handler.js';
 import { initConsole } from './tools/console.js';
@@ -18,8 +15,8 @@ function connect(bot_index = '') {
 	if (process.env[u_field] === undefined || process.env[p_field] === undefined)
 		throw new Error(`Missing ${u_field} and ${p_field} environment variables.`);
 
-	if (Number(process.versions.node.split('.')[0]) < 20)
-		throw new Error(`This program requires Node v20 or above! Currently using Node v${process.versions.node}.`);
+	if (Number(process.versions.node.split('.')[0]) < 22)
+		throw new Error(`This program requires Node v22 or above! Currently using Node v${process.versions.node}.`);
 
 	const username = encodeURIComponent(process.env[u_field]);
 	const password = encodeURIComponent(process.env[p_field]);
@@ -88,13 +85,13 @@ async function main() {
 	if (args.manual)
 		Utils.globalModify({ manual: true });
 
-	ws.on('open', () => console.log('Established websocket connection!'));
-	ws.on('error', (err) => console.log('Websocket error:', err));
-	ws.on('close', (msg) => console.log(`Websocket closed from server. ${msg}`));
+	ws.addEventListener('open', () => console.log('Established websocket connection!'));
+	ws.addEventListener('error', (err) => console.log('Websocket error:', err));
+	ws.addEventListener('close', (msg) => console.log(`Websocket closed from server. ${msg}`));
 
-	ws.on('message', (data) => {
+	ws.addEventListener('message', (event) => {
 		// Websocket messages are in the format: commandName {"field_name":"value"}
-		const str = data.toString();
+		const str = event.data;
 		const ind = str.indexOf(' ');
 		const [command, arg] = [str.slice(0, ind), str.slice(ind + 1)];
 

@@ -92,7 +92,7 @@ function stomped_finesse(game, reacting, order, waiting_connection, options) {
  * @param {WaitingConnection} waiting_connection
  */
 export function resolve_card_retained(game, waiting_connection) {
-	const { common, state, me } = game;
+	const { common, state } = game;
 	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback, focus } = waiting_connection;
 	const { type, reacting, ambiguous, bluff, identities } = connections[conn_index];
 	const { order } = connections[conn_index];
@@ -112,12 +112,13 @@ export function resolve_card_retained(game, waiting_connection) {
 	};
 
 	const last_reacting_action = game.last_actions[reacting];
-	const old_finesse = state.deck[connections.find((conn, i) => i >= conn_index && conn.reacting === state.ourPlayerIndex && conn.type === 'finesse')?.order];
+	const new_finesse_queued = connections.slice(conn_index).find(conn =>
+		conn.type === 'finesse' && state.hands[conn.reacting].some(o => {
+			const { inferred, finessed, finesse_index } = common.thoughts[o];
 
-	const new_finesse_queued = old_finesse !== undefined && state.ourHand.some(o => {
-		const { finessed, finesse_index } = me.thoughts[o];
-		return finessed && finesse_index > me.thoughts[old_finesse.order].finesse_index;
-	});
+			// A newer finesse exists on this player that is not part of the same suit.
+			return finessed && finesse_index > common.thoughts[conn.order].finesse_index && !inferred.some(i => i.suitIndex === conn.identities[0].suitIndex);
+		}));
 
 	// Didn't play into finesse
 	if (type === 'finesse' || type === 'prompt' || new_finesse_queued) {
