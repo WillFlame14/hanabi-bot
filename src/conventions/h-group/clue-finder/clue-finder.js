@@ -101,9 +101,9 @@ export function find_clues(game, options = {}) {
 
 	logger.highlight('whiteb', `------- FINDING CLUES ${giver !== state.ourPlayerIndex ? `(${state.playerNames[giver]}) ` : ''}-------`);
 
-	const play_clues = /** @type Clue[][] */ 	([]);
-	const save_clues = /** @type SaveClue[] */ 	([]);
-	const stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], [], []]);
+	let play_clues = /** @type Clue[][] */ 		([]);
+	let save_clues = /** @type SaveClue[] */ 	([]);
+	let stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], [], []]);
 
 	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, player.hypo_stacks, state.max_ranks);
 
@@ -311,32 +311,50 @@ export function find_clues(game, options = {}) {
 	const all_clues = [...save_clues.filter(c => c !== undefined), ...play_clues.flat(), ...stall_clues.flat()];
 
 	if (all_clues.length > 0) {
-		const best_remainder = Utils.maxOn(all_clues, clue => {
+		const remainders = new Map();
+		let best_remainder = Infinity;
+
+		for (const clue of all_clues) {
 			const discard = clue?.result?.discard;
 			const value = discard ? cardValue(state, hypo_games[logClue(clue)].me, state.deck[discard], discard) : 0;
-			clue.result.remainder = value;
+			remainders.set(logClue(clue), value);
 
-			return -clue.result.remainder;
-		}).result.remainder;
+			if (value < best_remainder)
+				best_remainder = value;
+		}
 
-		for (const clue of all_clues)
-			clue.result.remainder -= best_remainder;
+		play_clues = produce(play_clues, (draft) => {
+			for (const clue of draft.flat())
+				clue.result.remainder = remainders.get(logClue(clue)) - best_remainder;
+		});
+
+		save_clues = produce(save_clues, (draft) => {
+			for (const clue of draft) {
+				if (clue !== undefined)
+					clue.result.remainder = remainders.get(logClue(clue)) - best_remainder;
+			}
+		});
+
+		stall_clues = produce(stall_clues, (draft) => {
+			for (const clue of draft.flat())
+				clue.result.remainder = remainders.get(logClue(clue)) - best_remainder;
+		});
 	}
 
 	/** @type {FixClue[][]} */
 	const fix_clues = (early_exit || no_fix) ? Utils.range(0, state.numPlayers).map(_ => []) : find_fix_clues(game, play_clues, save_clues);
 
 	if (play_clues.some(clues => clues.length > 0))
-		logger.info('found play clues', play_clues.flatMap(clues => clues.map(clue => logClue(clue))));
+		logger.info('found play clues', play_clues.flatMap(clues => clues.map(logClue)));
 
 	if (save_clues.some(clue => clue !== undefined))
-		logger.info('found save clues', save_clues.filter(clue => clue !== undefined).map(clue => logClue(clue)));
+		logger.info('found save clues', save_clues.filter(clue => clue !== undefined).map(logClue));
 
 	if (fix_clues.some(clues => clues.length > 0))
 		logger.info('found fix clues', fix_clues.flatMap(clues => clues.map(clue => logClue(clue) + (clue.trash ? ' (trash)' : ''))));
 
 	if (stall_clues.some(clues => clues.length > 0))
-		logger.info('found stall clues', stall_clues.map(clues => clues.map(clue => logClue(clue))));
+		logger.info('found stall clues', stall_clues.map(clues => clues.map(logClue)));
 
 	Utils.globals.cache.set(hash, { play_clues, save_clues, fix_clues, stall_clues });
 	return { play_clues, save_clues, fix_clues, stall_clues };

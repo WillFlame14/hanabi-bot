@@ -123,23 +123,30 @@ describe('hidden finesse', () => {
 			['y3', 'g2', 'b3', 'p5', 'p4']
 		], {
 			level: { min: 5 },
-			starting: PLAYER.CATHY
+			starting: PLAYER.CATHY,
+			init: (game) => {
+				const { common, state } = game;
+
+				// Cathy's g2 is fully known.
+				const g2 = common.thoughts[state.hands[PLAYER.CATHY][1]];
+				common.updateThoughts(state.hands[PLAYER.CATHY][1], (draft) => {
+					draft.clued = true;
+					draft.possible = g2.possible.intersect([expandShortCard('g2')]);
+					draft.inferred = g2.inferred.intersect([expandShortCard('g2')]);
+					draft.clues.push({ type: CLUE.RANK, value: 2, giver: PLAYER.ALICE, turn: -1 });
+					draft.clues.push({ type: CLUE.COLOUR, value: COLOUR.GREEN, giver: PLAYER.ALICE, turn: -1 });
+				});
+
+				// Bob's b1 is clued with 1.
+				const b1 = common.thoughts[state.hands[PLAYER.BOB][2]];
+				common.updateThoughts(state.hands[PLAYER.BOB][2], (draft) => {
+					draft.clued = true;
+					draft.possible = b1.possible.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+					draft.possible = b1.inferred.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+					draft.clues.push({ type: CLUE.RANK, value: 1, giver: PLAYER.ALICE, turn: -1 });
+				});
+			}
 		});
-
-		// Cathy's g2 is fully known.
-		const g2 = game.common.thoughts[game.state.hands[PLAYER.CATHY][1]];
-		g2.clued = true;
-		g2.possible = g2.possible.intersect([expandShortCard('g2')]);
-		g2.inferred = g2.inferred.intersect([expandShortCard('g2')]);
-		g2.clues.push({ type: CLUE.RANK, value: 2, giver: PLAYER.ALICE, turn: -1 });
-		g2.clues.push({ type: CLUE.COLOUR, value: COLOUR.GREEN, giver: PLAYER.ALICE, turn: -1 });
-
-		// Bob's b1 is clued with 1.
-		const b1 = game.common.thoughts[game.state.hands[PLAYER.BOB][2]];
-		b1.clued = true;
-		b1.possible = b1.possible.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
-		b1.possible = b1.inferred.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
-		b1.clues.push({ type: CLUE.RANK, value: 1, giver: PLAYER.ALICE, turn: -1 });
 
 		team_elim(game);
 

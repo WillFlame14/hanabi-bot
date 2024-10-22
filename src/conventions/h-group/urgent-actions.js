@@ -371,7 +371,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			if (state.clue_tokens === 1 && save.cm.length === 0 && bad_save)
 				continue;
 
-			if (hypo_me.chopValue(hypo_state, target, { afterClue: true }) >= 4 && potential_cluers > 0 && state.clue_tokens > 1) {
+			if (hypo_me.chopValue(hypo_state, target, { afterClue: true }) >= 4 && !hypo_me.thinksLocked(hypo_state, target) && potential_cluers > 0 && state.clue_tokens > 1) {
 				const urgent = !early_expected_clue && potential_cluers === 1;
 
 				if (urgent)

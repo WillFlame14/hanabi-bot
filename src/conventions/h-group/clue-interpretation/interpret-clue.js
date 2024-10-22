@@ -52,7 +52,7 @@ function apply_good_touch(game, action) {
 			// Check if a layered finesse was revealed on us
 			if (card.finessed && oldThoughts[order].inferred.length >= 1 && card.inferred.length === 0) {
 				// TODO: Possibly try rewinding older reasoning until rewind works?
-				const action_index = list.includes(order) ? card.reasoning.at(-2) : card.reasoning.pop();
+				const action_index = card.reasoning.at(list.includes(order) ? -2 : -1);
 				const new_game = game.rewind(action_index, [{ type: 'finesse', list, clue: action.clue }]) ??
 					game.rewind(action_index, [{ type: 'ignore', order, conn_index: 0 }]);		// Rewinding the layered finesse doesn't work, just ignore us then.
 

@@ -9,6 +9,7 @@ import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-fi
 import { get_result } from '../../../src/conventions/h-group/clue-finder/determine-clue.js';
 
 import logger from '../../../src/tools/logger.js';
+import { produce } from '../../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -73,22 +74,31 @@ describe('play clue', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p2', 'b5', 'r2', 'y4', 'y3'],
 			['g1', 'r1', 'g4', 'y2', 'b2']
-		], { level: { min: 1 } });
+		], {
+			level: { min: 1 },
+			init: (game) => {
+				const { common, state } = game;
 
-		const { state } = game;
+				// Cathy's r1 is clued and inferred.
+				const order = state.hands[PLAYER.CATHY][1];
+				state.deck = state.deck.with(order, produce(state.deck[order], (draft) => { draft.clued = true; }));
 
-		// Cathy's r1 is clued and inferred.
-		state.deck[state.hands[PLAYER.CATHY][1]].clued = true;
-		for (const player of game.allPlayers)
-			player.thoughts[state.hands[PLAYER.CATHY][1]].clued = true;
-		const card = game.common.thoughts[state.hands[PLAYER.CATHY][1]];
-		card.possible = card.possible.intersect(['r1', 'r2', 'r3', 'r4', 'r5'].map(expandShortCard));
-		card.inferred = card.inferred.intersect(['r1'].map(expandShortCard));
+				for (const player of game.players)
+					player.updateThoughts(order, (draft) => { draft.clued = true; });
+
+				const { possible, inferred } = common.thoughts[order];
+				common.updateThoughts(order, (draft) => {
+					draft.clued = true;
+					draft.possible = possible.intersect(['r1', 'r2', 'r3', 'r4', 'r5'].map(expandShortCard));
+					draft.inferred = inferred.intersect(['r1'].map(expandShortCard));
+				});
+			}
+		});
 
 		takeTurn(game, 'Alice clues red to Bob');
 
 		// Bob's slot 3 should be inferred as r2.
-		const targetOrder = state.hands[PLAYER.BOB][2];
+		const targetOrder = game.state.hands[PLAYER.BOB][2];
 		ExAsserts.cardHasInferences(game.common.thoughts[targetOrder], ['r2']);
 	});
 
@@ -96,23 +106,33 @@ describe('play clue', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r2', 'r1', 'b2', 'p5', 'y4'],
-		], { level: { min: 1 } });
+		], {
+			level: { min: 1 },
+			init: (game) => {
+				const { common, state } = game;
 
-		const { common, state } = game;
+				// Bob has a 1 in slot 2.
+				const order = state.hands[PLAYER.BOB][1];
+				state.deck = state.deck.with(order, produce(state.deck[order], (draft) => { draft.clued = true; }));
 
-		// Bob has a 1 in slot 2.
-		state.deck[state.hands[PLAYER.BOB][1]].clued = true;
-		for (const player of game.allPlayers)
-			player.thoughts[state.hands[PLAYER.BOB][1]].clued = true;
-		const card = common.thoughts[state.hands[PLAYER.BOB][1]];
-		card.possible = card.possible.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
-		card.inferred = card.inferred.intersect(['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard));
+				for (const player of game.players)
+					player.updateThoughts(order, (draft) => { draft.clued = true; });
+
+				const { possible, inferred } = common.thoughts[order];
+				const ids = ['r1', 'y1', 'g1', 'b1', 'p1'].map(expandShortCard);
+				common.updateThoughts(order, (draft) => {
+					draft.clued = true;
+					draft.possible = possible.intersect(ids);
+					draft.inferred = inferred.intersect(ids);
+				});
+			}
+		});
 
 		takeTurn(game, 'Alice clues red to Bob');
 
 		// Bob's slot 1 should be inferred as r2.
-		const targetOrder = state.hands[PLAYER.BOB][0];
-		ExAsserts.cardHasInferences(common.thoughts[targetOrder], ['r2']);
+		const targetOrder = game.state.hands[PLAYER.BOB][0];
+		ExAsserts.cardHasInferences(game.common.thoughts[targetOrder], ['r2']);
 	});
 
 	it('correctly undoes a prompt after proven false', () => {

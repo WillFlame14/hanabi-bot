@@ -86,8 +86,8 @@ async function main() {
 		Utils.globalModify({ manual: true });
 
 	ws.addEventListener('open', () => console.log('Established websocket connection!'));
-	ws.addEventListener('error', (err) => console.log('Websocket error:', err));
-	ws.addEventListener('close', (msg) => console.log(`Websocket closed from server. ${msg}`));
+	ws.addEventListener('error', (event) => console.log('Websocket error:', event));
+	ws.addEventListener('close', (event) => console.log(`Websocket closed from server. ${event.code} ${event.reason}`));
 
 	ws.addEventListener('message', (event) => {
 		// Websocket messages are in the format: commandName {"field_name":"value"}

@@ -99,9 +99,10 @@ export class Player {
 	/**
 	 * @param {number} order
 	 * @param {(draft: import('../types.js').Writable<Card>) => void} func
+	 * @param {(patches: import('../StateProxy.js').Patch[]) => void} [patchListener]
 	 */
-	updateThoughts(order, func) {
-		this.thoughts = this.thoughts.with(order, produce(this.thoughts[order], func));
+	updateThoughts(order, func, patchListener) {
+		this.thoughts = this.thoughts.with(order, produce(this.thoughts[order], func, patchListener));
 	}
 
 	/**

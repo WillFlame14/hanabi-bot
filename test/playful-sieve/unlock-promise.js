@@ -11,6 +11,7 @@ import { team_elim } from '../../src/basics/helper.js';
 
 import logger from '../../src/tools/logger.js';
 import { logPerformAction } from '../../src/tools/log.js';
+import { produce } from '../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -207,14 +208,21 @@ describe('unlock promise', () => {
 
 		for (const order of game.state.hands[PLAYER.BOB]) {
 			const card = game.state.deck[order];
-			card.clued = true;
-			card.clues.push({ type: CLUE.RANK, value: card.rank, giver: PLAYER.ALICE, turn: -1 });
+			const clue = { type: CLUE.RANK, value: card.rank, giver: PLAYER.ALICE, turn: -1 };
 
-			const c = game.common.thoughts[order];
-			c.clued = true;
-			c.clues.push({ type: CLUE.RANK, value: card.rank, giver: PLAYER.ALICE, turn: -1 });
-			for (const poss of /** @type {const} */ (['inferred', 'possible']))
-				c[poss] = c[poss].intersect(game.state.variant.suits.map((_, suitIndex) => ({ suitIndex, rank: card.rank })));
+			game.state.deck = game.state.deck.with(order, produce(card, (draft) => {
+				draft.clued = true;
+				draft.clues.push(clue);
+			}));
+
+			const { possible, inferred } = game.common.thoughts[order];
+			const ids = game.state.variant.suits.map((_, suitIndex) => ({ suitIndex, rank: card.rank }));
+			game.common.updateThoughts(order, (draft) => {
+				draft.clued = true;
+				draft.clues.push(clue);
+				draft.possible = possible.intersect(ids);
+				draft.inferred = inferred.intersect(ids);
+			});
 		}
 
 		team_elim(game);

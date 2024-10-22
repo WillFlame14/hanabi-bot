@@ -8,10 +8,11 @@ import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 import { early_game_clue } from '../../src/conventions/h-group/urgent-actions.js';
+import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 
 import logger from '../../src/tools/logger.js';
-import { clue_safe } from '../../src/conventions/h-group/clue-finder/clue-safe.js';
 import { logPerformAction } from '../../src/tools/log.js';
+import { produce } from '../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -24,24 +25,28 @@ describe('save clue', () => {
 		], {
 			level: { min: 1 },
 			play_stacks: [1, 5, 1, 0, 5],
-			clue_tokens: 2
-		});
-		const { state } = game;
+			clue_tokens: 2,
+			init: (game) => {
+				const { state } = game;
 
-		// Bob's last 3 cards are clued.
-		[2,3,4].forEach(index => {
-			const card = state.deck[state.hands[PLAYER.BOB][index]];
-			card.clued = true;
-			for (const player of game.allPlayers)
-				player.thoughts[card.order].clued = true;
-		});
+				// Bob's last 3 cards are clued.
+				for (const index of [2,3,4]) {
+					const order = state.hands[PLAYER.BOB][index];
+					state.deck = state.deck.with(order, produce(state.deck[order], (draft) => { draft.clued = true; }));
+					for (const player of game.allPlayers)
+						player.updateThoughts(order, (draft) => { draft.clued = true; });
 
-		// Cathy's last 2 cards are clued.
-		[3,4].forEach(index => {
-			const card = state.deck[state.hands[PLAYER.CATHY][index]];
-			card.clued = true;
-			for (const player of game.allPlayers)
-				player.thoughts[card.order].clued = true;
+				}
+
+				// Cathy's last 2 cards are clued.
+				for (const index of [3,4]) {
+					const order = state.hands[PLAYER.CATHY][index];
+					state.deck = state.deck.with(order, produce(state.deck[order], (draft) => { draft.clued = true; }));
+					for (const player of game.allPlayers)
+						player.updateThoughts(order, (draft) => { draft.clued = true; });
+
+				}
+			}
 		});
 
 		const action = take_action(game);
@@ -56,12 +61,15 @@ describe('save clue', () => {
 			['b4', 'g5', 'p2', 'p4', 'g4']
 		], {
 			level: { min: 1 },
-			discarded: ['g4']
-		});
-		const { state } = game;
+			discarded: ['g4'],
+			init: (game) => {
+				const { state } = game;
 
-		// Bob's p2 is clued.
-		state.deck[state.hands[PLAYER.BOB][2]].clued = true;
+				// Bob's p2 is clued.
+				const order = state.hands[PLAYER.BOB][2];
+				state.deck = state.deck.with(order, produce(state.deck[order], (draft) => { draft.clued = true; }));
+			}
+		});
 
 		const action = take_action(game);
 

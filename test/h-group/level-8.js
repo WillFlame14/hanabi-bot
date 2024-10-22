@@ -295,10 +295,12 @@ describe('distribution clues', () => {
 				const cards = ['r5', 'b4', 'b5'];
 
 				for (let i = 0; i < 3; i++) {
-					const a_card = common.thoughts[state.hands[PLAYER.ALICE][i + 2]];
-					a_card.inferred = a_card.inferred.intersect(expandShortCard(cards[i]));
-					a_card.possible = a_card.possible.intersect(expandShortCard(cards[i]));
-					a_card.clued = true;
+					const order = state.hands[PLAYER.ALICE][i + 2];
+					common.updateThoughts(order, (draft) => {
+						draft.inferred = common.thoughts[order].inferred.intersect(expandShortCard(cards[i]));
+						draft.possible = common.thoughts[order].possible.intersect(expandShortCard(cards[i]));
+						draft.clued = true;
+					});
 				}
 				game.state.early_game = false;
 			},
