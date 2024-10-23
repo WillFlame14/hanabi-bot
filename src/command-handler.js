@@ -136,7 +136,7 @@ export const handle = {
 		}
 		// Displays or modifies the current settings (format: /settings [convention = 'HGroup'] [level = 1])
 		if (data.msg.startsWith('/settings')) {
-			assignSettings(data, true);
+			assignSettings(data, game.tableID === undefined);
 			return;
 		}
 		if (data.msg.startsWith('/terminate')) {

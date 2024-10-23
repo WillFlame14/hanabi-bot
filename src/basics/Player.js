@@ -15,6 +15,7 @@ import { produce } from '../StateProxy.js';
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Link} Link
  * @typedef {import('../types.js').WaitingConnection} WaitingConnection
+ * @typedef {import('../StateProxy.js').Patch} Patch
  */
 
 export class Player {
@@ -33,6 +34,9 @@ export class Player {
 
 	/** @type {Set<number>} */
 	hypo_plays;
+
+	/** @type {Map<number, Patch[]>} */
+	patches = new Map();
 
 	/**
 	 * @param {number} playerIndex
@@ -99,10 +103,13 @@ export class Player {
 	/**
 	 * @param {number} order
 	 * @param {(draft: import('../types.js').Writable<Card>) => void} func
-	 * @param {(patches: import('../StateProxy.js').Patch[]) => void} [patchListener]
+	 * @param {boolean} [listenPatches]
 	 */
-	updateThoughts(order, func, patchListener) {
-		this.thoughts = this.thoughts.with(order, produce(this.thoughts[order], func, patchListener));
+	updateThoughts(order, func, listenPatches = this.playerIndex === -1) {
+		this.thoughts = this.thoughts.with(order, produce(this.thoughts[order], func, listenPatches ? (patches) => {
+			if (patches.length > 0)
+				this.patches.set(order, (this.patches.get(order) ?? []).concat(patches));
+		} : undefined));
 	}
 
 	/**
@@ -309,12 +316,10 @@ export class Player {
 					wc.focus === order && !state.deck[wc.focus].matches(wc.inference, { assume: true }));
 
 				// Ignore all waiting connections that will be proven wrong
-				const diff = produce(card, (draft) => { draft.inferred = card.inferred.subtract(fake_wcs.flatMap(wc => wc.inference)); });
-
-				const playable = state.hasConsistentInferences(diff) &&
-					(delayed_playable(diff.possible.array) ||
-						delayed_playable(diff.inferred.array) ||
-						(diff.finessed && delayed_playable([card])) ||
+				const playable = state.hasConsistentInferences(card) &&
+					(delayed_playable(card.possible.array) ||
+						delayed_playable(card.inferred.subtract(fake_wcs.flatMap(wc => wc.inference)).array) ||
+						(card.finessed && delayed_playable([card])) ||
 						this.play_links.some(pl => pl.connected === order && pl.orders.every(o => unknown_plays.has(o))));
 
 				if (!playable)

@@ -2,6 +2,7 @@ import { visibleFind } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
+import { applyPatches } from '../StateProxy.js';
 
 /**
  * @typedef {import('./Game.js').Game} Game
@@ -21,39 +22,25 @@ import { logCard } from '../tools/log.js';
  * @param {Game} game
  */
 export function team_elim(game) {
-	const { state } = game;
+	const { common, state } = game;
 
 	for (const player of game.players) {
-		for (let i = 0; i < game.common.thoughts.length; i++) {
-			const ccard = game.common.thoughts[i];
-			const card = player.thoughts[i];
-
-			const new_possible = ccard.possible.intersect(card.possible);
-			let new_inferred = ccard.inferred.intersect(card.possible);
-
-			// Reset to GTP if common interpretation doesn't make sense
-			if (new_inferred.length === 0 && !card.chop_moved)
-				new_inferred = new_possible;
-
-			player.updateThoughts(i, (draft) => {
-				draft.possible = new_possible;
-				draft.inferred = new_inferred;
-
-				for (const property of Object.getOwnPropertyNames(ccard)) {
-					if (!['suitIndex', 'rank', 'possible', 'inferred', 'reasoning', 'reasoning_turn'].includes(property))
-						draft[property] = ccard[property];
-				}
-
-				draft.reasoning = ccard.reasoning.slice();
-				draft.reasoning_turn = ccard.reasoning_turn.slice();
-			});
+		for (const [order, patches] of common.patches) {
+			const { possible, inferred } = common.thoughts[order];
+			player.updateThoughts(order, (draft) => {
+				draft.possible = possible.intersect(player.thoughts[order].possible);
+				draft.inferred = inferred.intersect(player.thoughts[order].inferred);
+				applyPatches(draft, patches.filter(p => !(p.path[0] === 'inferred' || p.path[0] === 'possible')));
+			}, false);
 		}
 
-		player.waiting_connections = game.common.waiting_connections.slice();
+		player.waiting_connections = common.waiting_connections.slice();
 		player.good_touch_elim(state, state.numPlayers === 2);
 		player.refresh_links(state);
 		player.update_hypo_stacks(state);
 	}
+
+	common.patches = new Map();
 }
 
 /**

@@ -42,12 +42,15 @@ export function onClue(game, action) {
 
 		for (const player of game.allPlayers) {
 			const { possible, inferred } = player.thoughts[order];
-			player.updateThoughts(order, (draft) => {
-				const operation = list.includes(order) ? 'intersect' : 'subtract';
-				draft.possible = possible[operation](new_possible);
-				draft.inferred = inferred[operation](new_possible);
 
-				if (list.includes(order) && draft.inferred.length < inferred.length) {
+			const operation = list.includes(order) ? 'intersect' : 'subtract';
+			const new_inferred = inferred[operation](new_possible);
+
+			player.updateThoughts(order, (draft) => {
+				draft.possible = possible[operation](new_possible);
+				draft.inferred = new_inferred;
+
+				if (list.includes(order) && new_inferred.length < inferred.length) {
 					draft.reasoning.push(state.actionList.length - 1);
 					draft.reasoning_turn.push(state.turn_count);
 				}

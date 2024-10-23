@@ -109,13 +109,20 @@ describe('connecting cards', () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'y4', 'g3', 'r4', 'r4']
-		]);
+		], {
+			init: (game) => {
+				const { common, state } = game;
 
-		// Alice has a fully known g1 in slot 2
-		const card = game.common.thoughts[game.state.hands[PLAYER.ALICE][1]];
-		card.clued = true;
-		for (const poss of /** @type {const} */ (['possible', 'inferred']))
-			card[poss] = card[poss].intersect([{ suitIndex: 2, rank: 1 }]);
+				// Alice has a fully known g1 in slot 2
+				const order = state.hands[PLAYER.ALICE][1];
+				const { possible, inferred } = common.thoughts[order];
+				common.updateThoughts(order, (draft) => {
+					draft.clued = true;
+					draft.possible = possible.intersect([{ suitIndex: 2, rank: 1 }]);
+					draft.inferred = inferred.intersect([{ suitIndex: 2, rank: 1 }]);
+				});
+			}
+		});
 
 		team_elim(game);
 		game.common.update_hypo_stacks(game.state);

@@ -28,8 +28,28 @@ export function card_elim(state) {
 
 	const candidates = state.hands.flatMap((hand, playerIndex) => hand.map(order => ({ playerIndex, order })));
 
-	const all_ids = state.hands.flatMap(hand => hand.flatMap(o => this.thoughts[o].possible.array));
-	const identities = state.base_ids.union(all_ids).array;
+	let identities = state.base_ids;
+	for (const order of state.hands.flat()) {
+		identities = identities.union(this.thoughts[order].possible);
+
+		if (identities.length === this.all_possible.length)
+			break;
+	}
+
+	/** @type {(order: number) => void} */
+	const addToMap = (order) => {
+		const card = this.thoughts[order];
+		const id = card.identity({ symmetric: this.playerIndex === -1 });
+
+		if (id !== undefined) {
+			const id_hash = logCard(id);
+			certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
+			candidates.splice(candidates.findIndex(c => c.order === order), 1);
+		}
+	};
+
+	for (const order of state.hands.flat())
+		addToMap(order);
 
 	/**
 	 * The "typical" empathy operation. If there are enough known instances of an identity, it is removed from every card (including future cards).
@@ -37,25 +57,11 @@ export function card_elim(state) {
 	 */
 	const basic_elim = () => {
 		let changed = false;
+		const curr_identities = identities.array;
+		let new_identities = identities;
 
-		/** @type {(index: number) => void} */
-		const addToMap = (index) => {
-			const { order } = candidates[index];
-			const card = this.thoughts[order];
-			const id = card.identity({ symmetric: this.playerIndex === -1 });
-
-			if (id !== undefined) {
-				const id_hash = logCard(id);
-				certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
-				candidates.splice(index, 1);
-			}
-		};
-
-		for (let i = candidates.length - 1; i >= 0; i--)
-			addToMap(i);
-
-		for (let i = 0; i < identities.length; i++) {
-			const identity = identities[i];
+		for (let i = 0; i < curr_identities.length; i++) {
+			const identity = curr_identities[i];
 			const id_hash = logCard(identity);
 
 			const known_count = state.baseCount(identity) + (certain_map.get(id_hash)?.size ?? 0) + (uncertain_ids.has(identity) ? 1 : 0);
@@ -67,9 +73,9 @@ export function card_elim(state) {
 			// Remove it from the list of future possibilities
 			this.all_possible = this.all_possible.subtract(identity);
 			this.all_inferred = this.all_inferred.subtract(identity);
+			new_identities = new_identities.subtract(identity);
 
-			for (let i = candidates.length - 1; i >= 0; i--) {
-				const { order } = candidates[i];
+			for (const { order } of candidates) {
 				const { possible, inferred } = this.thoughts[order];
 
 				if (!possible.has(identity) || certain_map.get(id_hash)?.has(order) || uncertain_map.get(order)?.has(identity))
@@ -89,12 +95,13 @@ export function card_elim(state) {
 				}
 				// Card can be further eliminated
 				else if (updated_card.possible.length === 1) {
-					identities.push(updated_card.identity());
-					addToMap(i);
+					curr_identities.push(updated_card.identity());
+					addToMap(order);
 				}
 			}
-			logger.debug(`removing ${id_hash} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
+			// logger.debug(`removing ${id_hash} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
 		}
+		identities = new_identities;
 		return changed;
 	};
 
@@ -155,13 +162,22 @@ export function card_elim(state) {
 		const total_multiplicity = (identities) => identities.reduce((acc, id) => acc += cardCount(state.variant, id) - state.baseCount(id), 0);
 
 		for (let i = 2; i <= cross_elim_candidates.length; i++) {
-			const subsets = Utils.allSubsetsOfSize(cross_elim_candidates, i);
+			const subsets = Utils.allSubsetsOfSize(cross_elim_candidates.filter(({ order }) => this.thoughts[order].possible.length <= i), i);
 
 			for (const subset of subsets) {
-				const identities = subset.reduce((acc, { order }) => acc.union(this.thoughts[order].possible), state.base_ids);
+				let failed = false;
+				let acc_ids = state.base_ids;
+				for (const { order } of subset) {
+					acc_ids = acc_ids.union(this.thoughts[order].possible);
 
-				if (subset.length === total_multiplicity(identities))
-					perform_elim(subset, identities);
+					if (total_multiplicity(acc_ids) > subset.length) {
+						failed = true;
+						break;
+					}
+				}
+
+				if (!failed && subset.length === total_multiplicity(acc_ids))
+					perform_elim(subset, acc_ids);
 			}
 		}
 
