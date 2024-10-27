@@ -1,11 +1,11 @@
 import { CLUE } from '../../../constants.js';
 import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { IdentitySet } from '../../../basics/IdentitySet.js';
-import { interpret_tcm, interpret_5cm, interpret_tccm } from './interpret-cm.js';
+import { interpret_tcm, interpret_5cm, interpret_tccm, perform_cm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, getRealConnects, rankLooksPlayable } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
-import { IllegalInterpretation, RewindEscape, find_own_finesses } from './own-finesses.js';
+import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor, connection_score } from './connection-helper.js';
 import { variantRegexes } from '../../../variants.js';
 import { remove_finesse } from '../update-wcs.js';
@@ -34,6 +34,8 @@ import { logCard, logConnection, logConnections, logHand } from '../../../tools/
 
 /**
  * Given a clue, recursively applies good touch principle to the target's hand.
+ * 
+ * Impure!
  * @param {Game} game
  * @param {ClueAction} action
  * @returns {{fix?: boolean, rewinded?: boolean}} Possible results of the clue.
@@ -72,6 +74,9 @@ function apply_good_touch(game, action) {
 }
 
 /**
+ * Updates thoughts after a clue, given the possible interpretations.
+ * 
+ * Impure!
  * @param {Game} game
  * @param {Game} old_game
  * @param {ClueAction} action
@@ -93,7 +98,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		// A finesse must be given before the first finessed player (card indices would shift after)
 		// and only by someone who knows or can see all of the cards in the connections.
 		if (connections.some(connection => connection.type == 'finesse')) {
-			for (let i = (giver + 1) % state.numPlayers; i != giver; i = (i + 1) % state.numPlayers) {
+			for (let i = state.nextPlayerIndex(giver); i != giver; i = state.nextPlayerIndex(i)) {
 				if (connections.some(connection => connection.type == 'finesse' && connection.reacting == i)) {
 					// The clue must be given before the first finessed player,
 					// as otherwise the finesse position may change.
@@ -142,7 +147,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			).map(conn => conn.identities[0].rank))
 		));
 		const ownBlindPlays = correct_match?.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length || 0;
-		const symmetric_fps = find_symmetric_connections(game, old_game, action, inf_possibilities, selfRanks, ownBlindPlays);
+		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities, selfRanks, ownBlindPlays);
 		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focus, giver, target);
 
 		if (correct_match?.connections[0]?.bluff) {
@@ -243,7 +248,7 @@ function urgent_save(game, action, focus, oldCommon) {
 	if (old_focus_thoughts.saved || !focus_thoughts.saved || common.thinksLoaded(state, target, { assume: false }))
 		return false;
 
-	const old_play_stacks = game.state.play_stacks.slice();
+	const play_stacks = state.play_stacks.slice();
 	let played = new IdentitySet(state.variant.suits.length, 0);
 
 	/**
@@ -252,9 +257,9 @@ function urgent_save(game, action, focus, oldCommon) {
 	 */
 	const get_finessed_order = (index, includeHidden) =>
 		Utils.maxOn(state.hands[index], order => {
-			const card = game.common.thoughts[order];
+			const card = common.thoughts[order];
 
-			if (card.finessed && (includeHidden || !card.hidden) && card.inferred.every(id => played.has(id) || state.isPlayable(id)))
+			if (card.finessed && (includeHidden || !card.hidden) && card.inferred.every(id => played.has(id) || play_stacks[id.suitIndex] + 1 === id.rank))
 				return -card.finesse_index;
 
 			return -10000;
@@ -273,14 +278,13 @@ function urgent_save(game, action, focus, oldCommon) {
 
 		// If we know what the card is, update the play stacks. If we don't, then
 		// we can't know if playing it would make someone else's cards playable.
-		const card = game.common.thoughts[get_finessed_order(playerIndex, true)].identity({ infer: true });
+		const card = common.thoughts[get_finessed_order(playerIndex, true)].identity({ infer: true });
 		if (card !== undefined) {
 			played = played.union(card);
-			state.play_stacks[card.suitIndex]++;
+			play_stacks[card.suitIndex]++;
 		}
-		playerIndex = (playerIndex + 1) % state.numPlayers;
+		playerIndex = state.nextPlayerIndex(playerIndex);
 	}
-	game.state.play_stacks = old_play_stacks;
 	return urgent;
 }
 
@@ -302,7 +306,7 @@ function distribution_clue(game, action, focus) {
 	if (id !== undefined && state.isBasicTrash(id))
 		return false;
 
-	const distributed = focus_thoughts.possible.some(p => !state.isBasicTrash(p) && state.hands.some(hand => {
+	return focus_thoughts.possible.some(p => !state.isBasicTrash(p) && state.hands.some(hand => {
 		let duplicated = false, other_useful = false;
 		for (const o of hand) {
 			const id = common.thoughts[o].identity({ infer: true });
@@ -316,12 +320,12 @@ function distribution_clue(game, action, focus) {
 		}
 		return duplicated && other_useful;
 	}));
-
-	return distributed;
 }
 
 /**
  * Interprets the given clue. First tries to look for inferred connecting cards, then attempts to find prompts/finesses.
+ * 
+ * Impure!
  * @param {Game} game
  * @param {ClueAction} action
  */
@@ -480,14 +484,22 @@ export function interpret_clue(game, action) {
 	// Check for chop moves at level 4+
 	if (game.level >= LEVEL.BASIC_CM && !state.inEndgame()) {
 		// Trash chop move
-		if (interpret_tcm(game, target, focus)) {
+		const tcm_orders = interpret_tcm(game, target, focus);
+
+		if (tcm_orders.length > 0) {
+			perform_cm(state, common, tcm_orders);
+			common.updateThoughts(focus, (draft) => { draft.trash = true; });
+
 			game.interpretMove(CLUE_INTERP.CM_TRASH);
 			team_elim(game);
 			return;
 		}
 
+		const cm5_orders = interpret_5cm(game, target, focus, clue);
+
 		// 5's chop move
-		if (interpret_5cm(game, target, focus, clue)) {
+		if (cm5_orders.length > 0) {
+			perform_cm(state, common, cm5_orders);
 			game.interpretMove(CLUE_INTERP.CM_5);
 			team_elim(game);
 			return;
@@ -563,8 +575,6 @@ export function interpret_clue(game, action) {
 				catch (error) {
 					if (error instanceof IllegalInterpretation)
 						logger.warn(error.message);
-					else if (error instanceof RewindEscape)
-						return;
 					else
 						throw error;
 				}
@@ -583,8 +593,6 @@ export function interpret_clue(game, action) {
 			catch (error) {
 				if (error instanceof IllegalInterpretation)
 					logger.warn(error.message);
-				else if (error instanceof RewindEscape)
-					return;
 				else
 					throw error;
 			}
@@ -600,8 +608,6 @@ export function interpret_clue(game, action) {
 				catch (error) {
 					if (error instanceof IllegalInterpretation)
 						logger.warn(error.message);
-					else if (error instanceof RewindEscape)
-						return;
 					else
 						throw error;
 				}
@@ -661,8 +667,14 @@ export function interpret_clue(game, action) {
 	common.refresh_links(state);
 	common.update_hypo_stacks(state);
 
-	if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && !positional)
-		interpret_tccm(game, oldCommon, target, list, focused_card);
+	if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && !positional) {
+		const cm_orders = interpret_tccm(game, oldCommon, target, list, focused_card);
+
+		if (cm_orders.length > 0) {
+			perform_cm(state, common, cm_orders);
+			game.interpretMove(CLUE_INTERP.CM_TEMPO);
+		}
+	}
 
 	// Advance connections if a speed-up clue was given
 	for (const wc of common.dependentConnections(focus)) {

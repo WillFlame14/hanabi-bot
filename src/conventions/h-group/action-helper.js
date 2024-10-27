@@ -240,29 +240,27 @@ export function find_positional_discard(game, discarder, expected_discard) {
 		const hand = state.hands[playerIndex];
 
 		for (let j = 0; j < hand.length; j++) {
-			// Not trash in discarder's slot, couldn't perform positional discard
-			if (!trash.includes(state.hands[discarder][j]))
+			// Not trash in discarder's slot, can't perform positional discard
+			if (!trash.includes(state.hands[discarder][j]) || !valid_target(playerIndex, hand[j]))
 				continue;
 
-			if (valid_target(playerIndex, hand[j])) {
-				const playerIndex2 = Utils.range(i + 1, state.numPlayers).find(j => {
-					const pl = (discarder + j) % state.numPlayers;
-					return valid_target(pl, state.hands[pl][j]);
-				});
+			const playerIndex2 = Utils.range(i + 1, state.numPlayers).find(j => {
+				const pl = (discarder + j) % state.numPlayers;
+				return valid_target(pl, state.hands[pl][j]);
+			});
 
-				if (playerIndex2 !== undefined && state.strikes < 2) {
-					logger.info(`performing double positional misplay on ${[playerIndex, playerIndex2].map(p => state.playerNames[p])}, slot ${j + 1}`);
-					return { misplay: true, order: state.hands[discarder][j] };
-				}
-
-				const misplay = state.hands[discarder][j] === expected_discard;
-
-				if (misplay && state.strikes === 2)
-					continue;
-
-				logger.info(`performing positional ${misplay ? 'misplay' : 'discard' } on ${state.playerNames[playerIndex]}, slot ${j + 1} order ${state.hands[discarder][j]}`);
-				return { misplay, order: state.hands[discarder][j] };
+			if (playerIndex2 !== undefined && state.strikes < 2) {
+				logger.info(`performing double positional misplay on ${[playerIndex, playerIndex2].map(p => state.playerNames[p])}, slot ${j + 1}`);
+				return { misplay: true, order: state.hands[discarder][j] };
 			}
+
+			const misplay = state.hands[discarder][j] === expected_discard;
+
+			if (misplay && state.strikes === 2)
+				continue;
+
+			logger.info(`performing positional ${misplay ? 'misplay' : 'discard' } on ${state.playerNames[playerIndex]}, slot ${j + 1} order ${state.hands[discarder][j]}`);
+			return { misplay, order: state.hands[discarder][j] };
 		}
 	}
 }

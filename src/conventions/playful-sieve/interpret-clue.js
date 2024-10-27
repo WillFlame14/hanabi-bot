@@ -19,6 +19,8 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * Interprets the given clue, as given from a locked player.
+ * 
+ * Impure!
  * @param  {Game} game
  * @param  {ClueAction} action
  */
@@ -90,6 +92,8 @@ function interpret_locked_clue(game, action) {
 
 /**
  * Interprets the given clue.
+ * 
+ * Impure!
  * @param  {Game} game
  * @param  {ClueAction} action
  */

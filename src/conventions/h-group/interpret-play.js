@@ -15,6 +15,7 @@ import logger from '../../tools/logger.js';
 /**
  * @param {Game} game
  * @param {CardAction} action
+ * @returns The order of the chop moved card, or -1 if no card was chop moved.
  */
 export function check_ocm(game, action) {
 	const { common, state } = game;
@@ -24,31 +25,32 @@ export function check_ocm(game, action) {
 	const offset = ordered_1s.findIndex(o => o === order);
 
 	if (offset === -1)
-		return;
+		return -1;
 
 	if (offset === 0) {
 		logger.info('played unknown 1 in correct order, no ocm');
-		return;
+		return -1;
 	}
 
 	const target = (playerIndex + offset) % state.numPlayers;
 	if (target === playerIndex) {
 		// Just going to assume no double order chop moves in 3p
 		logger.error('double order chop move???');
-		return;
+		return -1;
 	}
 
 	const chop = common.chop(state.hands[target]);
 	if (chop === undefined) {
 		logger.warn(`attempted to interpret ocm on ${state.playerNames[target]}, but they have no chop`);
-		return;
+		return -1;
 	}
 
-	common.updateThoughts(chop, (draft) => { draft.chop_moved = true; });
-	logger.warn(`order chop move on ${state.playerNames[target]}, distance ${offset}`);
+	logger.highlight('cyan', `order chop move on ${state.playerNames[target]}, distance ${offset}`);
+	return chop;
 }
 
 /**
+ * Impure!
  * @param  {Game} game
  * @param  {PlayAction} action
  */
@@ -75,8 +77,12 @@ export function interpret_play(game, action) {
 	if (common.thoughts[order].finessed)
 		game.finesses_while_finessed[playerIndex] = [];
 
-	if (game.level >= LEVEL.BASIC_CM && rank === 1)
-		check_ocm(game, action);
+	if (game.level >= LEVEL.BASIC_CM && rank === 1) {
+		const ocm_order = check_ocm(game, action);
+
+		if (ocm_order !== -1)
+			common.updateThoughts(ocm_order, (draft) => { draft.chop_moved = true; });
+	}
 
 	Basics.onPlay(this, action);
 

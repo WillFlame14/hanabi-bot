@@ -38,6 +38,8 @@ export function find_sarcastics(state, playerIndex, player, identity) {
 
 /**
  * Adds the sarcastic discard inference to the given set of sarcastic cards.
+ * 
+ * Impure! (modifies common)
  * @param {Game} game
  * @param {number[]} sarcastic
  * @param {Identity} identity
@@ -60,12 +62,14 @@ function apply_unknown_sarcastic(game, sarcastic, identity) {
 
 /**
  * Locks the other player after a late sacrifice discard.
+ * 
+ * Impure! (modifies common)
  * @param  {Game} game
  * @param  {number} playerIndex 	The player that performed a sacrifice discard.
  */
 function apply_locked_discard(game, playerIndex) {
 	const { common, state } = game;
-	const other = (playerIndex + 1) % state.numPlayers;
+	const other = state.nextPlayerIndex(playerIndex);
 
 	logger.highlight('cyan', `sacrifice discard, locking ${state.playerNames[other]}`);
 
@@ -78,6 +82,9 @@ function apply_locked_discard(game, playerIndex) {
 }
 
 /**
+ * Interprets a sarcastic discard.
+ * 
+ * Impure! (modifies common)
  * @param {Game} game
  * @param {DiscardAction} discardAction
  * @returns {number[]} 					The targets for the sarcastic discard
@@ -88,7 +95,7 @@ export function interpret_sarcastic(game, discardAction) {
 	const identity = { suitIndex, rank };
 
 	const duplicates = visibleFind(state, me, identity);
-	const locked_discard = state.numPlayers === 2 && common.thinksLocked(state, playerIndex) && !game.last_actions[(playerIndex + 1) % state.numPlayers].lock;
+	const locked_discard = state.numPlayers === 2 && common.thinksLocked(state, playerIndex) && !game.last_actions[state.nextPlayerIndex(playerIndex)].lock;
 
 	// Unknown sarcastic discard to us
 	if (duplicates.length === 0) {

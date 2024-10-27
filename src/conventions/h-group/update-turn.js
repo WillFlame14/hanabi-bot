@@ -8,6 +8,7 @@ import { logCard, logConnection } from '../../tools/log.js';
 /**
  * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
+ * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').TurnAction} TurnAction
  * @typedef {import('../../types.js').Connection} Connection
@@ -38,7 +39,7 @@ export function find_impossible_conn(game, connections) {
 
 		return last_reacting_action?.type === 'play' &&
 			last_reacting_action?.order === order &&
-			!identities.some(id => state.deck[last_reacting_action.order].matches(id));
+			!identities.some(id => state.deck[order].matches(id));
 	});
 }
 
@@ -46,11 +47,10 @@ export function find_impossible_conn(game, connections) {
  * @param {Game} game
  * @param {WaitingConnection} waiting_connection
  * @param {number} lastPlayerIndex
- * @returns {{remove?: boolean, remove_finesse?: boolean, quit?: boolean, demonstration?: Demonstration}}
  */
 function update_wc(game, waiting_connection, lastPlayerIndex) {
 	const { common, state, me } = game;
-	const { connections, conn_index, focus, inference, giver, action_index } = waiting_connection;
+	const { connections, conn_index, focus, inference } = waiting_connection;
 	const { reacting, order: old_order, identities } = connections[conn_index];
 	const old_card = state.deck[old_order];
 	logger.info(`waiting for connecting ${logCard(old_card)} ${old_order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}`);
@@ -84,23 +84,32 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 			return { remove_finesse: true, remove: true };
 		}
 	}
-
-	// Check if giver played card that matches next connection
-	if (lastPlayerIndex === giver) {
-		const last_action = game.last_actions[giver];
-
-		// The giver's card must have been known before the finesse was given
-		if (last_action.type === 'play' && me.thoughts[old_order].matches(last_action, { infer: true }) &&
-			common.thoughts[old_order].finessed &&
-			common.thoughts[last_action.order].reasoning[0] < action_index
-		)
-			return resolve_giver_play(game, waiting_connection);
-	}
 	return {};
 }
 
 /**
+ * @param {Game} game
+ * @param {WaitingConnection} waiting_connection
+ * @param {number} lastPlayerIndex
+ */
+function giver_play(game, waiting_connection, lastPlayerIndex) {
+	const { common, me } = game;
+	const { connections, conn_index, giver, action_index } = waiting_connection;
+	const { order } = connections[conn_index];
+	const last_action = game.last_actions[giver];
+
+	// Check if giver played card that matches next connection
+	return lastPlayerIndex === giver &&
+		last_action.type === 'play' &&
+		me.thoughts[order].matches(last_action, { infer: true }) &&		// The giver's card must have been known before the finesse was given
+		common.thoughts[order].finessed &&
+		common.thoughts[last_action.order].reasoning[0] < action_index;
+}
+
+/**
  * Performs relevant updates after someone takes a turn.
+ * 
+ * Impure!
  * @param {Game} game
  * @param {TurnAction} action
  */
@@ -120,7 +129,14 @@ export function update_turn(game, action) {
 
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const waiting_connection = common.waiting_connections[i];
-		const { quit, remove, remove_finesse, demonstration } = update_wc(game, waiting_connection, lastPlayerIndex);
+
+		if (giver_play(game, waiting_connection, lastPlayerIndex)) {
+			resolve_giver_play(game, waiting_connection);
+			continue;
+		}
+
+		const { quit, remove, remove_finesse, demonstration, ambiguousPassback, selfPassback, next_index }
+			= update_wc(game, waiting_connection, lastPlayerIndex);
 
 		if (quit)
 			return;
@@ -138,6 +154,10 @@ export function update_turn(game, action) {
 			else
 				prev_demo.inferences.push(waiting_connection.inference);
 		}
+
+		waiting_connection.conn_index = remove ? -1 : next_index ?? waiting_connection.conn_index;
+		waiting_connection.ambiguousPassback ||= ambiguousPassback;
+		waiting_connection.selfPassback ||= selfPassback;
 	}
 
 	reset_superpositions(game);
@@ -145,22 +165,21 @@ export function update_turn(game, action) {
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
 	for (const { order, inferences, connections } of demonstrated) {
 		logger.info(`intersecting card ${logCard(state.deck[order])} with inferences ${inferences.map(logCard).join(',')}`);
+
+		/** @type {(c_order: number, ids: Identity[]) => ((draft: import('../../types.js').Writable<Card>) => void)} */
+		const update_card = (c_order, ids) => (draft) => {
+			draft.inferred = common.thoughts[c_order].inferred[draft.superposition ? 'union' : 'intersect'](ids);
+			draft.superposition = true;
+			draft.uncertain = false;
+		};
+
 		for (const { reacting, identities, order: conn_order } of connections) {
 			if (!state.hands[reacting].includes(conn_order))
 				continue;
 
-			common.updateThoughts(conn_order, (draft) => {
-				draft.inferred = common.thoughts[conn_order].inferred[draft.superposition ? 'union' : 'intersect'](identities);
-				draft.superposition = true;
-				draft.uncertain = false;
-			});
+			common.updateThoughts(conn_order, update_card(conn_order, identities));
 		}
-
-		common.updateThoughts(order, (draft) => {
-			draft.inferred = common.thoughts[order].inferred[draft.superposition ? 'union' : 'intersect'](inferences);
-			draft.superposition = true;
-			draft.uncertain = false;
-		});
+		common.updateThoughts(order, update_card(order, inferences));
 	}
 
 	let min_drawn_index = state.actionList.length;

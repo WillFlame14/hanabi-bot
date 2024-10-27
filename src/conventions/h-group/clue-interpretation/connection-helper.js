@@ -1,7 +1,7 @@
 import { CLUE } from '../../../constants.js';
 import { IdentitySet } from '../../../basics/IdentitySet.js';
 import { determine_focus } from '../hanabi-logic.js';
-import { IllegalInterpretation, RewindEscape, find_own_finesses } from './own-finesses.js';
+import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection, logConnections } from '../../../tools/log.js';
@@ -110,7 +110,6 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
 
 /**
  * Returns all focus possibilities that the receiver could interpret from the clue.
- * @param {Game} new_game
  * @param {Game} game
  * @param {ClueAction} action
  * @param {FocusPossibility[]} inf_possibilities
@@ -118,7 +117,7 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
  * @param {number} ownBlindPlays 	The number of blind plays we need to make in the actual connection.
  * @returns {SymFocusPossibility[]}
  */
-export function find_symmetric_connections(new_game, game, action, inf_possibilities, selfRanks, ownBlindPlays) {
+export function find_symmetric_connections(game, action, inf_possibilities, selfRanks, ownBlindPlays) {
 	const { common, state } = game;
 
 	const { clue, giver, list, target } = action;
@@ -160,8 +159,8 @@ export function find_symmetric_connections(new_game, game, action, inf_possibili
 			continue;
 
 		const looksDirect = focused_card.identity() === undefined && (		// Focus must be unknown AND
-			action.clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
-			common.hypo_stacks.some(stack => stack + 1 === action.clue.value) ||		// Looks like a play
+			clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
+			common.hypo_stacks.some(stack => stack + 1 === clue.value) ||		// Looks like a play
 			inf_possibilities.some(fp => fp.save));										// Looks like a save
 
 		logger.collect();
@@ -179,11 +178,6 @@ export function find_symmetric_connections(new_game, game, action, inf_possibili
 			if (error instanceof IllegalInterpretation) {
 				// Will probably never be seen
 				logger.warn(error.message);
-			}
-			else if (error instanceof RewindEscape) {
-				Object.assign(new_game, game);
-				logger.flush(false);
-				return [];
 			}
 			else {
 				throw error;
@@ -221,7 +215,9 @@ export function find_symmetric_connections(new_game, game, action, inf_possibili
 
 
 /**
- * Helper function that applies the given connections on the given suit to the state (e.g. writing finesses).
+ * Applies the given connections on the given suit to the state (e.g. writing finesses).
+ * 
+ * Impure! (modifies common and game.finesses_while_finessed)
  * @param {Game} game
  * @param {Connection[]} connections
  * @param {number} giver

@@ -183,6 +183,7 @@ export function find_clue_givers(game, clue, giver) {
 			// TODO: This is also true if the clue focus would change after the chop discard.
 			if (playerChop !== undefined && result.playables.some(p => p.playerIndex == playerIndex && p.card.order === playerChop))
 				return givers;
+
 			continue;
 		}
 
@@ -202,7 +203,7 @@ export function find_clue_givers(game, clue, giver) {
  */
 export function take_action(game) {
 	const { common, state, me, tableID } = game;
-	const nextPlayerIndex = (state.ourPlayerIndex + 1) % state.numPlayers;
+	const nextPlayerIndex = state.nextPlayerIndex(state.ourPlayerIndex);
 
 	// Look for playables, trash and important discards in own hand
 	let playable_orders = me.thinksPlayables(state, state.ourPlayerIndex);
@@ -234,23 +235,22 @@ export function take_action(game) {
 	if (playable_orders.length > 0 && state.endgameTurns > 0) {
 		const best_connector = Utils.maxOn(playable_orders, order => {
 			const card = me.thoughts[order];
-			const old_play_stacks = state.play_stacks.slice();
+			const play_stacks = state.play_stacks.slice();
 			let connectables = 0;
 
 			for (let i = 1; i < state.endgameTurns; i++) {
 				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
-				const connectable = game.state.hands[playerIndex].some(o => {
+				const connectable = state.hands[playerIndex].some(o => {
 					const id = game.players[playerIndex].thoughts[o].identity({ infer: true });
-					return id !== undefined && id.suitIndex === card.suitIndex && state.deck[o].rank === card.rank + 1;
+					return id?.rank === play_stacks[id.suitIndex] + 1;
 				});
 
 				if (connectable) {
 					connectables++;
-					state.play_stacks[card.suitIndex]++;
+					play_stacks[card.suitIndex]++;
 				}
 			}
 
-			state.play_stacks = old_play_stacks;
 			return connectables;
 		}, 1);
 
@@ -311,7 +311,7 @@ export function take_action(game) {
 	const discardable = trash_orders[0] ?? common.chop(state.ourHand);
 
 	if (!is_finessed && state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
-		const nextNextPlayerIndex = (nextPlayerIndex + 1) % state.numPlayers;
+		const nextNextPlayerIndex = state.nextPlayerIndex(nextPlayerIndex);
 
 		const gen_required = me.chopValue(state, nextNextPlayerIndex) >= 4 &&
 			!common.thinksLocked(state, nextNextPlayerIndex) &&
@@ -337,14 +337,14 @@ export function take_action(game) {
 	let best_play_clue, clue_value;
 	if (state.clue_tokens > 0) {
 		let consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined));
-		const chop = game.me.chop(state.ourHand);
+		const chop = me.chop(state.ourHand);
 		let saved_clue;
 		let saved_clue_value = -99;
 
 		// Consider saving clues to finesse positions for players who likely have
 		// better cards on chop.
 		if (!state.inEndgame() && !state.early_game && state.clue_tokens < 4 && chop !== undefined) {
-			const our_chop_value = cardValue(state, game.me, state.deck[chop], chop);
+			const our_chop_value = cardValue(state, me, state.deck[chop], chop);
 			// Saves clue for locked players or players who likely have a better chop than ours.
 			const better_givers = Utils.range(0, state.numPlayers).filter(i => {
 				const player = game.players[i];
@@ -389,7 +389,8 @@ export function take_action(game) {
 			const action = solve_game(game, state.ourPlayerIndex, find_all_clues, find_all_discards);
 
 			if (action.type === ACTION.COLOUR || action.type === ACTION.RANK) {
-				const stall_clue = best_play_clue ?? best_stall_clue(stall_clues, 4) ??
+				const stall_clue = best_play_clue ??
+					best_stall_clue(stall_clues, 4) ??
 					{ type: CLUE.RANK, target: nextPlayerIndex, value: state.deck[state.hands[nextPlayerIndex].at(-1)].rank };
 
 				return Utils.clueToAction(stall_clue, tableID);
@@ -417,7 +418,7 @@ export function take_action(game) {
 	// Consider finesses while finessed if we are only waited on to play one card,
 	// it's not a selfish finesse, doesn't require more than one play from our own hand,
 	// and we're not in the end-game.
-	const waiting_self_connections = game.common.waiting_connections.filter(c => c.connections[c.conn_index]?.reacting === state.ourPlayerIndex);
+	const waiting_self_connections = common.waiting_connections.filter(c => c.connections[c.conn_index]?.reacting === state.ourPlayerIndex);
 	const waiting_cards = waiting_self_connections.reduce((sum, c) => sum + c.connections.length - c.conn_index, 0);
 	const waiting_out_of_order = waiting_self_connections.some(({ connections, conn_index, target }) =>
 		connections.length >= conn_index + 2 &&
@@ -524,8 +525,7 @@ export function take_action(game) {
 	const play_clue_2p = best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result));
 
 	// Play clue in 2 players while partner is not loaded and not selfish
-	if (state.numPlayers === 2 && state.clue_tokens > 0 && play_clue_2p &&
-		!me.thinksLoaded(state, nextPlayerIndex) && not_selfish(play_clue_2p))
+	if (state.numPlayers === 2 && state.clue_tokens > 0 && play_clue_2p && !me.thinksLoaded(state, nextPlayerIndex) && not_selfish(play_clue_2p))
 		return Utils.clueToAction(play_clue_2p, tableID);
 
 	// Playable card with any priority
@@ -533,7 +533,7 @@ export function take_action(game) {
 		return { tableID, type: ACTION.PLAY, target: best_playable_order };
 
 	const common_severity = stall_severity(state, common, state.ourPlayerIndex);
-	const actual_severity = stall_severity(state, game.me, state.ourPlayerIndex);
+	const actual_severity = stall_severity(state, me, state.ourPlayerIndex);
 
 	if (state.clue_tokens > 0) {
 		for (let i = actionPrioritySize + 1; i <= actionPrioritySize * 2; i++) {

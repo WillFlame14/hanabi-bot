@@ -13,13 +13,15 @@ import logger from '../../tools/logger.js';
 
 /**
  * Performs relevant updates after someone takes a turn.
+ * 
+ * Impure!
  * @param {Game} game
  * @param {TurnAction} action
  */
 export function update_turn(game, action) {
 	const { common, state } = game;
 	const { currentPlayerIndex } = action;
-	const otherPlayerIndex = (currentPlayerIndex + 1) % state.numPlayers;
+	const otherPlayerIndex = state.nextPlayerIndex(currentPlayerIndex);
 
 	/** @type {number[]} */
 	const to_remove = [];

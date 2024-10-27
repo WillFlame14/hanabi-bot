@@ -244,7 +244,7 @@ export function takeTurn(game, rawAction, draw = 'xx') {
 		game.handle_action({ type: 'draw', playerIndex: state.currentPlayerIndex, order: state.cardOrder + 1, suitIndex, rank });
 	}
 
-	const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.numPlayers;
+	const nextPlayerIndex = state.nextPlayerIndex(state.currentPlayerIndex);
 	game.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: nextPlayerIndex });
 
 	game.catchup = false;

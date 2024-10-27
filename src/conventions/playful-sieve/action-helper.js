@@ -17,7 +17,7 @@ import { logCard, logClue } from '../../tools/log.js';
  */
 export function get_result(game, clue) {
 	const { common, me, state } = game;
-	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
+	const partner = state.nextPlayerIndex(state.ourPlayerIndex);
 	const list = state.clueTouched(state.hands[partner], clue);
 
 	if (list.length === 0)
@@ -74,7 +74,7 @@ export function get_result(game, clue) {
  */
 export function clue_value(game, clue) {
 	const { state } = game;
-	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
+	const partner = state.nextPlayerIndex(state.ourPlayerIndex);
 	const touch = state.clueTouched(state.hands[partner], clue);
 
 	if (touch.length === 0)

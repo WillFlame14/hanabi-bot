@@ -81,7 +81,7 @@ export class Player {
 			this.thoughts.map(infs => infs.clone()),
 			this.links.map(link => Utils.objClone(link)),
 			this.play_links.map(link => Utils.objClone(link)),
-			this.unknown_plays,
+			new Set(this.unknown_plays),
 			Utils.objClone(this.waiting_connections),
 			Utils.objClone(this.elims)));
 	}
@@ -91,13 +91,13 @@ export class Player {
 		return (new /** @type {any} */ (this.constructor)(this.playerIndex,
 			this.all_possible,
 			this.all_inferred,
-			this.hypo_stacks,
-			this.thoughts,
-			this.links,
-			this.play_links,
-			this.unknown_plays,
-			this.waiting_connections,
-			this.elims));
+			this.hypo_stacks.slice(),
+			this.thoughts.slice(),
+			this.links.slice(),
+			this.play_links.slice(),
+			new Set(this.unknown_plays),
+			this.waiting_connections.slice(),
+			Utils.objClone(this.elims)));
 	}
 
 	/**
@@ -115,11 +115,15 @@ export class Player {
 	/**
 	 * @param {number} order
 	 * @param {(draft: import('../types.js').Writable<Card>) => void} func
+	 * @param {boolean} [listenPatches]
 	 * @returns {typeof this}
 	 */
-	withThoughts(order, func) {
+	withThoughts(order, func, listenPatches = this.playerIndex === -1) {
 		const copy = this.shallowCopy();
-		copy.updateThoughts(order, func);
+		copy.thoughts = this.thoughts.with(order, produce(this.thoughts[order], func, (patches) => {
+			if (listenPatches && patches.length > 0)
+				this.patches.set(order, (this.patches.get(order) ?? []).concat(patches));
+		}));
 		return copy;
 	}
 

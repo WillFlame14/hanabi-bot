@@ -78,9 +78,8 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 				if (save_clue.cm.every(o => cardTouched(state.deck[o], state.variant, clue)))
 					return true;
 			}
-			else {
-				if (cardTouched(state.deck[common.chop(state.hands[target])], state.variant, clue))
-					return true;
+			else if (cardTouched(state.deck[common.chop(state.hands[target])], state.variant, clue)) {
+				return true;
 			}
 		}
 
@@ -178,16 +177,14 @@ export function early_game_clue(game, playerIndex) {
 	if (state.clue_tokens <= 0)
 		return false;
 
-	const { screamed_at, generated } = state;
-	state.screamed_at = false;
+	const new_game = game.shallowCopy();
+	new_game.state.generated = false;
+	new_game.state.screamed_at = false;
 
 	logger.collect();
 	const options = { giver: playerIndex, hypothetical: true, no_fix: true, early_exits: expected_early_game_clue };
-	const { play_clues, save_clues, stall_clues } = find_clues(game, options);
+	const { play_clues, save_clues, stall_clues } = find_clues(new_game, options);
 	logger.flush(false);
-
-	state.screamed_at = screamed_at;
-	state.generated = generated;
 
 	logger.debug('found clues', play_clues.flat().map(logClue), save_clues.filter(c => c !== undefined).map(logClue), state.playerNames[playerIndex]);
 
@@ -222,8 +219,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 		const early_expected_clue = state.early_game && early_game_clue(game, target);
 		const potential_cluers = playersBetween(state.numPlayers, state.ourPlayerIndex, target).filter(i =>
-			i !== target && !state.hands[i].some(o => common.thoughts[o].finessed && state.isPlayable(state.deck[o]))
-		).length;
+			i !== target && !state.hands[i].some(o => common.thoughts[o].finessed && state.isPlayable(state.deck[o]))).length;
 
 		const nextPriority = (potential_cluers === 0 && !early_expected_clue) ? 0 : prioritySize;
 
@@ -319,10 +315,10 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 					continue;
 				}
 
+				// As a last resort, only scream discard if it is playable or critical.
+				const save_card = state.deck[game.players[target].chop(state.hands[target])];
 				const chop = common.chop(state.ourHand);
 
-				// As a last resort, only scream discard if it is critical.
-				const save_card = state.deck[game.players[target].chop(state.hands[target])];
 				if ((state.isCritical(save_card) || game.me.hypo_stacks[save_card.suitIndex] + 1 === save_card.rank) && state.clue_tokens === 0 && chop !== undefined) {
 					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push({ tableID, type: ACTION.DISCARD, target: chop });
 					continue;
@@ -335,10 +331,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 					const { playables, focus } = clue.result;
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focus);
 
-					if (tempo && !valuable && clue_safe(game, me, clue).safe)
-						return find_clue_value(clue.result);
-					else
-						return -1;
+					return (tempo && !valuable && clue_safe(game, me, clue).safe) ? find_clue_value(clue.result) : -1;
 				}, 0);
 
 				if (tccm) {

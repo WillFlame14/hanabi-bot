@@ -1,5 +1,5 @@
 import { CLUE } from '../../../constants.js';
-import { CLUE_INTERP, LEVEL } from '../h-constants.js';
+import { LEVEL } from '../h-constants.js';
 import { determine_focus, getIgnoreOrders } from '../hanabi-logic.js';
 import { find_connecting, find_known_connecting, resolve_bluff } from './connecting-cards.js';
 import { cardTouched, find_possibilities } from '../../../variants.js';
@@ -10,13 +10,6 @@ import { logCard, logConnection } from '../../../tools/log.js';
 
 
 export class IllegalInterpretation extends Error {
-	/** @param {string} message */
-	constructor(message) {
-		super(message);
-	}
-}
-
-export class RewindEscape extends Error {
 	/** @param {string} message */
 	constructor(message) {
 		super(message);
@@ -104,7 +97,7 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
 		}
 		else if (!selfRanks.includes(identity.rank)) {
 			try {
-				return find_self_finesse(game, action, identity, connected, ignoreOrders, finesses, ignorePlayer === -1);
+				return find_self_finesse(game, action, identity, connected, ignoreOrders, finesses);
 			}
 			catch (error) {
 				if (error instanceof IllegalInterpretation)
@@ -145,7 +138,7 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
 		// Try finesse in our hand again (if we skipped it earlier to prefer ignoring player)
 		if (giver !== state.ourPlayerIndex && !(target === state.ourPlayerIndex && looksDirect) && selfRanks.includes(identity.rank)) {
 			try {
-				return find_self_finesse(game, action, identity, connected, ignoreOrders, finesses, ignorePlayer === -1);
+				return find_self_finesse(game, action, identity, connected, ignoreOrders, finesses);
 			}
 			catch (error) {
 				if (error instanceof IllegalInterpretation)
@@ -194,7 +187,10 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 	}
 
 	// Create hypothetical state where we have the missing cards (and others can elim from them)
-	const hypo_game = game.minimalCopy();
+	const hypo_game = game.shallowCopy();
+	hypo_game.state.play_stacks = state.play_stacks.slice();
+	hypo_game.common = common.clone();
+
 	const { state: hypo_state, common: hypo_common } = hypo_game;
 
 	const connections = /** @type {Connection[]} */ ([]);
@@ -211,11 +207,6 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 
 		if (curr_connections.length === 0)
 			throw new IllegalInterpretation(`no connecting cards found for identity ${logCard(next_identity)}`);
-
-		if (curr_connections[0].type === 'terminate') {
-			Object.assign(game, hypo_game);
-			throw new RewindEscape('successfully found self-finesse!');
-		}
 
 		let allHidden = true;
 		for (const connection of curr_connections) {
@@ -266,17 +257,15 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 		if (connections.length > 0 && connections[0]?.bluff) {
 			logger.highlight('yellow', `bluff connection failed, retrying with true finesse ignoring ${connections[0].order} ${connections.map(logConnection).join(' -> ')}`);
 
-			const old_ignore = game.next_ignore[0]?.slice();
-			game.next_ignore[0] ??= [];
-			game.next_ignore[0].push({ order: connections[0].order });
+			const new_game = game.shallowCopy();
+			new_game.next_ignore[0] ??= [];
+			new_game.next_ignore[0].push({ order: connections[0].order });
 
 			try {
-				const fixed_connections = find_own_finesses(game, action, identity, looksDirect, ignorePlayer, selfRanks);
+				const fixed_connections = find_own_finesses(new_game, action, identity, looksDirect, ignorePlayer, selfRanks);
 
-				if (fixed_connections.length > 0) {
-					game.next_ignore[0] = old_ignore;
+				if (fixed_connections.length > 0)
 					return fixed_connections;
-				}
 			}
 			catch (error) {
 				if (error instanceof IllegalInterpretation)
@@ -286,7 +275,6 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 			}
 
 			logger.highlight('yellow', 'failed to connect with true finesse');
-			game.next_ignore[0] = old_ignore;
 		}
 		throw new IllegalInterpretation(`unable to connect`);
 	}
@@ -337,7 +325,6 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
 				throw new IllegalInterpretation(`impossible layered finesse, card ${order} has no playable identities`);
 
 			connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, order, hidden: true, self: true, identities });
-			common.updateThoughts(order, (draft) => { draft.inferred = common.thoughts[order].inferred.intersect(identities); });
 			already_connected.push(order);
 
 			if (i === state.ourHand.length - 1)
@@ -363,10 +350,9 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
  * @param {number[]} connected
  * @param {number[]} ignoreOrders
  * @param {number} finesses
- * @param {boolean} allow_rewind
  * @returns {Connection[]}
  */
-function find_self_finesse(game, action, identity, connected, ignoreOrders, finesses, allow_rewind) {
+function find_self_finesse(game, action, identity, connected, ignoreOrders, finesses) {
 	const { common, state, me } = game;
 	const { suitIndex, rank } = identity;
 	const { giver, target } = action;
@@ -415,34 +401,5 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 
 		return [{ type: 'finesse', reacting, order: finesse, self: true, bluff: !card.possible.has(identity), possibly_bluff, identities, certain, ambiguous }];
 	}
-
-	const first_finesse = common.thoughts[state.ourHand.find(o => !state.deck[o].clued)];
-
-	// Try to reinterpret an earlier clue as a hidden finesse
-	if (allow_rewind && first_finesse?.finessed && !game.ephemeral_rewind) {
-		try {
-			logger.highlight('yellow', 'trying rewind on', first_finesse.order, 'to fulfill finesse');
-			const new_game = game.rewind(first_finesse.drawn_index, [{
-				type: 'identify',
-				order: first_finesse.order,
-				playerIndex: state.ourPlayerIndex,
-				identities: [identity]
-			}], false, true);
-
-			if (new_game) {
-				new_game.ephemeral_rewind = false;
-
-				if (new_game.lastMove !== CLUE_INTERP.NONE) {
-					logger.highlight('yellow', 'successfully connected!');
-					Object.assign(game, new_game);
-					return [{ type: 'terminate', reacting: -1, order: -1, identities: [] }];
-				}
-			}
-		}
-		catch (err) {
-			logger.warn(err.message);
-		}
-	}
-
 	throw new IllegalInterpretation(`self-finesse not found for ${logCard(identity)}`);
 }

@@ -18,9 +18,12 @@ import { globals } from './util.js';
 
 /**
  * Returns a log-friendly representation of a card.
- * @param {{suitIndex: number, rank: number} | ActualCard | Card} card
+ * @param {{suitIndex: number, rank: number} | ActualCard | Card | undefined} card
  */
 export function logCard(card) {
+	if (card === undefined)
+		return undefined;
+
 	let suitIndex, rank, append;
 
 	if (card.suitIndex !== -1) {

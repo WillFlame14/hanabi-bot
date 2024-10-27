@@ -137,14 +137,22 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
  * @param {Game} game
  * @param {boolean} [infer]
  */
-function hash_state(game, infer = true) {
+function hash_game(game, infer = true) {
 	const { common, state } = game;
 
 	const { clue_tokens, endgameTurns } = state;
-	const hands = state.hands.flatMap(hand => hand.map(o => {
-		const id = (infer ? common.thoughts[o]: state.deck[o]).identity({ infer: true });
-		return id ? logCard(id) : 'xx';
-	})).join();
+	const hands = state.hands.flatMap(hand => hand.map(o =>
+		logCard((infer ? common.thoughts[o]: state.deck[o]).identity({ infer: true })))).join();
+
+	return `${hands},${clue_tokens},${endgameTurns}`;
+}
+
+/**
+ * @param {State} state
+ */
+function hash_state(state) {
+	const { clue_tokens, endgameTurns } = state;
+	const hands = state.hands.flatMap(hand => hand.map(o => logCard(state.deck[o]))).join();
 
 	return `${hands},${clue_tokens},${endgameTurns}`;
 }
@@ -180,18 +188,14 @@ function find_unseen_identities(game) {
 }
 
 /**
- * @param {Game} game
+ * @param {State} state
  * @param {number} playerTurn
- * @param {boolean} infer
  */
-function unwinnable_state(game, playerTurn, infer = true) {
-	const { state, me } = game;
-
+function unwinnable_state(state, playerTurn) {
 	if (state.ended || state.pace < 0)
 		return true;
 
-	const void_players = Utils.range(0, state.numPlayers).filter(i => (infer && i === state.ourPlayerIndex) ?
-		me.thinksTrash(state, i).length === state.hands[i].length :
+	const void_players = Utils.range(0, state.numPlayers).filter(i =>
 		state.hands[i].every(o => ((c = state.deck[o]) => c.identity() === undefined || state.isBasicTrash(c))()));
 
 	if (void_players.length > state.pace)
@@ -205,24 +209,23 @@ function unwinnable_state(game, playerTurn, infer = true) {
 	}
 }
 
+
 /**
  * Returns whether the game is winnable if everyone can look at their own cards.
  * 
- * @param {Game} game
+ * @param {State} state
  * @param {number} playerTurn
  * @param {Map<string, boolean>} [cache]
  * @returns {boolean}
  */
-export function winnable_simpler(game, playerTurn, cache = new Map()) {
-	const { state } = game;
-
+export function winnable_simpler(state, playerTurn, cache = new Map()) {
 	if (state.score === state.maxScore)
 		return true;
 
-	if (Date.now() > timeout || unwinnable_state(game, playerTurn, false))
+	if (Date.now() > timeout || unwinnable_state(state, playerTurn))
 		return false;
 
-	const cached_result = cache.get(hash_state(game, false));
+	const cached_result = cache.get(hash_state(state));
 	if (cached_result !== undefined)
 		return cached_result;
 
@@ -234,102 +237,75 @@ export function winnable_simpler(game, playerTurn, cache = new Map()) {
 		if (!state.isPlayable(card))
 			continue;
 
-		const old_rank = state.play_stacks[card.suitIndex];
-		const oldEndgameTurns = state.endgameTurns;
-		const card_index = state.hands[playerTurn].findIndex(o => o === order);
+		const new_state = state.shallowCopy();
 		const newCardOrder = state.cardOrder + 1;
 
-		state.play_stacks[card.suitIndex] = card.rank;
-		state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(order), 1);
+		new_state.play_stacks = state.play_stacks.with(card.suitIndex, card.rank);
+		new_state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(order), 1);
 
 		if (state.endgameTurns === -1) {
-			state.hands[playerTurn].unshift(newCardOrder);
-			state.deck[newCardOrder] ??= new ActualCard(-1, -1, newCardOrder, game.state.actionList.length);
-			state.cardOrder++;
-			state.cardsLeft--;
+			new_state.hands[playerTurn].unshift(newCardOrder);
 
-			if (state.cardsLeft === 0)
-				state.endgameTurns = state.numPlayers;
+			if (state.deck[newCardOrder] === undefined) {
+				new_state.deck = state.deck.slice();
+				new_state.deck[newCardOrder] = new ActualCard(-1, -1, newCardOrder, state.actionList.length);
+			}
+
+			new_state.cardOrder++;
+			new_state.cardsLeft--;
+
+			if (new_state.cardsLeft === 0)
+				new_state.endgameTurns = state.numPlayers;
 		}
 		else {
-			state.endgameTurns--;
+			new_state.endgameTurns--;
 		}
 
-		const winnable = winnable_simpler(game, nextPlayerIndex, cache);
-
-		if (oldEndgameTurns === -1) {
-			state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(newCardOrder), 1);
-			state.cardOrder--;
-			state.cardsLeft++;
-		}
-
-		state.play_stacks[card.suitIndex] = old_rank;
-		state.hands[playerTurn].splice(card_index, 0, order);
-		state.endgameTurns = oldEndgameTurns;
-
-		if (winnable)
+		if (winnable_simpler(new_state, nextPlayerIndex, cache))
 			return true;
 	}
 
 	if (state.clue_tokens > 0) {
-		const oldEndgameTurns = state.endgameTurns;
-		const oldClueTokens = state.clue_tokens;
+		const new_state = state.shallowCopy();
+		new_state.clue_tokens--;
+		new_state.endgameTurns = state.endgameTurns === -1 ? -1 : (state.endgameTurns - 1);
 
-		game.state.clue_tokens--;
-		game.state.endgameTurns = game.state.endgameTurns === -1 ? -1 : (game.state.endgameTurns - 1);
-
-		const winnable = winnable_simpler(game, nextPlayerIndex, cache);
-
-		state.endgameTurns = oldEndgameTurns;
-		state.clue_tokens = oldClueTokens;
-
-		if (winnable)
+		if (winnable_simpler(new_state, nextPlayerIndex, cache))
 			return true;
 	}
 
 	const discardable = state.hands[playerTurn].find(o => ((c = state.deck[o]) => c.identity() === undefined || state.isBasicTrash(c))());
 
 	if (state.pace >= 0 && discardable !== undefined) {
-		const oldEndgameTurns = state.endgameTurns;
-		const oldClueTokens = state.clue_tokens;
-		const oldCardsLeft = state.cardsLeft;
-		const card_index = state.hands[playerTurn].findIndex(o => o === discardable);
+		const new_state = state.shallowCopy();
 		const newCardOrder = state.cardOrder + 1;
 
-		state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(discardable), 1);
+		new_state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(discardable), 1);
 
 		if (state.endgameTurns === -1) {
-			state.hands[playerTurn].unshift(newCardOrder);
-			state.deck[newCardOrder] ??= new ActualCard(-1, -1, newCardOrder, game.state.actionList.length);
-			state.cardOrder++;
-			state.cardsLeft--;
+			new_state.hands[playerTurn].unshift(newCardOrder);
 
-			if (state.cardsLeft === 0)
-				state.endgameTurns = state.numPlayers;
+			if (state.deck[newCardOrder] === undefined) {
+				new_state.deck = state.deck.slice();
+				new_state.deck[newCardOrder] = new ActualCard(-1, -1, newCardOrder, state.actionList.length);
+			}
+
+			new_state.cardOrder++;
+			new_state.cardsLeft--;
+
+			if (new_state.cardsLeft === 0)
+				new_state.endgameTurns = state.numPlayers;
 		}
 		else {
-			state.endgameTurns--;
+			new_state.endgameTurns--;
 		}
-		state.clue_tokens = Math.min(state.clue_tokens + 1, 8);
+		new_state.clue_tokens = Math.min(state.clue_tokens + 1, 8);
 
-		const winnable = winnable_simpler(game, nextPlayerIndex, cache);
-
-		if (oldEndgameTurns === -1) {
-			state.hands[playerTurn] = state.hands[playerTurn].toSpliced(state.hands[playerTurn].indexOf(newCardOrder), 1);
-			state.cardOrder--;
-			state.cardsLeft++;
-		}
-		state.hands[playerTurn].splice(card_index, 0, discardable);
-
-		state.endgameTurns = oldEndgameTurns;
-		state.clue_tokens = oldClueTokens;
-		state.cardsLeft = oldCardsLeft;
-
-		if (winnable)
+		if (winnable_simpler(new_state, nextPlayerIndex, cache))
 			return true;
 	}
 
-	cache.set(hash_state(game, false), false);
+	cache.set(hash_state(state), false);
 	return false;
 }
 
@@ -350,15 +326,15 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 	if (state.score === state.maxScore)
 		return { actions: [], winrate: 1 };
 
-	if (Date.now() > timeout || unwinnable_state(game, playerTurn))
+	if (Date.now() > timeout || unwinnable_state(state, playerTurn))
 		return { actions: [], winrate: 0 };
 
-	const cached_result = cache.get(hash_state(game));
+	const cached_result = cache.get(hash_game(game));
 	if (cached_result !== undefined)
 		return cached_result;
 
-	if (!winnable_simpler(game, playerTurn)) {
-		cache.set(hash_state(game), { actions: [], winrate: 0 });
+	if (!winnable_simpler(state, playerTurn)) {
+		cache.set(hash_game(game), { actions: [], winrate: 0 });
 		return { actions: [], winrate: 0 };
 	}
 
@@ -369,13 +345,11 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 	const not_useful = state.hands[playerTurn].find(o => state.isBasicTrash(state.deck[o]));
 
 	const attempt_discard = () => {
-		game.state.clue_tokens++;
-		if (!winnable_simpler(game, nextPlayerIndex, new Map())) {
-			game.state.clue_tokens--;
-			return { actions: [], winrate: 0 };
-		}
+		const new_state = state.shallowCopy();
+		new_state.clue_tokens++;
 
-		game.state.clue_tokens--;
+		if (!winnable_simpler(new_state, nextPlayerIndex))
+			return { actions: [], winrate: 0 };
 
 		const discards = find_discards(game, playerTurn);
 
@@ -402,12 +376,11 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 	};
 
 	const attempt_stall = () => {
-		game.state.clue_tokens--;
-		if (!winnable_simpler(game, state.nextPlayerIndex(playerTurn))) {
-			game.state.clue_tokens++;
+		const new_state = state.shallowCopy();
+		new_state.clue_tokens--;
+
+		if (!winnable_simpler(new_state, state.nextPlayerIndex(playerTurn)))
 			return { actions: [], winrate: 0 };
-		}
-		game.state.clue_tokens++;
 
 		const perform_action = { type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn };
 
@@ -415,7 +388,6 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 			return;
 
 		const clue_game = game.shallowCopy();
-		clue_game.state = state.minimalCopy();
 		clue_game.state.clue_tokens--;
 		clue_game.state.turn_count++;
 		clue_game.state.endgameTurns = clue_game.state.endgameTurns === -1 ? -1 : (clue_game.state.endgameTurns - 1);
@@ -429,41 +401,39 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 		}
 	};
 
-	if (playables.length > 0) {
-		for (const order of playables) {
-			if (state.deck[order].identity() === undefined)
-				continue;
+	for (const order of playables) {
+		if (state.deck[order].identity() === undefined)
+			continue;
 
-			const perform_action = { type: ACTION.PLAY, target: order, playerIndex: playerTurn };
+		const perform_action = { type: ACTION.PLAY, target: order, playerIndex: playerTurn };
 
-			if (exclude.some(action => Utils.objEquals(action, perform_action)))
-				continue;
+		if (exclude.some(action => Utils.objEquals(action, perform_action)))
+			continue;
 
-			const { suitIndex, rank } = state.deck[order];
-			logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to play', logCard({ suitIndex, rank }));
+		const { suitIndex, rank } = state.deck[order];
+		logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to play', logCard({ suitIndex, rank }));
 
-			const new_game = game.simulate_action({ type: 'play', order, suitIndex, rank, playerIndex: playerTurn });
-			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
+		const new_game = game.simulate_action({ type: 'play', order, suitIndex, rank, playerIndex: playerTurn });
+		const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
 
-			if (winrate >= best_winrate) {
-				best_actions = actions.toSpliced(0, 0, perform_action);
-				best_winrate = winrate;
-			}
-
-			if (best_winrate === 1)
-				break;
+		if (winrate >= best_winrate) {
+			best_actions = actions.toSpliced(0, 0, perform_action);
+			best_winrate = winrate;
 		}
+
+		if (best_winrate === 1)
+			break;
 	}
 
 	let attempted_clue = false;
 
 	if (best_winrate < 1 && state.clue_tokens > 0) {
-		game.state.clue_tokens--;
-		if (!winnable_simpler(game, state.nextPlayerIndex(playerTurn))) {
-			game.state.clue_tokens++;
+		const new_state = state.shallowCopy();
+		new_state.clue_tokens--;
+
+		if (!winnable_simpler(new_state, state.nextPlayerIndex(playerTurn)))
 			return { actions: [], winrate: 0 };
-		}
-		game.state.clue_tokens++;
+
 
 		const clues = find_clues(game, playerTurn);
 
@@ -509,7 +479,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 	Utils.globalModify({ game });
 
 	const result = { actions: best_actions, winrate: best_winrate };
-	cache.set(hash_state(game), result);
+	cache.set(hash_game(game), result);
 
 	return result;
 }

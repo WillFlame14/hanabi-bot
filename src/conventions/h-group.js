@@ -68,29 +68,25 @@ export default class HGroup extends Game {
 	}
 
 	createBlank() {
-		const blank = new HGroup(this.tableID, this.state.createBlank(), this.in_progress, this.level);
+		const blank = super.createBlank();
+		blank.level = this.level;
 		blank.notes = this.notes;
 		blank.rewinds = this.rewinds;
 		return blank;
 	}
 
 	shallowCopy() {
-		const newGame = new HGroup(this.tableID, this.state, this.in_progress, this.level);
-		Object.assign(newGame, this);
+		const newGame = super.shallowCopy();
+		newGame.level = this.level;
 		return newGame;
 	}
 
 	minimalCopy() {
-		const newGame = new HGroup(this.tableID, this.state.minimalCopy(), this.in_progress, this.level);
-		if (this.copyDepth > 100)
-			throw new Error('Maximum recursive depth reached.');
-
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory',
-			'screamed_at', 'generated', 'dda', 'moveHistory', 'finesses_while_finessed', 'stalled_5', 'ephemeral_rewind'];
-
-		for (const property of minimalProps)
-			newGame[property] = Utils.objClone(this[property]);
-
+		const newGame = super.minimalCopy();
+		newGame.level = this.level;
+		newGame.moveHistory = Utils.objClone(this.moveHistory);
+		newGame.finesses_while_finessed = Utils.objClone(this.finesses_while_finessed);
+		newGame.stalled_5 = this.stalled_5;
 		newGame.copyDepth = this.copyDepth + 1;
 		return newGame;
 	}

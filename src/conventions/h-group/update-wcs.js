@@ -14,6 +14,8 @@ import { logCard, logConnection } from '../../tools/log.js';
 
 /**
  * "Undoes" a connection by reverting/removing notes on connecting cards.
+ * 
+ * Impure! (modifies common)
  * @param {Game} game
  * @param {WaitingConnection} waiting_connection
  */
@@ -151,8 +153,7 @@ export function resolve_card_retained(game, waiting_connection) {
 
 		if (passback()) {
 			logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but they need to play multiple non-hidden cards, passing back`);
-			waiting_connection.ambiguousPassback = true;
-			return { remove: false };
+			return { remove: false, ambiguousPassback: true };
 		}
 
 		const old_finesse = older_queued_finesse(state, reacting, common, order);
@@ -182,8 +183,7 @@ export function resolve_card_retained(game, waiting_connection) {
 
 				if (hesitation_possibility) {
 					logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but we could have ${logCard(hesitation_possibility)} on finesse position`);
-					waiting_connection.selfPassback = true;
-					return { remove: false };
+					return { remove: false, selfPassback: true };
 				}
 			}
 		}
@@ -235,8 +235,7 @@ export function resolve_card_retained(game, waiting_connection) {
 
 			if (self_delay && !selfPassback) {
 				logger.warn('delaying for potential self-finesse');
-				waiting_connection.selfPassback = true;
-				return { remove: false };
+				return { remove: false, selfPassback: true };
 			}
 		}
 
@@ -288,7 +287,7 @@ export function resolve_card_played(game, waiting_connection) {
 	logger.info(`waiting card ${identities.length === 1 ? logCard(identities[0]) : '(unknown)'} played`);
 
 	// Advance waiting connection to next card that still exists
-	waiting_connection.conn_index = connections.findIndex((conn, index) => index > conn_index && state.hands[conn.reacting].includes(conn.order));
+	const next_index = connections.findIndex((conn, index) => index > conn_index && state.hands[conn.reacting].includes(conn.order));
 
 	if (type === 'finesse' || type === 'prompt') {
 		// Finesses demonstrate that a card must be playable and not save
@@ -316,15 +315,18 @@ export function resolve_card_played(game, waiting_connection) {
 			const only_clued_connections_left = waiting_connection.connections.every((conn, index) =>
 				index < conn_index || conn.type !== 'finesse' || conn.reacting === target);
 
-			const remove = (demonstration !== undefined && only_clued_connections_left) || waiting_connection.conn_index === -1;
-			return { demonstration, remove };
+			const remove = (demonstration !== undefined && only_clued_connections_left) || next_index === -1;
+			return { demonstration, remove, next_index };
 		}
 	}
 
-	return { remove: waiting_connection.conn_index === -1 };
+	return { remove: next_index === -1, next_index };
 }
 
 /**
+ * Fixes a waiting connection after the giver plays a connecting card.
+ * 
+ * Impure! (modifies common)
  * @param {Game} game
  * @param {WaitingConnection} waiting_connection
  */
@@ -336,7 +338,7 @@ export function resolve_giver_play(game, waiting_connection) {
 	logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`);
 
 	// Advance waiting connection to next card that still exists
-	waiting_connection.conn_index = connections.findIndex((conn, index) => index > conn_index && state.hands[conn.reacting].includes(conn.order));
+	const next_index = connections.findIndex((conn, index) => index > conn_index && state.hands[conn.reacting].includes(conn.order));
 
 	common.updateThoughts(order, (draft) => {
 		// Remove finesse
@@ -355,5 +357,5 @@ export function resolve_giver_play(game, waiting_connection) {
 		}
 	});
 
-	return { remove: waiting_connection.conn_index === -1 };
+	return { remove: next_index === -1, next_index };
 }

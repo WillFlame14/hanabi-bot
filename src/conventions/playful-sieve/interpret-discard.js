@@ -16,6 +16,8 @@ import { logCard } from '../../tools/log.js';
 
 /**
  * Interprets (writes notes) for a discard of the given card.
+ * 
+ * Impure!
  * @param {Game} game
  * @param {DiscardAction} action
  */
@@ -24,7 +26,7 @@ export function interpret_discard(game, action) {
 	const { order, playerIndex, suitIndex, rank, failed } = action;
 	const identity = { suitIndex, rank };
 
-	const other = (playerIndex + 1) % state.numPlayers;
+	const other = state.nextPlayerIndex(playerIndex);
 	const other_had_trash = common.thinksTrash(state, other).length > 0;
 
 	Basics.onDiscard(this, action);

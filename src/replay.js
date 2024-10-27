@@ -111,7 +111,7 @@ async function main() {
 		if (action.type === ACTION.PLAY && game.state.strikes === 3)
 			game.handle_action({ type: 'gameOver', playerIndex: currentPlayerIndex, endCondition: END_CONDITION.STRIKEOUT, votes: -1 });
 
-		currentPlayerIndex = (currentPlayerIndex + 1) % state.numPlayers;
+		currentPlayerIndex = state.nextPlayerIndex(currentPlayerIndex);
 		turn++;
 	}
 

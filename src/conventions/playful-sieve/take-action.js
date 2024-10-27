@@ -24,7 +24,7 @@ import * as Utils from '../../tools/util.js';
  */
 export function take_action(game) {
 	const { common, me, state, tableID } = game;
-	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
+	const partner = state.nextPlayerIndex(state.ourPlayerIndex);
 	const partner_hand = state.hands[partner];
 
 	// Look for playables, trash and important discards in own hand

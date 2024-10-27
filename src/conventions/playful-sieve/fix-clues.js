@@ -14,7 +14,7 @@ import { logCard, logClue } from '../../tools/log.js';
  */
 export function find_fix_clue(game) {
 	const { common, state } = game;
-	const partner = (state.ourPlayerIndex + 1) % state.numPlayers;
+	const partner = state.nextPlayerIndex(state.ourPlayerIndex);
 	const fix_needed = common.thinksPlayables(state, partner).filter(o => !state.isPlayable(state.deck[o]));
 
 	if (fix_needed.length === 0) {

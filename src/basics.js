@@ -12,6 +12,7 @@ import { produce } from './StateProxy.js';
  */
 
 /**
+ * Impure!
  * @param {Game} game
  * @param {ClueAction} action
  */
@@ -70,6 +71,7 @@ export function onClue(game, action) {
 }
 
 /**
+ * Impure!
  * @param {Game} game
  * @param {DiscardAction} action
  */
@@ -112,6 +114,7 @@ export function onDiscard(game, action) {
 }
 
 /**
+ * Impure!
  * @param {Game} game
  * @param {DrawAction} action
  */
@@ -148,6 +151,7 @@ export function onDraw(game, action) {
 }
 
 /**
+ * Impure!
  * @param {Game} game
  * @param {PlayAction} action
  */

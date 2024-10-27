@@ -435,13 +435,10 @@ export function reset_card(order) {
  * @param {number[]} [hand]
  */
 export function find_links(state, hand = state.hands[this.playerIndex]) {
-	if (this.playerIndex === -1 && hand === undefined) {
-		for (const hand of state.hands)
-			this.find_links(state, hand);
+	if (this.playerIndex === -1 && hand === undefined)
+		return state.hands.flatMap(hand => this.find_links(state, hand));
 
-		return;
-	}
-
+	const links = [];
 	const linked_orders = new Set(this.links.flatMap(link => link.orders));
 
 	for (const order of hand) {
@@ -465,11 +462,13 @@ export function find_links(state, hand = state.hands[this.playerIndex]) {
 		if (orders.length > card.inferred.reduce((sum, inf) => sum += unknownIdentities(state, this, inf), 0)) {
 			logger.info('adding link', orders, 'inferences', card.inferred.map(logCard), state.playerNames[this.playerIndex]);
 
-			this.links.push({ orders, identities: card.inferred.map(c => c.raw()), promised: false });
+			links.push({ orders, identities: card.inferred.map(c => c.raw()), promised: false });
 			for (const o of orders)
 				linked_orders.add(o);
 		}
 	}
+
+	return links;
 }
 
 /**
@@ -538,8 +537,7 @@ export function refresh_links(state) {
 	}
 
 	// Clear links that we're removing
-	this.links = this.links.filter((_, index) => !remove_indices.includes(index));
-	this.find_links(state);
+	this.links = this.links.filter((_, index) => !remove_indices.includes(index)).concat(this.find_links(state));
 }
 
 /**

@@ -5,8 +5,6 @@ import { interpret_play } from './playful-sieve/interpret-play.js';
 import { take_action } from './playful-sieve/take-action.js';
 import { update_turn } from './playful-sieve/update-turn.js';
 
-import * as Utils from '../tools/util.js';
-
 /**
  * @typedef {import('../variants.js').Variant} Variant
  * @typedef {import('../basics/State.js').State} State
@@ -34,7 +32,7 @@ export default class PlayfulSieve extends Game {
 	}
 
 	createBlank() {
-		const blank = new PlayfulSieve(this.tableID, this.state.createBlank(), this.in_progress);
+		const blank = super.createBlank();
 		blank.notes = this.notes;
 		blank.rewinds = this.rewinds;
 		blank.locked_shifts = this.locked_shifts;
@@ -42,16 +40,8 @@ export default class PlayfulSieve extends Game {
 	}
 
 	minimalCopy() {
-		const newGame = new PlayfulSieve(this.tableID, this.state.minimalCopy(), this.in_progress);
-
-		if (this.copyDepth > 100)
-			throw new Error('Maximum recursive depth reached.');
-
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'locked_shifts'];
-
-		for (const property of minimalProps)
-			newGame[property] = Utils.objClone(this[property]);
-
+		const newGame = super.minimalCopy();
+		newGame.locked_shifts = this.locked_shifts.slice();
 		newGame.copyDepth = this.copyDepth + 1;
 		return newGame;
 	}

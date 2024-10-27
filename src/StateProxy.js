@@ -135,6 +135,18 @@ function createProxy(parent, base) {
 
 /**
  * @template T
+ * @param {(draft: { -readonly [P in keyof T]: T[P] }) => void} func
+ */
+export function produceC(func) {
+	/** @type {(state: T, ...args: unknown[]) => T} */
+	return (state, ...args) =>
+		produce(state, draft =>
+			func.call(draft, draft, ...args)
+		);
+}
+
+/**
+ * @template T
  * @param {T} base
  * @param {(draft: { -readonly [P in keyof T]: T[P] }) => void} producer
  * @param {(patches: Patch[]) => void} [patchListener]

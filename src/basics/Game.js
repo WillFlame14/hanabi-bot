@@ -60,8 +60,6 @@ export class Game {
 	 */
 	hookAfterDraws = (_game) => {};
 
-	ephemeral_rewind = false;
-
 	/**
 	 * @param {number} tableID
 	 * @param {State} state
@@ -93,37 +91,52 @@ export class Game {
 		const { clue_tokens, turn_count, actionList } = this.state;
 		const hands = this.state.hands.flat();
 		const player_thoughts = this.common.thoughts.flatMap(c => c.inferred.map(logCard).join()).join();
-		const deck = this.state.deck.map(c => c.identity() !== undefined ? logCard(c.identity()) : 'xx');
+		const deck = this.state.deck.map(logCard);
 
 		return `${hands},${player_thoughts},${deck},${JSON.stringify(actionList.at(-1))},${clue_tokens},${turn_count}`;
 	}
 
 	/**
 	 * Returns a blank copy of the game, as if it had restarted.
+	 * @returns {this}
 	 */
 	createBlank() {
-		const newGame = new Game(this.tableID, this.state.createBlank(), this.in_progress);
+		const newGame = new /** @type {any} */ (this.constructor)(this.tableID, this.state.createBlank(), this.in_progress);
 		newGame.notes = this.notes;
 		newGame.rewinds = this.rewinds;
 		return newGame;
 	}
 
+	/**
+	 * @returns {this}
+	 */
 	shallowCopy() {
-		const newGame = new Game(this.tableID, this.state, this.in_progress);
-		Object.assign(newGame, this);
+		const newGame = new /** @type {any} */ (this.constructor)(this.tableID, this.state.shallowCopy(), this.in_progress);
+
+		for (const key of Object.getOwnPropertyNames(this)) {
+			const val = this[key];
+
+			if (Array.isArray(val))
+				newGame[key] = val.slice();
+			else if (typeof val !== 'object')
+				newGame[key] = val;
+		}
+
+		newGame.common = this.common.shallowCopy();
 		return newGame;
 	}
 
 	/**
 	 * Returns a copy of the state with only minimal properties (cheaper than cloning).
+	 * @returns {this}
 	 */
 	minimalCopy() {
-		const newGame = new Game(this.tableID, this.state.minimalCopy(), this.in_progress);
+		const newGame = new /** @type {any} */ (this.constructor)(this.tableID, this.state.minimalCopy(), this.in_progress);
 
 		if (this.copyDepth > 100)
 			throw new Error('Maximum recursive depth reached.');
 
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory', 'ephemeral_rewind'];
+		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory'];
 
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);
@@ -182,10 +195,9 @@ export class Game {
 	 * @param {number} action_index
 	 * @param {Action[]} rewind_actions	The rewind action to insert before the target action
 	 * @param {boolean} [mistake] 		Whether the target action was a mistake
-	 * @param {boolean} [ephemeral]		Whether the action should be saved in the action list
 	 * @returns {this | undefined}
 	 */
-	rewind(action_index, rewind_actions, mistake = false, ephemeral = false) {
+	rewind(action_index, rewind_actions, mistake = false) {
 		const actionList = this.state.actionList.map(Utils.cleanAction);
 
 		this.rewinds++;
@@ -277,10 +289,6 @@ export class Game {
 		for (const action of rewind_actions)
 			newGame.handle_action(action);
 
-		if (ephemeral) {
-			newGame.state.actionList.pop();
-			newGame.ephemeral_rewind = true;
-		}
 		newGame.handle_action(pivotal_action);
 
 		// Redo all the following actions
@@ -371,13 +379,14 @@ export class Game {
 		hypo_game.catchup = true;
 		hypo_game.rewind = () => undefined;
 
+		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: hypo_game });
 
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
 			hypo_game.interpret_clue(hypo_game, action);
 		});
 
-		Utils.globalModify({ game: this });
+		Utils.globalModify({ game: old_global_game });
 
 		hypo_game.catchup = false;
 		hypo_game.state.turn_count++;

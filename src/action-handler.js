@@ -15,6 +15,7 @@ import { produce } from './StateProxy.js';
  */
 
 /**
+ * Impure!
  * @this Game
  * @param {Action} 	action
  */

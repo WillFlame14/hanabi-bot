@@ -20,6 +20,8 @@ import { check_ocm } from './interpret-play.js';
 
 /**
  * Interprets (writes notes) for a discard of the given card.
+ * 
+ * Impure!
  * @param {Game} game
  * @param {DiscardAction} action
  */
@@ -126,8 +128,7 @@ export function interpret_discard(game, action) {
 		if (!(sarcastic_targets?.length > 0) && game.level >= LEVEL.STALLING) {
 			// If there is only one of this card left and it could be in the next player's chop,
 			// they are to be treated as in double discard avoidance.
-			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
-			const chop = common.chop(state.hands[nextPlayerIndex]);
+			const chop = common.chop(state.hands[state.nextPlayerIndex(playerIndex)]);
 
 			if (state.isCritical({ suitIndex, rank }) && common.thoughts[chop]?.possible.has(state.deck[order].identity()))
 				state.dda = state.deck[order].identity();
@@ -138,7 +139,7 @@ export function interpret_discard(game, action) {
 		const result = check_sdcm(game, action, before_trash, old_chop);
 
 		if (result !== undefined) {
-			const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
+			const nextPlayerIndex = state.nextPlayerIndex(playerIndex);
 			const chop = common.chop(state.hands[nextPlayerIndex]);
 
 			logger.info(`interpreted ${result}!`);
@@ -157,8 +158,43 @@ export function interpret_discard(game, action) {
 		}
 	}
 
-	if (!(sarcastic_targets?.length > 0) && !state.screamed_at && !state.generated && game.level >= LEVEL.ENDGAME && state.inEndgame())
-		check_positional_discard(game, action, before_trash, old_chop, slot);
+	if (!(sarcastic_targets?.length > 0) && !state.screamed_at && !state.generated && game.level >= LEVEL.ENDGAME && state.inEndgame()) {
+		const targets = check_positional_discard(game, action, before_trash, old_chop, slot);
+
+		if (targets.length > 0) {
+			const playable_possibilities = game.players[playerIndex].hypo_stacks
+				.map((rank, suitIndex) => ({ suitIndex, rank: rank + 1 }))
+				.filter(id => !isTrash(state, common, id, -1, { infer: true }));
+
+			/** @type {Connection[]} */
+			const connections = [];
+
+			for (const r of targets) {
+				const order = state.hands[r][slot - 1];
+				common.updateThoughts(order, (draft) => {
+					draft.finessed = true;
+					draft.focused = true;
+					draft.inferred = common.thoughts[order].inferred.intersect(playable_possibilities);
+				});
+
+				logger.info('interpreting pos on', state.playerNames[r], 'slot', slot);
+				connections.push({ type: 'positional', reacting: r, order, identities: common.thoughts[order].inferred.array });
+			}
+
+			const actual_card = state.deck[connections.at(-1).order];
+
+			common.waiting_connections.push({
+				connections,
+				giver: playerIndex,
+				target: targets.at(-1),
+				conn_index: 0,
+				turn: state.turn_count,
+				focus: connections.at(-1).order,
+				inference: actual_card.raw(),
+				action_index: state.actionList.length - 1
+			});
+		}
+	}
 
 	team_elim(game);
 
@@ -176,6 +212,7 @@ export function interpret_discard(game, action) {
  * @param {number[]} before_trash
  * @param {number} old_chop
  * @param {number} slot
+ * @returns {number[]} The player indices that are called to play.
  */
 function check_positional_discard(game, action, before_trash, old_chop, slot) {
 	const { common, state, me } = game;
@@ -189,7 +226,7 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 		order === expected_discard);
 
 	if (not_intended)
-		return;
+		return [];
 
 	const num_plays = (action.failed && order !== expected_discard) ? 2 : 1;
 
@@ -197,7 +234,7 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 		.map((rank, suitIndex) => ({ suitIndex, rank: rank + 1 }))
 		.filter(id => !isTrash(state, common, id, -1, { infer: true }));
 
-	let reacting = [];
+	const reacting = [];
 
 	for (let i = 1; i < state.numPlayers; i++) {
 		const index = (playerIndex + i) % state.numPlayers;
@@ -220,40 +257,12 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 
 		if (reacting.length !== num_plays) {
 			logger.warn(`weird discard detected, but not enough positional discard targets! (found [${reacting}], need ${num_plays})`);
-			return;
+			return [];
 		}
 	}
 
 	// Only take the last N reacting players.
-	reacting = reacting.slice(-num_plays);
-
-	/** @type {Connection[]} */
-	const connections = [];
-
-	for (const r of reacting) {
-		const order = state.hands[r][slot - 1];
-		common.updateThoughts(order, (draft) => {
-			draft.finessed = true;
-			draft.focused = true;
-			draft.inferred = common.thoughts[order].inferred.intersect(playable_possibilities);
-		});
-
-		logger.info('interpreting pos on', state.playerNames[r], 'slot', slot);
-		connections.push({ type: 'positional', reacting: r, order, identities: common.thoughts[order].inferred.array });
-	}
-
-	const actual_card = state.deck[connections.at(-1).order];
-
-	common.waiting_connections.push({
-		connections,
-		giver: playerIndex,
-		target: reacting.at(-1),
-		conn_index: 0,
-		turn: state.turn_count,
-		focus: connections.at(-1).order,
-		inference: actual_card.raw(),
-		action_index: state.actionList.length - 1
-	});
+	return reacting.slice(-num_plays);
 }
 
 /**
@@ -266,8 +275,8 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 function check_sdcm(game, action, before_trash, old_chop) {
 	const { common, state } = game;
 	const { order, playerIndex, suitIndex, rank } = action;
-	const nextPlayerIndex = (playerIndex + 1) % state.numPlayers;
-	const nextPlayerIndex2 = (nextPlayerIndex + 1) % state.numPlayers;
+	const nextPlayerIndex = state.nextPlayerIndex(playerIndex);
+	const nextPlayerIndex2 = state.nextPlayerIndex(nextPlayerIndex);
 
 	// Forced discard for locked hand
 	if (common.thinksLocked(state, nextPlayerIndex) && state.clue_tokens === 1)

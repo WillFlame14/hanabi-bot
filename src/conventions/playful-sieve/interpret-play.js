@@ -41,11 +41,6 @@ export function unlock_promise(game, action, unlocked_player, locked_player, loc
 		order === playables_sorted[0]
 	) {
 		logger.highlight('cyan', 'playing oldest/only safe playable, not unlocking');
-
-		// All other known playables get shifted
-		for (const order of playables_sorted.slice(1).filter(o => common.thoughts[o].identity({ infer: true }) !== undefined))
-			game.locked_shifts[order] = (game.locked_shifts[order] ?? 0) + 1;
-
 		return;
 	}
 
@@ -81,6 +76,9 @@ export function unlock_promise(game, action, unlocked_player, locked_player, loc
 }
 
 /**
+ * Interprets a play action.
+ * 
+ * Impure!
  * @param  {Game} game
  * @param  {PlayAction} action
  */
@@ -90,7 +88,7 @@ export function interpret_play(game, action) {
 	const identity = { suitIndex, rank };
 
 	const hand = state.hands[playerIndex];
-	const other = (playerIndex + 1) % state.numPlayers;
+	const other = state.nextPlayerIndex(playerIndex);
 	const other_hand = state.hands[other];
 
 	const card = common.thoughts[order];

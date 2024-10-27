@@ -43,12 +43,13 @@ function getFinessedOrder(game, playerIndex) {
  * @param {number} target
  */
 function connectable(game, start, target) {
-	if (start === target)
-		return game.players[target].thinksPlayables(game.state, target, { assume: false }).length > 0;
-
 	const { state } = game;
+
+	if (start === target)
+		return game.players[target].thinksPlayables(state, target, { assume: false }).length > 0;
+
 	const finessed_card = getFinessedOrder(game, start);
-	const playables = finessed_card ? [finessed_card] : game.players[start].thinksPlayables(game.state, start, { assume: false });
+	const playables = finessed_card ? [finessed_card] : game.players[start].thinksPlayables(state, start, { assume: false });
 
 	for (const order of playables) {
 		const id = game.players[start].thoughts[order].identity({ infer: true });
@@ -56,18 +57,21 @@ function connectable(game, start, target) {
 		if (id === undefined)
 			continue;
 
-		state.play_stacks[id.suitIndex]++;
-		const can_connect = connectable(game, state.nextPlayerIndex(start), target);
-		state.play_stacks[id.suitIndex]--;
+		const new_state = state.shallowCopy();
+		new_state.play_stacks = new_state.play_stacks.with(id.suitIndex, state.play_stacks[id.suitIndex] + 1);
 
-		if (can_connect)
-			return true;
+		const new_game = game.shallowCopy();
+		new_game.state = new_state;
+
+		return connectable(new_game, state.nextPlayerIndex(start), target);
 	}
 	return false;
 }
 
 /**
  * Returns the next playerIndex that may discard (or us if we get back to ourselves), plus the number of potential cluers in between.
+ * 
+ * Impure! (modifies game)
  * @param {Game} game
  * @param {Player} player
  * @param {number} startIndex
@@ -172,6 +176,8 @@ export function clue_safe(game, player, clue) {
 
 /**
  * Determines whether a situation is safe.
+ * 
+ * Impure! (modifies game)
  * @param {Game} game
  * @param {Player} player
  * @returns {{ safe: boolean, discard: number | undefined }}
