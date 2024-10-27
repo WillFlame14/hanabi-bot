@@ -476,8 +476,6 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 			attempt_stall();
 	}
 
-	Utils.globalModify({ game });
-
 	const result = { actions: best_actions, winrate: best_winrate };
 	cache.set(hash_game(game), result);
 

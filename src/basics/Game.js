@@ -240,6 +240,8 @@ export class Game {
 		const newGame = this.createBlank();
 		newGame.catchup = true;
 		const history = actionList.slice(0, action_index);
+
+		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: newGame });
 
 		let injected = false;
@@ -300,7 +302,8 @@ export class Game {
 
 		newGame.catchup = this.catchup;
 		newGame.handle_action(actionList.at(-1));
-		Utils.globalModify({ game: this });
+
+		Utils.globalModify({ game: old_global_game });
 
 		return /** @type {this} */ (newGame);
 	}
@@ -314,6 +317,8 @@ export class Game {
 
 		const new_game = this.createBlank();
 		new_game.catchup = true;
+
+		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: new_game });
 
 		// Remove special actions from the action list (they will be added back in when rewinding)
@@ -360,8 +365,7 @@ export class Game {
 
 		// Copy over the full game history
 		new_game.state.actionList = actionList;
-		Utils.globalModify({ game: this });
-
+		Utils.globalModify({ game: old_global_game });
 		return new_game;
 	}
 
@@ -406,6 +410,7 @@ export class Game {
 		hypo_game.catchup = true;
 		hypo_game.rewind = () => undefined;
 
+		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: hypo_game });
 
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
@@ -422,7 +427,7 @@ export class Game {
 			}
 		});
 
-		Utils.globalModify({ game: this });
+		Utils.globalModify({ game: old_global_game });
 
 		hypo_game.catchup = false;
 		return hypo_game;
