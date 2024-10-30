@@ -31,9 +31,6 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	const { target, result, safe } = save_clue;
 	const { chop_moved } = result;
 
-	if (!safe)
-		return -1;
-
 	const old_chop = common.chop(state.hands[target]);
 	const old_chop_card = state.deck[old_chop];
 
@@ -42,7 +39,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 		if (state.hands.some(hand => hand.some(o => o !== old_chop && state.deck[o].matches(old_chop_card))))
 			return -10;
 
-		return Math.max(find_clue_value(result), state.isCritical(old_chop_card) ? 0.1 : -Infinity);
+		return safe ? Math.max(find_clue_value(result), state.isCritical(old_chop_card) ? 0.1 : -Infinity) : 0.01;
 	}
 
 	const saved_trash = chop_moved.filter(order => {
@@ -71,7 +68,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	if (hypo_game.players[target].thinksTrash(hypo_game.state, target).length === 0 && (new_chop_card ? cardValue(state, me, new_chop_card) : 4) > cardValue(state, me, old_chop_card))
 		return -10;
 
-	return find_clue_value(result) - 0.1*saved_trash.length;
+	return safe ? find_clue_value(result) - 0.1*saved_trash.length : 0.01;
 }
 
 /**

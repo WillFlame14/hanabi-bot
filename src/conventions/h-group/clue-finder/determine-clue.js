@@ -57,7 +57,7 @@ export function evaluate_clue(game, action, clue, target, target_card) {
 
 	/** @param {Game} game */
 	const get_finessed_orders = (game) =>
-		game.state.hands[action.giver].filter(o => ((c = game.common.thoughts[o]) => !c.clued && c.finessed)());
+		game.state.hands.flatMap(hand => hand.filter(o => ((c = game.common.thoughts[o]) => !c.clued && c.finessed)()));
 
 	const finessed_before_clue = get_finessed_orders(game);
 	const finessed_after_clue = get_finessed_orders(hypo_game);

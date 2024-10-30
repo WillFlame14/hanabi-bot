@@ -95,6 +95,32 @@ describe('scream discard chop moves', () => {
 		// Alice should 5 Stall on Bob.
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.BOB, value: 5 });
 	});
+
+	it(`performs a scream discard at 1 clue when the next player will become locked`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'y5', 'g5', 'b5', 'r5'],
+			['g3', 'b3', 'y2', 'y3', 'p3']
+		], {
+			level: { min: 7 },
+			clue_tokens: 3,
+			discarded: ['r4'],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues red to Alice (slot 1)');
+		takeTurn(game, 'Cathy clues 5 to Bob');
+
+		const action = take_action(game);
+
+		// Alice should discard slot 5 as a SDCM.
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][4] });
+
+		takeTurn(game, 'Alice discards y3 (slot 5)');
+
+		// Bob's slot 1 should be chop moved.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].chop_moved, true);
+	});
 });
 
 describe('shout discard chop moves', () => {

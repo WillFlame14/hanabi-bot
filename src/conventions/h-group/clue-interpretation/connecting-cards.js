@@ -133,7 +133,9 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 		}
 	}
 
-	const giver_asymmetric = state.hands[giver].find(o => game.players[giver].thoughts[o].identity({ infer: true, symmetric: true })?.matches(identity));
+	const giver_asymmetric = state.hands[giver].find(o =>
+		!ignoreOrders.includes(o) &&
+		game.players[giver].thoughts[o].identity({ infer: true, symmetric: true })?.matches(identity));
 
 	if (giver_asymmetric !== undefined) {
 		logger.highlight('cyan', `connecting using giver's asymmetric knowledge of ${logCard(identity)}!`);

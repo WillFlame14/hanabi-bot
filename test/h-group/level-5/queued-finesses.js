@@ -143,4 +143,38 @@ describe('queued finesse', () => {
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
+
+	it(`orders complex finesses correctly`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b5', 'r4', 'y2', 'p4'],
+			['p2', 'r1', 'b3', 'g4'],
+			['r3', 'b1', 'r4', 'b1']
+		], {
+			level: { min: 5 },
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 2 to Alice (slot 1)');	// g2 self-finesse
+		takeTurn(game, 'Cathy clues 2 to Bob');				// adding y1 to our finesses
+		takeTurn(game, 'Donald clues green to Cathy');		// adding g3 to our finesses
+		takeTurn(game, 'Alice plays g1 (slot 2)');
+
+		// Slot 3 should be y1, and slot 4 should be g3.
+		const slot3 = game.common.thoughts[game.state.hands[PLAYER.ALICE][2]];
+		ExAsserts.cardHasInferences(slot3, ['y1']);
+		assert.equal(slot3.finessed, true);
+
+		const slot4 = game.common.thoughts[game.state.hands[PLAYER.ALICE][3]];
+		ExAsserts.cardHasInferences(slot4, ['g3']);
+		assert.equal(slot4.finessed, true);
+
+		takeTurn(game, 'Bob clues red to Cathy');
+		takeTurn(game, 'Cathy plays r1', 'g1');
+		takeTurn(game, 'Donald clues 5 to Bob');
+
+		// Alice should play y1 in slot 3.
+		const action = take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2] });
+	});
 });

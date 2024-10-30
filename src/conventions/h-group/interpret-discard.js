@@ -282,7 +282,16 @@ function check_sdcm(game, action, before_trash, old_chop) {
 	if (common.thinksLocked(state, nextPlayerIndex) && state.clue_tokens === 1)
 		return;
 
-	const scream = state.clue_tokens === 1 && old_chop &&
+	const valid_1clue_scream = () => {
+		const nextChop = common.chop(state.hands[nextPlayerIndex]);
+		if (state.clue_tokens !== 2 || nextChop === undefined)
+			return false;
+
+		const screamed_player = game.players[nextPlayerIndex].withThoughts(nextChop, (draft) => { draft.chop_moved = true; });
+		return screamed_player.thinksLocked(state, nextPlayerIndex);
+	};
+
+	const scream = (state.clue_tokens === 1 || valid_1clue_scream()) && old_chop !== undefined &&
 		(common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 || before_trash.length > 0) && order === old_chop;
 
 	const shout = common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 &&

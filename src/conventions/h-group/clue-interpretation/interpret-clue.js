@@ -102,6 +102,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 				if (connections.some(connection => connection.type == 'finesse' && connection.reacting == i)) {
 					// The clue must be given before the first finessed player,
 					// as otherwise the finesse position may change.
+					logger.highlight('yellow', 'action is important!');
 					action.important = true;
 					break;
 				}
@@ -114,6 +115,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 					continue;
 
 				// This player could give the finesse, don't mark the action as important.
+				logger.info(`${state.playerNames[i]} could give finesse, not important`);
 				break;
 			}
 		}
@@ -370,7 +372,7 @@ export function interpret_clue(game, action) {
 		const { connections, conn_index, action_index, focus: wc_focus, inference, target: wc_target } = waiting_connection;
 		const focus_id = state.deck[focus].identity();
 
-		if (focus_id !== undefined && list.length === 1) {
+		if (focus_id !== undefined && !common.thoughts[focus].finessed) {
 			const stomped_conn_index = connections.findIndex(conn =>
 				conn.identities.every(i => focus_id.suitIndex === i.suitIndex && focus_id.rank === i.rank));
 			const stomped_conn = connections[stomped_conn_index];

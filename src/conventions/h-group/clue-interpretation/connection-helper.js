@@ -289,7 +289,18 @@ export function assign_connections(game, connections, giver, focused_card, infer
 				type === 'finesse' && !(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)));
 
 			if (uncertain) {
-				draft.finesse_ids = IdentitySet.create(state.variant.suits.length, bluff ? currently_playable_identities : playable_identities);
+				const self_playable_identities = state.ourHand.reduce((stacks, order) => {
+					const card = common.thoughts[order];
+					const id = card.identity({ infer: true });
+
+					if (id !== undefined && card.finessed && stacks[id.suitIndex] + 1 === id.rank)
+						stacks[id.suitIndex]++;
+
+					return stacks;
+				}, state.play_stacks.slice()).map((stack_rank, index) =>({ suitIndex: index, rank: stack_rank + 1 }))
+					.filter(id => id.rank <= state.max_ranks[id.suitIndex]);
+
+				draft.finesse_ids = state.base_ids.union(bluff ? currently_playable_identities : self_playable_identities);
 				draft.uncertain = true;
 			}
 

@@ -319,7 +319,13 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				const save_card = state.deck[game.players[target].chop(state.hands[target])];
 				const chop = common.chop(state.ourHand);
 
-				if ((state.isCritical(save_card) || game.me.hypo_stacks[save_card.suitIndex] + 1 === save_card.rank) && state.clue_tokens === 0 && chop !== undefined) {
+				const screamed_player = game.players[target].withThoughts(save_card.order, (draft) => { draft.chop_moved = true; });
+
+				const valid_scream = (state.isCritical(save_card) || me.hypo_stacks[save_card.suitIndex] + 1 === save_card.rank) &&
+					(state.clue_tokens === 0 || (state.clue_tokens === 1 && screamed_player.thinksLocked(state, target))) &&
+					chop !== undefined;
+
+				if (valid_scream) {
 					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push({ tableID, type: ACTION.DISCARD, target: chop });
 					continue;
 				}

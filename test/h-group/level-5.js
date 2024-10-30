@@ -167,6 +167,27 @@ describe('ambiguous clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[slot1.order], ['b2']);
 	});
 
+	it('cancels finesse connections when clued elsewhere', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r1', 'y5', 'g3', 'y3'],
+			['p5', 'g3', 'p1', 'b3'],
+			['p4', 'y2', 'r3', 'g1']
+		], {
+			level: { min: 5 },
+			play_stacks: [1, 1, 0, 2, 0]
+		});
+
+		takeTurn(game, 'Alice clues yellow to Donald');
+		takeTurn(game, 'Bob clues 4 to Alice (slot 2)');		// Could be y4,b4
+		takeTurn(game, 'Cathy clues yellow to Bob');			// focusing y3
+
+		// Alice's slot 1 should be known b3.
+		const slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0]];
+		assert.equal(slot1.finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[slot1.order], ['b3']);
+	});
+
 	it(`doesn't confirm symmetric finesses after a "stomped play"`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
@@ -270,8 +291,13 @@ describe('guide principle', () => {
 			['r2', 'g2', 'g3', 'p4'],
 			['p1', 'b2', 'p3', 'y4'],
 			['p2', 'y2', 'b3', 'r4']
-		], { level: { min: 5, max: 10 }, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
+		], {
+			level: { min: 5, max: 10 },
+			starting: PLAYER.DONALD
+		});
+
 		takeTurn(game, 'Donald clues blue to Cathy');
+
 		const action = take_action(game);
 		assert(action.type == ACTION.COLOUR || action.type == ACTION.RANK);
 		if (action.type == ACTION.COLOUR)
@@ -303,7 +329,11 @@ describe('guide principle', () => {
 			['p4', 'g2', 'g4', 'p5'],
 			['p4', 'b2', 'b3', 'y4'],
 			['b4', 'y2', 'b3', 'r4']
-		], { level: { min: 5, max: 10 }, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
+		], {
+			level: { min: 5, max: 10 },
+			starting: PLAYER.DONALD
+		});
+
 		takeTurn(game, 'Donald clues blue to Cathy');
 		const action = take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 1, value: 5 });
@@ -315,7 +345,11 @@ describe('guide principle', () => {
 			['p1', 'p2', 'p3', 'g3'],
 			['p4', 'y5', 'b3', 'p5'],
 			['b4', 'y2', 'p4', 'r4']
-		], { level: { min: 5 }, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 0] });
+		], {
+			level: { min: 5 },
+			starting: PLAYER.CATHY
+		});
+
 		takeTurn(game, 'Cathy clues purple to Donald'); // finesses p1, p2, p3
 		takeTurn(game, 'Donald clues blue to Cathy'); // finesses b1, b2 in our hand
 		takeTurn(game, 'Alice clues 5 to Cathy');
@@ -331,7 +365,11 @@ describe('guide principle', () => {
 			['b1', 'p2', 'g4', 'g3'],
 			['y5', 'p3', 'b5', 'r4'],
 			['b4', 'y2', 'p4', 'r4']
-		], { level: { min: 5 }, starting: PLAYER.CATHY, play_stacks: [0, 0, 0, 0, 0] });
+		], {
+			level: { min: 5 },
+			starting: PLAYER.CATHY
+		});
+
 		// End early game.
 		// TODO: The 5 save should still be urgent without ending the early game in case Cathy has nothing else to do.
 		takeTurn(game, 'Cathy discards r4', 'y4');
@@ -354,7 +392,11 @@ describe('guide principle', () => {
 			['p2', 'b4', 'g4', 'g3'],
 			['y4', 'y5', 'p3', 'b5'],
 			['b4', 'y2', 'p4', 'r4']
-		], { level: { min: 5 }, starting: PLAYER.DONALD, play_stacks: [0, 0, 0, 0, 0] });
+		], {
+			level: { min: 5 },
+			starting: PLAYER.DONALD
+		});
+
 		takeTurn(game, 'Donald clues purple to Cathy'); // finesses p1 (Alice), b1 (Bob), p2 (Bob)
 
 		// Bob plays rather than saving Cathy's b5 since the play should make the p3 playable.
@@ -367,8 +409,12 @@ describe('guide principle', () => {
 			['xx', 'xx', 'xx', 'xx'],
 			['p4', 'r3', 'g3', 'b3'],
 			['p1', 'r3', 'p1', 'y2'],
-			['b2', 'y3', 'b5', 'r4']
-		], { level: { min: 5 }, play_stacks: [1, 1, 1, 1, 0]});
+			['b2', 'y3', 'r4', 'b5']
+		], {
+			level: { min: 5 },
+			play_stacks: [1, 1, 1, 1, 0]
+		});
+
 		takeTurn(game, 'Alice clues 3 to Bob'); // Finesses b2 -> b3.
 		takeTurn(game, 'Bob clues 5 to Donald'); // 5 save.
 		takeTurn(game, 'Cathy clues 5 to Donald'); // Should finesse b4 out of Alice's hand.
@@ -381,9 +427,14 @@ describe('guide principle', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['p1', 'r3', 'p1', 'y2'],
-			['b2', 'y3', 'b5', 'r4'],
+			['b2', 'y3', 'r4', 'b5'],
 			['y2', 'b4', 'b3', 'g4'],
-		], { level: { min: 5 }, starting: PLAYER.DONALD, play_stacks: [1, 1, 1, 1, 0]});
+		], {
+			level: { min: 5 },
+			starting: PLAYER.DONALD,
+			play_stacks: [1, 1, 1, 1, 0]
+		});
+
 		takeTurn(game, 'Donald clues 3 to Alice (slots 2,3,4)'); // Finesses b2 -> b3.
 		takeTurn(game, 'Alice clues 5 to Cathy'); // 5 save.
 		takeTurn(game, 'Bob clues 5 to Cathy'); // Should finesse y2, b4 out of Donald's hand.
@@ -400,7 +451,11 @@ describe('guide principle', () => {
 			['y1', 'p4', 'b5', 'r3'],
 			['b4', 'y5', 'p5', 'r4'],
 			['y3', 'r1', 'r3', 'g4']
-		], { level: { min: 5 }, starting: PLAYER.DONALD });
+		], {
+			level: { min: 5 },
+			starting: PLAYER.DONALD
+		});
+
 		// End early game.
 		takeTurn(game, 'Donald discards r4', 'y4');
 		takeTurn(game, 'Emily clues purple to Donald'); // finesses p1 (Alice), p2 (Bob), p3 (Bob), y1 (Cathy), p4 (Cathy)

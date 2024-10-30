@@ -114,7 +114,7 @@ export function cardValue(state, player, identity, order = -1) {
 	}
 
 	// Basic trash, saved already, duplicate visible
-	if (isTrash(state, player, identity, order) || visibleFind(state, player, identity).length > 1)
+	if (isTrash(state, player, identity, order, { infer: true }) || visibleFind(state, player, identity, { infer: true }).length > 1)
 		return 0;
 
 	if (state.isCritical(identity))

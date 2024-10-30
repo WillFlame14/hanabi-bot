@@ -242,7 +242,7 @@ export function take_action(game) {
 				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
 				const connectable = state.hands[playerIndex].some(o => {
 					const id = game.players[playerIndex].thoughts[o].identity({ infer: true });
-					return id?.rank === play_stacks[id.suitIndex] + 1;
+					return id !== undefined && id.rank === play_stacks[id.suitIndex] + 1;
 				});
 
 				if (connectable) {
