@@ -336,7 +336,7 @@ export function take_action(game) {
 
 	let best_play_clue, clue_value;
 	if (state.clue_tokens > 0) {
-		let consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined));
+		let consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined && clue.safe));
 		const chop = me.chop(state.ourHand);
 		let saved_clue;
 		let saved_clue_value = -99;

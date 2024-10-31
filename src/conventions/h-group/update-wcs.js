@@ -96,7 +96,7 @@ function stomped_finesse(game, reacting, order, waiting_connection, options) {
 export function resolve_card_retained(game, waiting_connection) {
 	const { common, state } = game;
 	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback, focus } = waiting_connection;
-	const { type, reacting, ambiguous, bluff, identities } = connections[conn_index];
+	const { type, reacting, bluff, identities } = connections[conn_index];
 	const { order } = connections[conn_index];
 
 	// Card may have been updated, so need to find it again
@@ -173,17 +173,25 @@ export function resolve_card_retained(game, waiting_connection) {
 				return { remove: false };
 			}
 
-			/** @param {number} our_finesse */
-			const allowable_hesitation = (our_finesse) => our_finesse !== undefined && common.thoughts[focus].inferred.find(i =>
-				!i.matches(inference) && common.thoughts[our_finesse].inferred.has(i));
+			if (!selfPassback) {
+				/** @param {number} finesse */
+				const allowable_hesitation = (finesse) => {
+					if (finesse === undefined)
+						return undefined;
 
-			if (giver !== state.ourPlayerIndex && reacting !== state.ourPlayerIndex && !inBetween(state.numPlayers, state.ourPlayerIndex, giver, reacting) && !selfPassback) {
-				const our_finesse = common.find_finesse(state, state.ourPlayerIndex);
-				const hesitation_possibility = allowable_hesitation(our_finesse);
+					// Returns an identity that the player could be hesitating for on the given finesse order, if it exists.
+					const id = state.deck[finesse].identity();
+					return common.thoughts[order].inferred.find(i => (id === undefined) ? common.thoughts[finesse].inferred.has(i) : i.matches(id));
+				};
 
-				if (hesitation_possibility) {
-					logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but we could have ${logCard(hesitation_possibility)} on finesse position`);
-					return { remove: false, selfPassback: true };
+				for (let playerIndex = state.nextPlayerIndex(reacting); playerIndex != giver; playerIndex = state.nextPlayerIndex(playerIndex)) {
+					const finesse = common.find_finesse(state, playerIndex);
+					const hesitation_poss = allowable_hesitation(finesse);
+
+					if (hesitation_poss) {
+						logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but allowable hestiation on ${state.playerNames[playerIndex]} ${logCard(hesitation_poss)}`);
+						return { remove: false, selfPassback: true };
+					}
 				}
 			}
 		}
@@ -251,11 +259,7 @@ export function resolve_card_retained(game, waiting_connection) {
 			}
 		}
 
-		// Can't remove finesses if we allow ourselves to "defer" an ambiguous finesse the first time around.
-		if (ambiguous)
-			logger.warn('not removing ambiguous finesse with connections:', waiting_connection.connections.map(logConnection));
-
-		return { remove: true, remove_finesse: !ambiguous };
+		return { remove: true, remove_finesse: true };
 	}
 	else if (last_reacting_action?.type === 'discard' && !state.screamed_at && !state.generated) {
 		const unplayable_identities = identities.filter(i => !state.isBasicTrash(i) && !state.isPlayable(i));

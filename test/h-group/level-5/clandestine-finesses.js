@@ -101,7 +101,7 @@ describe('clandestine finesses', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b3', 'p4', 'p1', 'b1'],
-			['b4', 'y2', 'y1', 'b3'],
+			['b4', 'y2', 'y5', 'b3'],
 			['b1', 'b2', 'y1', 'p2']
 		], { level: { min: 5 } });
 

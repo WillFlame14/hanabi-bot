@@ -212,7 +212,7 @@ describe('layered finesse', () => {
 	it('recognizes unsafe players when they cannot play into a layered finesse', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['y1', 'r3', 'r2', 'g5', 'p4'],
+			['y1', 'r3', 'r5', 'g5', 'p4'],
 			['r1', 'r2', 'g4', 'y3', 'b4']
 		], {
 			level: { min: 6 },

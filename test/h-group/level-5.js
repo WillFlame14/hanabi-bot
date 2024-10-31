@@ -273,6 +273,54 @@ describe('ambiguous clues', () => {
 	});
 });
 
+describe('ambiguous self-finesses', () => {
+	it(`recognizes an ambiguous self-finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p1', 'p2', 'r2', 'g4'],
+			['p1', 'b3', 'g2', 'b4'],
+			['y2', 'y4', 'r1', 'g3']
+		], {
+			level: { min: 5 }
+		});
+
+		takeTurn(game, 'Alice clues 2 to Bob');					// Self-finesse on p1 (Cathy cannot play)
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].finessed, true);
+
+		takeTurn(game, 'Bob clues 1 to Alice (slots 2,3)');		// Bob thinks it's on Cathy
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].finessed, true);
+
+		takeTurn(game, 'Cathy clues red to Donald');			// Cathy passes back
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].finessed, true);
+	});
+
+	it(`plays into an ambiguous self-finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p1', 'b3', 'g2', 'b4'],
+			['y2', 'y4', 'r1', 'g3'],
+			['b2', 'g1', 'y1', 'r4']
+		], {
+			level: { min: 5 },
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 2 to Alice (slots 2,3)');	// Self-finesse on p1 (appears to be on Bob)
+
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].finessed, true);
+
+		takeTurn(game, 'Alice clues 1 to Donald');
+		takeTurn(game, 'Bob clues red to Cathy');				// Bob passes back
+
+		// Now Alice should believe that she is self-finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['y1', 'g1', 'b1', 'p1']);
+	});
+});
+
 describe('guide principle', () => {
 	it('does not give a finesse leaving a critical on chop', () => {
 		const game = setup(HGroup, [

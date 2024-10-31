@@ -26,15 +26,17 @@ export function team_elim(game) {
 
 	for (const player of game.players) {
 		for (const [order, patches] of common.patches) {
-			const { possible, inferred } = common.thoughts[order];
+			player.updateThoughts(order, (draft) => { applyPatches(draft, patches); }, false);
+
+			const { possible, inferred } = player.thoughts[order];
+
 			player.updateThoughts(order, (draft) => {
-				draft.possible = possible.intersect(player.thoughts[order].possible);
-				draft.inferred = inferred.intersect(player.thoughts[order].inferred);
-				applyPatches(draft, patches.filter(p => !(p.path[0] === 'inferred' || p.path[0] === 'possible')));
+				draft.inferred = inferred.intersect(possible);
 			}, false);
 		}
 
 		player.waiting_connections = common.waiting_connections.slice();
+		player.card_elim(state);
 		player.good_touch_elim(state, state.numPlayers === 2);
 		player.refresh_links(state);
 		player.update_hypo_stacks(state);

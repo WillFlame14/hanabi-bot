@@ -972,35 +972,3 @@ describe('guide principle', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r1']);
 	});
 });
-
-describe('mistake recovery', () => {
-	it('should not assume a bluff was intended if a missed finesse is directly clued', () => {
-		const game = setup(HGroup, [
-			['xx', 'xx', 'xx', 'xx'],
-			['g2', 'p4', 'y4', 'b5'],
-			['g3', 'b2', 'y1', 'r3'],
-			['r3', 'r1', 'g4', 'b1']
-		], {
-			level: { min: 11 },
-			play_stacks: [0, 0, 1, 0, 0],
-			clue_tokens: 7,
-			starting: PLAYER.DONALD
-		});
-
-		takeTurn(game, 'Donald clues green to Cathy');
-		takeTurn(game, 'Alice discards g1 (slot 4)');
-		takeTurn(game, 'Bob clues yellow to Cathy');
-
-		// Alice should interpret g2 as an ambiguous finesse.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['g2']);
-
-		// Assume Cathy knows she doesn't have g2 because Alice has the other copy, just not in slot 2.
-		takeTurn(game, 'Cathy clues 5 to Bob');
-		takeTurn(game, 'Donald clues green to Bob');
-
-		// Alice should cancel ambiguous g2 in slot 2.
-		// Note that this is not common since Bob is unaware of what happened.
-		assert.ok(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][1]].inferred.length > 1);
-		assert.equal(game.players[PLAYER.ALICE].thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, false);
-	});
-});

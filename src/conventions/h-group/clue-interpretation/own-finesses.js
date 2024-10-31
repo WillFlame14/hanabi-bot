@@ -354,7 +354,6 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
  */
 function find_self_finesse(game, action, identity, connected, ignoreOrders, finesses) {
 	const { common, state, me } = game;
-	const { suitIndex, rank } = identity;
 	const { giver, target } = action;
 
 	const finesse = common.find_finesse(state, state.ourPlayerIndex, connected, ignoreOrders);
@@ -367,7 +366,11 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 	const actual_card = state.deck[finesse];
 	const reacting = state.ourPlayerIndex;
 
-	const possibly_bluff = valid_bluff(game, action, actual_card, reacting, connected);
+	const bluffable_ids = (actual_card.identity() ? [actual_card.identity()] : card.inferred.filter(id => state.isPlayable(id)))
+		.filter(id => valid_bluff(game, action, id, reacting, connected))
+		.map(i => i.raw());
+	const possibly_bluff = bluffable_ids.length > 0;
+
 	if (card.rewinded) {
 		if (game.level < LEVEL.INTERMEDIATE_FINESSES)
 			throw new IllegalInterpretation(`blocked layered finesse at level ${game.level}`);
@@ -377,7 +380,6 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 	}
 
 	const true_finesse = card.inferred.has(identity) && card.matches(identity, { assume: true });
-	const bluffable_ids = possibly_bluff && card.inferred.filter(id => state.isPlayable(id));
 
 	if (true_finesse || bluffable_ids.length > 0) {
 		if (game.level === 1 && connected.length > 1)
@@ -388,18 +390,9 @@ function find_self_finesse(game, action, identity, connected, ignoreOrders, fine
 			return resolve_layered_finesse(game, identity, connected, ignoreOrders);
 
 		const certain = [giver, target].some(i => state.hands[i].some(o => ((c = state.deck[o]) => c.matches(identity) && c.clued)()));
-		const ambiguous = state.hands.some((_, index) => {
-			const finesse = common.find_finesse(state, index, connected);
-			if (finesse === undefined)
-				return false;
-
-			const ignored_order = getIgnoreOrders(game, rank - state.play_stacks[suitIndex] - 1, suitIndex).find(order => order === finesse);
-			return state.deck[ignored_order]?.matches(identity);
-		});
-
 		const identities = true_finesse ? [identity] : bluffable_ids;
 
-		return [{ type: 'finesse', reacting, order: finesse, self: true, bluff: !card.possible.has(identity), possibly_bluff, identities, certain, ambiguous }];
+		return [{ type: 'finesse', reacting, order: finesse, self: true, bluff: !card.possible.has(identity), possibly_bluff, identities, certain }];
 	}
 	throw new IllegalInterpretation(`self-finesse not found for ${logCard(identity)}`);
 }

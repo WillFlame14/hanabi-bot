@@ -118,7 +118,7 @@ function getNextDiscard(game, player, startIndex, clue_tokens) {
 		state.hands[nextPlayerIndex].every(o => ((c = state.deck[o]) => state.isCritical(c) || c.clued)()) &&
 		!common.thinksLoaded(state, nextPlayerIndex);
 
-	if ((clue_tokens === 0 || forced_discard) && !chopUnsafe(state, player, next_discard)) {
+	if ((clue_tokens === 0 || forced_discard) && !chopUnsafe(game, player, next_discard)) {
 		logger.highlight('cyan', 'low clues, first discard', state.playerNames[next_discard], 'is safe');
 
 		const result = getNextDiscard(game, player, next_discard, 1);
@@ -191,7 +191,7 @@ export function safe_situation(game, player) {
 		return { safe: true, discard: undefined };
 
 	const has_early_clue = state.early_game && early_game_clue(game, next_discard);
-	const safe = !chopUnsafe(state, player, next_discard) || has_early_clue;
+	const safe = !chopUnsafe(game, player, next_discard) || has_early_clue;
 	const discard = possible_discard(game, player, state.hands[next_discard], potential_cluers >= 1);
 
 	logger.info(`next discard may come from ${state.playerNames[next_discard]}, chop ${safe ? 'safe' : 'unsafe'} ${discard ? logCard(state.deck[discard]) : '(locked)'}, ${potential_cluers} potential cluers`);
@@ -211,7 +211,7 @@ export function safe_situation(game, player) {
 		return { safe: true, discard: undefined };
 
 	const has_early_clue2 = state.early_game && early_game_clue(game, next_discard);
-	const safe2 = !chopUnsafe(state, player, next_discard) || has_early_clue;
+	const safe2 = !chopUnsafe(game, player, next_discard) || has_early_clue;
 	const discard2 = possible_discard(game, player, state.hands[next_discard], potential_cluers >= 1);
 
 	logger.info(`next next discard may come from ${state.playerNames[next_discard]}, chop ${safe2 ? 'safe' : 'unsafe'} ${discard2 ? logCard(state.deck[discard2]) : '(locked)'}, ${potential_cluers} potential cluers`);
@@ -221,13 +221,15 @@ export function safe_situation(game, player) {
 
 /**
  * Checks if a player's chop is safe after a clue, according to a player.
- * @param {State} state
+ * @param {Game} game
  * @param {Player} player
  * @param {number} playerIndex
  */
-export function chopUnsafe(state, player, playerIndex) {
+export function chopUnsafe(game, player, playerIndex) {
+	const { state } = game;
+
 	// Note that chop will be undefined if the entire hand is clued
-	const chop = player.chop(state.hands[playerIndex], { afterClue: true });
+	const chop = game.players[playerIndex].chop(state.hands[playerIndex], { afterClue: true });
 
 	// Crit or unique 2 on chop
 	if (chop) {
@@ -236,5 +238,5 @@ export function chopUnsafe(state, player, playerIndex) {
 	}
 
 	// Locked with no clue tokens
-	return state.clue_tokens === 0 && !player.thinksLoaded(state, playerIndex, {assume: false});
+	return state.clue_tokens === 0 && !game.players[playerIndex].thinksLoaded(state, playerIndex, {assume: false});
 }

@@ -27,14 +27,7 @@ export function card_elim(state) {
 	let uncertain_map = /** @type {Map<number, IdentitySet>} */ (new Map());
 
 	const candidates = state.hands.flatMap((hand, playerIndex) => hand.map(order => ({ playerIndex, order })));
-
-	let identities = state.base_ids;
-	for (const order of state.hands.flat()) {
-		identities = identities.union(this.thoughts[order].possible);
-
-		if (identities.length === this.all_possible.length)
-			break;
-	}
+	let identities = state.all_ids;
 
 	/** @type {(order: number) => void} */
 	const addToMap = (order) => {
@@ -318,7 +311,7 @@ export function good_touch_elim(state, only_self = false) {
 
 	cross_elim();
 
-	const identities = this.all_possible.array.slice();
+	const identities = state.all_ids.array;
 	const resets = /** @type {Set<number>} */ (new Set());
 
 	for (let i = 0; i < identities.length; i++) {

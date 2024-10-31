@@ -133,6 +133,11 @@ function createProxy(parent, base) {
 	return proxy;
 }
 
+/** @param {unknown} value */
+export function original(value) {
+	return (value && value[PROXY_STATE]) ? value[PROXY_STATE].base : undefined;
+}
+
 /**
  * @template T
  * @param {(draft: { -readonly [P in keyof T]: T[P] }) => void} func

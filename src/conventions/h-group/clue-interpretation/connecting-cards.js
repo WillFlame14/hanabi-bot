@@ -375,10 +375,10 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 	const wrong_prompts = [];
 	const old_play_stacks = state.play_stacks;
 
-	// Only consider prompts/finesses if no connecting cards found
-	for (let i = 0; i < state.numPlayers; i++) {
-		const playerIndex = (state.numPlayers + giver - i - 1) % state.numPlayers;
+	const conn_player_order = [target, ...Utils.range(0, state.numPlayers).map(i => (state.numPlayers + giver - i - 1) % state.numPlayers).filter(i => i !== target)];
 
+	// Only consider prompts/finesses if no connecting cards found
+	for (const playerIndex of conn_player_order) {
 		// Clue receiver won't find known prompts/finesses in their hand unless it doesn't look direct
 		// Also disallow prompting/finessing a player when they may need to prove a finesse to us
 		if (playerIndex === giver || options.knownOnly?.includes(playerIndex) || (playerIndex === target && looksDirect) ||

@@ -27,6 +27,7 @@ function find_colour_focus(game, suitIndex, action) {
 	const { common, state } = game;
 	const { clue, giver, list, target } = action;
 	const { focus, chop } = determine_focus(game, state.hands[target], common, list, clue);
+	const focus_thoughts = common.thoughts[focus];
 
 	/** @type {FocusPossibility[]} */
 	const focus_possible = [];
@@ -50,7 +51,7 @@ function find_colour_focus(game, suitIndex, action) {
 
 		// Note that a colour clue always looks direct
 		const ignoreOrders = getIgnoreOrders(game, next_rank - old_play_stacks[suitIndex] - 1, suitIndex);
-		const looksDirect = common.thoughts[focus].identity() === undefined;
+		const looksDirect = focus_thoughts.identity() === undefined;
 
 		const connect_options = action.hypothetical ? { knownOnly: [state.ourPlayerIndex] } : {};
 		const connecting = find_connecting(game, action, identity, looksDirect, already_connected, ignoreOrders, connect_options);
@@ -61,8 +62,7 @@ function find_colour_focus(game, suitIndex, action) {
 		const { type, order } = connecting.at(-1);
 		const card = state.deck[order];
 
-		if (type === 'known' && card.newly_clued && common.thoughts[order].possible.length > 1 &&
-			common.thoughts[focus].inferred.has(identity)) {
+		if (type === 'known' && card.newly_clued && common.thoughts[order].possible.length > 1 && focus_thoughts.inferred.has(identity)) {
 			// Trying to use a newly 'known' connecting card, but the focused card could be that
 			// e.g. If 2 reds are clued with only r5 remaining, the focus should not connect to the other card as r6
 			logger.warn(`blocked connection - focused card could be ${logCard(identity)}`);
@@ -99,7 +99,7 @@ function find_colour_focus(game, suitIndex, action) {
 	}
 
 	const next_identity = { suitIndex, rank: next_rank };
-	if (cardTouched(next_identity, state.variant, action.clue) && common.thoughts[focus].possible.has(next_identity)) {
+	if (cardTouched(next_identity, state.variant, action.clue) && focus_thoughts.possible.has(next_identity)) {
 		logger.info('found connections:', logConnections(connections, next_identity));
 
 		// Our card could be the final rank that we can't find
@@ -110,10 +110,10 @@ function find_colour_focus(game, suitIndex, action) {
 	if (chop) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
 			// Skip if the card would not be touched.
-			if (!cardTouched({ suitIndex, rank }, game.state.variant, action.clue))
+			if (!cardTouched({ suitIndex, rank }, game.state.variant, action.clue) || !focus_thoughts.possible.has({ suitIndex, rank }))
 				continue;
 
-			const brown_poss = common.thoughts[focus].possible.filter(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) !== null);
+			const brown_poss = focus_thoughts.possible.filter(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) !== null);
 
 			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
 			// OR if the clue given is not black.
@@ -172,6 +172,9 @@ function find_rank_focus(game, rank, action) {
 		for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 			const identity = { suitIndex, rank };
 
+			if (!focus_thoughts.possible.has(identity))
+				continue;
+
 			// Don't consider save on k3, k4 with rank
 			if (state.variant.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
 				continue;
@@ -199,7 +202,7 @@ function find_rank_focus(game, rank, action) {
 	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 		let next_rank = state.play_stacks[suitIndex] + 1;
 
-		if (rank < next_rank || focus_possible.some(fp => fp.suitIndex === suitIndex && fp.rank === rank))
+		if (!focus_thoughts.possible.has({ suitIndex, rank }) || rank < next_rank || focus_possible.some(fp => fp.suitIndex === suitIndex && fp.rank === rank))
 			continue;
 
 		if (rank === next_rank) {

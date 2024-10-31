@@ -103,7 +103,6 @@
  * @property {boolean} [possibly_bluff]
  * @property {number[]} [linked]	Only used in 'playable' connections.
  * @property {boolean} [certain]
- * @property {boolean} [ambiguous]
  * @property {boolean} [asymmetric]		Only used in 'known' connections.
  * 
  * @typedef FocusPossibility

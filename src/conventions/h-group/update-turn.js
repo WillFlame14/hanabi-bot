@@ -58,12 +58,12 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 	const impossible_conn = find_impossible_conn(game, connections.slice(conn_index));
 	if (impossible_conn !== undefined) {
 		logger.warn(`future connection depends on revealed card having identities ${impossible_conn.identities.map(logCard)}, removing`);
-		return { remove_finesse: true, remove: true };
+		return { remove: true, remove_finesse: true };
 	}
 
 	if (connections[0]?.type !== 'positional' && !common.thoughts[focus].possible.has(inference)) {
 		logger.warn(`connection depends on focused card having identity ${logCard(inference)}, removing`);
-		return { remove_finesse: true, remove: true };
+		return { remove: true, remove_finesse: true };
 	}
 
 	const last_reacting_action = game.last_actions[reacting];
@@ -81,7 +81,7 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 		// The card was discarded and its copy is not visible
 		if (last_reacting_action.type === 'discard' && visibleFind(state, me, old_card).length === 0 && !last_reacting_action.intentional) {
 			logger.info(`waiting card ${logCard(old_card)} discarded?? removing finesse`);
-			return { remove_finesse: true, remove: true };
+			return { remove: true, remove_finesse: true };
 		}
 	}
 	return {};

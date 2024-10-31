@@ -79,6 +79,7 @@ export class State {
 			this.hands.push([]);
 
 		this.base_ids = new IdentitySet(variant.suits.length, 0);
+		this.all_ids = new IdentitySet(variant.suits.length);
 	}
 
 	get ourHand() {
