@@ -1,3 +1,5 @@
+import { CLUE } from '../constants.js';
+import { variantRegexes } from '../variants.js';
 import { visibleFind } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
@@ -51,13 +53,17 @@ export function team_elim(game) {
  * @param {ClueAction} clueAction
  */
 export function checkFix(game, oldThoughts, clueAction) {
-	const { giver, list, target } = clueAction;
+	const { clue, giver, list, target } = clueAction;
 	const { common, state } = game;
 
 	/** @type {Set<number>} */
 	const clue_resets = new Set();
 	for (const order of state.hands[target]) {
-		if (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
+		const clued_reset = (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) ||
+			(list.includes(order) && state.includesVariant(variantRegexes.pinkish) &&
+				oldThoughts[order].inferred.every(i => i.rank === 1) && clue.type === CLUE.RANK && clue.value !== 1);
+
+		if (clued_reset) {
 			common.thoughts = common.thoughts.with(order, common.reset_card(order));
 			clue_resets.add(order);
 		}

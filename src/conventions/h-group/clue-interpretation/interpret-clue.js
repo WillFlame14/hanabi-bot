@@ -491,7 +491,7 @@ export function interpret_clue(game, action) {
 	// Check for chop moves at level 4+
 	if (game.level >= LEVEL.BASIC_CM && !state.inEndgame()) {
 		// Trash chop move
-		const tcm_orders = interpret_tcm(game, target, focus);
+		const tcm_orders = interpret_tcm(game, action, focus);
 
 		if (tcm_orders.length > 0) {
 			perform_cm(state, common, tcm_orders);

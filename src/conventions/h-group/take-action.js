@@ -16,6 +16,7 @@ import * as path from 'path';
 /**
  * @typedef {import('../h-group.js').default} Game
  * @typedef {import('../../basics/State.js').State} State
+ * @typedef {import('../h-player.js').HGroup_Player} Player
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').Clue} Clue
@@ -57,7 +58,7 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 				const old_chop_value = cardValue(state, me, old_chop_card);
 
 				// Simulate chop move
-				const new_chop = common.withThoughts(old_chop, (draft) => { draft.chop_moved = true; }).chop(state.hands[playerIndex]);
+				const new_chop = common.withThoughts(old_chop, (draft) => { draft.chop_moved = true; }, false).chop(state.hands[playerIndex]);
 				const new_chop_value = new_chop !== undefined ? cardValue(state, me, state.deck[new_chop]) : me.thinksLoaded(state, playerIndex) ? 0 : 4;
 
 				return old_chop_value - new_chop_value;
@@ -338,51 +339,61 @@ export async function take_action(game) {
 
 	let best_play_clue, clue_value;
 	if (state.clue_tokens > 0) {
-		let consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined && clue.safe));
+		const consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined && clue.safe));
 		const chop = me.chop(state.ourHand);
-		let saved_clue;
-		let saved_clue_value = -99;
+		const saved_clues = [];
 
 		// Consider saving clues to finesse positions for players who likely have
 		// better cards on chop.
 		if (!state.inEndgame() && !state.early_game && state.clue_tokens < 4 && chop !== undefined) {
-			const our_chop_value = cardValue(state, me, state.deck[chop], chop);
-			// Saves clue for locked players or players who likely have a better chop than ours.
-			const better_givers = Utils.range(0, state.numPlayers).filter(i => {
-				const player = game.players[i];
-				const otherChop = player.chop(state.hands[i]);
+			// Remove critical and playable identities from our chop
+			const modified_me = me.withThoughts(chop, (draft) =>
+				draft.possible = me.thoughts[chop].possible.intersect(me.thoughts[chop].possible.filter(i => !state.isCritical(i))), false);
+			const our_chop_value = cardValue(state, modified_me, state.deck[chop], chop);
 
-				return i !== state.ourPlayerIndex && !player.thinksLoaded(state, i, {assume: false}) &&
-					(otherChop === undefined || cardValue(state, player, state.deck[otherChop], otherChop) >= our_chop_value);
-			});
+			for (const clue of consider_clues) {
+				const { target } = clue;
 
-			if (better_givers.length > 0) {
-				let saved_for = [];
-				consider_clues = consider_clues.filter(clue => {
-					if (game.players[clue.target].find_finesse(state, clue.target) !== clue.result.focus)
-						return true;
+				if (game.players[target].find_finesse(state, target) !== clue.result.focus)
+					continue;
 
-					const save_for = find_clue_givers(game, clue, state.ourPlayerIndex).filter(playerIndex => better_givers.includes(playerIndex));
-					if (save_for.length == 0)
-						return true;
+				const list = state.clueTouched(state.hands[clue.target], clue);
+				const hypo_game = game.simulate_clue({ type: 'clue', clue, list, giver: state.ourPlayerIndex, target: target });
 
-					const value = find_clue_value(clue.result);
-					if (saved_clue === undefined || value > saved_clue_value) {
-						saved_for = save_for;
-						saved_clue = clue;
-						saved_clue_value = value;
-					}
-					return false;
-				});
+				/** @param {Player} player */
+				const better_giver = (player) => {
+					const { playerIndex } = player;
 
-				if (saved_clue !== undefined)
-					logger.info(`saved clue ${logClue(saved_clue)} for ${saved_for.map(playerIndex => state.playerNames[playerIndex]).join(', ')}`);
+					if (player.thinksLoaded(state, playerIndex, { assume: false }))
+						return false;
+
+					const otherChop = player.chop(state.hands[playerIndex]);
+					const chop_value = otherChop === undefined ? 4 : cardValue(state, player, state.deck[otherChop], otherChop);
+
+					if (chop_value >= our_chop_value)
+						logger.info(`saved clue ${logClue(clue)} for ${state.playerNames[playerIndex]} ${chop_value}`);
+
+					return chop_value >= our_chop_value;
+				};
+
+				const saved_for = find_clue_givers(game, clue, state.ourPlayerIndex).filter(i => i !== state.ourPlayerIndex && better_giver(hypo_game.players[i]));
+				if (saved_for.length === 0)
+					continue;
+
+				saved_clues.push(clue);
+			}
+
+			const { clue, value } = select_play_clue(consider_clues.filter(clue => !saved_clues.some(cl => Utils.objEquals(clue, cl))));
+			const { clue: saved_clue, value: saved_value } = select_play_clue(saved_clues);
+
+			if (saved_clue === undefined || value > saved_value) {
+				best_play_clue = clue;
+				clue_value = value;
 			}
 		}
-
-		({ clue: best_play_clue, clue_value } = select_play_clue(consider_clues));
-		if (saved_clue !== undefined && saved_clue_value > clue_value && state.clue_tokens < 2)
-			best_play_clue = clue_value = undefined;
+		else {
+			({ clue: best_play_clue, clue_value } = select_play_clue(consider_clues));
+		}
 	}
 
 	// Attempt to solve endgame

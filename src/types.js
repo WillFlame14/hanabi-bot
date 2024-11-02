@@ -30,8 +30,8 @@
  * @property {number} focus
  * @property {number} elim
  * @property {Card[]} new_touched
- * @property {number} bad_touch
- * @property {number} trash
+ * @property {number[]} bad_touch
+ * @property {number[]} trash
  * @property {number} avoidable_dupe
  * @property {number} remainder
  * @property {number | undefined} discard

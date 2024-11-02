@@ -1,5 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
+import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard } from '../../../tools/log.js';
@@ -11,27 +12,49 @@ import { logCard } from '../../../tools/log.js';
  * @typedef {import('../../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').BaseClue} BaseClue
+ * @typedef {import('../../../types.js').ClueAction} ClueAction
  */
 
 /**
  * Checks whether a Trash Chop Move was performed on the target. The clue must have already been registered.
  * @param {Game} game
- * @param {number} target
+ * @param {ClueAction} action
  * @param {number} focus_order
  * @returns The orders of any chop moved cards.
  */
-export function interpret_tcm(game, target, focus_order) {
+export function interpret_tcm(game, action, focus_order) {
 	const { common, state } = game;
+	const { clue, list, target } = action;
 	const focused_card = state.deck[focus_order];
 	const focus_thoughts = common.thoughts[focus_order];
 
-	if (!focused_card.newly_clued ||
-		focus_thoughts.possible.some(c => !isTrash(state, common, c, focus_order, { infer: true })) ||
-		focus_thoughts.inferred.every(i => state.isPlayable(i) && !isTrash(state, common, i, focus_order, { infer: true })))
+	if (!focused_card.newly_clued)
 		return [];
 
-	const oldest_trash_index = state.hands[target].findLastIndex(o =>
-		state.deck[o].newly_clued && common.thoughts[o].possible.every(c => isTrash(state, common, c, o, { infer: true })));
+	let mod_common = common;
+
+	// Unclue all newly clued cards so that we can search for trash correctly
+	for (const order of list) {
+		if (state.deck[order].newly_clued) {
+			mod_common = mod_common.withThoughts(order, (draft) => {
+				draft.newly_clued = false;
+				draft.clued = false;
+			}, false);
+		}
+	}
+
+	if (clue.type === CLUE.RANK) {
+		const promised_ids = Utils.range(0, state.variant.suits.length).map(suitIndex => ({ suitIndex, rank: clue.value }));
+
+		if (focus_thoughts.possible.intersect(promised_ids).some(i => !isTrash(state, mod_common, i, focus_order, { infer: true })))
+			return [];
+	}
+	else if (focus_thoughts.possible.some(c => !isTrash(state, mod_common, c, focus_order, { infer: true })) ||
+		focus_thoughts.inferred.every(i => state.isPlayable(i) && !isTrash(state, mod_common, i, focus_order, { infer: true }))) {
+		return [];
+	}
+
+	const oldest_trash_index = state.hands[target].findLastIndex(o => state.deck[o].newly_clued);
 
 	logger.info(`oldest trash card is ${logCard(state.deck[state.hands[target][oldest_trash_index]])}`);
 
@@ -45,7 +68,7 @@ export function interpret_tcm(game, target, focus_order) {
 			cm_orders.push(order);
 	}
 
-	logger.highlight('cyan', cm_orders.length === 0 ? 'no cards to tcm' : `trash chop move on ${cm_orders.map(o => logCard(state.deck[o])).join(',')}`);
+	logger.highlight('cyan', cm_orders.length === 0 ? 'no cards to tcm' : `trash chop move on ${cm_orders.map(o => logCard(state.deck[o])).join(',')} ${cm_orders}`);
 	return cm_orders;
 }
 

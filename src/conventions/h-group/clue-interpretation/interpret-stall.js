@@ -107,7 +107,7 @@ function isStall(game, action, giver, severity, prev_game) {
 function expected_clue(_game, clue, interp) {
 	switch(interp) {
 		case CLUE_INTERP.PLAY:
-			return clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch === 0;
+			return clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch.length === 0;
 
 		case CLUE_INTERP.SAVE: {
 			const save_clue = /** @type {SaveClue} */(clue);
@@ -149,7 +149,7 @@ export function stalling_situation(game, action, prev_game) {
 	logger.flush(false);
 
 	const expected_play = () => play_clues.flat().find(cl =>
-		cl.result.playables.some(({ card }) => card.newly_clued) && cl.result.bad_touch === 0 && focus !== cl.result.focus);
+		cl.result.playables.some(({ card }) => card.newly_clued) && cl.result.bad_touch.length === 0 && focus !== cl.result.focus);
 
 	const expected_save = () => save_clues.find((cl, target) => {
 		if (cl === undefined || cl.cm?.length > 0 || focus === cl.result.focus)

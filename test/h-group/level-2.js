@@ -72,7 +72,7 @@ describe('reverse finesse', () => {
 		// 1 to Donald is a valid play clue, but it bad touches one card.
 		const donald_1 = play_clues[PLAYER.DONALD].find(clue => clue.type === CLUE.RANK && clue.type === 1);
 		assert.ok(donald_1);
-		assert.equal(donald_1.result.bad_touch, 1);
+		assert.equal(donald_1.result.bad_touch.length, 1);
 	});
 });
 

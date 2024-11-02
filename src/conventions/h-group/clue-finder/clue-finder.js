@@ -2,7 +2,7 @@ import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
 import { clue_safe } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
-import { evaluate_clue, get_result } from './determine-clue.js';
+import { evaluate_clue } from './determine-clue.js';
 import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
 import { cardValue, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
@@ -142,35 +142,18 @@ export function find_clues(game, options = {}) {
 
 			// Simulate clue from receiver's POV to see if they have the right interpretation
 			const action =  /** @type {const} */ ({ type: 'clue', giver, target, list, clue, hypothetical, noRecurse });
-			const hypo_game = evaluate_clue(game, action, clue, target, focused_card);
+			const { hypo_game, result } = evaluate_clue(game, action);
 
 			// Clue had incorrect interpretation
 			if (hypo_game === undefined)
 				continue;
 
-			const stomped_finesse = common.waiting_connections.some(w_conn => {
-				const { focus: wc_focus, connections, conn_index, inference } = w_conn;
-				const matches = player.thoughts[wc_focus].matches(inference, { assume: true });
-
-				return matches && list.some(o => {
-					const card = hypo_game.common.thoughts[o];
-					return connections.some((conn, i) => i >= conn_index && conn.order === o && card.inferred.every(i => hypo_game.state.isPlayable(i)));
-				});
-			});
-
-			if (stomped_finesse) {
-				logger.warn('indirectly stomps on finesse, not giving');
-				continue;
-			}
-
 			const interpret = hypo_game.common.thoughts[focus].inferred;
-			let result = get_result(game, hypo_game, clue, giver);
-			Object.assign(clue, { result });
 
 			const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game, player, clue);
-			result = produce(result, (draft) => { draft.discard = discard; });
+			clue.result = produce(result, (draft) => { draft.discard = discard; });
 
-			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = result;
+			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = clue.result;
 			const interp = /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.lastMove);
 
 			const result_log = {
@@ -187,7 +170,7 @@ export function find_clues(game, options = {}) {
 				discard: discard ? logCard(state.deck[discard]) : undefined,
 				interp
 			};
-			logger.info('result,', JSON.stringify(result_log), find_clue_value(result));
+			logger.info('result,', JSON.stringify(result_log), find_clue_value(clue.result));
 
 			hypo_games[logClue(clue)] = hypo_game;
 
@@ -202,7 +185,7 @@ export function find_clues(game, options = {}) {
 					}
 				}
 
-				if (game.level < LEVEL.CONTEXT || clue.result.avoidable_dupe == 0)
+				if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0)
 					saves.push(Object.assign(clue, { game: hypo_game, playable: playables.length > 0, cm: chop_moved, safe }));
 				else
 					logger.highlight('yellow', `${logClue(clue)} save results in avoidable potential duplication`);
@@ -215,7 +198,7 @@ export function find_clues(game, options = {}) {
 					break;
 
 				case CLUE_INTERP.CM_TEMPO: {
-					const { tempo, valuable } = valuable_tempo_clue(game, clue, clue.result.playables, focus);
+					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focus);
 
 					if (!safe) {
 						logger.highlight('yellow', 'unsafe!');
@@ -232,14 +215,14 @@ export function find_clues(game, options = {}) {
 					break;
 				}
 				case CLUE_INTERP.PLAY:
-					if (clue.result.playables.length === 0) {
+					if (playables.length === 0) {
 						logger.warn('play clue with no playables!');
 						stall_clues[5].push(clue);
 						continue;
 					}
 
-					if (clue.result.bad_touch === clue.result.new_touched.length && clue.result.bad_touch > 0) {
-						logger.warn('all newly clued cards are bad touched!', clue.result.new_touched.map(c => c.order));
+					if (bad_touch.length === new_touched.length && bad_touch.length > 0) {
+						logger.warn('all newly clued cards are bad touched!', new_touched.map(c => c.order));
 						continue;
 					}
 
@@ -248,7 +231,7 @@ export function find_clues(game, options = {}) {
 						continue;
 					}
 
-					if (game.level < LEVEL.CONTEXT || clue.result.avoidable_dupe == 0)
+					if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0)
 						play_clues[target].push(clue);
 					else
 						logger.highlight('yellow', `${logClue(clue)} results in avoidable potential duplication`);

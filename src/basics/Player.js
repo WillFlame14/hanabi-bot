@@ -135,7 +135,7 @@ export class Player {
 	 */
 	withThoughts(order, func, listenPatches = this.playerIndex === -1) {
 		const copy = this.shallowCopy();
-		copy.thoughts = this.thoughts.with(order, produce(this.thoughts[order], func, (patches) => {
+		copy.thoughts = copy.thoughts.with(order, produce(this.thoughts[order], func, (patches) => {
 			if (listenPatches && patches.length > 0)
 				this.patches.set(order, (this.patches.get(order) ?? []).concat(patches));
 		}));
@@ -146,9 +146,15 @@ export class Player {
 	 * Returns whether they think the given player is locked (i.e. every card is clued, chop moved, or finessed AND not loaded).
 	 * @param {State} state
 	 * @param {number} playerIndex
+	 * @param {boolean} [symmetric]
 	 */
-	thinksLocked(state, playerIndex) {
-		return state.hands[playerIndex].every(o => this.thoughts[o].saved) && !this.thinksLoaded(state, playerIndex);
+	thinksLocked(state, playerIndex, symmetric = false) {
+		/** @param {number} order */
+		const in_wc = (order) => this.waiting_connections.some(wc =>
+			wc.target === playerIndex &&
+			wc.connections.some((conn, i) => i >= wc.conn_index && conn.order === order && conn.identities.some(id => !state.isPlayable(id))));
+
+		return state.hands[playerIndex].every(o => this.thoughts[o].saved || (symmetric && in_wc(o))) && !this.thinksLoaded(state, playerIndex);
 	}
 
 	/**

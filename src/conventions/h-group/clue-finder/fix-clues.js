@@ -3,7 +3,7 @@ import { cardTouched, direct_clues, variantRegexes } from '../../../variants.js'
 import { isSaved, isTrash, knownAs, visibleFind } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard } from '../../../tools/log.js';
+import { logCard, logClue } from '../../../tools/log.js';
 import { get_result } from './determine-clue.js';
 import { CLUE } from '../../../constants.js';
 import { order_1s } from '../action-helper.js';
@@ -81,7 +81,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 			let fix_criteria;
 			if (wrong_inference) {
 				fix_criteria = inference_corrected;
-				logger.info(`card ${logCard(card)} needs fix, wrong inferences ${card.inferred.map(logCard)}`);
+				logger.highlight('yellow', `card ${logCard(card)} needs fix, wrong inferences ${card.inferred.map(logCard)} (urgent? ${seems_playable})`);
 			}
 			// We only want to give a fix clue to the player whose turn comes sooner
 			else if (unknown_duplicated && !duplicated_cards.some(c => c.matches(card))) {
@@ -103,7 +103,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 				if (needs_fix) {
 					fix_criteria = duplication_known;
 					duplicated_cards.push(card);
-					logger.info(`card ${logCard(card)} needs fix, duplicated`);
+					logger.highlight('yellow', `card ${logCard(card)} needs fix, duplicated (urgent? ${seems_playable})`);
 				}
 			}
 
@@ -120,7 +120,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 
 					const { fixed, trash, result } = check_fixed(game, target, order, clue, fix_criteria);
 
-					if (fixed)
+					if (fixed && (result.bad_touch.length === 0 || (state.strikes === 2 && seems_playable)))
 						fix_clues[target].push(Object.assign({}, clue, { trash, result, urgent: seems_playable }));
 				}
 
@@ -128,7 +128,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 				for (const clue of possible_clues) {
 					const { fixed, trash, result } = check_fixed(game, target, order, clue, fix_criteria);
 
-					if (fixed)
+					if (fixed && (result.bad_touch.length === 0 || (state.strikes === 2 && seems_playable)))
 						fix_clues[target].push(Object.assign({}, clue, { trash, result, urgent: seems_playable }));
 				}
 			}
@@ -185,6 +185,7 @@ function check_fixed(game, target, order, clue, fix_criteria) {
 
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();
+	logger.highlight('green', `------- ENTERING HYPO ${logClue(clue)} -------`);
 
 	const hypo_game = game.simulate_clue(action, { enableLogs: true });
 	const { common: hypo_common, state: hypo_state } = hypo_game;
@@ -195,6 +196,8 @@ function check_fixed(game, target, order, clue, fix_criteria) {
 		trash: card_after_cluing.possible.every(p => isTrash(hypo_state, hypo_common, p, order, { infer: true })),
 		result: get_result(game, hypo_game, clue, state.ourPlayerIndex)
 	};
+
+	logger.highlight('green', `------- EXITING HYPO ${logClue(clue)} -------`);
 
 	logger.flush(result.fixed);
 

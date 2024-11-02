@@ -83,12 +83,12 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 
 		// Known trash from empathy
 		if (hypo_player.thoughts[order].possible.every(p => isTrash(state, hypo_player, p, order, { infer: true }))) {
-			trash.push(card);
+			trash.push(order);
 			continue;
 		}
 
 		if (state.isBasicTrash(card)) {
-			bad_touch.push(card);
+			bad_touch.push(order);
 			continue;
 		}
 
@@ -101,7 +101,7 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 		}));
 
 		if (duplicates.length > 0 && !(duplicates.every(o => state.deck[o].newly_clued) && order < Math.min(...duplicates)))
-			bad_touch.push(card);
+			bad_touch.push(order);
 	}
 
 	return { bad_touch, trash, avoidable_dupe };

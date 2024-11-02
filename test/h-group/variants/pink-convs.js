@@ -47,6 +47,23 @@ describe('pink promise', () => {
 		// No rank clue should be a valid play clue except 1.
 		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value !== 1));
 	});
+
+	it('understands pink trash cms', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['i1', 'b1', 'r2', 'r3', 'g3'],
+		], {
+			level: { min: 4 },
+			play_stacks: [1, 1, 1, 1, 1],
+			starting: PLAYER.BOB,
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Bob clues 1 to Alice (slot 3)');
+
+		// Alice's slots 4 and 5 should be chop moved.
+		assert.ok([3, 4].every(i => game.common.thoughts[game.state.hands[PLAYER.ALICE][i]].chop_moved, true));
+	});
 });
 
 describe('pink 1s assumption', () => {
@@ -72,7 +89,7 @@ describe('pink 1s assumption', () => {
 	it('fixes a pink 1s assumption with pink fix promise', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['r2', 'i4', 'i1', 'r3', 'g4'],
+			['r2', 'i4', 'y1', 'r3', 'g4'],
 		], {
 			level: { min: 3 },
 			clue_tokens: 7,
@@ -80,7 +97,7 @@ describe('pink 1s assumption', () => {
 		});
 
 		takeTurn(game, 'Alice clues 1 to Bob');
-		takeTurn(game, 'Bob plays i1', 'b4');
+		takeTurn(game, 'Bob plays y1', 'b4');
 
 		const { fix_clues } = find_clues(game);
 		assert.ok(fix_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 4));

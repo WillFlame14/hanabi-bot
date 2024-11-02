@@ -84,7 +84,7 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 		}
 
 		// Unsafe play clue
-		if (clue.result.trash === 0 && state.clue_tokens < (state.numPlayers > 2 ? 1 : 2))
+		if (clue.result.trash.length === 0 && state.clue_tokens < (state.numPlayers > 2 ? 1 : 2))
 			return false;
 
 		const { playables } = clue.result;
@@ -150,7 +150,7 @@ function expected_early_game_clue(game, clue, interp) {
 			return game.level >= 2 && !game.stalled_5;
 
 		case CLUE_INTERP.PLAY:
-			return clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch === 0;
+			return clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch.length === 0;
 
 		case CLUE_INTERP.SAVE: {
 			const save_clue = /** @type {SaveClue} */(clue);
@@ -188,7 +188,7 @@ export function early_game_clue(game, playerIndex) {
 
 	logger.debug('found clues', play_clues.flat().map(logClue), save_clues.filter(c => c !== undefined).map(logClue), state.playerNames[playerIndex]);
 
-	const expected_clue = play_clues.flat().find(clue => clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch === 0) ||
+	const expected_clue = play_clues.flat().find(clue => clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch.length === 0) ||
 		save_clues.find(clue => clue !== undefined && (clue.cm === undefined || clue.cm.length === 0)) ||
 		((game.level >= 2 && !game.stalled_5 && stall_clues[0][0]) || undefined);
 

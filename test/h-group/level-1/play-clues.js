@@ -242,7 +242,7 @@ describe('counting playables', () => {
 
 		// There should be 1 playable and 1 trash.
 		assert.equal(playables.length, 1);
-		assert.equal(trash, 1);
+		assert.equal(trash.length, 1);
 	});
 
 	it('correctly counts the number of playables when connecting on unknown plays', () => {
