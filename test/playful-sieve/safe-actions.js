@@ -14,13 +14,13 @@ import { logPerformAction } from '../../src/tools/log.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('direct rank playables', () => {
-	it('prefers to give direct ranks', () => {
+	it('prefers to give direct ranks', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y4', 'g1', 'b1', 'g3', 'g4']
 		]);
 
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, value: 1 });
 	});
 
@@ -78,7 +78,7 @@ describe('direct rank playables', () => {
 });
 
 describe('connecting cards', () => {
-	it('plays connections to cm cards', () => {
+	it('plays connections to cm cards', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g1', 'y4', 'g3', 'r4', 'r4']
@@ -101,11 +101,11 @@ describe('connecting cards', () => {
 		// Bob now has known g3.
 
 		// Alice should play g2 to automatically cm r5.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1] }, logPerformAction(action));
 	});
 
-	it('plays connections to a 1-away chop', () => {
+	it('plays connections to a 1-away chop', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'y4', 'g3', 'r4', 'r4']
@@ -128,13 +128,13 @@ describe('connecting cards', () => {
 		game.common.update_hypo_stacks(game.state);
 
 		// Alice should play g1 to make g2 playable.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1] }, logPerformAction(action));
 	});
 });
 
 describe('urgency principle', () => {
-	it('doesn\'t give unloaded clues that connect through own hand', () => {
+	it('doesn\'t give unloaded clues that connect through own hand', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'y5', 'g5', 'p3', 'r2']
@@ -150,7 +150,7 @@ describe('urgency principle', () => {
 		game.common.update_hypo_stacks(game.state);
 
 		// Alice should not give purple.
-		const action = take_action(game);
+		const action = await take_action(game);
 		assert.ok(!(action.type === ACTION.COLOUR && action.value === COLOUR.PURPLE));
 	});
 });

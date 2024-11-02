@@ -80,7 +80,7 @@ describe('playing 1s in the correct order', () => {
 });
 
 describe('sarcastic discard', () => {
-	it('prefers sarcastic discard over playing', () => {
+	it('prefers sarcastic discard over playing', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'g4', 'y1', 'p4']
@@ -90,7 +90,7 @@ describe('sarcastic discard', () => {
 		takeTurn(game, 'Bob clues yellow to Alice (slot 5)');
 
 		// Alice should discard slot 5 as a Sarcastic Discard.
-		const action = game.take_action(game);
+		const action = await game.take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
 	});
 
@@ -111,7 +111,7 @@ describe('sarcastic discard', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['y1']);
 	});
 
-	it('prefers playing if that would reveal duplicate is trash in endgame', () => {
+	it('prefers playing if that would reveal duplicate is trash in endgame', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'y5', 'y4', 'p4'],
@@ -141,11 +141,12 @@ describe('sarcastic discard', () => {
 		takeTurn(game, 'Cathy clues yellow to Alice (slot 5)');
 
 		// Alice should play slot 5 instead of discarding for tempo.
-		const action = game.take_action(game);
+		const action = await game.take_action(game);
+		console.log('e?');
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 0 });
 	});
 
-	it('prefers playing when holding both copies in endgame', () => {
+	it('prefers playing when holding both copies in endgame', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'b4', 'y1', 'g4', 'p4'],
@@ -164,7 +165,7 @@ describe('sarcastic discard', () => {
 		takeTurn(game, 'Cathy clues 4 to Alice (slots 4,5)');
 
 		// Alice should play slot 4 instead of discarding for tempo.
-		const action = game.take_action(game);
+		const action = await game.take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
 

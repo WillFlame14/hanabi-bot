@@ -155,7 +155,7 @@ describe('hidden finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['g1', 'g3']);
 	});
 
-	it('correctly realizes a hidden/layered finesse', () => {
+	it('correctly realizes a hidden/layered finesse', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r2', 'r2', 'y4', 'g2'],
@@ -173,7 +173,7 @@ describe('hidden finesse', () => {
 		takeTurn(game, 'Cathy discards g4', 'p4');
 		takeTurn(game, 'Donald clues green to Bob');		// g1 needs to finesse from Alice, but slot 1 is [y2] and slot 2 is neg 1.
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should play slot 3.
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2] });
@@ -188,7 +188,7 @@ describe('hidden finesse', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
 	});
 
-	it('correctly realizes a layered finesse', () => {
+	it('correctly realizes a layered finesse', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r2', 'r2', 'y4', 'g2'],
@@ -210,7 +210,7 @@ describe('hidden finesse', () => {
 		// Slots 1 should be finessed.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should play slot 1.
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });

@@ -1,6 +1,6 @@
 import * as Basics from './basics.js';
 import logger from './tools/logger.js';
-import { logAction, logCard, logPerformAction } from './tools/log.js';
+import { logAction, logCard } from './tools/log.js';
 import * as Utils from './tools/util.js';
 import { team_elim } from './basics/helper.js';
 import { produce } from './StateProxy.js';
@@ -115,18 +115,6 @@ export function handle_action(action) {
 			}
 
 			this.update_turn(this, action);
-
-			if (currentPlayerIndex === state.ourPlayerIndex && !this.catchup) {
-				if (this.in_progress) {
-					if (Utils.globals.manual === undefined)
-						setTimeout(() => Utils.sendCmd('action', this.take_action(this)), state.options.speedrun ? 0 : 2000);
-				}
-				// Replaying a turn
-				else {
-					const suggested_action = this.take_action(this);
-					logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
-				}
-			}
 			break;
 		}
 		case 'play': {

@@ -1,7 +1,6 @@
 import { ACTION, CLUE } from '../../constants.js';
 import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
 import { select_play_clue, determine_playable_card, order_1s, find_clue_value, find_positional_discard } from './action-helper.js';
-import { UnsolvedGame, solve_game } from '../shared/endgame.js';
 import { find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { inBetween, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
@@ -10,6 +9,9 @@ import { cardValue, isTrash, visibleFind } from '../../basics/hanabi-util.js';
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
 import * as Utils from '../../tools/util.js';
+
+import { Worker } from 'worker_threads';
+import * as path from 'path';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -199,9 +201,9 @@ export function find_clue_givers(game, clue, giver) {
 /**
  * Performs the most appropriate action given the current state.
  * @param {Game} game
- * @returns {PerformAction}
+ * @returns {Promise<PerformAction>}
  */
-export function take_action(game) {
+export async function take_action(game) {
 	const { common, state, me, tableID } = game;
 	const nextPlayerIndex = state.nextPlayerIndex(state.ourPlayerIndex);
 
@@ -385,9 +387,29 @@ export function take_action(game) {
 
 	// Attempt to solve endgame
 	if (!is_finessed && state.inEndgame() && state.cardsLeft > 0) {
-		try {
-			const action = solve_game(game, state.ourPlayerIndex, find_all_clues, find_all_discards);
+		logger.highlight('purple', 'Attempting to solve endgame...');
 
+		const workerData = { game: Utils.toJSON(game), playerTurn: state.ourPlayerIndex, conv: 'HGroup', logLevel: logger.level };
+		const worker = new Worker(path.resolve(import.meta.dirname, '../', 'shared', 'endgame.js'), { workerData });
+
+		const action = await new Promise((resolve, reject) => {
+			worker.on('message', ({ success, action, err }) => {
+				if (success) {
+					resolve(action);
+				}
+				else {
+					logger.warn(`couldn't solve endgame yet: ${err.message}`);
+					resolve(undefined);
+				}
+			});
+
+			worker.on('error', (msg) => {
+				console.log('worker threw an error while solving endgame!', msg);
+				reject(msg);
+			});
+		});
+
+		if (action !== undefined) {
 			if (action.type === ACTION.COLOUR || action.type === ACTION.RANK) {
 				const stall_clue = best_play_clue ??
 					best_stall_clue(stall_clues, 4) ??
@@ -397,12 +419,6 @@ export function take_action(game) {
 			}
 
 			return { tableID, type: action.type, target: action.target };
-		}
-		catch (err) {
-			if (err instanceof UnsolvedGame)
-				logger.warn(`couldn't solve endgame yet: ${err.message}`);
-			else
-				throw err;
 		}
 	}
 

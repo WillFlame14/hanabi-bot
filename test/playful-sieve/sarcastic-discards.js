@@ -13,7 +13,7 @@ import logger from '../../src/tools/logger.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('sarcastic discards', () => {
-	it('sarcastic discards to chop to prevent a bomb', () => {
+	it('sarcastic discards to chop to prevent a bomb', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b4', 'r2', 'r3', 'g5']
@@ -27,7 +27,8 @@ describe('sarcastic discards', () => {
 		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
 
 		// Alice should discard g2 as sarcastic.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][1] });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][1] });
 	});
 
 	/*it('understands sarcastic discards to chop', () => {
@@ -49,7 +50,7 @@ describe('sarcastic discards', () => {
 		assert.equal(slot1.finessed, true);
 	});*/
 
-	it('sarcastic discards to a clued card', () => {
+	it('sarcastic discards to a clued card', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g5', 'b4', 'g2', 'r1', 'g5']
@@ -63,7 +64,8 @@ describe('sarcastic discards', () => {
 		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
 
 		// Alice should discard g2 as sarcastic.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][1] });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][1] });
 	});
 });
 

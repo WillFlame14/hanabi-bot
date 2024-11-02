@@ -1,10 +1,11 @@
+import { IdentitySet } from './IdentitySet.js';
+import * as Utils from '../tools/util.js';
 import { logCard } from '../tools/log.js';
 
 /**
  * @typedef {{infer?: boolean, symmetric?: boolean, assume?: boolean}} MatchOptions
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Identity} Identity
- * @typedef {import('./IdentitySet.js').IdentitySet} IdentitySet
  */
 
 export class BasicCard {
@@ -15,6 +16,11 @@ export class BasicCard {
 	constructor(suitIndex, rank) {
 		this.suitIndex = suitIndex;
 		this.rank = rank;
+	}
+
+	/** @param {BasicCard} json */
+	static fromJSON(json) {
+		return new BasicCard(json.suitIndex, json.rank);
 	}
 
 	raw() {
@@ -59,6 +65,11 @@ export class ActualCard extends BasicCard {
 		this.clued = clued;
 		this.newly_clued = newly_clued;
 		this.clues = clues;
+	}
+
+	/** @param {ActualCard} json */
+	static fromJSON(json) {
+		return new ActualCard(json.suitIndex, json.rank, json.order, json.drawn_index, json.clued, json.newly_clued, json.clues.slice());
 	}
 
 	clone() {
@@ -187,6 +198,40 @@ export class Card extends ActualCard {
 		this.reasoning = extras.reasoning?.slice() ?? [];
 		this.reasoning_turn = extras.reasoning_turn?.slice() ?? [];
 		this.rewinded = extras.rewinded ?? false;
+	}
+
+	/** @param {Card} json */
+	static fromJSON(json) {
+		const res = new Card(json.suitIndex, json.rank, IdentitySet.fromJSON(json.possible), IdentitySet.fromJSON(json.inferred));
+
+		for (const property of Object.getOwnPropertyNames(res)) {
+			if (json[property] === undefined)
+				continue;
+
+			switch (property) {
+				case 'finesse_ids':
+				case 'old_inferred':
+				case 'old_possible':
+				case 'inferred':
+				case 'possible':
+					res[property] = IdentitySet.fromJSON(json[property]);
+					break;
+
+				case 'rewind_ids':
+					res[property] = json[property].slice();
+					break;
+
+				case 'reasoning':
+				case 'reasoning_turn':
+					res[property] = json[property].slice();
+					break;
+
+				default:
+					res[property] = Utils.shallowCopy(json[property]);
+					break;
+			}
+		}
+		return res;
 	}
 
 	/**

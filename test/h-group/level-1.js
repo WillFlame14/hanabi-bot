@@ -17,7 +17,7 @@ import { produce } from '../../src/StateProxy.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('save clue', () => {
-	it('prefers play over save with >1 clues', () => {
+	it('prefers play over save with >1 clues', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b1', 'r2', 'r3', 'g5'],
@@ -49,13 +49,13 @@ describe('save clue', () => {
 			}
 		});
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should give green to Cathy to finesse over save
 		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN }, `Expected (green to Cathy) but got ${logPerformAction(action)}`);
 	});
 
-	it('prefers touching less cards to save critical cards', () => {
+	it('prefers touching less cards to save critical cards', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'g5', 'p2', 'p4', 'g4']
@@ -71,7 +71,7 @@ describe('save clue', () => {
 			}
 		});
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should give green to Bob instead of 4
 		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN });
@@ -146,7 +146,7 @@ describe('save clue', () => {
 		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 2 });
 	});
 
-	it('does not give unsafe saves', () => {
+	it('does not give unsafe saves', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'g2', 'y2', 'r1', 'p5'],
@@ -164,11 +164,11 @@ describe('save clue', () => {
 		const clue = { type: CLUE.RANK, value: 5, target: PLAYER.BOB };
 		assert.equal(clue_safe(game, game.me, clue).safe, false);
 
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
 	});
 
-	it('sets up double saves', () => {
+	it('sets up double saves', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'g4', 'y2', 'r1', 'p4'],
@@ -183,7 +183,7 @@ describe('save clue', () => {
 		takeTurn(game, 'Cathy clues green to Alice (slot 1)');
 
 		// We should clue 5 to Cathy to set up the double save.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.CATHY, value: 5 });
 	});
 });
@@ -264,8 +264,8 @@ describe('sacrifice discards', () => {
 	});
 });
 
-describe('strategy', () => {
-	it('does not give clues that may be better given by someone else', () => {
+describe('strategy', async () => {
+	it('does not give clues that may be better given by someone else', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b3', 'g3', 'y3', 'b4'],
@@ -279,7 +279,7 @@ describe('strategy', () => {
 		});
 		takeTurn(game, 'Donald discards y4', 'r1');
 
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
 	});
 });

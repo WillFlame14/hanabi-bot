@@ -109,7 +109,7 @@ describe('pink 1s assumption', () => {
 		assert.ok(game.common.thoughts[game.state.hands[PLAYER.BOB][2]].inferred.length > 1);
 	});
 
-	it(`doesn't perform OCMs in pink`, () => {
+	it(`doesn't perform OCMs in pink`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'i3', 'i2', 'r1', 'g3'],
@@ -124,7 +124,7 @@ describe('pink 1s assumption', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slots 4,5)');
 
 		// Alice must play slot 5 (not allowed to OCM by playing slot 4).
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 });

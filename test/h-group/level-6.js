@@ -180,7 +180,7 @@ describe('tempo clue chop moves', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].chop_moved, false);
 	});
 
-	it(`prefers tccm to cm a useful card`, () => {
+	it(`prefers tccm to cm a useful card`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y4', 'r4', 'b4', 'p2', 'p1'],
@@ -193,7 +193,7 @@ describe('tempo clue chop moves', () => {
 
 		takeTurn(game, 'Cathy clues purple to Bob');
 
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { target: PLAYER.BOB, type: ACTION.RANK, value: 2 });
 	});
 });

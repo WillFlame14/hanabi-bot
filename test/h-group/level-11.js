@@ -387,7 +387,7 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][0]], ['b3']);
 	});
 
-	it('prioritizes playing into a bluff', () => {
+	it('prioritizes playing into a bluff', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p3', 'r4', 'p1', 'b2', 'y4'],
@@ -407,7 +407,7 @@ describe('bluff clues', () => {
 		// Bob's slot 4 must be b2.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['b2']);
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should play to prevent a misplay of the b2.
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
@@ -761,7 +761,7 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.CATHY][2]], ['b1', 'b2']);
 	});
 
-	it(`prefers a bluff clue when more information is given`, () => {
+	it(`prefers a bluff clue when more information is given`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p1', 'y5', 'b4', 'g5', 'p3'],
@@ -771,11 +771,11 @@ describe('bluff clues', () => {
 			play_stacks: [0, 0, 5, 3, 0],
 			starting: PLAYER.ALICE
 		});
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, {target: 2, type: ACTION.COLOUR, value: COLOUR.RED});
 	});
 
-	it(`prefers a bluff clue when more information is given case 2`, () => {
+	it(`prefers a bluff clue when more information is given case 2`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b4', 'p5', 'y5', 'g5'],
@@ -786,7 +786,7 @@ describe('bluff clues', () => {
 			play_stacks: [4, 1, 1, 3, 0],
 			starting: PLAYER.ALICE
 		});
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, {target: 2, type: ACTION.COLOUR, value: COLOUR.PURPLE});
 	});
 

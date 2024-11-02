@@ -20,9 +20,9 @@ import * as Utils from '../../tools/util.js';
 /**
  * Performs the most appropriate action given the current state.
  * @param {Game} game
- * @returns {PerformAction}
+ * @returns {Promise<PerformAction>}
  */
-export function take_action(game) {
+export async function take_action(game) {
 	const { common, me, state, tableID } = game;
 	const partner = state.nextPlayerIndex(state.ourPlayerIndex);
 	const partner_hand = state.hands[partner];

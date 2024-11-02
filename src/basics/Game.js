@@ -1,14 +1,15 @@
 import { IdentitySet } from './IdentitySet.js';
 import { Player } from './Player.js';
 import { ActualCard } from '../basics/Card.js';
+import { State } from '../basics/State.js';
 import { handle_action } from '../action-handler.js';
 
 import logger from '../tools/logger.js';
 import * as Utils from '../tools/util.js';
 import { logCard, logPerformAction } from '../tools/log.js';
 
+
 /**
- * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Identity} Identity
@@ -77,6 +78,26 @@ export class Game {
 			this.players[i] = new Player(i, all_possible, all_possible, Array.from({ length: state.variant.suits.length }, _ => 0));
 
 		this.common = new Player(-1, all_possible, all_possible, Array.from({ length: state.variant.suits.length }, _ => 0));
+	}
+
+	/** @param {Game} json */
+	static fromJSON(json) {
+		const res = new Game(json.tableID, State.fromJSON(json.state), json.in_progress);
+
+		for (const property of Object.getOwnPropertyNames(res)) {
+			switch (property) {
+				case 'players':
+					res.players = json.players.map(Player.fromJSON);
+					break;
+				case 'common':
+					res.common = Player.fromJSON(json.common);
+					break;
+				default:
+					res[property] = Utils.objClone(json[property]);
+					break;
+			}
+		}
+		return res;
 	}
 
 	get me() {
@@ -175,9 +196,9 @@ export class Game {
 	/**
 	 * @abstract
 	 * @param {Game} _game
-	 * @returns {PerformAction}
+	 * @returns {Promise<PerformAction>}
 	 */
-	take_action(_game) {
+	async take_action(_game) {
 		throw new Error('must be implemented by subclass!');
 	}
 
@@ -335,10 +356,6 @@ export class Game {
 				action_index++;
 				action = actionList[action_index];
 			}
-
-			new_game.catchup = this.catchup;
-			const suggested_action = new_game.take_action(new_game);
-			logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
 		}
 		else {
 			// Don't log history
@@ -359,8 +376,8 @@ export class Game {
 		new_game.catchup = this.catchup;
 
 		if (!new_game.catchup && new_game.state.currentPlayerIndex === this.state.ourPlayerIndex) {
-			const suggested_action = new_game.take_action(new_game);
-			logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
+			new_game.take_action(new_game).then(suggested_action =>
+				logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action)));
 		}
 
 		// Copy over the full game history

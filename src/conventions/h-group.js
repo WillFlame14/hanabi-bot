@@ -1,18 +1,18 @@
+import { ActualCard } from '../basics/Card.js';
+import { HGroup_Player } from './h-player.js';
 import { Game } from '../basics/Game.js';
+import { State } from '../basics/State.js';
 import { interpret_clue } from './h-group/clue-interpretation/interpret-clue.js';
 import { interpret_discard } from './h-group/interpret-discard.js';
 import { interpret_play } from './h-group/interpret-play.js';
 import { take_action } from './h-group/take-action.js';
 import { update_turn } from './h-group/update-turn.js';
 
-import { HGroup_Player } from './h-player.js';
 import * as Utils from '../tools/util.js';
 
 /**
- * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../variants.js').Variant} Variant
  * @typedef {import('../types-live.js').TableOptions} TableOptions
- * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {typeof import('./h-group/h-constants.js').CLUE_INTERP} CLUE_INTERP
  * @typedef {typeof import('./h-group/h-constants.js').PLAY_INTERP} PLAY_INTERP
  * @typedef {typeof import('./h-group/h-constants.js').DISCARD_INTERP} DISCARD_INTERP
@@ -57,6 +57,39 @@ export default class HGroup extends Game {
 
 		this.level = level;
 		this.moveHistory = [];
+	}
+
+	/** @param {HGroup} json */
+	static fromJSON(json) {
+		const res = new HGroup(json.tableID, State.fromJSON(json.state), json.in_progress);
+
+		for (const property of Object.getOwnPropertyNames(res)) {
+			if (typeof res[property] === 'function')
+				continue;
+
+			switch (property) {
+				case 'state':
+					continue;
+
+				case 'players':
+					res.players = json.players.map(HGroup_Player.fromJSON);
+					break;
+
+				case 'common':
+					res.common = HGroup_Player.fromJSON(json.common);
+					break;
+
+				default:
+					res[property] = Utils.objClone(json[property]);
+					break;
+			}
+		}
+
+		res.level = json.level;
+		res.moveHistory = json.moveHistory.slice();
+		res.finesses_while_finessed = json.finesses_while_finessed.map(arr => arr.map(ActualCard.fromJSON));
+		res.stalled_5 = json.stalled_5;
+		return res;
 	}
 
 	get me() {

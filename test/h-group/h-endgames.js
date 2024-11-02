@@ -13,7 +13,7 @@ import logger from '../../src/tools/logger.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('simple endgames with 1 card left', () => {
-	it('solves a cluable endgame', () => {
+	it('solves a cluable endgame', async () => {
 		const game = setup(HGroup, [
 			['r5', 'xx', 'xx', 'xx'],
 			['y5', 'r1', 'g1', 'b1'],
@@ -43,13 +43,13 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const action = solve_game(game, PLAYER.ALICE, find_all_clues);
+		const action = await solve_game(game, PLAYER.ALICE, find_all_clues);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 	});
 });
 
 describe('simple endgames with 1 undrawn identity', () => {
-	it('solves a cluable endgame with 1 undrawn identity', () => {
+	it('solves a cluable endgame with 1 undrawn identity', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'p4'],
 			['p2', 'g3', 'b1', 'b3', 'p3'],
@@ -84,7 +84,7 @@ describe('simple endgames with 1 undrawn identity', () => {
 			}
 		});
 
-		const action = solve_game(game, PLAYER.ALICE, find_all_clues);
+		const action = await solve_game(game, PLAYER.ALICE, find_all_clues);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 	});
 });

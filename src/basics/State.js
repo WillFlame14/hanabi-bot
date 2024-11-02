@@ -1,11 +1,11 @@
 import { CLUE, HAND_SIZE } from '../constants.js';
+import { IdentitySet } from './IdentitySet.js';
+import { ActualCard } from '../basics/Card.js';
 import { cardCount, cardTouched, colourableSuits } from '../variants.js';
 
 import * as Utils from '../tools/util.js';
-import { IdentitySet } from './IdentitySet.js';
 
 /**
- * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../basics/Card.js').Card} Card
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').BaseClue} BaseClue
@@ -27,6 +27,8 @@ export class State {
 	early_game = true;
 	screamed_at = false;
 	generated = false;
+
+	/** @type {Identity | undefined} */
 	dda = undefined;
 
 	hands = /** @type {number[][]} */ ([]);
@@ -80,6 +82,34 @@ export class State {
 
 		this.base_ids = new IdentitySet(variant.suits.length, 0);
 		this.all_ids = new IdentitySet(variant.suits.length);
+	}
+
+	/** @param {State} json */
+	static fromJSON(json) {
+		const res = new State(json.playerNames, json.ourPlayerIndex, json.variant, json.options);
+
+		for (const key of Object.getOwnPropertyNames(res)) {
+			if (typeof res[key] === 'function')
+				continue;
+
+			switch (key) {
+				case 'deck':
+					res[key] = json[key].map(ActualCard.fromJSON);
+					break;
+
+				case 'base_ids':
+				case 'all_ids':
+					res[key] = IdentitySet.fromJSON(json[key]);
+					break;
+
+				default:
+					res[key] = Utils.objClone(json[key]);
+					break;
+			}
+		}
+
+		res.dda = Utils.objClone(json.dda);
+		return res;
 	}
 
 	get ourHand() {

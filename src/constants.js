@@ -1,5 +1,7 @@
+import { find_all_clues, find_all_discards } from './conventions/h-group/take-action.js';
+
 export const MAX_H_LEVEL = 11;
-export const BOT_VERSION = '1.7.4';
+export const BOT_VERSION = '1.7.5';
 
 export const ACTION =  /** @type {const} */ ({
 	PLAY: 0,
@@ -26,5 +28,12 @@ export const END_CONDITION = /** @type {const} */ ({
 });
 
 export const HAND_SIZE = [-1, -1, 5, 5, 4, 4, 3];
+
+export const ENDGAME_SOLVING_FUNCS = {
+	HGroup: {
+		find_clues: find_all_clues,
+		find_discards: find_all_discards
+	}
+};
 
 export const HANABI_HOSTNAME = process.env['HANABI_HOSTNAME'] || 'hanab.live';

@@ -11,7 +11,7 @@ import logger from '../../../src/tools/logger.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('queued finesse', () => {
-	it('understands a queued finesse', () => {
+	it('understands a queued finesse', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r2', 'g4', 'r5', 'b4'],
@@ -29,7 +29,7 @@ describe('queued finesse', () => {
 		takeTurn(game, 'Cathy clues 2 to Bob');			// r2 finesse on us
 
 		// Alice should play slot 1 first.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 
 		takeTurn(game, 'Alice plays g1 (slot 1)');
@@ -38,7 +38,7 @@ describe('queued finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r1']);
 	});
 
-	it('understands a delayed queued finesse', () => {
+	it('understands a delayed queued finesse', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'g3', 'g4', 'r5', 'b4'],
@@ -53,7 +53,7 @@ describe('queued finesse', () => {
 		takeTurn(game, 'Bob clues red to Cathy');		// r1, r2 finesse on us
 
 		// Alice should play slot 2 first.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1] });
 
 		// Alice's slots should be [r1, g2, r2].
@@ -77,7 +77,7 @@ describe('queued finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r1', 'r2']);
 	});
 
-	it('plays queued finesses in the right order', () => {
+	it('plays queued finesses in the right order', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r2', 'g4', 'r5', 'b4'],
@@ -94,11 +94,11 @@ describe('queued finesse', () => {
 		takeTurn(game, 'Cathy discards p3', 'y1');
 
 		// Alice should play slot 2 first (continue digging for r1).
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1] });
 	});
 
-	it('waits for an older unplayable finesse to resolve before playing into a new finesse', () => {
+	it('waits for an older unplayable finesse to resolve before playing into a new finesse', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['g2', 'b3', 'g4', 'p5'],
@@ -117,11 +117,11 @@ describe('queued finesse', () => {
 		takeTurn(game, 'Bob clues yellow to Donald');	// y2 finesse, we have y1
 
 		// Alice cannot play y1 in slot 1, because y1 could be layered in the r4 finesse.
-		const action = take_action(game);
+		const action = await take_action(game);
 		assert.ok(action.type !== ACTION.PLAY);
 	});
 
-	it(`doesn't wait for older queued finesses when they can't be layered`, () => {
+	it(`doesn't wait for older queued finesses when they can't be layered`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['g2', 'b3', 'g4', 'p4'],
@@ -140,11 +140,11 @@ describe('queued finesse', () => {
 		takeTurn(game, 'Bob clues yellow to Donald');	// y2 finesse, we have y1
 
 		// Alice can play y1 in slot 1, because the queued r4 cannot be layered.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 
-	it(`orders complex finesses correctly`, () => {
+	it(`orders complex finesses correctly`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b5', 'r4', 'y2', 'p4'],
@@ -174,7 +174,7 @@ describe('queued finesse', () => {
 		takeTurn(game, 'Donald clues 5 to Bob');
 
 		// Alice should play y1 in slot 3.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2] });
 	});
 });

@@ -1,5 +1,6 @@
 import { unknownIdentities } from './hanabi-util.js';
 import { IdentitySet } from './IdentitySet.js';
+import { Card } from './Card.js';
 import { cardCount } from '../variants.js';
 import * as Utils from '../tools/util.js';
 import * as Elim from './player-elim.js';
@@ -8,9 +9,9 @@ import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
 import { produce } from '../StateProxy.js';
 
+
 /**
  * @typedef {import('./State.js').State} State
- * @typedef {import('./Card.js').Card} Card
  * @typedef {import('./Card.js').BasicCard} BasicCard
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Link} Link
@@ -72,9 +73,23 @@ export class Player {
 		this.elims = elims;
 	}
 
+	/** @param {Player} json */
+	static fromJSON(json) {
+		return new Player(json.playerIndex,
+			IdentitySet.fromJSON(json.all_possible),
+			IdentitySet.fromJSON(json.all_inferred),
+			json.hypo_stacks.slice(),
+			json.thoughts.map(Card.fromJSON),
+			json.links.map(Utils.objClone),
+			json.play_links.map(Utils.objClone),
+			new Set(json.unknown_plays),
+			Utils.objClone(json.waiting_connections),
+			Utils.objClone(json.elims));
+	}
+
 	/** @returns {this} */
 	clone() {
-		return (new /** @type {any} */ (this.constructor)(this.playerIndex,
+		return new /** @type {any} */ (this.constructor)(this.playerIndex,
 			this.all_possible,
 			this.all_inferred,
 			this.hypo_stacks.slice(),
@@ -83,12 +98,12 @@ export class Player {
 			this.play_links.map(link => Utils.objClone(link)),
 			new Set(this.unknown_plays),
 			Utils.objClone(this.waiting_connections),
-			Utils.objClone(this.elims)));
+			Utils.objClone(this.elims));
 	}
 
 	/** @returns {this} */
 	shallowCopy() {
-		return (new /** @type {any} */ (this.constructor)(this.playerIndex,
+		return new /** @type {any} */ (this.constructor)(this.playerIndex,
 			this.all_possible,
 			this.all_inferred,
 			this.hypo_stacks.slice(),
@@ -97,7 +112,7 @@ export class Player {
 			this.play_links.slice(),
 			new Set(this.unknown_plays),
 			this.waiting_connections.slice(),
-			Utils.objClone(this.elims)));
+			Utils.objClone(this.elims));
 	}
 
 	/**

@@ -23,7 +23,7 @@ const update_func = (common, order, id_hash) => (draft) => {
 };
 
 describe('simple endgames with 1 card left', () => {
-	it('clues to start b4 -> b5 endgame', () => {
+	it('clues to start b4 -> b5 endgame', async () => {
 		const game = setup(HGroup, [
 			['y5', 'xx', 'xx', 'xx'],
 			['b4', 'y1', 'g1', 'b5'],
@@ -51,11 +51,11 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const action = solve_game(game, PLAYER.ALICE);
+		const action = await solve_game(game, PLAYER.ALICE);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR, `expected clue, selected ${logObjectiveAction(game.state, action)}`);
 	});
 
-	it('clues to start endgame on a double player with different suits', () => {
+	it('clues to start endgame on a double player with different suits', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['g5', 'y4', 'g1', 'r1'],
@@ -77,11 +77,11 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const action = solve_game(game, PLAYER.ALICE);
+		const action = await solve_game(game, PLAYER.ALICE);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR, `expected clue, selected ${logObjectiveAction(game.state, action)}`);
 	});
 
-	it('plays to start endgame', () => {
+	it('plays to start endgame', async () => {
 		const game = setup(HGroup, [
 			['r4', 'r4', 'xx', 'xx'],
 			['b2', 'y1', 'g1', 'b5'],
@@ -106,11 +106,11 @@ describe('simple endgames with 1 card left', () => {
 		});
 
 		// Alice should play r4.
-		const action = solve_game(game, PLAYER.ALICE);
+		const action = await solve_game(game, PLAYER.ALICE);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 
-	it('plays to start endgame when other has dupes', () => {
+	it('plays to start endgame when other has dupes', async () => {
 		const game = setup(HGroup, [
 			['p3', 'xx', 'xx', 'xx'],
 			['b1', 'p4', 'g1', 'p4'],
@@ -136,13 +136,13 @@ describe('simple endgames with 1 card left', () => {
 		});
 
 		// Alice should play p3.
-		const action = solve_game(game, PLAYER.ALICE);
+		const action = await solve_game(game, PLAYER.ALICE);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 });
 
 describe('more complex endgames where all cards are seen', () => {
-	it('plays to start endgame 1', () => {
+	it('plays to start endgame 1', async () => {
 		const game = setup(HGroup, [
 			['xx', 'p3', 'p4', 'r5', 'r4'],
 			['b1', 'r1', 'g1', 'p5', 'p2'],
@@ -168,7 +168,7 @@ describe('more complex endgames where all cards are seen', () => {
 		});
 
 		// Alice should play r4.
-		const action = solve_game(game, PLAYER.ALICE);
+		const action = await solve_game(game, PLAYER.ALICE);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 });

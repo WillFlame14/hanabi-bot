@@ -177,6 +177,31 @@ export function objPick(obj, attributes, options = {}) {
 	return new_obj;
 }
 
+/** @param {any} obj */
+export function toJSON(obj) {
+	if (obj == null || typeof obj !== 'object' || obj instanceof Map || obj instanceof Set)
+		return obj;
+
+	const res = {};
+
+	if (Array.isArray(obj))
+		return obj.map(toJSON);
+
+	for (const property of Object.getOwnPropertyNames(obj)) {
+		const val = obj[property];
+
+		if (typeof val === 'function')
+			continue;
+
+		if (Array.isArray(val))
+			res[property] = val.map(toJSON);
+		else
+			res[property] = toJSON(val);
+	}
+
+	return res;
+}
+
 /**
  * Returns the "maximum" object in an array based on a value function.
  * @template T

@@ -119,7 +119,7 @@ describe('stalling', () => {
 });
 
 describe('anxiety plays', () => {
-	it('plays into anxiety', () => {
+	it('plays into anxiety', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['y5', 'y2', 'b4', 'g4'],
@@ -136,11 +136,11 @@ describe('anxiety plays', () => {
 		takeTurn(game, 'Donald clues 2 to Alice (slot 1)');
 
 		// Alice should play slot 2 as r5.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][1] }, `Expected (play slot 2), got ${logPerformAction(action)} instead`);
 	});
 
-	it(`doesn't assume anxiety if there are clues available`, () => {
+	it(`doesn't assume anxiety if there are clues available`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['y5', 'y2', 'b4', 'g4'],
@@ -155,11 +155,11 @@ describe('anxiety plays', () => {
 		takeTurn(game, 'Donald clues 5 to Alice (slots 1,2,3,4)');
 
 		// Alice should clue instead of playing/discarding.
-		const action = take_action(game);
+		const action = await take_action(game);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 	});
 
-	it(`doesn't play into impossible anxiety`, () => {
+	it(`doesn't play into impossible anxiety`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r5', 'y2', 'b4', 'g4'],
@@ -175,11 +175,11 @@ describe('anxiety plays', () => {
 		takeTurn(game, 'Donald clues 5 to Alice (slots 1,2,3,4)');
 
 		// Alice should discard, since it isn't possible to play any card.
-		const action = take_action(game);
+		const action = await take_action(game);
 		assert.ok(action.type === ACTION.DISCARD, `Expected discard, got ${logPerformAction(action)} instead`);
 	});
 
-	it('forces the next player into anxiety', () => {
+	it('forces the next player into anxiety', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r5', 'y5', 'b5', 'g5'],
@@ -196,13 +196,13 @@ describe('anxiety plays', () => {
 		takeTurn(game, 'Donald clues red to Alice (slot 1)');
 
 		// Alice should play slot 1 as r4.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][0] });
 	});
 });
 
-describe('double discard avoidance', () => {
-	it(`understands a clue from a player on double discard avoidance may be a stall`, () => {
+describe('double discard avoidance', async () => {
+	it(`understands a clue from a player on double discard avoidance may be a stall`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['y5', 'y5', 'b4', 'g4'],
@@ -218,7 +218,7 @@ describe('double discard avoidance', () => {
 
 		// A discard of a useful card means Alice is in a DDA situation.
 		ExAsserts.objHasProperties(game.state.dda, {suitIndex: COLOUR.RED, rank: 3});
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.BOB, value: 5 });
 		takeTurn(game, 'Alice clues 5 to Bob');
 
@@ -228,7 +228,7 @@ describe('double discard avoidance', () => {
 		assert.equal(game.common.waiting_connections.length, 0);
 	});
 
-	it(`will discard while on double discard avoidance if it can see the card`, () => {
+	it(`will discard while on double discard avoidance if it can see the card`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r3', 'y5', 'b2', 'g4'],
@@ -247,11 +247,11 @@ describe('double discard avoidance', () => {
 		ExAsserts.objHasProperties(state.dda, {suitIndex: COLOUR.RED, rank: 3});
 
 		// However, since Alice can see the other r3, Alice can discard.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][3] });
 	});
 
-	it(`will give a fill-in clue on double discard avoidance`, () => {
+	it(`will give a fill-in clue on double discard avoidance`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r4', 'y4', 'b3', 'g2'],
@@ -271,7 +271,7 @@ describe('double discard avoidance', () => {
 		ExAsserts.objHasProperties(state.dda, {suitIndex: COLOUR.RED, rank: 3});
 
 		// Alice gives a fill-in clue as the highest priority stall clue.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN });
 		takeTurn(game, 'Alice clues green to Bob');
 

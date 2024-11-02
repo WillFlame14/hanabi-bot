@@ -72,7 +72,7 @@ async function main() {
 		const shuffled = shuffle(deck, seed);
 
 		const { score, result, actions, notes } =
-			simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level, variant);
+			await simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level, variant);
 
 		fs.writeFileSync(`seeds/${seed}.json`, JSON.stringify({ players, deck: shuffled, actions, notes, options: { variant: variant.name } }));
 		console.log(`seed ${seed}, score: ${score}/${variant.suits.length * 5}, ${result}`);
@@ -85,7 +85,7 @@ async function main() {
 			const players = playerNames.slice(0, numPlayers);
 			const shuffled = shuffle(deck, `${i}`);
 			const { score, result, actions, notes } =
-				simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level, variant);
+				await simulate_game(players, shuffled, /** @type {keyof typeof conventions} */ (convention), level, variant);
 
 			fs.writeFileSync(`seeds/${i}.json`, JSON.stringify({ players, deck: shuffled, actions, notes, options: { variant: variant.name } }));
 
@@ -113,7 +113,7 @@ async function main() {
  * @param {number} level
  * @param {Variant} variant
  */
-function simulate_game(playerNames, deck, convention, level, variant) {
+async function simulate_game(playerNames, deck, convention, level, variant) {
 	const games = playerNames.map((_, index) => {
 		const game = new conventions[convention](-1, new State(playerNames, index, variant, {}), false, level);
 		game.catchup = true;
@@ -154,7 +154,7 @@ function simulate_game(playerNames, deck, convention, level, variant) {
 			Utils.globalModify({ game: currentPlayerGame });
 
 			// @ts-ignore (one day static analysis will get better)
-			const performAction = currentPlayerGame.take_action(currentPlayerGame);
+			const performAction = await currentPlayerGame.take_action(currentPlayerGame);
 			actions.push(Utils.objPick(performAction, ['type', 'target', 'value'], { default: 0 }));
 
 			for (let gameIndex = 0; gameIndex < playerNames.length; gameIndex++) {

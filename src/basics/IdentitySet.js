@@ -24,6 +24,11 @@ export class IdentitySet {
 		this.#length = 0;
 	}
 
+	/** @param {object} json */
+	static fromJSON(json) {
+		return new IdentitySet(json.numSuits, json.value);
+	}
+
 	/**
 	 * @param {Identity} identity
 	 * @param {number} [maxStackRank]

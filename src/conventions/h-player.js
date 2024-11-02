@@ -1,10 +1,13 @@
+import { Card } from '../basics/Card.js';
+import { IdentitySet } from '../basics/IdentitySet.js';
 import { Player } from '../basics/Player.js';
 import { cardValue } from '../basics/hanabi-util.js';
 import { CLUE } from '../constants.js';
 import { cardTouched, colourableSuits, variantRegexes } from '../variants.js';
 
+import * as Utils from '../tools/util.js';
+
 /**
- * @typedef {import('../basics/Card.js').Card} Card
  * @typedef {import('./h-group.js').default} Game
  * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../types.js').Identity} Identity
@@ -12,6 +15,19 @@ import { cardTouched, colourableSuits, variantRegexes } from '../variants.js';
  */
 
 export class HGroup_Player extends Player {
+	/** @param {HGroup_Player} json */
+	static fromJSON(json) {
+		return new HGroup_Player(json.playerIndex,
+			IdentitySet.fromJSON(json.all_possible),
+			IdentitySet.fromJSON(json.all_inferred),
+			json.hypo_stacks.slice(),
+			json.thoughts.map(Card.fromJSON),
+			json.links.map(Utils.objClone),
+			json.play_links.map(Utils.objClone),
+			new Set(json.unknown_plays),
+			Utils.objClone(json.waiting_connections),
+			Utils.objClone(json.elims));
+	}
 	/**
 	 * Returns the index (0-indexed) of the chop card, or -1 if the hand doesn't have a chop.
 	 * 

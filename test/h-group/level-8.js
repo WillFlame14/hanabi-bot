@@ -13,7 +13,7 @@ import { CLUE_INTERP } from '../../src/conventions/h-group/h-constants.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('positional discards', () => {
-	it('plays from a positional discard', () => {
+	it('plays from a positional discard', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r1', 'r2', 'r3', 'b1'],
@@ -35,7 +35,7 @@ describe('positional discards', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, true);
 
 		// Alice should play slot 3.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2] });
 	});
 
@@ -179,7 +179,7 @@ describe('positional discards', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][2]].finessed, false);
 	});
 
-	it('performs a positional discard', () => {
+	it('performs a positional discard', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r1', 'r1', 'b5', 'b1'],
@@ -195,7 +195,7 @@ describe('positional discards', () => {
 			}
 		});
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should discard slot 3 as a positional discard.
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][2] });
@@ -203,7 +203,7 @@ describe('positional discards', () => {
 });
 
 describe('positional misplays', () => {
-	it('plays from a positional misplay', () => {
+	it('plays from a positional misplay', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r1', 'r5', 'r3', 'b1'],
@@ -225,11 +225,11 @@ describe('positional misplays', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].finessed, true);
 
 		// Alice should play slot 3.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 
-	it('plays from a double positional misplay', () => {
+	it('plays from a double positional misplay', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r1', 'r1', 'r5', 'r3', 'b1'],
@@ -251,7 +251,7 @@ describe('positional misplays', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].finessed, true);
 
 		// Alice should play slot 3.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2] });
 	});
 });

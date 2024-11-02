@@ -246,7 +246,7 @@ describe('giving order chop move', () => {
 		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 5 });
 	});
 
-	it('will not ocm trash', () => {
+	it('will not ocm trash', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'g4', 'r1']
@@ -259,11 +259,11 @@ describe('giving order chop move', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slots 3,4)');
 
 		// Alice should not OCM the trash r1.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
 
-	it('will ocm one card of an unsaved duplicate', () => {
+	it('will ocm one card of an unsaved duplicate', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g5', 'g4', 'g4']
@@ -275,11 +275,11 @@ describe('giving order chop move', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slots 3,4)');
 
 		// Alice should OCM 1 copy of g4.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 2 });
 	});
 
-	it('will not ocm one card of a saved duplicate', () => {
+	it('will not ocm one card of a saved duplicate', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g3', 'g3', 'r2'],
@@ -293,11 +293,11 @@ describe('giving order chop move', () => {
 		takeTurn(game, 'Cathy clues 1 to Alice (slots 3,4)');
 
 		// Alice should not OCM the copy of r2.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
 
-	it('will not ocm a playable card', () => {
+	it('will not ocm a playable card', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g3', 'g3', 'r1'],
@@ -311,7 +311,7 @@ describe('giving order chop move', () => {
 		takeTurn(game, 'Cathy clues 1 to Alice (slots 3,4)');
 
 		// Alice should not OCM r1.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 }, `Expected (play slot 4), suggested ${logPerformAction(action)}`);
 	});
 });
@@ -387,7 +387,7 @@ describe('interpreting chop moves', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['p1']);
 	});
 
-	it('prioritizes new cards over gt-eliminated chop moved cards', () => {
+	it('prioritizes new cards over gt-eliminated chop moved cards', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b1', 'g1', 'r5', 'r2'],
@@ -411,7 +411,7 @@ describe('interpreting chop moves', () => {
 		takeTurn(game, 'Cathy discards y1', 'r1');
 
 		// Alice should play r2.
-		const action1 = take_action(game);
+		const action1 = await take_action(game);
 		assert.ok(action1.type === ACTION.PLAY && action1.target === game.state.hands[PLAYER.ALICE][0]);
 
 		takeTurn(game, 'Alice plays r2 (slot 1)');
@@ -419,11 +419,11 @@ describe('interpreting chop moves', () => {
 		takeTurn(game, 'Cathy discards p3', 'y4');
 
 		// Alice should play r3.
-		const action2 = take_action(game);
+		const action2 = await take_action(game);
 		assert.ok(action2.type === ACTION.PLAY && action2.target === game.state.hands[PLAYER.ALICE][1]);
 	});
 
-	it('asymmetrically eliminates against chop moved cards', () => {
+	it('asymmetrically eliminates against chop moved cards', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b1', 'g1', 'r3', 'r2'],
@@ -442,7 +442,7 @@ describe('interpreting chop moves', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r5']);
 
 		// Alice should play r5 on her turn.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1] });
 
 		// Cathy shouldn't have any links.

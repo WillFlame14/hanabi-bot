@@ -1,10 +1,17 @@
+import HGroup from '../h-group.js';
 import { ActualCard } from '../../basics/Card.js';
-import { ACTION } from '../../constants.js';
+import { ACTION, ENDGAME_SOLVING_FUNCS } from '../../constants.js';
 import { produce } from '../../StateProxy.js';
 import { logCard, logClue, logObjectiveAction } from '../../tools/log.js';
 import logger from '../../tools/logger.js';
 
 import * as Utils from '../../tools/util.js';
+
+import { isMainThread, parentPort, workerData } from 'worker_threads';
+
+const conventions = {
+	HGroup
+};
 
 /**
  * @typedef {import('../../basics/Game.js').Game} Game
@@ -218,7 +225,7 @@ function unwinnable_state(state, playerTurn) {
  * @param {Map<string, boolean>} [cache]
  * @returns {boolean}
  */
-export function winnable_simpler(state, playerTurn, cache = new Map()) {
+function winnable_simpler(state, playerTurn, cache = new Map()) {
 	if (state.score === state.maxScore)
 		return true;
 
@@ -320,7 +327,7 @@ export function winnable_simpler(state, playerTurn, cache = new Map()) {
  * @param {ModPerformAction[]} [exclude]
  * @returns {WinnableResult}
  */
-export function winnable_simple(game, playerTurn, find_clues = () => [], find_discards = () => [], cache = new Map(), exclude = []) {
+function winnable_simple(game, playerTurn, find_clues = () => [], find_discards = () => [], cache = new Map(), exclude = []) {
 	const { state } = game;
 
 	if (state.score === state.maxScore)
@@ -363,7 +370,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 				continue;
 
 			const { suitIndex, rank } = state.deck[order];
-			logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to discard slot', state.hands[playerTurn].findIndex(o => o === order) + 1);
+			logger.debug(state.turn_count, state.playerNames[playerTurn], 'trying to discard slot', state.hands[playerTurn].findIndex(o => o === order) + 1);
 
 			const new_game = game.simulate_action({ type: 'discard', order, playerIndex: playerTurn, suitIndex, rank, failed: misplay });
 			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
@@ -392,7 +399,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 		clue_game.state.turn_count++;
 		clue_game.state.endgameTurns = clue_game.state.endgameTurns === -1 ? -1 : (clue_game.state.endgameTurns - 1);
 
-		logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to stall');
+		logger.debug(state.turn_count, state.playerNames[playerTurn], 'trying to stall');
 		const { actions, winrate } = winnable_simple(clue_game, nextPlayerIndex, find_clues, find_discards, cache);
 
 		if (winrate > best_winrate) {
@@ -411,7 +418,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 			continue;
 
 		const { suitIndex, rank } = state.deck[order];
-		logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to play', logCard({ suitIndex, rank }));
+		logger.debug(state.turn_count, state.playerNames[playerTurn], 'trying to play', logCard({ suitIndex, rank }));
 
 		const new_game = game.simulate_action({ type: 'play', order, suitIndex, rank, playerIndex: playerTurn });
 		const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
@@ -443,7 +450,7 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 			if (exclude.some(action => Utils.objEquals(action, perform_action)))
 				continue;
 
-			logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to clue', logClue(clue));
+			logger.debug(state.turn_count, state.playerNames[playerTurn], 'trying to clue', logClue(clue));
 			attempted_clue = true;
 
 			const list = state.clueTouched(state.hands[clue.target], clue);
@@ -480,4 +487,24 @@ export function winnable_simple(game, playerTurn, find_clues = () => [], find_di
 	cache.set(hash_game(game), result);
 
 	return result;
+}
+
+if (!isMainThread) {
+	const game = conventions[workerData.conv].fromJSON(workerData.game);
+	Utils.globalModify({ game });
+
+	logger.setLevel(workerData.logLevel);
+
+	const { find_clues, find_discards } = ENDGAME_SOLVING_FUNCS[workerData.conv];
+
+	try {
+		const action = solve_game(game, workerData.playerTurn, find_clues, find_discards);
+		parentPort.postMessage({ success: true, action });
+	}
+	catch (err) {
+		if (err instanceof UnsolvedGame)
+			parentPort.postMessage({ success: false, err });
+		else
+			throw err;
+	}
 }

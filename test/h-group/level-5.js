@@ -333,7 +333,7 @@ describe('guide principle', () => {
 		assert.equal(clue_safe(game, game.me, { type: CLUE.RANK, value: 3, target: PLAYER.CATHY }).safe, false);
 	});
 
-	it('gives high value finesses while finessed', () => {
+	it('gives high value finesses while finessed', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r2', 'g2', 'g3', 'p4'],
@@ -346,7 +346,7 @@ describe('guide principle', () => {
 
 		takeTurn(game, 'Donald clues blue to Cathy');
 
-		const action = take_action(game);
+		const action = await take_action(game);
 		assert(action.type == ACTION.COLOUR || action.type == ACTION.RANK);
 		if (action.type == ACTION.COLOUR)
 			ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: 1, value: 5 });
@@ -371,7 +371,7 @@ describe('guide principle', () => {
 		assert.equal(clue_safe(game, game.players[PLAYER.ALICE], clue).safe, false);
 	});
 
-	it(`gives a critical save even when it is finessed`, () => {
+	it(`gives a critical save even when it is finessed`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['p4', 'g2', 'g4', 'p5'],
@@ -383,7 +383,7 @@ describe('guide principle', () => {
 		});
 
 		takeTurn(game, 'Donald clues blue to Cathy');
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 1, value: 5 });
 	});
 
@@ -407,7 +407,7 @@ describe('guide principle', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['b1']);
 	});
 
-	it(`understands a critical save where other players only have a play if we play`, () => {
+	it(`understands a critical save where other players only have a play if we play`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b1', 'p2', 'g4', 'g3'],
@@ -425,7 +425,7 @@ describe('guide principle', () => {
 
 		// Bob may think playing gives Cathy a play, but Alice can see that it doesn't,
 		// and should save Cathy's 5.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 2, value: 5 }, `Expected (5 to Cathy), got (${logPerformAction(action)})`);
 		takeTurn(game, 'Alice clues 5 to Cathy');
 
@@ -434,7 +434,7 @@ describe('guide principle', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['p1']);
 	});
 
-	it(`plays rather than saves if it believes a save will become playable`, () => {
+	it(`plays rather than saves if it believes a save will become playable`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['p2', 'b4', 'g4', 'g3'],
@@ -448,7 +448,7 @@ describe('guide principle', () => {
 		takeTurn(game, 'Donald clues purple to Cathy'); // finesses p1 (Alice), b1 (Bob), p2 (Bob)
 
 		// Bob plays rather than saving Cathy's b5 since the play should make the p3 playable.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 
@@ -516,7 +516,7 @@ describe('guide principle', () => {
 		assert.ok(!last_action.important);
 	});
 
-	it('recognizes when a clue will be given during early game when playing into a finesse', () => {
+	it('recognizes when a clue will be given during early game when playing into a finesse', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['g1', 'g2', 'p1', 'r5'],
@@ -532,7 +532,7 @@ describe('guide principle', () => {
 		takeTurn(game, 'Donald plays y1', 'y3');
 
 		// Alice should play g1, Bob will clue Cathy's r1.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 });

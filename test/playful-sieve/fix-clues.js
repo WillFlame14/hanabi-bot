@@ -12,7 +12,7 @@ import logger from '../../src/tools/logger.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('fix clues', () => {
-	it('gives a fix clue after playing a duplicated card', () => {
+	it('gives a fix clue after playing a duplicated card', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b1', 'p4', 'r5', 'r3', 'g3']
@@ -25,7 +25,8 @@ describe('fix clues', () => {
 		takeTurn(game, 'Bob clues 5 to Alice (slot 1)');
 
 		// Alice should give 1 or blue to Bob to fix.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.RANK, value: 1 });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, value: 1 });
 	});
 
 	it('understands a fix clue after playing a duplicated card', () => {

@@ -16,7 +16,7 @@ import { produce } from '../../src/StateProxy.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('giving clues while locked', () => {
-	it('gives colour clues to playable slot 1', () => {
+	it('gives colour clues to playable slot 1', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p1', 'b4', 'r5', 'r3', 'r3']
@@ -26,14 +26,15 @@ describe('giving clues while locked', () => {
 		takeTurn(game, 'Bob clues red to Alice (slot 5)');
 
 		// Alice should clue purple to Bob to tell him about p1.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.COLOUR, value: COLOUR.PURPLE, target: PLAYER.BOB });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, value: COLOUR.PURPLE, target: PLAYER.BOB });
 
 		takeTurn(game, 'Alice clues purple to Bob');
 
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0]], ['p1']);
 	});
 
-	it('gives referential discards', () => {
+	it('gives referential discards', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p5', 'b4', 'r5', 'r3', 'r1']
@@ -43,7 +44,8 @@ describe('giving clues while locked', () => {
 		takeTurn(game, 'Bob clues red to Alice (slot 5)');
 
 		// Alice should clue 5 to prevent Bob from discarding slot 1.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.RANK, value: 5, target: PLAYER.BOB });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, value: 5, target: PLAYER.BOB });
 
 		takeTurn(game, 'Alice clues 5 to Bob');
 
@@ -175,7 +177,7 @@ describe('unlock promise', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r2']);
 	});
 
-	it('prefers unlocking over discarding trash', () => {
+	it('prefers unlocking over discarding trash', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g5', 'p2', 'r2', 'g4', 'r5']
@@ -189,14 +191,14 @@ describe('unlock promise', () => {
 		takeTurn(game, 'Alice clues red to Bob');				// Bob's hand is [xx, xx, 2, [r2], [r]5]
 		takeTurn(game, 'Bob clues red to Alice (slots 3,4)');	// Alice's hand is [xx, xx, r1, r1, xx]
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should play r1 instead of discarding.
 		assert.equal(action.type, ACTION.PLAY, `Actual action was (${logPerformAction(action)})`);
 		assert.ok([2,3].map(index => game.state.hands[PLAYER.ALICE][index]).includes(action.target));
 	});
 
-	it('plays the closest card when none will unlock', () => {
+	it('plays the closest card when none will unlock', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g5', 'y5', 'r3', 'p3', 'p5']
@@ -233,7 +235,7 @@ describe('unlock promise', () => {
 		takeTurn(game, 'Alice discards b4 (slot 1)');
 		takeTurn(game, 'Bob clues purple to Alice (slots 1,2)');	// Alice's hand is [p1, p, y2, 2, y]
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should play p1 instead of y2.
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });

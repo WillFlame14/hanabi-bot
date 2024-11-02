@@ -15,7 +15,7 @@ import { logPerformAction } from '../../src/tools/log.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('reverse finesse', () => {
-	it('prefers play over save when saved cards could be touched', () => {
+	it('prefers play over save when saved cards could be touched', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g5', 'b1', 'r2', 'r3', 'g2'],
@@ -28,7 +28,7 @@ describe('reverse finesse', () => {
 
 		takeTurn(game, 'Cathy discards b3', 'g1');
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// // Alice should give green to Bob to finesse over save
 		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN }, `Expected (green to Bob), got ${logPerformAction(action)}`);
@@ -689,7 +689,7 @@ describe(`occam's razor`, () => {
 });
 
 describe('early game', () => {
-	it('will not 5 stall on a trash 5', () => {
+	it('will not 5 stall on a trash 5', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g4', 'r5', 'r4', 'y4', 'b3'],
@@ -699,18 +699,18 @@ describe('early game', () => {
 			clue_tokens: 7
 		});
 
-		const action = game.take_action(game);
+		const action = await game.take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
 	});
 
-	it('gives a bad touch play clue on turn 1 rather than something random', () => {
+	it('gives a bad touch play clue on turn 1 rather than something random', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'y4', 'p4', 'b3', 'g3'],
 			['b4', 'r2', 'y1', 'b3', 'y1']
 		], { level: { min: 2 } });
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		assert.ok(action.type === ACTION.RANK && action.value === 1 && action.target === PLAYER.CATHY ||
 			action.type === ACTION.COLOUR && action.value === COLOUR.YELLOW && action.target === PLAYER.CATHY);
