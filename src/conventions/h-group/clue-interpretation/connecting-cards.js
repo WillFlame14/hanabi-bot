@@ -224,12 +224,12 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 				else {
 					const possibly_duplicated = state.hands[giver].some(o => {
 						const card = me.thoughts[o];
-						return card.touched && card.inferred.has(finesse_card);
+						return card.touched && card.inferred.has(identity);
 					});
 
 					// Could be duplicated in giver's hand - disallow hidden finesse.
 					if (possibly_duplicated) {
-						logger.warn(`disallowed hidden finesse on ${logCard(finesse_card)} ${finesse}, true ${logCard(identity)} could be duplicated in giver's hand`);
+						logger.warn(`disallowed hidden finesse through ${logCard(finesse_card)} ${finesse}, true ${logCard(identity)} could be duplicated in giver's hand`);
 						return;
 					}
 				}

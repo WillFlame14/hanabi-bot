@@ -5,9 +5,10 @@ import { interpret_sarcastic } from '../shared/sarcastic.js';
 import * as Basics from '../../basics.js';
 
 import logger from '../../tools/logger.js';
-import { logCard } from '../../tools/log.js';
+import { logCard, logConnection } from '../../tools/log.js';
 import { getRealConnects } from './hanabi-logic.js';
 import { check_ocm } from './interpret-play.js';
+import { interpret_baton, interpret_gd } from '../shared/special-discards.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -58,19 +59,28 @@ export function interpret_discard(game, action) {
 		to_remove.push(i);
 
 		// Another waiting connection exists for this, can ignore
-		if (common.waiting_connections.some((wc, index) => action_index === wc.action_index && !to_remove.includes(index)))
+		const other_waiting = common.waiting_connections.find((wc, index) => action_index === wc.action_index && !to_remove.includes(index));
+		if (other_waiting !== undefined) {
+			logger.info('other waiting connection', other_waiting.connections.map(logConnection).join(' -> '), 'exists, continuing');
 			continue;
+		}
 
-		// Check if sarcastic
-		if (state.deck[order].clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !failed) {
-			const sarcastics = interpret_sarcastic(game, action);
+		const replaceable = (state.deck[order].clued || (game.level >= LEVEL.SPECIAL_DISCARDS && common.thoughts[order].touched)) &&
+			rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] &&
+			!failed;
 
-			// Sarcastic, rewrite connection onto this person
-			if (sarcastics.length === 1) {
-				logger.info('rewriting connection to use sarcastic on order', sarcastics[0]);
+		if (replaceable) {
+			let transfers = interpret_sarcastic(game, action);
+
+			if (transfers.length === 0 && game.level >= LEVEL.SPECIAL_DISCARDS)
+				transfers = interpret_gd(game, action, common.find_finesse.bind(common));
+
+			// Sarcastic/GD, rewrite connection onto this person
+			if (transfers.length === 1) {
+				logger.info('rewriting connection to use sarcastic on order', transfers[0]);
 				Object.assign(connections[dc_conn_index], {
-					reacting: state.hands.findIndex(hand => hand.includes(sarcastics[0])),
-					card: sarcastics[0]
+					reacting: state.hands.findIndex(hand => hand.includes(transfers[0])),
+					card: transfers[0]
 				});
 				to_remove.pop();
 				continue;
@@ -108,7 +118,7 @@ export function interpret_discard(game, action) {
 		}
 	}
 
-	let sarcastic_targets;
+	let transferred = false;
 
 	// Discarding a useful card
 	// Note: we aren't including chop moved and finessed cards here since those can be asymmetric.
@@ -119,13 +129,22 @@ export function interpret_discard(game, action) {
 			common.restore_elim(state.deck[order]);
 
 			// Card was bombed
-			if (failed)
+			if (failed) {
 				undo_hypo_stacks(game, identity);
-			else
-				sarcastic_targets = interpret_sarcastic(game, action);
+			}
+			else {
+				transferred = interpret_sarcastic(game, action).length > 0;
+
+				if (!transferred && game.level >= LEVEL.SPECIAL_DISCARDS) {
+					if (state.isPlayable(identity))
+						transferred = interpret_gd(game, action, common.find_finesse.bind(common)).length > 0;
+					else
+						transferred = interpret_baton(game, action, (state, index) => [common.find_finesse(state, index)].filter(c => c !== undefined)).length > 0;
+				}
+			}
 		}
 
-		if (!(sarcastic_targets?.length > 0) && game.level >= LEVEL.STALLING) {
+		if (!transferred && game.level >= LEVEL.STALLING) {
 			// If there is only one of this card left and it could be in the next player's chop,
 			// they are to be treated as in double discard avoidance.
 			const chop = common.chop(state.hands[state.nextPlayerIndex(playerIndex)]);
@@ -158,7 +177,7 @@ export function interpret_discard(game, action) {
 		}
 	}
 
-	if (!(sarcastic_targets?.length > 0) && !state.screamed_at && !state.generated && game.level >= LEVEL.ENDGAME && state.inEndgame()) {
+	if (!transferred && !state.screamed_at && !state.generated && game.level >= LEVEL.ENDGAME && state.inEndgame()) {
 		const targets = check_positional_discard(game, action, before_trash, old_chop, slot);
 
 		if (targets.length > 0) {

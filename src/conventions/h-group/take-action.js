@@ -1,7 +1,7 @@
 import { ACTION, CLUE } from '../../constants.js';
 import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
 import { select_play_clue, determine_playable_card, order_1s, find_clue_value, find_positional_discard } from './action-helper.js';
-import { find_unlock, find_urgent_actions } from './urgent-actions.js';
+import { find_gd, find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { inBetween, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
 import { cardValue, isTrash, visibleFind } from '../../basics/hanabi-util.js';
@@ -221,14 +221,14 @@ export async function take_action(game) {
 			id !== undefined &&
 			trash_orders.includes(order) &&
 			!playable_orders.some(o => card.matches(id, { infer: true }) && o !== order) &&
-			!common.dependentConnections(order).some(wc => !wc.symmetric);
+			!common.dependentConnections(order).some(wc => wc.symmetric);
 	});
 
 	const playable_trash = playable_orders.filter(order => {
 		const id = me.thoughts[order].identity({ infer: true });
 
 		// Pick the leftmost of all playable trash cards
-		return id !== undefined && !playable_orders.some(o => me.thoughts[o].matches(id, { infer: true }) && o > order);
+		return id !== undefined && trash_orders.includes(order) && !playable_orders.some(o => me.thoughts[o].matches(id, { infer: true }) && o > order);
 	});
 
 	// Remove trash from playables (but not playable trash) and discards and playable trash from trash cards
@@ -457,7 +457,7 @@ export async function take_action(game) {
 		return Utils.clueToAction(best_play_clue, tableID);
 
 	// If we have a finesse and no urgent high value clues to give, play into the finesse.
-	if (playable_orders.length > 0 && priority === 0)
+	if (playable_orders.length > 0 && priority === 0 && !playable_trash.includes(best_playable_order))
 		return { tableID, type: ACTION.PLAY, target: best_playable_order };
 
 	// Blind play a missing card in the endgame
@@ -478,20 +478,25 @@ export async function take_action(game) {
 
 	// Sarcastic discard to someone else
 	if (game.level >= LEVEL.SARCASTIC && discards.length > 0 && state.clue_tokens !== 8) {
-		const identity = me.thoughts[discards[0]].identity({ infer: true });
+		const valid_discards = game.level >= LEVEL.SPECIAL_DISCARDS ? discards : discards.filter(o => state.deck[o].clued);
 
-		const duplicates = state.hands.reduce((cards, hand, index) => {
-			if (index === state.ourPlayerIndex)
-				return cards;
-			return cards.concat(hand.filter(o => me.thoughts[o].matches(identity)).map(o => game.players[index].thoughts[o]));
-		}, /** @type {Card[]} */ ([]));
+		if (valid_discards.length > 0) {
+			const order = valid_discards[0];
+			const identity = me.thoughts[order].identity({ infer: true });
 
-		if (!duplicates.every(c => c.inferred.every(p => p.matches(identity) || state.isBasicTrash(p)))) {
-			// If playing reveals duplicates are trash, playing is better for tempo
-			if (duplicates.every(c => c.possible.every(p => p.matches(identity) || state.isBasicTrash(p))))
-				return { tableID, type: ACTION.PLAY, target: discards[0] };
+			const duplicates = state.hands.reduce((cards, hand, index) => {
+				if (index === state.ourPlayerIndex)
+					return cards;
+				return cards.concat(hand.filter(o => me.thoughts[o].matches(identity)).map(o => game.players[index].thoughts[o]));
+			}, /** @type {Card[]} */ ([]));
 
-			return { tableID, type: ACTION.DISCARD, target: discards[0] };
+			if (!duplicates.every(c => c.inferred.every(p => p.matches(identity) || state.isBasicTrash(p)))) {
+				// If playing reveals duplicates are trash, playing is better for tempo
+				if (duplicates.every(c => c.possible.every(p => p.matches(identity) || state.isBasicTrash(p))))
+					return { tableID, type: ACTION.PLAY, target: order };
+
+				return { tableID, type: ACTION.DISCARD, target: order };
+			}
 		}
 	}
 
@@ -502,6 +507,39 @@ export async function take_action(game) {
 	// Forced discard if next player is locked
 	if ((state.clue_tokens === 0 || (state.clue_tokens === 1 && playable_orders.length === 0)) && common.thinksLocked(state, nextPlayerIndex))
 		return take_discard(game, state.ourPlayerIndex, trash_orders);
+
+	if (game.level >= LEVEL.SPECIAL_DISCARDS && !state.inEndgame()) {
+		// Attempt a Gentleman's Discard
+		for (let i = 0; i < state.numPlayers; i++) {
+			if (i === state.ourPlayerIndex || me.chopValue(state, i) === 0)
+				continue;
+
+			const gd_target = find_gd(game, i);
+
+			if (gd_target !== undefined) {
+				logger.info('performing gd on', state.playerNames[i]);
+				return { tableID, type: ACTION.DISCARD, target: gd_target };
+			}
+		}
+
+		// Attempt a Baton Discard
+		for (let i = 0; i < state.numPlayers; i++) {
+			if (i === state.ourPlayerIndex || state.hands[i].filter(o => !state.deck[o].clued).length <= 2)
+				continue;
+
+			const baton_target = state.ourHand.find(o => {
+				const id = me.thoughts[o].identity({ infer: true });
+				const finesse = common.find_finesse(state, i);
+
+				return id !== undefined && !state.isPlayable(id) && state.deck[finesse]?.matches(id);
+			});
+
+			if (baton_target !== undefined) {
+				logger.info('performing baton on', state.playerNames[i]);
+				return { tableID, type: ACTION.DISCARD, target: baton_target };
+			}
+		}
+	}
 
 	// Playing a connecting card or playing a 5
 	if (best_playable_order !== undefined && priority <= 3)

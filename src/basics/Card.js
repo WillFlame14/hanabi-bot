@@ -155,6 +155,7 @@ export class Card extends ActualCard {
 	certain_finessed = false;
 	trash = false;
 	uncertain = false;
+	known = false;
 
 	finesse_index = -1;	// Action index of when the card was finessed
 	reasoning = /** @type {number[]} */ ([]);		// The action indexes of when the card's possibilities/inferences were updated
@@ -194,6 +195,7 @@ export class Card extends ActualCard {
 		this.certain_finessed = extras.certain_finessed ?? false;
 		this.trash = extras.trash ?? false;
 		this.uncertain = extras.uncertain ?? false;
+		this.known = extras.known ?? false;
 		this.finesse_index = extras.finesse_index ?? -1;
 		this.reasoning = extras.reasoning?.slice() ?? [];
 		this.reasoning_turn = extras.reasoning_turn?.slice() ?? [];
@@ -255,12 +257,12 @@ export class Card extends ActualCard {
 
 	/** Returns whether the card has been "touched" (i.e. clued or finessed). */
 	get touched() {
-		return this.clued || this.finessed;
+		return this.clued || this.finessed || this.known;
 	}
 
 	/** Returns whether the card has been "saved" (i.e. clued, finessed or chop moved). */
 	get saved() {
-		return this.clued || this.finessed || this.chop_moved;
+		return this.clued || this.finessed || this.chop_moved || this.known;
 	}
 
 	/**

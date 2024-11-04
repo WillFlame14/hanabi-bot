@@ -165,7 +165,6 @@ export const handle = {
 			!game.catchup;
 
 		if (perform) {
-			console.log('taking action', action, game.state.turn_count, game.catchup);
 			const suggested_action = game.take_action(game);
 
 			if (game.in_progress) {
@@ -348,13 +347,6 @@ function assignSettings(data, priv) {
 		if (level < 1 || level > MAX_H_LEVEL) {
 			reply(`This bot can currently only play between levels 1 and ${MAX_H_LEVEL}. Currently set to level ${settings.level}.`);
 			return;
-		}
-
-		if (level > 9) {
-			reply(`This bot can currently only play up to level 9 (+ level 11). There is no support for level 10.`);
-
-			if (level < 11)
-				level = 9;
 		}
 
 		settings.level = Math.max(Math.min(level, MAX_H_LEVEL), 1);

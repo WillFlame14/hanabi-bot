@@ -199,6 +199,28 @@ export function early_game_clue(game, playerIndex) {
 }
 
 /**
+ * @param {Game} game
+ * @param {number} target
+ */
+export function find_gd(game, target) {
+	const { common, me, state } = game;
+	const connected = /** @type {number[]} */([]);
+
+	let finesse = common.find_finesse(state, target);
+	const playables = common.thinksPlayables(state, state.ourPlayerIndex);
+
+	while (state.isPlayable(state.deck[finesse])) {
+		const match = playables.find(c => me.thoughts[c].matches(state.deck[finesse], { infer: true }));
+
+		if (match !== undefined)
+			return match;
+
+		connected.push(finesse);
+		finesse = common.find_finesse(state, target, connected);
+	}
+}
+
+/**
  * Returns a 2D array of urgent actions in order of descending priority.
  * @param {Game} game
  * @param {Clue[][]} play_clues
@@ -269,6 +291,15 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			if (unlock_order !== undefined && (!finessed_card || finessed_card.order == unlock_order)) {
 				urgent_actions[PRIORITY.UNLOCK + nextPriority].push({ tableID, type: ACTION.PLAY, target: unlock_order });
 				continue;
+			}
+
+			if (!state.inEndgame() && game.level >= LEVEL.SPECIAL_DISCARDS) {
+				const gd_target = find_gd(game, target);
+
+				if (gd_target !== undefined) {
+					urgent_actions[PRIORITY.UNLOCK + nextPriority].push({ tableID, type: ACTION.DISCARD, target: gd_target });
+					continue;
+				}
 			}
 
 			const list = state.clueTouched(state.hands[target], save);

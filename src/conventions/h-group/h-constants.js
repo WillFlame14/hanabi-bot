@@ -7,6 +7,7 @@ export const LEVEL = /** @type {const} */ ({
 	LAST_RESORTS: 7,
 	ENDGAME: 8,
 	STALLING: 9,
+	SPECIAL_DISCARDS: 10,
 	BLUFFS: 11,
 	CONTEXT: 12,
 });

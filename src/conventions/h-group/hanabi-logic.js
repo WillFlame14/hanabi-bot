@@ -56,7 +56,7 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 
 	const sorted_list = list.toSorted((a, b) => b - a);
 	const focus =
-		sorted_list.find(o => (options.beforeClue ? !state.deck[o].clued : state.deck[o].newly_clued)) ??		// leftmost newly clued
+		sorted_list.find(o => (!player.thoughts[o].known && (options.beforeClue ? !state.deck[o].clued : state.deck[o].newly_clued))) ??	// leftmost newly clued
 		sorted_list.find(o => player.thoughts[o].chop_moved) ??					// leftmost chop moved
 		sorted_list[0];															// leftmost reclued
 

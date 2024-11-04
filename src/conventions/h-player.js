@@ -38,9 +38,9 @@ export class HGroup_Player extends Player {
 	 */
 	chopIndex(hand, options = {}) {
 		for (let i = hand.length - 1; i >= 0; i--) {
-			const { clued, newly_clued, chop_moved, finessed } = this.thoughts[hand[i]];
+			const { clued, newly_clued, chop_moved, finessed, known } = this.thoughts[hand[i]];
 
-			if (chop_moved || (clued && (options.afterClue ? true : !newly_clued)) || finessed)
+			if (chop_moved || (clued && (options.afterClue ? true : !newly_clued)) || finessed || known)
 				continue;
 
 			return i;
@@ -104,7 +104,7 @@ export class HGroup_Player extends Player {
 	 * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
 	 */
 	find_finesse(state, playerIndex, connected = [], ignoreOrders = []) {
-		const order = state.hands[playerIndex].find(o => !state.deck[o].clued && !this.thoughts[o].finessed && !connected.includes(o));
+		const order = state.hands[playerIndex].find(o => !this.thoughts[o].touched && !connected.includes(o));
 
 		return (order !== undefined && !ignoreOrders.includes(order)) ? order : undefined;
 	}
