@@ -73,11 +73,11 @@ export class ActualCard extends BasicCard {
 	}
 
 	clone() {
-		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues.slice());
+		return this.shallowCopy();
 	}
 
 	shallowCopy() {
-		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues);
+		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues.slice());
 	}
 
 	/**
@@ -245,10 +245,6 @@ export class Card extends ActualCard {
 
 	shallowCopy() {
 		return new Card(this.suitIndex, this.rank, this.possible, this.inferred, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues.slice(), this);
-	}
-
-	raw() {
-		return Object.freeze({ suitIndex: this.suitIndex, rank: this.rank });
 	}
 
 	get possibilities() {

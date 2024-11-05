@@ -38,6 +38,7 @@
  * @property {{playerIndex: number, card: Card}[]} playables
  * @property {{playerIndex: number, card: Card}[]} finesses
  * @property {number[]} chop_moved
+ * @property {boolean} [safe]
  */
 /**
  * @typedef StatusAction

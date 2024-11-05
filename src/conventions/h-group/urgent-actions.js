@@ -1,6 +1,5 @@
 import { ACTION } from '../../constants.js';
 import { ACTION_PRIORITY as PRIORITY, LEVEL, CLUE_INTERP } from './h-constants.js';
-import { clue_safe } from './clue-finder/clue-safe.js';
 import { get_result } from './clue-finder/determine-clue.js';
 import { playersBetween, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue } from '../../basics/hanabi-util.js';
@@ -181,10 +180,13 @@ export function early_game_clue(game, playerIndex) {
 	new_game.state.generated = false;
 	new_game.state.screamed_at = false;
 
-	logger.collect();
+	const log_level = logger.level;
+	logger.setLevel(logger.LEVELS.NONE);
+
 	const options = { giver: playerIndex, hypothetical: true, no_fix: true, early_exits: expected_early_game_clue };
 	const { play_clues, save_clues, stall_clues } = find_clues(new_game, options);
-	logger.flush(false);
+
+	logger.setLevel(log_level);
 
 	logger.debug('found clues', play_clues.flat().map(logClue), save_clues.filter(c => c !== undefined).map(logClue), state.playerNames[playerIndex]);
 
@@ -209,7 +211,7 @@ export function find_gd(game, target) {
 	let finesse = common.find_finesse(state, target);
 	const playables = common.thinksPlayables(state, state.ourPlayerIndex);
 
-	while (state.isPlayable(state.deck[finesse])) {
+	while (finesse !== undefined && state.isPlayable(state.deck[finesse])) {
 		const match = playables.find(c => me.thoughts[c].matches(state.deck[finesse], { infer: true }));
 
 		if (match !== undefined)
@@ -368,7 +370,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 					const { playables, focus } = clue.result;
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focus);
 
-					return (tempo && !valuable && clue_safe(game, me, clue).safe) ? find_clue_value(clue.result) : -1;
+					return (tempo && !valuable && clue.result.safe) ? find_clue_value(clue.result) : -1;
 				}, 0);
 
 				if (tccm) {

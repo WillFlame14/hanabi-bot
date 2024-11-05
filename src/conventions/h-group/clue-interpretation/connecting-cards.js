@@ -340,12 +340,13 @@ export function resolve_bluff(game, connections, giver) {
  * @param {ClueAction} action
  * @param {Identity} identity
  * @param {boolean} looksDirect 	Whether the clue could be interpreted as direct play (i.e. never as self-prompt/finesse).
+ * @param {Set<number>} thinks_stall Whether the clue appears to be a stall to these players.
  * @param {number[]} [connected]	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @param {{knownOnly?: number[]}} options
  * @returns {Connection[]}
  */
-export function find_connecting(game, action, identity, looksDirect, connected = [], ignoreOrders = [], options = {}) {
+export function find_connecting(game, action, identity, looksDirect, thinks_stall, connected = [], ignoreOrders = [], options = {}) {
 	const { common, state, me } = game;
 	const { giver, target } = action;
 	const { suitIndex, rank } = identity;
@@ -382,6 +383,7 @@ export function find_connecting(game, action, identity, looksDirect, connected =
 		// Clue receiver won't find known prompts/finesses in their hand unless it doesn't look direct
 		// Also disallow prompting/finessing a player when they may need to prove a finesse to us
 		if (playerIndex === giver || options.knownOnly?.includes(playerIndex) || (playerIndex === target && looksDirect) ||
+			thinks_stall.has(playerIndex) ||
 			(giver === state.ourPlayerIndex && common.waiting_connections.some(wc =>
 				wc.target === state.ourPlayerIndex && wc.connections.some((conn, index) =>
 					index >= wc.conn_index && conn.type === 'finesse' && conn.reacting === playerIndex))))

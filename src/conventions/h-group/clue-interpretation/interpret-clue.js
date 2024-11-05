@@ -454,9 +454,9 @@ export function interpret_clue(game, action) {
 	}
 
 	// Check if the giver was in a stalling situation
-	const stall = stalling_situation(game, action, prev_game);
+	const { stall, thinks_stall } = stalling_situation(game, action, prev_game);
 
-	if (stall !== undefined) {
+	if (thinks_stall.size === state.numPlayers) {
 		logger.info('stalling situation', stall);
 
 		if (stall === CLUE_INTERP.STALL_5 && state.early_game)
@@ -513,7 +513,7 @@ export function interpret_clue(game, action) {
 		}
 	}
 
-	const focus_possible = find_focus_possible(game, action);
+	const focus_possible = find_focus_possible(game, action, thinks_stall);
 	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) => logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
 
 	const matched_inferences = focus_possible.filter(p => common.thoughts[focus].inferred.has(p));

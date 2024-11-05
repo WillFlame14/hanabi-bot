@@ -52,3 +52,12 @@ export const DISCARD_INTERP = /** @type {const} */ ({
 	POS_DISCARD: 'pos dc',
 	POS_MISPLAY: 'pos misplay'
 });
+
+export const STALL_INDICES = /** @type {const} */ ({
+	[CLUE_INTERP.STALL_5]: 0,
+	[CLUE_INTERP.CM_TEMPO]: 1,
+	[CLUE_INTERP.STALL_FILLIN]: 2,
+	[CLUE_INTERP.STALL_LOCKED]: 3,
+	[CLUE_INTERP.STALL_8CLUES]: 4,
+	[CLUE_INTERP.STALL_BURN]: 5
+});

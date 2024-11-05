@@ -1,6 +1,6 @@
-import { CLUE_INTERP, LEVEL } from '../h-constants.js';
+import { CLUE_INTERP, STALL_INDICES } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
-import { clue_safe } from './clue-safe.js';
+import { clue_safe2 } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue } from './determine-clue.js';
 import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
@@ -72,6 +72,126 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 }
 
 /**
+ * @param {Game} game
+ * @param {Clue} clue
+ * @param {number} giver
+ * @param {ClueFindingOptions} options
+ */
+export function get_clue_interp(game, clue, giver, options) {
+	const { common, state } = game;
+	const { target } = clue;
+	const { hypothetical = giver !== state.ourPlayerIndex, noRecurse = false } = options;
+
+	const hand = state.hands[target];
+	const giver_player = game.players[giver];
+
+	const list = state.clueTouched(hand, clue);
+	const { focus, chop } = determine_focus(game, hand, common, list, clue);
+	const focused_card = state.deck[focus];
+
+	const in_finesse = common.waiting_connections.some(w_conn => {
+		const { focus: wc_focus, inference } = w_conn;
+		const matches = giver_player.thoughts[wc_focus].matches(inference, { assume: true });
+
+		return matches && focused_card.playedBefore(inference, { equal: true });
+	});
+
+	// Do not focus cards that are part of a finesse
+	if (giver_player.thoughts[focus].finessed || in_finesse)
+		return;
+
+	// Do not expect others to clue cards that could be clued in our hand
+	if (hypothetical && state.ourHand.some(o => ((card = game.me.thoughts[o]) => card.touched && card.inferred.has(focused_card))()))
+		return;
+
+	// Simulate clue from receiver's POV to see if they have the right interpretation
+	const action =  /** @type {const} */ ({ type: 'clue', giver, target, list, clue, hypothetical, noRecurse });
+	const { hypo_game, result } = evaluate_clue(game, action);
+
+	// Clue had incorrect interpretation
+	if (hypo_game === undefined)
+		return;
+
+	const interpret = hypo_game.common.thoughts[focus].inferred;
+
+	const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe2(game, hypo_game, giver_player, clue);
+	const new_clue = Object.assign(clue, { result: Object.assign(result, { safe, discard }) });
+
+	const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = clue.result;
+	let interp = /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.lastMove);
+
+	const result_log = {
+		clue: logClue(clue),
+		bad_touch,
+		trash,
+		avoidable_dupe,
+		interpret: interpret?.map(logCard),
+		elim,
+		new_touched: new_touched.length,
+		finesses: finesses.length,
+		playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
+		chop_moved: chop_moved.map(o => `${logCard(state.deck[o])} ${o}`),
+		discard: discard ? logCard(state.deck[discard]) : undefined,
+		interp
+	};
+	logger.info('result,', JSON.stringify(result_log), find_clue_value(clue.result));
+
+	let save_clue;
+
+	switch (interp) {
+		case CLUE_INTERP.SAVE:
+		case CLUE_INTERP.CM_5:
+		case CLUE_INTERP.CM_TRASH:
+			if (chop && focused_card.rank === 2) {
+				const copies = visibleFind(state, giver_player, focused_card);
+				const chops = state.hands.map(hand => common.chop(hand));
+
+				if (copies.some(o => !chops.includes(o) && !state.deck[o].newly_clued)) {
+					logger.warn('illegal 2 save');
+					return;
+				}
+			}
+
+			// if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0) {
+			save_clue = Object.assign(new_clue, { game: hypo_game, playable: playables.length > 0, cm: chop_moved, safe });
+			break;
+
+		case CLUE_INTERP.CM_TEMPO: {
+			const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focus);
+
+			if (!safe) {
+				logger.highlight('yellow', 'unsafe!');
+				return;
+			}
+
+			if (!tempo || valuable)
+				return;
+			break;
+		}
+		case CLUE_INTERP.PLAY:
+			if (bad_touch.length === new_touched.length && bad_touch.length > 0) {
+				logger.warn('all newly clued cards are bad touched!', new_touched.map(c => c.order));
+				return;
+			}
+
+			if (!safe) {
+				logger.highlight('yellow', 'unsafe!');
+				return;
+			}
+
+			if (playables.length === 0) {
+				logger.warn('play clue with no playables!');
+				interp = CLUE_INTERP.STALL_BURN;
+			}
+
+			// if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0)
+			break;
+	}
+
+	return { hypo_game, chop, safe, result, interp, new_clue, save_clue };
+}
+
+/**
  * Finds all clues for the given state that can be given by a particular player (defaults to us).
  * Play and fix clues are 2D arrays as each player can potentially receive multiple play/fix clues.
  * Each player has only one save clue.
@@ -92,9 +212,8 @@ export function find_clues(game, options = {}) {
 	if (Utils.globals.cache.has(hash))
 		return Utils.globals.cache.get(hash);
 
-	const { common, state } = game;
-	const { giver = state.ourPlayerIndex, hypothetical = giver !== state.ourPlayerIndex, no_fix = false, noRecurse = false, early_exits = () => false } = options;
-	const player = game.players[giver];
+	const { state } = game;
+	const { giver = state.ourPlayerIndex, no_fix = false, early_exits = () => false } = options;
 
 	logger.highlight('whiteb', `------- FINDING CLUES ${giver !== state.ourPlayerIndex ? `(${state.playerNames[giver]}) ` : ''}-------`);
 
@@ -102,7 +221,7 @@ export function find_clues(game, options = {}) {
 	let save_clues = /** @type SaveClue[] */ 	([]);
 	let stall_clues = /** @type Clue[][] */ 	([[], [], [], [], [], [], []]);
 
-	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, player.hypo_stacks, state.max_ranks);
+	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, game.players[giver].hypo_stacks, state.max_ranks);
 
 	let early_exit = false;
 	const hypo_games = /** @type {Record<string, Game>} */ ({});
@@ -118,153 +237,36 @@ export function find_clues(game, options = {}) {
 		if (target === giver)
 			continue;
 
-		const hand = state.hands[target];
-
 		for (const clue of state.allValidClues(target)) {
-			const list = state.clueTouched(state.hands[target], clue);
-			const { focus, chop } = determine_focus(game, hand, common, list, clue);
-			const focused_card = state.deck[focus];
+			const res = get_clue_interp(game, clue, giver, options);
 
-			const in_finesse = common.waiting_connections.some(w_conn => {
-				const { focus: wc_focus, inference } = w_conn;
-				const matches = player.thoughts[wc_focus].matches(inference, { assume: true });
-
-				return matches && focused_card.playedBefore(inference, { equal: true });
-			});
-
-			// Do not focus cards that are part of a finesse
-			if (player.thoughts[focus].finessed || in_finesse)
+			if (res === undefined)
 				continue;
 
-			// Do not expect others to clue cards that could be clued in our hand
-			if (hypothetical && state.ourHand.some(o => ((card = game.me.thoughts[o]) => card.touched && card.inferred.has(focused_card))()))
-				continue;
-
-			// Simulate clue from receiver's POV to see if they have the right interpretation
-			const action =  /** @type {const} */ ({ type: 'clue', giver, target, list, clue, hypothetical, noRecurse });
-			const { hypo_game, result } = evaluate_clue(game, action);
-
-			// Clue had incorrect interpretation
-			if (hypo_game === undefined)
-				continue;
-
-			const interpret = hypo_game.common.thoughts[focus].inferred;
-
-			const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game, player, clue);
-			clue.result = produce(result, (draft) => { draft.discard = discard; });
-
-			const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = clue.result;
-			const interp = /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.lastMove);
-
-			const result_log = {
-				clue: logClue(clue),
-				bad_touch,
-				trash,
-				avoidable_dupe,
-				interpret: interpret?.map(logCard),
-				elim,
-				new_touched: new_touched.length,
-				finesses: finesses.length,
-				playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
-				chop_moved: chop_moved.map(o => `${logCard(state.deck[o])} ${o}`),
-				discard: discard ? logCard(state.deck[discard]) : undefined,
-				interp
-			};
-			logger.info('result,', JSON.stringify(result_log), find_clue_value(clue.result));
-
+			const { hypo_game, interp, new_clue, save_clue } = res;
 			hypo_games[logClue(clue)] = hypo_game;
 
-			if ((/** @type {any} */ ([CLUE_INTERP.SAVE, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TRASH]).includes(hypo_game.lastMove))) {
-				if (chop && focused_card.rank === 2) {
-					const copies = visibleFind(state, player, focused_card);
-					const chops = state.hands.map(hand => common.chop(hand));
-
-					if (copies.some(o => !chops.includes(o) && !state.deck[o].newly_clued)) {
-						logger.warn('illegal 2 save');
-						continue;
-					}
-				}
-
-				if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0)
-					saves.push(Object.assign(clue, { game: hypo_game, playable: playables.length > 0, cm: chop_moved, safe }));
-				else
-					logger.highlight('yellow', `${logClue(clue)} save results in avoidable potential duplication`);
-			}
+			logger.info(interp, logClue(clue));
 
 			switch (interp) {
-				case CLUE_INTERP.DISTRIBUTION:
-					logger.info('distribution clue!');
-					play_clues[target].push(clue);
-					break;
-
-				case CLUE_INTERP.CM_TEMPO: {
-					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focus);
-
-					if (!safe) {
-						logger.highlight('yellow', 'unsafe!');
-						continue;
-					}
-
-					if (tempo && !valuable) {
-						logger.info('tempo clue chop move', logClue(clue));
-						stall_clues[1].push(clue);
-					}
-					else {
-						logger.info('clue', logClue(clue), tempo, valuable);
-					}
-					break;
-				}
-				case CLUE_INTERP.PLAY:
-					if (playables.length === 0) {
-						logger.warn('play clue with no playables!');
-						stall_clues[5].push(clue);
-						continue;
-					}
-
-					if (bad_touch.length === new_touched.length && bad_touch.length > 0) {
-						logger.warn('all newly clued cards are bad touched!', new_touched.map(c => c.order));
-						continue;
-					}
-
-					if (!safe) {
-						logger.highlight('yellow', 'unsafe!');
-						continue;
-					}
-
-					if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0)
-						play_clues[target].push(clue);
-					else
-						logger.highlight('yellow', `${logClue(clue)} results in avoidable potential duplication`);
+				case CLUE_INTERP.SAVE:
+				case CLUE_INTERP.CM_5:
+				case CLUE_INTERP.CM_TRASH:
+					saves.push(save_clue);
 					break;
 
 				case CLUE_INTERP.STALL_5:
-					logger.info('5 stall', logClue(clue));
-					stall_clues[0].push(clue);
-					break;
-
-				case CLUE_INTERP.STALL_TEMPO:
-					logger.info('tempo clue stall', logClue(clue));
-					stall_clues[1].push(clue);
-					break;
-
+				case CLUE_INTERP.CM_TEMPO:
 				case CLUE_INTERP.STALL_FILLIN:
-					logger.info('fill-in stall', logClue(clue));
-					stall_clues[2].push(clue);
-					break;
-
 				case CLUE_INTERP.STALL_LOCKED:
-					logger.info('locked hand save', logClue(clue));
-					stall_clues[3].push(clue);
-					break;
-
 				case CLUE_INTERP.STALL_8CLUES:
-					logger.info('8 clue save', logClue(clue));
-					stall_clues[4].push(clue);
+				case CLUE_INTERP.STALL_BURN:
+					stall_clues[STALL_INDICES[interp]].push(new_clue);
 					break;
 
-				case CLUE_INTERP.STALL_BURN:
-					logger.info('hard burn', logClue(clue));
-					stall_clues[5].push(clue);
+				case CLUE_INTERP.PLAY:
+				case CLUE_INTERP.DISTRIBUTION:
+					play_clues[target].push(new_clue);
 					break;
 			}
 

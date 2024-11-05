@@ -1,5 +1,6 @@
 import { ActualCard, Card } from './basics/Card.js';
 import { cardCount, find_possibilities } from './variants.js';
+
 import * as Utils from './tools/util.js';
 import { produce } from './StateProxy.js';
 
@@ -21,24 +22,21 @@ export function onClue(game, action) {
 	const { target, clue, list, giver } = action;
 	const new_possible = find_possibilities(clue, state.variant);
 
+	/** @param {import('./types.js').Writable<ActualCard>} card */
+	const update_func = (card) => {
+		if (!card.clued) {
+			card.newly_clued = true;
+			card.clued = true;
+		}
+		card.clues.push(Object.assign({}, clue, { giver, turn: state.turn_count }));
+	};
+
 	for (const order of state.hands[target]) {
 		const index = state.hands[target].findIndex(o => o === order);
 
 		if (list.includes(order)) {
-			/** @param {import('./types.js').Writable<ActualCard>} card */
-			const update_func = (card) => {
-				if (!card.clued) {
-					card.newly_clued = true;
-					card.clued = true;
-				}
-				card.clues.push(Object.assign({}, clue, { giver, turn: state.turn_count }));
-			};
-
 			state.deck[order] = produce(state.deck[order], update_func);
 			state.hands[target] = state.hands[target].with(index, order);
-
-			for (const player of game.allPlayers)
-				player.updateThoughts(order, update_func);
 		}
 
 		for (const player of game.allPlayers) {
@@ -48,6 +46,9 @@ export function onClue(game, action) {
 			const new_inferred = inferred[operation](new_possible);
 
 			player.updateThoughts(order, (draft) => {
+				if (list.includes(order))
+					update_func(draft);
+
 				draft.possible = possible[operation](new_possible);
 				draft.inferred = new_inferred;
 
@@ -59,10 +60,8 @@ export function onClue(game, action) {
 		}
 	}
 
-	for (const player of game.allPlayers) {
-		player.card_elim(state);
-		player.refresh_links(state);
-	}
+	game.common.card_elim(state);
+	game.common.refresh_links(state);
 
 	if (state.endgameTurns !== -1)
 		state.endgameTurns--;
@@ -91,13 +90,15 @@ export function onDiscard(game, action) {
 			player.updateThoughts(order, (draft) => {
 				draft.suitIndex = suitIndex;
 				draft.rank = rank;
+				draft.old_possible = possible;
+				draft.old_inferred = inferred;
 				draft.possible = possible.intersect(identity);
 				draft.inferred = inferred.intersect(identity);
 			});
-
-			player.card_elim(state);
-			player.refresh_links(state);
 		}
+
+		game.common.card_elim(state);
+		game.common.refresh_links(state);
 
 		// Discarded all copies of a card - the new max rank is (discarded rank - 1) if not already lower
 		if (state.discard_stacks[suitIndex][rank - 1] === cardCount(state.variant, { suitIndex, rank }))
@@ -177,10 +178,10 @@ export function onPlay(game, action) {
 				draft.possible = possible.intersect(identity);
 				draft.inferred = inferred.intersect(identity);
 			});
-
-			player.card_elim(state);
-			player.refresh_links(state);
 		}
+
+		game.common.card_elim(state);
+		game.common.refresh_links(state);
 	}
 
 	if (state.endgameTurns !== -1)

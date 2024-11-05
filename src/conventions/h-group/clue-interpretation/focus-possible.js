@@ -22,8 +22,9 @@ import { logCard, logConnections } from '../../../tools/log.js';
  * @param {Game} game
  * @param {number} suitIndex
  * @param {ClueAction} action
+ * @param {Set<number>} thinks_stall
  */
-function find_colour_focus(game, suitIndex, action) {
+function find_colour_focus(game, suitIndex, action, thinks_stall) {
 	const { common, state } = game;
 	const { clue, giver, list, target } = action;
 	const { focus, chop } = determine_focus(game, state.hands[target], common, list, clue);
@@ -54,7 +55,7 @@ function find_colour_focus(game, suitIndex, action) {
 		const looksDirect = focus_thoughts.identity() === undefined;
 
 		const connect_options = action.hypothetical ? { knownOnly: [state.ourPlayerIndex] } : {};
-		const connecting = find_connecting(game, action, identity, looksDirect, already_connected, ignoreOrders, connect_options);
+		const connecting = find_connecting(game, action, identity, looksDirect, thinks_stall, already_connected, ignoreOrders, connect_options);
 
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
@@ -156,8 +157,9 @@ function find_colour_focus(game, suitIndex, action) {
  * @param {Game} game
  * @param {number} rank
  * @param {ClueAction} action
+ * @param {Set<number>} thinks_stall
  */
-function find_rank_focus(game, rank, action) {
+function find_rank_focus(game, rank, action, thinks_stall) {
 	const { common, state } = game;
 	const { clue, giver, list, target } = action;
 	const { focus, chop, positional } = determine_focus(game, state.hands[target], common, list, clue);
@@ -223,7 +225,7 @@ function find_rank_focus(game, rank, action) {
 			const identity = { suitIndex, rank: next_rank };
 			const ignoreOrders = getIgnoreOrders(game, next_rank - old_play_stacks[suitIndex] - 1, suitIndex);
 			const connect_options = action.hypothetical ? { knownOnly: [state.ourPlayerIndex] } : {};
-			const connecting = find_connecting(game, action, identity, looksDirect, already_connected, ignoreOrders, connect_options);
+			const connecting = find_connecting(game, action, identity, looksDirect, thinks_stall, already_connected, ignoreOrders, connect_options);
 
 			if (connecting.length === 0)
 				break;
@@ -312,8 +314,9 @@ function find_rank_focus(game, rank, action) {
  * Finds all the valid focus possibilities from the given clue.
  * @param {Game} game
  * @param {ClueAction} action
+ * @param {Set<number>} thinks_stall
  */
-export function find_focus_possible(game, action) {
+export function find_focus_possible(game, action, thinks_stall) {
 	const { common, state } = game;
 	const { clue } = action;
 	logger.debug('play/hypo/max stacks in clue interpretation:', state.play_stacks, common.hypo_stacks, state.max_ranks);
@@ -322,8 +325,8 @@ export function find_focus_possible(game, action) {
 		state.variant.suits
 			.filter(s => s.match(Utils.combineRegex(variantRegexes.rainbowish, variantRegexes.prism)))
 			.concat(colourableSuits(state.variant)[clue.value])
-			.flatMap(s => find_colour_focus(game, state.variant.suits.indexOf(s), action)) :
-		find_rank_focus(game, clue.value, action);
+			.flatMap(s => find_colour_focus(game, state.variant.suits.indexOf(s), action, thinks_stall)) :
+		find_rank_focus(game, clue.value, action, thinks_stall);
 
 	// Remove play duplicates (since save overrides play)
 	const filtered_fps = focus_possible.filter((p1, index1) => {

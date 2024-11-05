@@ -12,6 +12,7 @@ import * as Utils from '../../tools/util.js';
 
 import { Worker } from 'worker_threads';
 import * as path from 'path';
+import { produce } from '../../StateProxy.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -131,13 +132,16 @@ function best_stall_clue(stall_clues, severity) {
  * @param {number} giver
  */
 export function find_all_clues(game, giver) {
-	logger.collect();
+	const log_level = logger.level;
+	logger.setLevel(logger.LEVELS.NONE);
+
 	const { play_clues, save_clues, stall_clues } = find_clues(game, { giver, no_fix: true });
-	logger.flush(false);
+
+	logger.setLevel(log_level);
 
 	return [
-		...play_clues.flatMap((clues, target) => clues.map(clue => Object.assign(clue, { target }))),
-		...Utils.range(0, game.state.numPlayers).reduce((acc, target) => (save_clues[target] ? acc.concat([Object.assign(save_clues[target], { target })]) : acc), []),
+		...play_clues.flatMap((clues, target) => clues.map(clue => produce(clue, (draft) => { draft.target = target; }))),
+		...Utils.range(0, game.state.numPlayers).reduce((acc, target) => (save_clues[target] ? acc.concat([produce(save_clues[target], (draft) => { draft.target = target; })]) : acc), []),
 		...stall_clues[6]		// distribution clues
 	];
 }
@@ -152,9 +156,12 @@ export function find_all_discards(game, playerIndex) {
 	const trash_cards = me.thinksTrash(state, playerIndex).filter(o => common.thoughts[o].saved);
 	const discardable = trash_cards[0] ?? common.chop(state.hands[playerIndex]);
 
-	logger.collect();
+	const log_level = logger.level;
+	logger.setLevel(logger.LEVELS.NONE);
+
 	const positional = find_positional_discard(game, playerIndex, discardable ?? -1);
-	logger.flush(false);
+
+	logger.setLevel(log_level);
 
 	return positional !== undefined ? [positional] : (discardable ? [{ misplay: false, order: discardable }] : []);
 }
@@ -403,10 +410,10 @@ export async function take_action(game) {
 		const workerData = { game: Utils.toJSON(game), playerTurn: state.ourPlayerIndex, conv: 'HGroup', logLevel: logger.level };
 		const worker = new Worker(path.resolve(import.meta.dirname, '../', 'shared', 'endgame.js'), { workerData });
 
-		const action = await new Promise((resolve, reject) => {
+		const result = await new Promise((resolve, reject) => {
 			worker.on('message', ({ success, action, err }) => {
 				if (success) {
-					resolve(action);
+					resolve({ action });
 				}
 				else {
 					logger.warn(`couldn't solve endgame yet: ${err.message}`);
@@ -420,7 +427,9 @@ export async function take_action(game) {
 			});
 		});
 
-		if (action !== undefined) {
+		if (result !== undefined) {
+			const { action } = result;
+
 			if (action.type === ACTION.COLOUR || action.type === ACTION.RANK) {
 				const stall_clue = best_play_clue ??
 					best_stall_clue(stall_clues, 4) ??

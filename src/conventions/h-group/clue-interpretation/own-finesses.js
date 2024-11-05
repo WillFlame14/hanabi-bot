@@ -73,7 +73,7 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
 	const our_hand = state.ourHand;
 
 	// First, see if someone else has the connecting card
-	const other_connecting = find_connecting(game, action, identity, looksDirect, connected, ignoreOrders, { knownOnly: [ignorePlayer] });
+	const other_connecting = find_connecting(game, action, identity, looksDirect, new Set(), connected, ignoreOrders, { knownOnly: [ignorePlayer] });
 	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate')
 		return other_connecting;
 
@@ -296,10 +296,7 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
 	const already_connected = connected.slice();
 
 	for (const action of game.next_finesse) {
-		const finesse_order = common.find_finesse(state, state.ourPlayerIndex, already_connected, ignoreOrders);
-		const start_index = state.ourHand.findIndex(o => o === finesse_order);
-		if (start_index === -1)
-			return [];
+		const f_order = () => common.find_finesse(state, state.ourPlayerIndex, already_connected, ignoreOrders);
 
 		const { list, clue } = action;
 
@@ -307,8 +304,9 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
 		// Touching a non-matching card - all touched cards are layered
 		const matching = cardTouched(identity, state.variant, clue);
 
-		for (let i = start_index; matching !== list.includes(state.ourHand[i]); i++) {
-			const order = state.ourHand[i];
+		for (let order = f_order(); matching !== list.includes(order); order = f_order()) {
+			if (order === undefined)
+				throw new IllegalInterpretation('impossible layered finesse with no end');
 
 			if (ignoreOrders.includes(order))
 				throw new IllegalInterpretation(`impossible layered finesse, ignoring card order ${order}`);
@@ -326,9 +324,6 @@ function resolve_layered_finesse(game, identity, connected = [], ignoreOrders = 
 
 			connections.push({ type: 'finesse', reacting: state.ourPlayerIndex, order, hidden: true, self: true, identities });
 			already_connected.push(order);
-
-			if (i === state.ourHand.length - 1)
-				throw new IllegalInterpretation('blocked layered finesse with no end');
 		}
 	}
 

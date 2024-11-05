@@ -1,10 +1,11 @@
 import { CLUE } from '../../../constants.js';
-import { LEVEL } from '../h-constants.js';
+import { LEVEL, STALL_INDICES } from '../h-constants.js';
 import { CLUE_INTERP } from '../h-constants.js';
 import { find_clue_value } from '../action-helper.js';
 import { get_result } from '../clue-finder/determine-clue.js';
 import { determine_focus, minimum_clue_value, stall_severity } from '../hanabi-logic.js';
-import { find_clues } from '../clue-finder/clue-finder.js';
+import { get_clue_interp } from '../clue-finder/clue-finder.js';
+import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logClue } from '../../../tools/log.js';
@@ -13,6 +14,7 @@ import { logClue } from '../../../tools/log.js';
  * @typedef {import('../../h-group.js').default} Game
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Clue} Clue
+ * @typedef {import('../../../types.js').ClueResult} ClueResult
  * @typedef {import('../../../types.js').SaveClue} SaveClue
  */
 
@@ -60,16 +62,16 @@ function isStall(game, action, giver, severity, prev_game) {
 	const { new_touched, playables, elim } = clue_result;
 
 	if (severity >= 2) {
+		// Tempo clue given
+		if (new_touched.length === 0 && playables.length > 0 && find_clue_value(clue_result) < minimum_clue_value(state)) {
+			logger.info('tempo clue stall! value', find_clue_value(clue_result), playables.map(p => p.card.order));
+			return CLUE_INTERP.STALL_TEMPO;
+		}
+
 		// Fill-in given
 		if (new_touched.length === 0 && elim > 0) {
 			logger.info('fill in stall!');
 			return CLUE_INTERP.STALL_FILLIN;
-		}
-
-		// Tempo clue given
-		if (playables.length > 0 && find_clue_value(clue_result) < minimum_clue_value(state)) {
-			logger.info('tempo clue stall! value', find_clue_value(clue_result), playables.map(p => p.card.order));
-			return CLUE_INTERP.STALL_TEMPO;
 		}
 
 		if (severity >= 3) {
@@ -100,23 +102,76 @@ function isStall(game, action, giver, severity, prev_game) {
 }
 
 /**
- * @param {Game} _game
- * @param {Clue} clue
- * @param {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} interp
+ * @param {Game} game
+ * @param {number} giver
+ * @param {number} focus
+ * @param {number} max_stall
  */
-function expected_clue(_game, clue, interp) {
-	switch(interp) {
-		case CLUE_INTERP.PLAY:
-			return clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch.length === 0;
+function other_expected_clue(game, giver, focus, max_stall) {
+	const { common, me, state } = game;
+	const options = { giver, hypothetical: true, noRecurse: true };
 
-		case CLUE_INTERP.SAVE: {
-			const save_clue = /** @type {SaveClue} */(clue);
-			return save_clue.cm === undefined || save_clue.cm.length === 0;
+	const thinks_stall = new Set(Utils.range(0, state.numPlayers));
+
+	for (let target = 0; target < state.numPlayers; target++) {
+		if (target === giver || thinks_stall.size === 0)
+			continue;
+
+		for (const clue of state.allValidClues(target)) {
+			const log_level = logger.level;
+			logger.setLevel(logger.LEVELS.NONE);
+
+			const res = get_clue_interp(game, clue, giver, options);
+
+			logger.setLevel(log_level);
+
+			if (res === undefined)
+				continue;
+
+			const { hypo_game, result, interp, save_clue } = res;
+
+			const expected_clue = (() => {
+				switch (interp) {
+					case CLUE_INTERP.PLAY:
+						return result.playables.some(({ card }) => card.newly_clued) && result.bad_touch.length === 0;
+
+					case CLUE_INTERP.SAVE: {
+						if (save_clue === undefined || save_clue.cm?.length > 0 || focus === save_clue.result.focus)
+							return false;
+
+						const chop = common.chop(state.hands[target]);
+
+						// Not a 2 save that could be duplicated in our hand
+						return !(save_clue.type === CLUE.RANK && save_clue.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[chop])));
+					}
+
+					case CLUE_INTERP.STALL_5:
+					case CLUE_INTERP.CM_TEMPO:
+					case CLUE_INTERP.STALL_TEMPO:
+					case CLUE_INTERP.STALL_FILLIN:
+					case CLUE_INTERP.STALL_LOCKED:
+					case CLUE_INTERP.STALL_8CLUES:
+					case CLUE_INTERP.STALL_BURN:
+						return STALL_INDICES[interp] < max_stall && focus !== result.focus;
+				}
+			})();
+
+			if (expected_clue) {
+				logger.highlight('yellow', `expected ${logClue(clue)}, not interpreting stall`);
+
+				const new_wc = hypo_game.common.waiting_connections.find(wc => wc.turn === state.turn_count);
+
+				// Everyone not the target (or with an unknown connection) can see this clue
+				for (let i = 0; i < state.numPlayers; i++) {
+					if (i === target || new_wc?.connections.some(conn => conn.type !== 'known' && state.hands[i].includes(conn.order)))
+						continue;
+
+					thinks_stall.delete(i);
+				}
+			}
 		}
-
-		default:
-			return false;
 	}
+	return thinks_stall;
 }
 
 /**
@@ -126,7 +181,7 @@ function expected_clue(_game, clue, interp) {
  * @param {Game} prev_game
  */
 export function stalling_situation(game, action, prev_game) {
-	const { common, state, me } = game;
+	const { common, state } = game;
 	const { clue, giver, list, target, noRecurse } = action;
 
 	const { focus } = determine_focus(game, state.hands[target], common, list, clue);
@@ -137,44 +192,20 @@ export function stalling_situation(game, action, prev_game) {
 	const stall = isStall(game, action, giver, severity, prev_game);
 
 	if (stall === undefined)
-		return;
+		return { stall, thinks_stall: new Set() };
 
 	if (noRecurse)
-		return stall;
+		return { stall, thinks_stall: new Set(Utils.range(0, state.numPlayers)) };
 
-	const options = { giver, hypothetical: true, no_fix: true, noRecurse: true, early_exits: expected_clue };
-
-	logger.collect();
-	const { play_clues, save_clues, stall_clues } = find_clues(prev_game, options);
-	logger.flush(false);
-
-	const expected_play = () => play_clues.flat().find(cl =>
-		cl.result.playables.some(({ card }) => card.newly_clued) && cl.result.bad_touch.length === 0 && focus !== cl.result.focus);
-
-	const expected_save = () => save_clues.find((cl, target) => {
-		if (cl === undefined || cl.cm?.length > 0 || focus === cl.result.focus)
-			return false;
-
-		const chop = common.chop(state.hands[target]);
-
-		// Not a 2 save that could be duplicated in our hand
-		return !(cl.type === CLUE.RANK && cl.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[chop])));
-	});
-
-	const expected_stall = () => stall_clues.slice(0, stall_to_severity[stall]).find(clues => clues.some(cl => focus !== cl.result.focus))?.[0];
-
-	const expected = expected_play() ?? expected_save() ?? expected_stall();
-
-	if (expected !== undefined) {
-		logger.highlight('yellow', `expected ${logClue(expected)}, not interpreting stall`);
-		return;
-	}
+	const thinks_stall = other_expected_clue(game, giver, focus, stall_to_severity[stall]);
 
 	// Only early game 5 stall exists before level 9
 	if (game.level < LEVEL.STALLING && severity !== 1)
 		logger.warn('stall found before level 9');
-	else
+	else if (thinks_stall.size === state.numPlayers)
 		logger.highlight('yellow', 'valid stall!');
+	else
+		logger.highlight('yellow', `looks stall to ${Array.from(thinks_stall).map(i => state.playerNames[i]).join()}`);
 
-	return stall;
+	return { stall, thinks_stall };
 }

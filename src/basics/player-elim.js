@@ -27,7 +27,14 @@ export function card_elim(state) {
 	let uncertain_map = /** @type {Map<number, IdentitySet>} */ (new Map());
 
 	const candidates = state.hands.flatMap((hand, playerIndex) => hand.map(order => ({ playerIndex, order })));
-	let identities = state.all_ids;
+
+	let identities = state.base_ids;
+	for (const order of state.hands.flat()) {
+		identities = identities.union(this.thoughts[order].possible);
+
+		if (identities.length === state.all_ids.length)
+			break;
+	}
 
 	/** @type {(order: number) => void} */
 	const addToMap = (order) => {
@@ -247,41 +254,6 @@ export function good_touch_elim(state, only_self = false) {
 		}
 	};
 
-	const cross_elim = () => {
-		for (const [identities, orders] of cross_map) {
-			const identity_set = new IdentitySet(state.variant.suits.length, identities);
-
-			// There aren't the correct number of cards sharing this set of identities
-			if (orders.size !== identity_set.length)
-				continue;
-
-			const orders_arr = Array.from(orders);
-			const holders = orders_arr.map(o => state.hands.findIndex(hand => hand.includes(o)));
-			let change = false;
-
-			for (let i = 0; i < orders.size; i++) {
-				const card = this.thoughts[orders_arr[i]];
-
-				for (let j = 0; j < orders.size; j++) {
-					const other_card = state.deck[orders_arr[j]];
-
-					// Globally, a player can subtract identities others have, knowing others can see the identities they have.
-					if (i !== j && holders[i] !== holders[j] && card.inferred.has(other_card)) {
-						this.updateThoughts(orders_arr[i], (draft) => { draft.inferred = this.thoughts[orders_arr[i]].inferred.subtract(other_card); });
-						change = true;
-					}
-				}
-			}
-
-			if (change) {
-				cross_map.delete(identities);
-
-				for (const order of orders)
-					addToMaps(order);
-			}
-		}
-	};
-
 	/** @type {{ order: number, playerIndex: number, cm: boolean }[]} */
 	const elim_candidates = [];
 
@@ -309,86 +281,144 @@ export function good_touch_elim(state, only_self = false) {
 		}
 	}
 
-	cross_elim();
-
-	const identities = state.all_ids.array;
 	const resets = /** @type {Set<number>} */ (new Set());
 
-	for (let i = 0; i < identities.length; i++) {
-		const identity = identities[i];
-		const id_hash = logCard(identity);
-		const soft_matches = match_map.get(id_hash);
+	let identities = state.base_ids;
+	for (const order of state.hands.flat())
+		identities = identities.union(this.thoughts[order].inferred);
 
-		if (soft_matches === undefined && !state.isBasicTrash(identity))
-			continue;
+	const basic_elim = () => {
+		let changed = false;
+		const curr_identities = identities.array;
+		let new_identities = identities;
 
-		const hard_matches = hard_match_map.get(logCard(identity));
-		const matches = hard_matches ?? soft_matches ?? new Set();
-		const matches_arr = Array.from(matches);
+		for (let i = 0; i < curr_identities.length; i++) {
+			const identity = curr_identities[i];
+			const id_hash = logCard(identity);
+			const soft_matches = match_map.get(id_hash);
 
-		for (const { order, playerIndex, cm } of elim_candidates) {
-			const old_card = this.thoughts[order];
-
-			if (matches.has(order) || old_card.inferred.length === 0 || !old_card.inferred.has(identity))
+			if (soft_matches === undefined && !state.isBasicTrash(identity))
 				continue;
 
-			const visible_elim = state.hands.some(hand => hand.some(o => matches.has(o) && state.deck[o].matches(identity, { assume: true }))) &&
-				state.baseCount(identity) + matches.size >= cardCount(state.variant, identity);
+			const hard_matches = hard_match_map.get(logCard(identity));
+			const matches = hard_matches ?? soft_matches ?? new Set();
+			const matches_arr = Array.from(matches);
 
-			const original_clue = old_card.clues[0];
+			for (const { order, playerIndex, cm } of elim_candidates) {
+				const old_card = this.thoughts[order];
 
-			// Check if every match was from the clue giver (or vice versa)
-			const asymmetric_gt = !(cm && visible_elim) && matches.size > 0 &&
-				(matches_arr.every(o => {
-					const match_orig_clue = this.thoughts[o].clues[0];
-					return match_orig_clue?.giver === playerIndex && match_orig_clue.turn > (original_clue?.turn ?? 0);
-				}) ||
-				(original_clue?.giver && matches_arr.every(o =>
-					state.hands[original_clue?.giver].includes(o) &&
-					this.thoughts[o].possibilities.length > 1
-				)));
+				if (matches.has(order) || old_card.inferred.length === 0 || !old_card.inferred.has(identity))
+					continue;
 
-			if (asymmetric_gt)
-				continue;
+				const visible_elim = state.hands.some(hand => hand.some(o => matches.has(o) && state.deck[o].matches(identity, { assume: true }))) &&
+					state.baseCount(identity) + matches.size >= cardCount(state.variant, identity);
 
-			// TODO: Temporary stop-gap so that Bob still plays into it. Bob should actually clue instead.
-			if (old_card.finessed && [0, 1].some(i => old_card.finesse_index === state.actionList.length - i)) {
-				logger.warn(`tried to gt eliminate ${id_hash} from recently finessed card (player ${this.playerIndex}, order ${order})!`);
-				this.updateThoughts(order, (draft) => { draft.certain_finessed = true; });
-				elim_candidates.splice(elim_candidates.findIndex(c => c.order === order), 1);
-				continue;
-			}
+				const original_clue = old_card.clues[0];
 
-			// Check if can't visible elim on cm card (not visible, or same hand)
-			if (cm && !visible_elim)
-				continue;
+				// Check if every match was from the clue giver (or vice versa)
+				const asymmetric_gt = !(cm && visible_elim) && matches.size > 0 &&
+					(matches_arr.every(o => {
+						const match_orig_clue = this.thoughts[o].clues[0];
+						return match_orig_clue?.giver === playerIndex && match_orig_clue.turn > (original_clue?.turn ?? 0);
+					}) ||
+					(original_clue?.giver && matches_arr.every(o =>
+						state.hands[original_clue?.giver].includes(o) &&
+						this.thoughts[o].possibilities.length > 1
+					)));
 
-			this.updateThoughts(order, (draft) => { draft.inferred = this.thoughts[order].inferred.subtract(identity); });
-			const new_card = this.thoughts[order];
+				if (asymmetric_gt)
+					continue;
 
-			if (this.playerIndex === -1) {
-				this.elims[id_hash] ??= [];
-
-				if (!this.elims[id_hash].includes(order))
-					this.elims[id_hash].push(order);
-			}
-
-			if (!cm) {
-				if (new_card.inferred.length === 0 && !new_card.reset) {
-					this.thoughts[order] = this.reset_card(order);
-					resets.add(order);
+				// TODO: Temporary stop-gap so that Bob still plays into it. Bob should actually clue instead.
+				if (old_card.finessed && [0, 1].some(i => old_card.finesse_index === state.actionList.length - i)) {
+					logger.warn(`tried to gt eliminate ${id_hash} from recently finessed card (player ${this.playerIndex}, order ${order})!`);
+					this.updateThoughts(order, (draft) => { draft.certain_finessed = true; });
+					elim_candidates.splice(elim_candidates.findIndex(c => c.order === order), 1);
+					continue;
 				}
-				// Newly eliminated
-				else if (new_card.inferred.length === 1 && old_card.inferred.length > 1 && !state.isBasicTrash(new_card.inferred.array[0])) {
-					identities.push(new_card.inferred.array[0]);
+
+				// Check if can't visible elim on cm card (not visible, or same hand)
+				if (cm && !visible_elim)
+					continue;
+
+				this.updateThoughts(order, (draft) => { draft.inferred = this.thoughts[order].inferred.subtract(identity); });
+				const new_card = this.thoughts[order];
+
+				new_identities = new_identities.subtract(identity);
+				changed = true;
+
+				if (this.playerIndex === -1) {
+					this.elims[id_hash] ??= [];
+
+					if (!this.elims[id_hash].includes(order))
+						this.elims[id_hash].push(order);
 				}
+
+				if (!cm) {
+					if (new_card.inferred.length === 0 && !new_card.reset) {
+						logger.info('resetting', order, 'after subtracting', id_hash, matches);
+						this.thoughts[order] = this.reset_card(order);
+						resets.add(order);
+					}
+					// Newly eliminated
+					else if (new_card.inferred.length === 1 && old_card.inferred.length > 1 && !state.isBasicTrash(new_card.inferred.array[0])) {
+						curr_identities.push(new_card.inferred.array[0]);
+					}
+				}
+
+				addToMaps(order);
 			}
-
-			addToMaps(order);
-
-			if (i === identities.length - 1)
-				cross_elim();
 		}
+		identities = new_identities;
+		return changed;
+	};
+
+	const cross_elim = () => {
+		let changed = false;
+		for (const [idens, orders] of cross_map) {
+			const identity_set = new IdentitySet(state.variant.suits.length, idens);
+
+			// There aren't the correct number of cards sharing this set of identities
+			if (orders.size !== identity_set.length)
+				continue;
+
+			const orders_arr = Array.from(orders);
+			const holders = orders_arr.map(o => state.hands.findIndex(hand => hand.includes(o)));
+			let change = false;
+
+			for (let i = 0; i < orders.size; i++) {
+				const card = this.thoughts[orders_arr[i]];
+
+				for (let j = 0; j < orders.size; j++) {
+					const other_card = state.deck[orders_arr[j]];
+
+					// Globally, a player can subtract identities others have, knowing others can see the identities they have.
+					if (i !== j && holders[i] !== holders[j] && card.inferred.has(other_card)) {
+						this.updateThoughts(orders_arr[i], (draft) => { draft.inferred = this.thoughts[orders_arr[i]].inferred.subtract(other_card); });
+						change = true;
+						changed = true;
+					}
+				}
+			}
+
+			if (change) {
+				cross_map.delete(idens);
+
+				for (const order of orders)
+					addToMaps(order);
+			}
+		}
+		return changed;
+	};
+
+	let basic_changed = basic_elim();
+	let cross_changed = cross_elim();
+
+	while (basic_changed || cross_changed) {
+		basic_changed = basic_elim();
+
+		if (basic_changed || cross_changed)
+			cross_changed = cross_elim();
 	}
 
 	return resets;

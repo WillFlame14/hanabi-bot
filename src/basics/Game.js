@@ -288,11 +288,14 @@ export class Game {
 			newGame.handle_action(action);
 
 			// Simulate the actual hand as well for replacement
-			logger.collect();
+			const log_level = logger.level;
+			logger.setLevel(logger.LEVELS.NONE);
+
 			Utils.globalModify({ game: hypoGame });
 			hypoGame.handle_action(action);
 			Utils.globalModify({ game: newGame });
-			logger.flush(false);
+
+			logger.setLevel(log_level);
 
 			newGame.state.hands[this.state.ourPlayerIndex] = hypoGame.state.hands[this.state.ourPlayerIndex];
 		};

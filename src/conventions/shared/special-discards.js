@@ -35,8 +35,6 @@ export function interpret_gd(game, discardAction, find_finesse) {
 
 		let finesse = find_finesse(state, index);
 
-		logger.debug('finesse', state.playerNames[index], finesse, logCard(state.deck[finesse].identity()), state.isPlayable(state.deck[finesse]));
-
 		if (finesse !== undefined && matches(finesse))
 			return [finesse];
 
@@ -45,8 +43,6 @@ export function interpret_gd(game, discardAction, find_finesse) {
 		while (finesse !== undefined && state.isPlayable(state.deck[finesse])) {
 			finessed.push(finesse);
 			finesse = find_finesse(state, index, finessed);
-
-			logger.debug('new finesse is', finesse, logCard(state.deck[finesse].identity()));
 
 			if (finesse !== undefined && matches(finesse))
 				return finessed.concat(finesse);

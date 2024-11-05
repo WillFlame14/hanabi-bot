@@ -28,17 +28,17 @@ export function team_elim(game) {
 
 	for (const player of game.players) {
 		for (const [order, patches] of common.patches) {
-			player.updateThoughts(order, (draft) => { applyPatches(draft, patches); }, false);
-
-			const { possible, inferred } = player.thoughts[order];
+			const { possible, inferred } = common.thoughts[order];
+			const { possible: player_possible } = player.thoughts[order];
 
 			player.updateThoughts(order, (draft) => {
-				draft.inferred = inferred.intersect(possible);
+				applyPatches(draft, patches.filter(p => p.path[0] !== 'possible' && p.path[0] !== 'inferred'));
+				draft.possible = possible.intersect(player_possible);
+				draft.inferred = inferred.intersect(player_possible);
 			}, false);
 		}
 
 		player.waiting_connections = common.waiting_connections.slice();
-		player.card_elim(state);
 		player.good_touch_elim(state, state.numPlayers === 2);
 		player.refresh_links(state);
 		player.update_hypo_stacks(state);
@@ -77,6 +77,7 @@ export function checkFix(game, oldThoughts, clueAction) {
 
 	if (all_resets.size > 0) {
 		const reset_order = Array.from(all_resets).find(order =>
+			!common.thoughts[order].rewinded &&
 			common.thoughts[order].possible.length === 1 && common.dependentConnections(order).length > 0);
 
 		// There is a waiting connection that depends on this card

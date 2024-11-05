@@ -51,7 +51,7 @@ describe('stalling', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
 
-	it('understands a finesse when there are better clues available', () => {
+	it('understands a finesse when there are better clues available 2', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b3', 'g4', 'g2', 'b4'],

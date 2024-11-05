@@ -241,7 +241,7 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 
 	// Locked hand, blind played a chop moved card that could be good, discarded expected card
 	const not_intended = expected_discard === undefined || (action.failed ?
-		(card.chop_moved && card.possible.some(i => !isTrash(state, common, i, order, { infer: true }))) :
+		(card.chop_moved && card.old_possible?.some(i => !state.isBasicTrash(i)) && card.old_possible?.some(i => state.isPlayable(i))) :
 		order === expected_discard);
 
 	if (not_intended)

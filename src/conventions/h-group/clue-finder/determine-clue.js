@@ -32,7 +32,7 @@ function acceptable_clue(game, hypo_game, action, result) {
 
 	/** @param {Game} game */
 	const get_finessed_orders = (game) =>
-		game.state.hands.flatMap(hand => hand.filter(o => ((c = common.thoughts[o]) => !c.clued && c.finessed)()));
+		game.state.hands.flatMap(hand => hand.filter(o => ((c = game.common.thoughts[o]) => !c.clued && (c.finessed || c.bluffed))()));
 
 	const finessed_before_clue = get_finessed_orders(game);
 	const finessed_after_clue = get_finessed_orders(hypo_game);
@@ -102,6 +102,12 @@ function acceptable_clue(game, hypo_game, action, result) {
 
 	if (fake_symmetric_lock)
 		return `target ${state.playerNames[target]} is symmetrically locked on a fake finesse`;
+
+	const finessed_symmetric_card = finessed_after_clue.find(o => !finessed_before_clue.includes(o) && game.common.waiting_connections.some(wc => wc.symmetric &&
+		wc.connections.some((conn, i) => i >= wc.conn_index && conn.order === o && conn.type === 'finesse')));
+
+	if (finessed_symmetric_card)
+		return `finesses ${finessed_symmetric_card}, preventing a symmetric finesse from being disproven`;
 }
 
 /**

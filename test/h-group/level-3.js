@@ -142,7 +142,6 @@ describe('sarcastic discard', () => {
 
 		// Alice should play slot 5 instead of discarding for tempo.
 		const action = await game.take_action(game);
-		console.log('e?');
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 0 });
 	});
 
