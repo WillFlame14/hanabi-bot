@@ -104,9 +104,10 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 /**
  * @param {Clue[][]} stall_clues
  * @param {number} severity
+ * @param {Clue} [best_play_clue]
  * @returns {Clue | undefined}
  */
-function best_stall_clue(stall_clues, severity) {
+function best_stall_clue(stall_clues, severity, best_play_clue) {
 	// 5 Stall
 	if (severity === 1 || stall_clues[0].length > 0)
 		return stall_clues[0][0];
@@ -122,6 +123,9 @@ function best_stall_clue(stall_clues, severity) {
 
 	if (precedence4_stall !== undefined)
 		return precedence4_stall;
+
+	if (best_play_clue !== undefined)
+		return best_play_clue;
 
 	// Hard burn
 	return stall_clues[5][0];
@@ -613,13 +617,10 @@ export async function take_action(game) {
 		for (let i = actionPrioritySize + 1; i <= actionPrioritySize * 2; i++) {
 			// Give play clue (at correct priority level)
 			if (i === (state.clue_tokens > 1 ? actionPrioritySize + 1 : actionPrioritySize * 2) && best_play_clue !== undefined) {
-				if (clue_value >= minimum_clue_value(state)) {
+				if (clue_value >= minimum_clue_value(state))
 					return Utils.clueToAction(best_play_clue, tableID);
-				}
-				else {
+				else
 					logger.info('clue too low value', logClue(best_play_clue), clue_value);
-					stall_clues[Math.min(Math.max(0, common_severity - 1), 4)].push(best_play_clue);
-				}
 			}
 
 			// Go through rest of actions in order of priority (except early save)
@@ -654,7 +655,7 @@ export async function take_action(game) {
 
 	// Stalling situations
 	if (state.clue_tokens > 0 && actual_severity > 0 && common_severity > 0) {
-		const validStall = best_stall_clue(stall_clues, common_severity);
+		const validStall = best_stall_clue(stall_clues, common_severity, best_play_clue);
 
 		// 8 clues, must stall
 		if (state.clue_tokens === 8) {
