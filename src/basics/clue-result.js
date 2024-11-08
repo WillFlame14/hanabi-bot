@@ -73,7 +73,7 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 	const min_dupe = Math.min(...dupe_scores);
 	const avoidable_dupe = dupe_scores[giver] - min_dupe;
 
-	const bad_touch = [], trash = [];
+	const bad_touch = [], cm_dupe = [], trash = [];
 
 	for (const order of state.hands[target]) {
 		const card = state.deck[order];
@@ -92,6 +92,11 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 			continue;
 		}
 
+		if (state.hands.flat().some(o => hypo_player.thoughts[o].chop_moved && !hypo_player.thoughts[o].clued && o !== order && state.deck[o].matches(card))) {
+			cm_dupe.push(order);
+			continue;
+		}
+
 		const duplicates = state.hands.flatMap(hand => hand.filter(o => {
 			const old_thoughts = old_me.thoughts[o];
 			const thoughts = me.thoughts[o];
@@ -104,7 +109,7 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 			bad_touch.push(order);
 	}
 
-	return { bad_touch, trash, avoidable_dupe };
+	return { bad_touch, cm_dupe, trash, avoidable_dupe };
 }
 
 /**

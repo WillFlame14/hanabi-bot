@@ -31,6 +31,7 @@
  * @property {number} elim
  * @property {Card[]} new_touched
  * @property {number[]} bad_touch
+ * @property {number[]} cm_dupe
  * @property {number[]} trash
  * @property {number} avoidable_dupe
  * @property {number} remainder

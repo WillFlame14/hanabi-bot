@@ -136,12 +136,9 @@ function best_stall_clue(stall_clues, severity, best_play_clue) {
  * @param {number} giver
  */
 export function find_all_clues(game, giver) {
-	const log_level = logger.level;
-	logger.setLevel(logger.LEVELS.NONE);
-
+	logger.off();
 	const { play_clues, save_clues, stall_clues } = find_clues(game, { giver, no_fix: true });
-
-	logger.setLevel(log_level);
+	logger.on();
 
 	return [
 		...play_clues.flatMap((clues, target) => clues.map(clue => produce(clue, (draft) => { draft.target = target; }))),
@@ -160,12 +157,9 @@ export function find_all_discards(game, playerIndex) {
 	const trash_cards = me.thinksTrash(state, playerIndex).filter(o => common.thoughts[o].saved);
 	const discardable = trash_cards[0] ?? common.chop(state.hands[playerIndex]);
 
-	const log_level = logger.level;
-	logger.setLevel(logger.LEVELS.NONE);
-
+	logger.off();
 	const positional = find_positional_discard(game, playerIndex, discardable ?? -1);
-
-	logger.setLevel(log_level);
+	logger.on();
 
 	return positional !== undefined ? [positional] : (discardable ? [{ misplay: false, order: discardable }] : []);
 }
@@ -231,7 +225,7 @@ export async function take_action(game) {
 		return game.level >= LEVEL.SARCASTIC &&
 			id !== undefined &&
 			trash_orders.includes(order) &&
-			!playable_orders.some(o => card.matches(id, { infer: true }) && o !== order) &&
+			!playable_orders.some(o => me.thoughts[o].matches(id, { infer: true }) && o !== order) &&
 			!common.dependentConnections(order).some(wc => wc.symmetric);
 	});
 
@@ -329,7 +323,7 @@ export async function take_action(game) {
 
 		const gen_required = me.chopValue(state, nextNextPlayerIndex) >= 4 &&
 			!common.thinksLocked(state, nextNextPlayerIndex) &&
-			!common.thinksLoaded(state, nextNextPlayerIndex, { assume: false }) &&
+			!game.players[nextNextPlayerIndex].thinksLoaded(state, nextNextPlayerIndex, { assume: false }) &&
 			find_unlock(game, nextNextPlayerIndex) === undefined;
 
 		// Generate for next next player
@@ -348,7 +342,7 @@ export async function take_action(game) {
 		}
 	}
 
-	let best_play_clue, clue_value;
+	let best_play_clue, best_clue_value;
 	if (state.clue_tokens > 0) {
 		const consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined && clue.safe));
 		const chop = me.chop(state.ourHand);
@@ -394,17 +388,18 @@ export async function take_action(game) {
 				saved_clues.push(clue);
 			}
 
-			const { clue, value } = select_play_clue(consider_clues.filter(clue => !saved_clues.some(cl => Utils.objEquals(clue, cl))));
-			const { clue: saved_clue, value: saved_value } = select_play_clue(saved_clues);
+			const { clue, clue_value } = select_play_clue(consider_clues.filter(clue => !saved_clues.some(cl => Utils.objEquals(clue, cl))));
+			const { clue: saved_clue, clue_value: saved_value } = select_play_clue(saved_clues);
 
-			if (saved_clue === undefined || value > saved_value) {
+			if (saved_clue === undefined || clue_value > saved_value) {
 				best_play_clue = clue;
-				clue_value = value;
+				best_clue_value = clue_value;
 			}
 		}
 		else {
-			({ clue: best_play_clue, clue_value } = select_play_clue(consider_clues));
+			({ clue: best_play_clue, clue_value: best_clue_value } = select_play_clue(consider_clues));
 		}
+		logger.info('best play clue', logClue(best_play_clue));
 	}
 
 	// Attempt to solve endgame
@@ -521,8 +516,8 @@ export async function take_action(game) {
 	if ((state.clue_tokens === 0 || (state.clue_tokens === 1 && playable_orders.length === 0)) && common.thinksLocked(state, nextPlayerIndex))
 		return take_discard(game, state.ourPlayerIndex, trash_orders);
 
-	if (game.level >= LEVEL.SPECIAL_DISCARDS && !state.inEndgame()) {
-		// Attempt a Gentleman's Discard
+	// Attempt a Gentleman's Discard
+	if (game.level >= LEVEL.SPECIAL_DISCARDS && state.pace >= 2 * state.numPlayers) {
 		for (let i = 0; i < state.numPlayers; i++) {
 			if (i === state.ourPlayerIndex || me.chopValue(state, i) === 0)
 				continue;
@@ -534,8 +529,14 @@ export async function take_action(game) {
 				return { tableID, type: ACTION.DISCARD, target: gd_target };
 			}
 		}
+	}
 
-		// Attempt a Baton Discard
+	// Playing a connecting card or playing a 5
+	if (best_playable_order !== undefined && priority <= 3)
+		return { tableID, type: ACTION.PLAY, target: best_playable_order };
+
+	// Attempt a Baton Discard
+	if (game.level >= LEVEL.SPECIAL_DISCARDS && state.pace >= 2 * state.numPlayers) {
 		for (let i = 0; i < state.numPlayers; i++) {
 			if (i === state.ourPlayerIndex || state.hands[i].filter(o => !state.deck[o].clued).length <= 2)
 				continue;
@@ -544,7 +545,7 @@ export async function take_action(game) {
 				const id = me.thoughts[o].identity({ infer: true });
 				const finesse = common.find_finesse(state, i);
 
-				return id !== undefined && !state.isPlayable(id) && state.deck[finesse]?.matches(id);
+				return id !== undefined && me.thoughts[o].clued && !state.isPlayable(id) && !state.isBasicTrash(id) && state.deck[finesse]?.matches(id);
 			});
 
 			if (baton_target !== undefined) {
@@ -553,10 +554,6 @@ export async function take_action(game) {
 			}
 		}
 	}
-
-	// Playing a connecting card or playing a 5
-	if (best_playable_order !== undefined && priority <= 3)
-		return { tableID, type: ACTION.PLAY, target: best_playable_order };
 
 	// Discard known trash at high pace, low clues
 	if (best_playable_order === undefined && trash_orders.length > 0 && state.pace > state.numPlayers * 2 && state.clue_tokens <= 2)
@@ -617,10 +614,10 @@ export async function take_action(game) {
 		for (let i = actionPrioritySize + 1; i <= actionPrioritySize * 2; i++) {
 			// Give play clue (at correct priority level)
 			if (i === (state.clue_tokens > 1 ? actionPrioritySize + 1 : actionPrioritySize * 2) && best_play_clue !== undefined) {
-				if (clue_value >= minimum_clue_value(state))
+				if (best_clue_value >= minimum_clue_value(state))
 					return Utils.clueToAction(best_play_clue, tableID);
 				else
-					logger.info('clue too low value', logClue(best_play_clue), clue_value);
+					logger.info('clue too low value', logClue(best_play_clue), best_clue_value);
 			}
 
 			// Go through rest of actions in order of priority (except early save)
@@ -655,7 +652,7 @@ export async function take_action(game) {
 
 	// Stalling situations
 	if (state.clue_tokens > 0 && actual_severity > 0 && common_severity > 0) {
-		const validStall = best_stall_clue(stall_clues, common_severity, best_play_clue);
+		const validStall = best_stall_clue(stall_clues, common_severity, best_play_clue) ?? best_play_clue;
 
 		// 8 clues, must stall
 		if (state.clue_tokens === 8) {

@@ -298,7 +298,7 @@ export function cleanAction(action) {
 /**
  * Converts a PerformAction to an Action.
  * @param  {State} state
- * @param  {PerformAction} action
+ * @param  {Omit<PerformAction, 'tableID'>} action
  * @param  {number} playerIndex
  * @param  {Identity[]} deck
  * @returns {Action}

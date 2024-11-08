@@ -473,6 +473,11 @@ export function interpret_clue(game, action) {
 		game.interpretMove(stall);
 		return;
 	}
+	else if (thinks_stall.size > 0 && giver === state.ourPlayerIndex) {
+		// Asymmetric move: prefer not to give such a clue
+		game.interpretMove(CLUE_INTERP.NONE);
+		return;
+	}
 
 	if (distribution_clue(game, action, common.thoughts[focus].order)) {
 		const { inferred } = common.thoughts[focus];

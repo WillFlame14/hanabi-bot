@@ -931,6 +931,27 @@ describe('bluff clues', () => {
 		// Alice's slot 1 should be finessed.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
+
+	it(`doesn't give bluffs through unpromptable cards`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r1', 'b1', 'r3', 'y3'],
+			['b1', 'g4', 'b4', 'b3'],
+			['g2', 'p3', 'r3', 'b5']
+		], {
+			level: { min: 11 },
+			starting: PLAYER.DONALD,
+			play_stacks: [0, 0, 0, 2, 0],
+			discarded: ['b4']
+		});
+
+		takeTurn(game, 'Donald clues blue to Cathy');		// could be b3 or b4
+
+		const { play_clues } = find_clues(game);
+
+		// Blue to Donald is not a valid bluff to get r1.
+		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.BLUE));
+	});
 });
 
 describe('guide principle', () => {

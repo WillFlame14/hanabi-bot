@@ -67,6 +67,10 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 	const { common, state, tableID } = game;
 
 	const play_clues = all_play_clues.filter(clue => {
+		// Unsafe play clue
+		if (!clue.result.safe)
+			return false;
+
 		// Locked reduces needed clue value
 		if (find_clue_value(clue.result) < (save_clue === undefined ? 0 : 1))
 			return false;
@@ -81,10 +85,6 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 				return true;
 			}
 		}
-
-		// Unsafe play clue
-		if (clue.result.trash.length === 0 && state.clue_tokens < (state.numPlayers > 2 ? 1 : 2))
-			return false;
 
 		const { playables } = clue.result;
 		const target_cards = playables.filter(({ playerIndex }) => playerIndex === target).map(p => p.card);
@@ -130,7 +130,7 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 	// const save_target = state.hands[target].chop();
 	// const playable_saves = play_clues.filter(({ playables }) => playables.some(c => c.matches(save_target.suitIndex, save_target.rank)));
 
-	const clue = Utils.maxOn(save_clue === undefined ? play_clues : play_clues.concat(save_clue), (clue) => find_clue_value(clue.result));
+	const clue = Utils.maxOn(play_clues, (clue) => find_clue_value(clue.result));
 
 	// Convert CLUE to ACTION
 	return Utils.clueToAction(clue, tableID);
@@ -180,13 +180,10 @@ export function early_game_clue(game, playerIndex) {
 	new_game.state.generated = false;
 	new_game.state.screamed_at = false;
 
-	const log_level = logger.level;
-	logger.setLevel(logger.LEVELS.NONE);
-
+	logger.off();
 	const options = { giver: playerIndex, hypothetical: true, no_fix: true, early_exits: expected_early_game_clue };
 	const { play_clues, save_clues, stall_clues } = find_clues(new_game, options);
-
-	logger.setLevel(log_level);
+	logger.on();
 
 	logger.debug('found clues', play_clues.flat().map(logClue), save_clues.filter(c => c !== undefined).map(logClue), state.playerNames[playerIndex]);
 

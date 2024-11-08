@@ -206,7 +206,7 @@ export function good_touch_elim(state, only_self = false) {
 		const card = this.thoughts[order];
 		const id = card.identity({ infer: true, symmetric: this.playerIndex === -1 });
 
-		if (!card.touched)
+		if (!card.touched || card.uncertain)
 			return;
 
 		if (id === undefined) {
@@ -217,13 +217,6 @@ export function good_touch_elim(state, only_self = false) {
 			}
 			return;
 		}
-
-		if ((state.deck[order].identity() !== undefined && !state.deck[order].matches(id)) ||		// Card is visible and doesn't match
-			(state.baseCount(id) + state.hands.flat().filter(o => state.deck[o].matches(id) && o !== order).length === cardCount(state.variant, id)) ||	// Card cannot match
-			(!card.matches(id) && card.newly_clued && !card.focused) ||			// Unknown newly clued cards off focus?
-			card.uncertain
-		)
-			return;
 
 		const id_hash = logCard(id);
 
@@ -304,10 +297,17 @@ export function good_touch_elim(state, only_self = false) {
 			const matches = hard_matches ?? soft_matches ?? new Set();
 			const matches_arr = Array.from(matches);
 
+			const bad_elim = matches_arr.length > 0 && matches_arr.every(order =>
+				(state.deck[order].identity() !== undefined && !state.deck[order].matches(identity)) ||		// Card is visible and doesn't match
+				(state.baseCount(identity) + state.hands.flat().filter(o => state.deck[o].matches(identity) && o !== order).length === cardCount(state.variant, identity)));	// Card cannot match
+
+			if (bad_elim)
+				continue;
+
 			for (const { order, playerIndex, cm } of elim_candidates) {
 				const old_card = this.thoughts[order];
 
-				if (matches.has(order) || old_card.inferred.length === 0 || !old_card.inferred.has(identity))
+				if ((!state.isBasicTrash(identity) && matches.has(order)) || old_card.inferred.length === 0 || !old_card.inferred.has(identity))
 					continue;
 
 				const visible_elim = state.hands.some(hand => hand.some(o => matches.has(o) && state.deck[o].matches(identity, { assume: true }))) &&
@@ -316,7 +316,7 @@ export function good_touch_elim(state, only_self = false) {
 				const original_clue = old_card.clues[0];
 
 				// Check if every match was from the clue giver (or vice versa)
-				const asymmetric_gt = !(cm && visible_elim) && matches.size > 0 &&
+				const asymmetric_gt = !state.isCritical(identity) && !(cm && visible_elim) && matches.size > 0 &&
 					(matches_arr.every(o => {
 						const match_orig_clue = this.thoughts[o].clues[0];
 						return match_orig_clue?.giver === playerIndex && match_orig_clue.turn > (original_clue?.turn ?? 0);
@@ -327,6 +327,11 @@ export function good_touch_elim(state, only_self = false) {
 					)));
 
 				if (asymmetric_gt)
+					continue;
+
+				const self_elim = this.playerIndex !== -1 && matches_arr.every(o =>
+					state.hands[playerIndex].includes(o) && this.thoughts[o].identity({ infer: true, symmetric: true}) === undefined);
+				if (self_elim)
 					continue;
 
 				// TODO: Temporary stop-gap so that Bob still plays into it. Bob should actually clue instead.
@@ -356,7 +361,6 @@ export function good_touch_elim(state, only_self = false) {
 
 				if (!cm) {
 					if (new_card.inferred.length === 0 && !new_card.reset) {
-						logger.info('resetting', order, 'after subtracting', id_hash, matches);
 						this.thoughts[order] = this.reset_card(order);
 						resets.add(order);
 					}
@@ -388,9 +392,19 @@ export function good_touch_elim(state, only_self = false) {
 
 			for (let i = 0; i < orders.size; i++) {
 				const card = this.thoughts[orders_arr[i]];
+				const orig_clue = card.clues[0];
 
 				for (let j = 0; j < orders.size; j++) {
 					const other_card = state.deck[orders_arr[j]];
+					const other_orig_clue = other_card.clues[0];
+
+					// Check if every match was from the clue giver (or vice versa)
+					const asymmetric_gt = !state.isCritical(other_card) &&
+						((other_orig_clue?.giver === holders[i] && other_orig_clue.turn > (orig_clue?.turn ?? 0)) ||
+							(orig_clue?.giver === holders[j] && this.thoughts[orders_arr[j]].possibilities.length > 1));
+
+					if (asymmetric_gt)
+						continue;
 
 					// Globally, a player can subtract identities others have, knowing others can see the identities they have.
 					if (i !== j && holders[i] !== holders[j] && card.inferred.has(other_card)) {

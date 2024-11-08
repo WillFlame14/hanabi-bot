@@ -211,7 +211,7 @@ describe('baton discards', () => {
 	it('performs a baton discard', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['b3', 'g4', 'y2', 'b2'],
+			['b3', 'g4', 'y2', 'g3'],
 			['r5', 'y4', 'r4', 'y3'],
 			['y3', 'r4', 'b4', 'b1']
 		], {

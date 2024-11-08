@@ -117,12 +117,13 @@ export function get_clue_interp(game, clue, giver, options) {
 	const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe2(game, hypo_game, giver_player, clue);
 	const new_clue = Object.assign(clue, { result: Object.assign(result, { safe, discard }) });
 
-	const { elim, new_touched, bad_touch, trash, avoidable_dupe, finesses, playables, chop_moved } = clue.result;
+	const { elim, new_touched, bad_touch, cm_dupe, trash, avoidable_dupe, finesses, playables, chop_moved } = clue.result;
 	let interp = /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.lastMove);
 
 	const result_log = {
 		clue: logClue(clue),
 		bad_touch,
+		cm_dupe,
 		trash,
 		avoidable_dupe,
 		interpret: interpret?.map(logCard),
@@ -132,7 +133,8 @@ export function get_clue_interp(game, clue, giver, options) {
 		playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
 		chop_moved: chop_moved.map(o => `${logCard(state.deck[o])} ${o}`),
 		discard: discard ? logCard(state.deck[discard]) : undefined,
-		interp
+		interp,
+		safe
 	};
 	logger.info('result,', JSON.stringify(result_log), find_clue_value(clue.result));
 
@@ -164,8 +166,14 @@ export function get_clue_interp(game, clue, giver, options) {
 				return;
 			}
 
-			if (!tempo || valuable)
-				return;
+			if (!tempo) {
+				logger.info('not tempo clue (fill-in?)');
+				interp = CLUE_INTERP.STALL_FILLIN;
+			}
+			else if (valuable) {
+				logger.info('valuable tempo clue!');
+				interp = CLUE_INTERP.PLAY;
+			}
 			break;
 		}
 		case CLUE_INTERP.PLAY:
@@ -257,6 +265,7 @@ export function find_clues(game, options = {}) {
 
 				case CLUE_INTERP.STALL_5:
 				case CLUE_INTERP.CM_TEMPO:
+				case CLUE_INTERP.STALL_TEMPO:
 				case CLUE_INTERP.STALL_FILLIN:
 				case CLUE_INTERP.STALL_LOCKED:
 				case CLUE_INTERP.STALL_8CLUES:
@@ -287,7 +296,7 @@ export function find_clues(game, options = {}) {
 
 			logger.debug('save clue', logClue(save_clue), 'has value', value);
 			return value;
-		}, 0);
+		}, -9);
 	}
 
 	const all_clues = [...save_clues.filter(c => c !== undefined), ...play_clues.flat(), ...stall_clues.flat()];

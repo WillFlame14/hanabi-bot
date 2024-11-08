@@ -116,6 +116,27 @@ describe('stalling', () => {
 		// However, 2 to Cathy is not a valid Hard Burn (Cathy will play as r2).
 		assert.ok(!stall_clues[3].some(clue => clue.target === PLAYER.CATHY && clue.type === CLUE.RANK && clue.value === 2));
 	});
+
+	it('gives a bad touch save clue in stalling situations', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'r4', 'b3', 'r2', 'p2'],
+			['y5', 'y4', 'r4', 'g2', 'r3']
+		], {
+			level: { min: 9 },
+			starting: PLAYER.BOB,
+			play_stacks: [2, 2, 2, 0, 0],
+			clue_tokens: 4
+		});
+
+		takeTurn(game, 'Bob clues 5 to Cathy');			// 5 Stall
+		takeTurn(game, 'Cathy discards r3', 'p4');
+
+		// Alice is in DDA, she should clue 2 to Bob even though it bad touches.
+		const action = await take_action(game);
+
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.BOB, value: 2});
+	});
 });
 
 describe('anxiety plays', () => {

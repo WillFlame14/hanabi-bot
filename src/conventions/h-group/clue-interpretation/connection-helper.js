@@ -163,8 +163,7 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 			common.hypo_stacks.some(stack => stack + 1 === clue.value) ||		// Looks like a play
 			inf_possibilities.some(fp => fp.save));										// Looks like a save
 
-		const log_level = logger.level;
-		logger.setLevel(logger.LEVELS.NONE);
+		logger.off();
 
 		try {
 			const connections = find_own_finesses(game, action, id, looksDirect, target, selfRanks);
@@ -185,7 +184,7 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 				throw error;
 			}
 		}
-		logger.setLevel(log_level);
+		logger.on();
 	}
 
 	// If there is at least one non-fake connection that doesn't start with self, the receiver won't try to start with self.

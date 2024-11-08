@@ -3,11 +3,11 @@ class Logger {
 		DEBUG: 0,
 		INFO: 1,
 		WARN: 2,
-		ERROR: 3,
-		NONE: 4
+		ERROR: 3
 	});
 	levelOverridden = false;
 	level = 1;
+	active = 0;
 	accumulateDepth = 0;
 
 	/** @type {{colour: string, args: string[]}[][]} */
@@ -39,6 +39,9 @@ class Logger {
 	}
 
 	log(colour, ...args) {
+		if (this.active > 0)
+			return;
+
 		if (this.accumulateDepth > 0) {
 			// Failsafe
 			if (this.buffer[this.accumulateDepth].length > 2000)
@@ -81,6 +84,14 @@ class Logger {
 	error(...args) {
 		if (this.level <= this.LEVELS.ERROR)
 			this.log('red', ...args);
+	}
+
+	on() {
+		this.active--;
+	}
+
+	off() {
+		this.active++;
 	}
 
 	/**

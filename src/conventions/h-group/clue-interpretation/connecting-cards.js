@@ -362,16 +362,26 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 	if (connecting)
 		return connecting.type === 'terminate' ? [] : [connecting];
 
-	// Do not consider unknown playables if the card is already gotten in the target's hand (?)
-	// TODO: Maybe some version of this if it's found in non-prompt position in anyone else's hand?
-	const target_copy = state.hands[target].find(o => {
-		const card = state.deck[o];
-		const { finessed } = common.thoughts[o];
-		return card.matches(identity) && ((card.clued && !card.newly_clued) || finessed) && !connected.includes(o) && !ignoreOrders.includes(o);
+	// Do not consider unknown playables if the card is clued in someone else's hand (but not in prompt position)
+	const non_prompt_copy = state.hands.some((hand, i) => {
+		if (i === giver)
+			return false;
+
+		const prompt = common.find_prompt(state, i, identity, connected, ignoreOrders);
+
+		if (prompt === undefined)
+			return false;
+
+		const match = hand.find(o => ((card = state.deck[o]) =>
+			card.matches(identity) && card.clued && !card.newly_clued && !connected.includes(o) && !ignoreOrders.includes(o))());
+
+		return match !== undefined && match !== prompt;
 	});
 
-	if (target_copy !== undefined)
-		logger.warn(`connecting ${logCard(identity)} gotten in target's hand, might look confusing`);
+	if (non_prompt_copy) {
+		logger.warn(`connecting ${logCard(identity)} in non-prompt position, not searching for unknown cards`);
+		return [];
+	}
 
 	const wrong_prompts = [];
 	const old_play_stacks = state.play_stacks;

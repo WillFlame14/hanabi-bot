@@ -51,7 +51,7 @@ function acceptable_clue(game, hypo_game, action, result) {
 				return `card ${logCard(state.deck[order])} ${order} lost all inferences and was reset`;
 
 			if (!card.inferred.has(visible_card))
-				return `card ${logCard(visible_card)} has inferences [${card.inferred.map(logCard).join(',')}]`;
+				return `card ${logCard(visible_card)} ${order} has inferences [${card.inferred.map(logCard).join(',')}]`;
 
 			continue;
 		}
@@ -177,7 +177,7 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const { focus } = determine_focus(game, hand, hypo_common, list, clue);
 
 	const { new_touched, fill } = elim_result(hypo_state, common, hypo_common, hand, list);
-	const { bad_touch, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target);
+	const { bad_touch, cm_dupe, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target);
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
 
@@ -186,6 +186,7 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 		elim: fill,
 		new_touched,
 		bad_touch,
+		cm_dupe,
 		trash,
 		avoidable_dupe,
 		finesses,

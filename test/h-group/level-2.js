@@ -713,6 +713,7 @@ describe('early game', () => {
 		const action = await take_action(game);
 
 		assert.ok(action.type === ACTION.RANK && action.value === 1 && action.target === PLAYER.CATHY ||
-			action.type === ACTION.COLOUR && action.value === COLOUR.YELLOW && action.target === PLAYER.CATHY);
+			action.type === ACTION.COLOUR && action.value === COLOUR.YELLOW && action.target === PLAYER.CATHY,
+		`Expected 1 or yellow to Cathy, got ${logPerformAction(action)}`);
 	});
 });

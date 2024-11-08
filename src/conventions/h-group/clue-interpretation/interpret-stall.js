@@ -118,12 +118,9 @@ function other_expected_clue(game, giver, focus, max_stall) {
 			continue;
 
 		for (const clue of state.allValidClues(target)) {
-			const log_level = logger.level;
-			logger.setLevel(logger.LEVELS.NONE);
-
+			logger.off();
 			const res = get_clue_interp(game, clue, giver, options);
-
-			logger.setLevel(log_level);
+			logger.on();
 
 			if (res === undefined)
 				continue;
