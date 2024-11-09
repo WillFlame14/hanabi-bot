@@ -113,7 +113,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 				for (let i = d + 1; i < arrangements.length; i++) {
 					game.state.deck = decks[i];
 
-					const new_game = game.simulate_action(Utils.performToAction(state, action, playerTurn, state.deck));
+					const new_game = advance_game(game, playerTurn, action);
 					const { win: deck_win } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards);
 
 					if (deck_win)

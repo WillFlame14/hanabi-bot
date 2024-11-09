@@ -1,6 +1,5 @@
 import { CLUE_INTERP, STALL_INDICES } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
-import { clue_safe2 } from './clue-safe.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue } from './determine-clue.js';
 import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
@@ -68,7 +67,10 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	if (hypo_game.players[target].thinksTrash(hypo_game.state, target).length === 0 && (new_chop_card ? cardValue(state, me, new_chop_card) : 4) > cardValue(state, me, old_chop_card))
 		return -10;
 
-	return safe ? find_clue_value(result) - 0.1*saved_trash.length : 0.01;
+	return !safe ? 0.01 :
+		find_clue_value(result)
+		+ 0.1*chop_moved.reduce((acc, o) => acc + cardValue(state, hypo_game.common, state.deck[o], o), 0)
+		- 0.5*saved_trash.length;
 }
 
 /**
@@ -113,12 +115,7 @@ export function get_clue_interp(game, clue, giver, options) {
 		return;
 
 	const interpret = hypo_game.common.thoughts[focus].inferred;
-
-	const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe2(game, hypo_game, giver_player, clue);
-	const new_clue = Object.assign(clue, { result: Object.assign(result, { safe, discard }) });
-
-	const { elim, new_touched, bad_touch, cm_dupe, trash, avoidable_dupe, finesses, playables, chop_moved } = clue.result;
-	let interp = /** @type {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} */ (hypo_game.lastMove);
+	const { elim, new_touched, bad_touch, cm_dupe, trash, avoidable_dupe, finesses, playables, chop_moved, discard, safe, interp } = result;
 
 	const result_log = {
 		clue: logClue(clue),
@@ -136,9 +133,9 @@ export function get_clue_interp(game, clue, giver, options) {
 		interp,
 		safe
 	};
-	logger.info('result,', JSON.stringify(result_log), find_clue_value(clue.result));
+	logger.info('result,', JSON.stringify(result_log), find_clue_value(result));
 
-	let save_clue;
+	let save_clue, new_interp;
 
 	switch (interp) {
 		case CLUE_INTERP.SAVE:
@@ -155,7 +152,7 @@ export function get_clue_interp(game, clue, giver, options) {
 			}
 
 			// if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0) {
-			save_clue = Object.assign(new_clue, { game: hypo_game, playable: playables.length > 0, cm: chop_moved, safe });
+			save_clue = Object.assign(clue, { game: hypo_game, result, playable: playables.length > 0, cm: chop_moved, safe });
 			break;
 
 		case CLUE_INTERP.CM_TEMPO: {
@@ -168,11 +165,11 @@ export function get_clue_interp(game, clue, giver, options) {
 
 			if (!tempo) {
 				logger.info('not tempo clue (fill-in?)');
-				interp = CLUE_INTERP.STALL_FILLIN;
+				new_interp = CLUE_INTERP.STALL_FILLIN;
 			}
 			else if (valuable) {
 				logger.info('valuable tempo clue!');
-				interp = CLUE_INTERP.PLAY;
+				new_interp = CLUE_INTERP.PLAY;
 			}
 			break;
 		}
@@ -189,14 +186,16 @@ export function get_clue_interp(game, clue, giver, options) {
 
 			if (playables.length === 0) {
 				logger.warn('play clue with no playables!');
-				interp = CLUE_INTERP.STALL_BURN;
+				new_interp = CLUE_INTERP.STALL_BURN;
 			}
 
 			// if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0)
 			break;
 	}
 
-	return { hypo_game, chop, safe, result, interp, new_clue, save_clue };
+	const new_result = { ...result, interp: new_interp };
+
+	return { hypo_game, chop, safe, result, interp: new_interp ?? interp, new_clue: { ...clue, result: new_result }, save_clue };
 }
 
 /**
@@ -279,7 +278,7 @@ export function find_clues(game, options = {}) {
 					break;
 			}
 
-			if (early_exits(game, clue, interp)) {
+			if (early_exits(game, new_clue, interp)) {
 				if (interp === CLUE_INTERP.SAVE)
 					save_clues[target] = saves.at(-1);
 

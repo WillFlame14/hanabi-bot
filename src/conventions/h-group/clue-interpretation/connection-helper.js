@@ -243,6 +243,8 @@ export function assign_connections(game, connections, giver, focused_card, infer
 			.map((stack_rank, index) =>({ suitIndex: index, rank: stack_rank + 1 }))
 			.filter(id => id.rank <= state.max_ranks[id.suitIndex]);
 
+		const is_unknown_playable = type === 'playable' && linked.length > 1 && focused_card.matches(inference, { assume: true });
+
 		const card = common.thoughts[order];
 		let new_inferred = card.inferred;
 
@@ -259,7 +261,7 @@ export function assign_connections(game, connections, giver, focused_card, infer
 			else if (card.uncertain)
 				new_inferred = new_inferred.union(card.finesse_ids.intersect(identities));
 
-			if (!(type === 'playable' && linked.length > 1 && focused_card.matches(inference)) && !card.superposition && !card.uncertain)
+			if (!is_unknown_playable && !card.superposition && !card.uncertain)
 				new_inferred = IdentitySet.create(state.variant.suits.length, identities);
 		}
 
@@ -327,7 +329,7 @@ export function assign_connections(game, connections, giver, focused_card, infer
 				hypo_stacks[suitIndex] = rank;
 			}
 		}
-		else if (type === 'playable' && linked.length > 1 && focused_card.matches(inference)) {
+		else if (is_unknown_playable) {
 			const existing_link_index = common.links.find(link => {
 				const { promised } = link;
 				const { suitIndex, rank } = link.identities[0];
@@ -340,7 +342,7 @@ export function assign_connections(game, connections, giver, focused_card, infer
 
 			if (existing_link_index === undefined) {
 				logger.info('adding promised link with identities', identities.map(logCard), 'and orders', linked);
-				common.links.push({ promised: true, identities, orders: linked });
+				common.links.push({ promised: true, identities, orders: linked, target: focused_card.order });
 			}
 		}
 	}
@@ -353,33 +355,29 @@ export function assign_connections(game, connections, giver, focused_card, infer
 export function connection_score(focus_possibility, playerIndex) {
 	const { connections } = focus_possibility;
 
-	const asymmetric_penalty = connections.filter(conn => conn.asymmetric).length * 100;
+	const asymmetric_penalty = connections.filter(conn => conn.asymmetric).length * 10;
 	const first_self = connections.findIndex(conn => conn.type !== 'known' && conn.type !== 'playable');
 
 	// Starts on someone else
 	if (connections[first_self]?.reacting !== playerIndex)
 		return asymmetric_penalty;
 
-	let blind_plays = 0, bluffs = 0, prompts = 0, self = 0;
+	let blind_plays = 0, prompts = 0;
 
 	for (let i = first_self; i < connections.length; i++) {
 		const conn = connections[i];
 
-		if (conn.reacting === playerIndex)
-			self++;
+		if (conn.reacting !== playerIndex)
+			continue;
 
-		if (conn.type === 'finesse') {
+		if (conn.type === 'finesse')
 			blind_plays++;
-
-			if (conn.bluff && !conn.self)
-				bluffs++;
-		}
 
 		if (conn.type === 'prompt')
 			prompts++;
 	}
 
-	return asymmetric_penalty + 10*blind_plays + 1*bluffs + 0.1*prompts + 0.01*self;
+	return asymmetric_penalty + blind_plays + 0.1*prompts;
 }
 
 /**

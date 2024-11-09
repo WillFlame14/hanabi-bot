@@ -12,6 +12,7 @@ import { logCard, logConnection } from '../../tools/log.js';
  * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').TurnAction} TurnAction
  * @typedef {import('../../types.js').Connection} Connection
+ * @typedef {import('../../types.js').IdentifyAction} IdentifyAction
  * @typedef {import('../../types.js').WaitingConnection} WaitingConnection
  * 
  * @typedef Demonstration
@@ -53,7 +54,7 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 	const { connections, conn_index, focus, inference } = waiting_connection;
 	const { type, reacting, order: old_order, identities } = connections[conn_index];
 	const old_card = state.deck[old_order];
-	logger.info(`waiting for connecting ${logCard(old_card)} ${type} ${old_order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}`);
+	logger.info(`waiting for connecting ${logCard(old_card)} ${type} ${old_order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}${waiting_connection.symmetric ? ' (symmetric)' : ''}`);
 
 	const impossible_conn = find_impossible_conn(game, connections.slice(conn_index));
 	if (impossible_conn !== undefined) {
@@ -185,6 +186,7 @@ export function update_turn(game, action) {
 	let min_drawn_index = state.actionList.length;
 
 	// Rewind any confirmed finesse connections we have now
+	/** @type {IdentifyAction[]} */
 	const rewind_actions = demonstrated.reduce((acc, { order }) => {
 		const playerIndex = state.hands.findIndex(hand => hand.includes(order));
 

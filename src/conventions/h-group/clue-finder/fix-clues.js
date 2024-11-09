@@ -194,7 +194,7 @@ function check_fixed(game, target, order, clue, fix_criteria) {
 	const result = {
 		fixed: fix_criteria(hypo_game, order, target),
 		trash: card_after_cluing.possible.every(p => isTrash(hypo_state, hypo_common, p, order, { infer: true })),
-		result: get_result(game, hypo_game, clue, state.ourPlayerIndex)
+		result: get_result(game, hypo_game, action)
 	};
 
 	logger.highlight('green', `------- EXITING HYPO ${logClue(clue)} -------`);

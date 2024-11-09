@@ -6,6 +6,7 @@ import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { cardTouched } from '../../variants.js';
+import { find_sarcastics } from '../shared/sarcastic.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
@@ -211,7 +212,7 @@ export function find_gd(game, target) {
 	while (finesse !== undefined && state.isPlayable(state.deck[finesse])) {
 		const match = playables.find(c => me.thoughts[c].matches(state.deck[finesse], { infer: true }));
 
-		if (match !== undefined)
+		if (match !== undefined && find_sarcastics(state, target, common, state.deck[finesse]).every(o => state.isPlayable(state.deck[o])))
 			return match;
 
 		connected.push(finesse);
@@ -376,14 +377,15 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				}
 			}
 
-			const hypo_game = game.simulate_clue({ type: 'clue', giver: state.ourPlayerIndex, list, clue: save, target });
+			const action = /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, list, clue: save, target });
+			const hypo_game = game.simulate_clue(action);
 			const { common: hypo_common, me: hypo_me, state: hypo_state } = hypo_game;
 
 			const all_play_clues = play_clues.flat();
 
 			// Save clue reveals a play
 			if (hypo_common.thinksPlayables(hypo_state, target).length > 0)
-				all_play_clues.push(Object.assign({}, save, { result: get_result(game, hypo_game, save, state.ourPlayerIndex )}));
+				all_play_clues.push(Object.assign({}, save, { result: get_result(game, hypo_game, action )}));
 
 			// Try to give a play clue involving them
 			const play_over_save = find_play_over_save(game, target, all_play_clues, save_clues[target]);
@@ -400,7 +402,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			if (state.clue_tokens === 1 && save.cm.length === 0 && bad_save)
 				continue;
 
-			if (hypo_me.chopValue(hypo_state, target, { afterClue: true }) >= 4 && !hypo_me.thinksLocked(hypo_state, target) && potential_cluers > 0 && state.clue_tokens > 1) {
+			if (save.result.interp !== CLUE_INTERP.CM_TRASH && hypo_me.chopValue(hypo_state, target, { afterClue: true }) >= 4 && !hypo_me.thinksLocked(hypo_state, target) && potential_cluers > 0 && state.clue_tokens > 1) {
 				const urgent = !early_expected_clue && potential_cluers === 1;
 
 				if (urgent)

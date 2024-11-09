@@ -25,12 +25,12 @@ export function elim_result(state, player, hypo_player, hand, list) {
 		const old_card = player.thoughts[order];
 		const hypo_card = hypo_player.thoughts[order];
 
-		if (hypo_card.clued && !hypo_card.called_to_discard && hypo_card.possible.length < old_card.possible.length && state.hasConsistentInferences(hypo_card)) {
+		if (hypo_card.clued && !hypo_card.called_to_discard && hypo_card.possible.length < old_card.possible.length) {
 			if (hypo_card.newly_clued && !hypo_card.finessed)
 				new_touched.push(hypo_card);
-			else if (list.includes(order))
+			else if (list.includes(order) && state.hasConsistentInferences(hypo_card))
 				fill++;
-			else
+			else if (state.hasConsistentInferences(hypo_card))
 				elim++;
 		}
 	}

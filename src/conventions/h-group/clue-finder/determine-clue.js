@@ -7,6 +7,7 @@ import { logCard, logClue } from '../../../tools/log.js';
 import { determine_focus } from '../hanabi-logic.js';
 import { variantRegexes } from '../../../variants.js';
 import { CLUE } from '../../../constants.js';
+import { clue_safe } from './clue-safe.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -142,7 +143,7 @@ export function evaluate_clue(game, action) {
 		return { hypo_game: undefined, result: undefined };
 	}
 
-	const result = get_result(game, hypo_game, clue, giver);
+	const result = get_result(game, hypo_game, action);
 	const failure_reason = acceptable_clue(game, hypo_game, action, result);
 
 	// Print out logs if the result is correct
@@ -160,14 +161,14 @@ export function evaluate_clue(game, action) {
  * Returns some statistics about the clue.
  * @param  {Game} game
  * @param  {Game} hypo_game
- * @param  {Clue} clue
- * @param  {number} giver
+ * @param  {ClueAction & {clue: Clue}} action
  * @param  {{list?: number[]}} provisions 	Provided 'list' variable if clued in our hand.
  * @returns {ClueResult}
  */
-export function get_result(game, hypo_game, clue, giver, provisions = {}) {
+export function get_result(game, hypo_game, action, provisions = {}) {
 	const { common, state } = game;
 	const { common: hypo_common, state: hypo_state } = hypo_game;
+	const { clue, giver, hypothetical } = action;
 
 	const { target } = clue;
 	const hand = state.hands[target];
@@ -181,6 +182,8 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
 
+	const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game,game.players[giver], clue);
+
 	return {
 		focus,
 		elim: fill,
@@ -192,7 +195,9 @@ export function get_result(game, hypo_game, clue, giver, provisions = {}) {
 		finesses,
 		playables,
 		chop_moved,
-		discard: undefined,
-		remainder: 0
+		safe,
+		discard,
+		remainder: 0,
+		interp: /** @type {CLUE_INTERP[keyof CLUE_INTERP]} */ (hypo_game.lastMove)
 	};
 }

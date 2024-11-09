@@ -214,6 +214,7 @@ export class Player {
 				const card = this.thoughts[o];
 
 				return card.matches(identity, { infer: true }) &&
+					state.deck[o].matches(identity, { assume: true }) &&
 					(state.deck[o].clued || (card.finessed && !card.uncertain)) &&
 					o !== order &&
 					!this.links.some(link => link.orders.includes(order));

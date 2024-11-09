@@ -518,7 +518,7 @@ export function refresh_links(state) {
 	const remove_indices = [];
 
 	for (let i = 0; i < this.links.length; i++) {
-		const { orders, identities, promised } = this.links[i];
+		const { orders, identities, promised, target } = this.links[i];
 
 		if (promised) {
 			if (identities.length > 1)
@@ -526,6 +526,9 @@ export function refresh_links(state) {
 
 			// At least one card matches, promise resolved
 			if (orders.some(o => this.thoughts[o].identity()?.matches(identities[0]))) {
+				remove_indices.push(i);
+			}
+			else if (!this.thoughts[target].possible.some(i => identities.some(j => i.suitIndex === j.suitIndex))) {
 				remove_indices.push(i);
 			}
 			else {

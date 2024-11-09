@@ -23,7 +23,7 @@ import { logCard } from '../../tools/log.js';
  */
 export function find_sarcastics(state, playerIndex, player, identity) {
 	// First, try to see if there's already a card that is known/inferred to be that identity
-	const known_sarcastic = state.hands[playerIndex].filter(o => player.thoughts[o].matches(identity, { infer: true }));
+	const known_sarcastic = state.hands[playerIndex].filter(o => player.thoughts[o].matches(identity, { infer: true, symmetric: true }));
 	if (known_sarcastic.length > 0)
 		return known_sarcastic;
 

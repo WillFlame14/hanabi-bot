@@ -9,6 +9,7 @@ import { take_action } from './h-group/take-action.js';
 import { update_turn } from './h-group/update-turn.js';
 
 import * as Utils from '../tools/util.js';
+import { CLUE_INTERP } from './h-group/h-constants.js';
 
 /**
  * @typedef {import('../variants.js').Variant} Variant
@@ -97,7 +98,7 @@ export default class HGroup extends Game {
 	}
 
 	get lastMove() {
-		return this.moveHistory.at(-1).move;
+		return this.moveHistory.at(-1)?.move ?? CLUE_INTERP.NONE;
 	}
 
 	createBlank() {

@@ -17,6 +17,7 @@ import { logCard, logPerformAction } from '../tools/log.js';
  * @typedef {import('../types.js').DiscardAction} DiscardAction
  * @typedef {import('../types.js').TurnAction} TurnAction
  * @typedef {import('../types.js').PlayAction} PlayAction
+ * @typedef {import('../types.js').IdentifyAction} IdentifyAction
  * @typedef {import('../types.js').PerformAction} PerformAction
  */
 
@@ -310,16 +311,31 @@ export class Game {
 			injected = true;
 		}
 
+		const remaining_id_actions = /** @type {IdentifyAction[]} */ ([]);
+
 		// Rewrite and save as a rewind action
-		for (const action of rewind_actions)
-			newGame.handle_action(action);
+		for (const action of rewind_actions) {
+			if (action.type === 'identify' && !newGame.state.hands[action.playerIndex].includes(action.order)) {
+				remaining_id_actions.push(action);
+			}
+			else {
+				newGame.handle_action(action);
+
+				if (action.type === 'draw' && action.order === remaining_id_actions[0]?.order)
+					newGame.handle_action(remaining_id_actions.shift());
+			}
+		}
 
 		newGame.handle_action(pivotal_action);
 
 		// Redo all the following actions
 		const future = actionList.slice(action_index + 1, -1);
-		for (const action of future)
-			catchup_action(action);
+		for (const action of future) {
+			newGame.handle_action(action);
+
+			if (action.type === 'draw' && action.order === remaining_id_actions[0]?.order)
+				newGame.handle_action(remaining_id_actions.shift());
+		}
 
 		logger.highlight('green', '------- REWIND COMPLETE -------');
 

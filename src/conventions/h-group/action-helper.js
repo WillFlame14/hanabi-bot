@@ -24,12 +24,13 @@ import { CLUE } from '../../constants.js';
  * @param {ClueResult} clue_result
  */
 export function find_clue_value(clue_result) {
-	const { finesses, new_touched, playables, bad_touch, cm_dupe, avoidable_dupe, elim, remainder } = clue_result;
+	const { finesses, new_touched, playables, bad_touch, trash, cm_dupe, avoidable_dupe, elim, remainder } = clue_result;
+	const good_new_touched = new_touched.filter(c => !trash.includes(c.order));
 
 	// Touching 1 card is much better than touching none, but touching more cards is only marginally better
-	const new_touched_value = (new_touched.length >= 1) ? 0.51 + 0.1 * (new_touched.length - 1) : 0;
+	const new_touched_value = (good_new_touched.length >= 1) ? 0.51 + 0.1 * (good_new_touched.length - 1) : 0;
 
-	const precision_value = (new_touched.reduce((acc, c) => acc + c.possible.length, 0) - new_touched.reduce((acc, c) => acc + c.inferred.length, 0)) * 0.01;
+	const precision_value = (good_new_touched.reduce((acc, c) => acc + c.possible.length, 0) - good_new_touched.reduce((acc, c) => acc + c.inferred.length, 0)) * 0.01;
 	return 0.5*(finesses.length + playables.length) + new_touched_value + 0.01*elim - 1*bad_touch.length - 0.1*cm_dupe.length - 0.1*avoidable_dupe - 0.1*(remainder**2) + precision_value;
 }
 
@@ -219,7 +220,7 @@ export function find_positional_discard(game, discarder, expected_discard) {
 	const { state, me } = game;
 	const trash = game.players[discarder].thinksTrash(state, discarder);
 
-	if (!state.inEndgame() || state.clue_tokens > 1)
+	if (!state.inEndgame())
 		return;
 
 	/**

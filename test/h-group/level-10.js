@@ -324,4 +324,43 @@ describe('composition finesse', () => {
 		// ALice cannot clue red to Bob, since Bob cannot perform a Certain Discard.
 		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.RED));
 	});
+
+	it('resolves a complex certain discard correctly', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r4', 'b4', 'y4', 'g4'],
+			['g2', 'r4', 'y3', 'b5'],
+			['g1', 'g3', 'r2', 'b1']
+		], {
+			level: { min: 10 },
+			play_stacks: [4, 0, 0, 0, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 1 to Alice (slots 2,4)');
+		takeTurn(game, 'Alice clues green to Bob');				// Quadruple finesse
+		takeTurn(game, 'Bob clues 5 to Cathy');
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 3)');		// 5 Save
+
+		takeTurn(game, 'Donald discards g1', 'r3');				// Donald passes g1 to us
+		takeTurn(game, 'Alice plays p1 (slot 2)');
+
+		// The finesse should still be on.
+		assert.ok(game.common.waiting_connections.some(wc => wc.inference.suitIndex === COLOUR.GREEN && wc.inference.rank === 4));
+
+		takeTurn(game, 'Bob clues blue to Donald');
+		takeTurn(game, 'Cathy discards y3', 'p5');
+		takeTurn(game, 'Donald clues 5 to Alice (slot 3)');		// The 5 is actually g5
+		takeTurn(game, 'Alice plays g1 (slot 4)');
+
+		// The finesse should still be on.
+		assert.ok(game.common.waiting_connections.some(wc => wc.inference.suitIndex === COLOUR.GREEN && wc.inference.rank === 4));
+
+		takeTurn(game, 'Bob discards y4', 'y2');
+		takeTurn(game, 'Cathy plays g2', 'p3');
+		takeTurn(game, 'Donald plays g3', 'p1');
+
+		// We should have [r5,g5].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r5', 'g5']);
+	});
 });

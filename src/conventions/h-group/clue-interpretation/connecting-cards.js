@@ -31,15 +31,13 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 	const { common, state } = game;
 
 	/** @param {number} order */
-	const possibly_fake = (order) => {
-		return giver === state.ourPlayerIndex && common.waiting_connections.some(wc => {
-			const connIndex = wc.connections.findIndex((conn, index) => index >= wc.conn_index && conn.order === order);
+	const possibly_fake = (order) => giver === state.ourPlayerIndex && common.waiting_connections.some(wc => {
+		const connIndex = wc.connections.findIndex((conn, index) => index >= wc.conn_index && conn.order === order);
 
-			// Note that if we are the target, we can't verify if finesse/prompt connections are real
-			return connIndex !== -1 && wc.target === state.ourPlayerIndex &&
-				wc.connections.some((conn, i) => i >= wc.conn_index && i <= connIndex && (conn.type === 'finesse' || conn.type === 'prompt'));
-		});
-	};
+		// Note that if we are the target, we can't verify if finesse/prompt connections are real
+		return connIndex !== -1 && wc.target === state.ourPlayerIndex &&
+			wc.connections.some((conn, i) => i >= wc.conn_index && i <= connIndex && (conn.type === 'finesse' || conn.type === 'prompt'));
+	});
 
 	// Globally known
 	for (let i = 0; i < state.numPlayers; i++) {
@@ -74,6 +72,10 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 
 		if (globally_known)
 			return { type: 'known', reacting: playerIndex, order: globally_known, identities: [identity] };
+
+		// Don't use our own links
+		if (giver === state.ourPlayerIndex && playerIndex === state.ourPlayerIndex)
+			continue;
 
 		/** @type {Link} */
 		let known_link;
@@ -151,9 +153,10 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
  * @param {Identity} identity
  * @param {number[]} [connected] 	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
+ * @param {boolean} [assumeTruth]
  * @returns {Connection | undefined}
  */
-function find_unknown_connecting(game, action, reacting, identity, connected = [], ignoreOrders = []) {
+function find_unknown_connecting(game, action, reacting, identity, connected = [], ignoreOrders = [], assumeTruth = false) {
 	const { common, state, me } = game;
 	const { giver, target } = action;
 
@@ -207,7 +210,7 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 
 		// Finessed card is delayed playable
 		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse_card.suitIndex] + 1 === finesse_card.rank) {
-			const bluff = valid_bluff(game, action, finesse_card, reacting, connected);
+			const bluff = !assumeTruth && valid_bluff(game, action, finesse_card, reacting, connected);
 
 			if (giver === state.ourPlayerIndex) {
 				if (bluff) {
@@ -343,7 +346,7 @@ export function resolve_bluff(game, connections, giver) {
  * @param {Set<number>} thinks_stall Whether the clue appears to be a stall to these players.
  * @param {number[]} [connected]	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
- * @param {{knownOnly?: number[]}} options
+ * @param {{knownOnly?: number[], assumeTruth?: boolean}} options
  * @returns {Connection[]}
  */
 export function find_connecting(game, action, identity, looksDirect, thinks_stall, connected = [], ignoreOrders = [], options = {}) {
@@ -392,7 +395,7 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 	for (const playerIndex of conn_player_order) {
 		// Clue receiver won't find known prompts/finesses in their hand unless it doesn't look direct
 		// Also disallow prompting/finessing a player when they may need to prove a finesse to us
-		if (playerIndex === giver || options.knownOnly?.includes(playerIndex) || (playerIndex === target && looksDirect) ||
+		if (playerIndex === giver || options.knownOnly?.includes(playerIndex) || (giver === state.ourPlayerIndex && playerIndex === target && looksDirect) ||
 			thinks_stall.has(playerIndex) ||
 			(giver === state.ourPlayerIndex && common.waiting_connections.some(wc =>
 				wc.target === state.ourPlayerIndex && wc.connections.some((conn, index) =>
@@ -403,7 +406,7 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 		const already_connected = connected.slice();
 		state.play_stacks = old_play_stacks.slice();
 
-		let connecting = find_unknown_connecting(game, action, playerIndex, identity, already_connected, ignoreOrders);
+		let connecting = find_unknown_connecting(game, action, playerIndex, identity, already_connected, ignoreOrders, options.assumeTruth);
 
 		if (connecting?.type === 'terminate') {
 			wrong_prompts.push(connecting);
@@ -441,6 +444,9 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 		// The final card must not be hidden
 		if (connections.length > 0 && !connections.at(-1).hidden) {
 			state.play_stacks = old_play_stacks.slice();
+			if (playerIndex === target && looksDirect)
+				logger.warn('looks direct to us, trusting that we have missing cards');
+
 			return connections;
 		}
 	}

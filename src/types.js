@@ -35,11 +35,12 @@
  * @property {number[]} trash
  * @property {number} avoidable_dupe
  * @property {number} remainder
- * @property {number | undefined} discard
+ * @property {number} discard
  * @property {{playerIndex: number, card: Card}[]} playables
  * @property {{playerIndex: number, card: Card}[]} finesses
  * @property {number[]} chop_moved
- * @property {boolean} [safe]
+ * @property {CLUE_INTERP[keyof CLUE_INTERP]} interp
+ * @property {boolean} safe
  */
 /**
  * @typedef StatusAction
@@ -135,6 +136,7 @@
  * @property {number[]} orders
  * @property {Identity[]} identities
  * @property {boolean} promised
+ * @property {number} [target]	Only on promised links.
  */
 
 export {};

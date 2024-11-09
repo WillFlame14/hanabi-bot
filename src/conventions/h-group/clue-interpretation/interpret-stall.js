@@ -58,7 +58,7 @@ function isStall(game, action, giver, severity, prev_game) {
 		return CLUE_INTERP.STALL_5;
 	}
 
-	const clue_result = get_result(prev_game, game, Object.assign({}, action.clue, { target }), giver, { list });
+	const clue_result = get_result(prev_game, game, Object.assign({}, action, { clue: Object.assign({}, clue, { target }), hypothetical: true }), { list });
 	const { new_touched, playables, elim } = clue_result;
 
 	if (severity >= 2) {

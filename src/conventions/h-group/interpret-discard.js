@@ -1,5 +1,5 @@
 import { LEVEL } from './h-constants.js';
-import { cardValue, isTrash } from '../../basics/hanabi-util.js';
+import { isTrash } from '../../basics/hanabi-util.js';
 import { team_elim, undo_hypo_stacks } from '../../basics/helper.js';
 import { interpret_sarcastic } from '../shared/sarcastic.js';
 import * as Basics from '../../basics.js';
@@ -76,12 +76,23 @@ export function interpret_discard(game, action) {
 				transfers = interpret_gd(game, action, common.find_finesse.bind(common));
 
 			// Sarcastic/GD, rewrite connection onto this person
-			if (transfers.length === 1) {
-				logger.info('rewriting connection to use sarcastic on order', transfers[0]);
-				Object.assign(connections[dc_conn_index], {
-					reacting: state.hands.findIndex(hand => hand.includes(transfers[0])),
-					card: transfers[0]
-				});
+			if (transfers.length > 0) {
+				logger.info('rewriting connection to transfer to', transfers);
+
+				if (transfers.length === 1) {
+					Object.assign(connections[dc_conn_index], {
+						reacting: state.hands.findIndex(hand => hand.includes(transfers[0])),
+						order: transfers[0]
+					});
+				}
+				else {
+					Object.assign(connections[dc_conn_index], {
+						type: 'playable',
+						reacting: state.hands.findIndex(hand => hand.includes(transfers[0])),
+						order: transfers.find(o => state.deck[o].matches(identity, { assume: true })),
+						linked: transfers
+					});
+				}
 				to_remove.pop();
 				continue;
 			}
@@ -247,6 +258,8 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 	if (not_intended)
 		return [];
 
+	logger.debug('expected discard', expected_discard);
+
 	const num_plays = (action.failed && order !== expected_discard) ? 2 : 1;
 
 	const playable_possibilities = game.players[playerIndex].hypo_stacks
@@ -324,7 +337,7 @@ function check_sdcm(game, action, before_trash, old_chop) {
 		return scream ? 'scream' : 'shout';
 
 	if (common.thinksLoaded(state, nextPlayerIndex, {assume: true})) {
-		logger.warn(`${state.playerNames[playerIndex]} discarded with a playable/kt at 0 clues but next players was safe! (echo?)`);
+		logger.warn(`${state.playerNames[playerIndex]} discarded with a playable/kt at 0 clues but next player was safe! (echo?)`);
 		return 'generation';
 	}
 
@@ -333,14 +346,8 @@ function check_sdcm(game, action, before_trash, old_chop) {
 	if (next2Chop === undefined)
 		return 'scream';
 
-	// We can see that a scream is impossible
-	if (nextPlayerIndex2 === state.ourPlayerIndex && common.chopValue(state, nextPlayerIndex) < 4)
-		return 'generation';
-
-	const next2ChopValue = cardValue(state, game.players[playerIndex], state.deck[next2Chop], next2Chop);
-
-	if (next2ChopValue < 4)
+	if (nextPlayerIndex2 === state.ourPlayerIndex)
 		return scream ? 'scream' : 'shout';
 
-	return 'generation';
+	return (common.chopValue(state, nextPlayerIndex2) < 4) ? (scream ? 'scream' : 'shout') : 'generation';
 }

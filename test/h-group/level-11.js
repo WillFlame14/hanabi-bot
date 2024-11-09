@@ -696,16 +696,40 @@ describe('bluff clues', () => {
 			['xx', 'xx', 'xx', 'xx'],
 			['g3', 'p4', 'r2', 'y1'],
 			['g4', 'p1', 'b4', 'p3'],
-			['b1', 'y2', 'g5', 'y3']
+			['b4', 'y2', 'g5', 'y3']
 		], {
 			level: { min: 11 },
-			starting: PLAYER.CATHY,
+			starting: PLAYER.CATHY
 		});
 		takeTurn(game, 'Cathy clues 3 to Donald');
 
 		// Alice should be finessed for y1.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['y1']);
+	});
+
+	it(`understands a layered finesse if the target is too far away to be a bluff`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y2', 'p4', 'r2', 'y1'],
+			['g5', 'b1', 'b4', 'y3'],
+			['g4', 'p1', 'g3', 'p3']
+		], {
+			level: { min: 11 },
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 3 to Cathy');
+
+		// Alice should be finessed for y1.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['y1']);
+
+		takeTurn(game, 'Alice plays r1 (slot 1)');
+
+		// Alice should write a layered finesse.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['y1']);
 	});
 
 	it('understands a bluff on top of unknown plays that cannot match', () => {
@@ -951,6 +975,26 @@ describe('bluff clues', () => {
 
 		// Blue to Donald is not a valid bluff to get r1.
 		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.BLUE));
+	});
+
+	it(`doesn't bluff symmetrically finessed cards`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r2', 'y3', 'p4', 'y4'],
+			['p3', 'r4', 'b2', 'b3'],
+			['r3', 'y2', 'r1', 'b5']
+		], {
+			level: { min: 11 },
+			play_stacks: [1, 0, 0, 2, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 3 to Cathy');	// could be r3 (finessing Bob) or b3 (direct)
+
+		const { play_clues } = find_clues(game);
+
+		// We should not give yellow to Donald as a bluff.
+		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.YELLOW));
 	});
 });
 

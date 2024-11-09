@@ -237,8 +237,9 @@ describe('counting playables', () => {
 
 		const clue = { type: CLUE.RANK, target: PLAYER.BOB, value: 3 };
 		const list = game.state.clueTouched(game.state.hands[PLAYER.BOB], clue);
-		const hypo_state = game.simulate_clue({ type: 'clue', clue, list, giver: PLAYER.ALICE, target: PLAYER.BOB });
-		const { playables, trash } = get_result(game, hypo_state, clue, PLAYER.ALICE);
+		const action = /** @type {const} */ ({ type: 'clue', clue, list, giver: PLAYER.ALICE, target: PLAYER.BOB });
+		const hypo_state = game.simulate_clue(action);
+		const { playables, trash } = get_result(game, hypo_state, action);
 
 		// There should be 1 playable and 1 trash.
 		assert.equal(playables.length, 1);
@@ -260,8 +261,9 @@ describe('counting playables', () => {
 
 		const clue = { type: CLUE.COLOUR, target: PLAYER.CATHY, value: COLOUR.GREEN };
 		const list = state.clueTouched(state.hands[PLAYER.CATHY], clue);
-		const hypo_state = game.simulate_clue({ type: 'clue', clue, list, giver: PLAYER.ALICE, target: PLAYER.CATHY });
-		const { playables } = get_result(game, hypo_state, clue, PLAYER.ALICE);
+		const action = /** @type {const} */({ type: 'clue', clue, list, giver: PLAYER.ALICE, target: PLAYER.CATHY });
+		const hypo_state = game.simulate_clue(action);
+		const { playables } = get_result(game, hypo_state, action);
 
 		// g2 should be counted as newly playable.
 		assert.equal(playables.length, 1);

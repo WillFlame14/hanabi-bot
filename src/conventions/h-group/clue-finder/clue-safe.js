@@ -175,30 +175,6 @@ export function clue_safe(game, player, clue) {
 }
 
 /**
- * Determines if the clue is safe to give (i.e. doesn't put a critical on chop with nothing to do)
- * @param {Game} game
- * @param {Game} hypo_game
- * @param {Player} player
- * @param {Clue} clue
- * @returns {{ safe: boolean, discard: number | undefined }}
- */
-export function clue_safe2(game, hypo_game, player, clue) {
-	const { state } = game;
-	const { target } = clue;
-
-	const list = state.clueTouched(state.hands[target], clue);
-	const clue_action = /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue: Object.assign({}, clue, { game: null }) });
-	hypo_game.catchup = true;
-
-	// Update waiting connections
-	hypo_game.last_actions[state.ourPlayerIndex] = clue_action;
-	hypo_game.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: state.nextPlayerIndex(state.ourPlayerIndex) });
-	hypo_game.catchup = false;
-
-	return safe_situation(hypo_game, hypo_game.players[player.playerIndex]);
-}
-
-/**
  * Determines whether a situation is safe.
  * 
  * Impure! (modifies game)

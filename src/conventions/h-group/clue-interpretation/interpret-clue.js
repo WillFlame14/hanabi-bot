@@ -168,7 +168,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 		}
 
 		const simplest_symmetric_connections = occams_razor(game, symmetric_fps.filter(fp => !fp.fake).concat(inf_possibilities), target, focus);
-		if (!simplest_symmetric_connections.some(fp => focused_card.matches(fp))) {
+		if (giver === state.ourPlayerIndex && !simplest_symmetric_connections.some(fp => focused_card.matches(fp))) {
 			logger.warn(`invalid clue, simplest symmetric connections are ${simplest_symmetric_connections.map(logCard).join()}`);
 			game.interpretMove(CLUE_INTERP.NONE);
 			return;
@@ -607,22 +607,6 @@ export function interpret_clue(game, action) {
 					logger.warn(error.message);
 				else
 					throw error;
-			}
-
-			// Try to force finesse assuming the target knows what the clue target is
-			if (all_connections.length === 0) {
-				logger.warn('attempting to force finesse using asymmetric knowledge');
-				try {
-					const connections = find_own_finesses(game, action, focused_card, false);
-					logger.info('found connections:', logConnections(connections, focused_card));
-					all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections), interp: CLUE_INTERP.PLAY });
-				}
-				catch (error) {
-					if (error instanceof IllegalInterpretation)
-						logger.warn(error.message);
-					else
-						throw error;
-				}
 			}
 		}
 

@@ -294,8 +294,7 @@ describe('self-finesse', () => {
 		], {
 			level: { min: 2 },
 			starting: PLAYER.CATHY,
-			play_stacks: [2, 0, 0, 4, 0],
-			discarded: ['r3']
+			play_stacks: [2, 0, 0, 4, 0]
 		});
 
 		takeTurn(game, 'Cathy clues 5 to Bob');		// 5 Stall
@@ -715,5 +714,38 @@ describe('early game', () => {
 		assert.ok(action.type === ACTION.RANK && action.value === 1 && action.target === PLAYER.CATHY ||
 			action.type === ACTION.COLOUR && action.value === COLOUR.YELLOW && action.target === PLAYER.CATHY,
 		`Expected 1 or yellow to Cathy, got ${logPerformAction(action)}`);
+	});
+
+	it('discards rather than giving a bad touch play clue in the early game', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r5', 'y4', 'p4', 'b3', 'g3'],
+			['b4', 'r2', 'y1', 'b3', 'y1']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Bob');
+
+		const action = await take_action(game);
+		assert.ok(action.type === ACTION.DISCARD);
+	});
+
+	it('gives a bad touch save clue in the early game', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r5', 'y4', 'p4', 'p2', 'g3'],
+			['b4', 'r2', 'y1', 'b3', 'y3']
+		], {
+			level: { min: 2 },
+			play_stacks: [0, 2, 0, 4, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Bob');
+
+		const action = await take_action(game);
+		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 	});
 });

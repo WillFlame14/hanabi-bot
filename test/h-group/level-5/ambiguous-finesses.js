@@ -119,8 +119,9 @@ describe('ambiguous finesse', () => {
 
 		const clue = { type: CLUE.COLOUR, target: PLAYER.DONALD, value: COLOUR.GREEN };
 		const list = game.state.clueTouched(game.state.hands[PLAYER.DONALD], clue);
-		const hypo_state = game.simulate_clue({ type: 'clue', giver: PLAYER.ALICE, target: PLAYER.DONALD, list, clue });
-		const { playables } = get_result(game, hypo_state, clue, PLAYER.ALICE);
+		const action = /** @type {const} */({ type: 'clue', giver: PLAYER.ALICE, target: PLAYER.DONALD, list, clue });
+		const hypo_state = game.simulate_clue(action);
+		const { playables } = get_result(game, hypo_state, action);
 
 		// There should be 2 playables: g1 (Bob) and g2 (Donald).
 		assert.equal(playables.length, 2);

@@ -3,8 +3,9 @@ import { ACTION_PRIORITY, LEVEL } from './h-constants.js';
 import { select_play_clue, determine_playable_card, order_1s, find_clue_value, find_positional_discard } from './action-helper.js';
 import { find_gd, find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
+import { find_sarcastics } from '../shared/sarcastic.js';
 import { inBetween, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
-import { cardValue, isTrash, visibleFind } from '../../basics/hanabi-util.js';
+import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue, logHand, logPerformAction } from '../../tools/log.js';
@@ -21,6 +22,7 @@ import { produce } from '../../StateProxy.js';
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').Clue} Clue
+ * @typedef {import('../../types.js').SaveClue} SaveClue
  * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').PerformAction} PerformAction
  */
@@ -104,13 +106,17 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 /**
  * @param {Clue[][]} stall_clues
  * @param {number} severity
- * @param {Clue} [best_play_clue]
+ * @param {Clue | SaveClue} [best_play_clue]
  * @returns {Clue | undefined}
  */
 function best_stall_clue(stall_clues, severity, best_play_clue) {
 	// 5 Stall
-	if (severity === 1 || stall_clues[0].length > 0)
-		return stall_clues[0][0];
+	if (severity === 1 || stall_clues[0].length > 0) {
+		if (stall_clues[0].length > 0)
+			return stall_clues[0][0];
+
+		return best_play_clue;
+	}
 
 	// Tempo clue stall
 	if (stall_clues[1].length > 0)
@@ -342,7 +348,17 @@ export async function take_action(game) {
 		}
 	}
 
+	/** @type {(clue: Clue, playerIndex: number) => boolean} clue */
+	const not_selfish = (clue, playerIndex) => {
+		const { suitIndex } = state.deck[clue.result.focus];
+
+		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
+			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
+				!state.hands[playerIndex].some(o => me.thoughts[o].matches({ suitIndex, rank }, { infer: true })));
+	};
+
 	let best_play_clue, best_clue_value;
+
 	if (state.clue_tokens > 0) {
 		const consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined && clue.safe));
 		const chop = me.chop(state.ourHand);
@@ -369,7 +385,7 @@ export async function take_action(game) {
 				const better_giver = (player) => {
 					const { playerIndex } = player;
 
-					if (player.thinksLoaded(state, playerIndex, { assume: false }))
+					if (player.thinksLoaded(state, playerIndex, { assume: false }) || !not_selfish(clue, playerIndex))
 						return false;
 
 					const otherChop = player.chop(state.hands[playerIndex]);
@@ -403,7 +419,7 @@ export async function take_action(game) {
 	}
 
 	// Attempt to solve endgame
-	if (!is_finessed && state.inEndgame() && state.cardsLeft > 0) {
+	if (!is_finessed && state.inEndgame()) {
 		logger.highlight('purple', 'Attempting to solve endgame...');
 
 		const workerData = { game: Utils.toJSON(game), playerTurn: state.ourPlayerIndex, conv: 'HGroup', logLevel: logger.level };
@@ -441,15 +457,6 @@ export async function take_action(game) {
 		}
 	}
 
-	/** @param {Clue} clue */
-	const not_selfish = (clue) => {
-		const { suitIndex } = state.deck[clue.result.focus];
-
-		return common.hypo_stacks[suitIndex] === state.play_stacks[suitIndex] ||
-			Utils.range(state.play_stacks[suitIndex] + 1, common.hypo_stacks[suitIndex] + 1).every(rank =>
-				!state.ourHand.some(o => me.thoughts[o].matches({ suitIndex, rank }, { infer: true })));
-	};
-
 	// Consider finesses while finessed if we are only waited on to play one card,
 	// it's not a selfish finesse, doesn't require more than one play from our own hand,
 	// and we're not in the end-game.
@@ -458,7 +465,7 @@ export async function take_action(game) {
 	const waiting_out_of_order = waiting_self_connections.some(({ connections, conn_index, target }) =>
 		connections.length >= conn_index + 2 &&
 		!inBetween(state.numPlayers, connections[conn_index + 1].reacting, state.ourPlayerIndex, connections[conn_index + 2]?.reacting ?? target));
-	const consider_finesse = !is_finessed || best_play_clue && waiting_cards < 3 && !waiting_out_of_order && not_selfish(best_play_clue) && !state.inEndgame();
+	const consider_finesse = !is_finessed || best_play_clue && waiting_cards < 3 && !waiting_out_of_order && not_selfish(best_play_clue, state.ourPlayerIndex) && !state.inEndgame();
 
 	// Get a high value play clue involving next player (otherwise, next player can give it)
 	if (consider_finesse && best_play_clue?.result.finesses.length > 0 && (best_play_clue.target == nextPlayerIndex || best_play_clue.result.finesses.some(f => f.playerIndex === nextPlayerIndex)))
@@ -477,7 +484,7 @@ export async function take_action(game) {
 			const identity = { suitIndex, rank: state.play_stacks[suitIndex] + 1 };
 			const slot1 = state.ourHand[0];
 
-			if (visibleFind(state, me, identity, { infer: true }).length === 0 && me.thoughts[slot1].possible.has(identity)) {
+			if (me.thoughts[slot1].possible.has(identity)) {
 				logger.highlight('yellow', 'trying to play slot 1 as', logCard(identity));
 				return { tableID, type: ACTION.PLAY, target: slot1 };
 			}
@@ -545,7 +552,8 @@ export async function take_action(game) {
 				const id = me.thoughts[o].identity({ infer: true });
 				const finesse = common.find_finesse(state, i);
 
-				return id !== undefined && me.thoughts[o].clued && !state.isPlayable(id) && !state.isBasicTrash(id) && state.deck[finesse]?.matches(id);
+				return id !== undefined && me.thoughts[o].clued && !state.isPlayable(id) && !state.isBasicTrash(id) && state.deck[finesse]?.matches(id) &&
+					find_sarcastics(state, i, common, state.deck[finesse]).length === 0;
 			});
 
 			if (baton_target !== undefined) {
@@ -600,7 +608,7 @@ export async function take_action(game) {
 	const play_clue_2p = best_play_clue ?? Utils.maxOn(stall_clues[1], clue => find_clue_value(clue.result));
 
 	// Play clue in 2 players while partner is not loaded and not selfish
-	if (state.numPlayers === 2 && state.clue_tokens > 0 && play_clue_2p && !me.thinksLoaded(state, nextPlayerIndex) && not_selfish(play_clue_2p))
+	if (state.numPlayers === 2 && state.clue_tokens > 0 && play_clue_2p && !me.thinksLoaded(state, nextPlayerIndex) && not_selfish(play_clue_2p, state.ourPlayerIndex))
 		return Utils.clueToAction(play_clue_2p, tableID);
 
 	// Playable card with any priority
@@ -652,7 +660,11 @@ export async function take_action(game) {
 
 	// Stalling situations
 	if (state.clue_tokens > 0 && actual_severity > 0 && common_severity > 0) {
-		const validStall = best_stall_clue(stall_clues, common_severity, best_play_clue) ?? best_play_clue;
+		const valid_play_clue = best_play_clue && (state.turn_count === 1 ||
+			'cm' in best_play_clue ||
+			!best_play_clue.result.bad_touch.some(o => state.deck[o].matches(state.deck[best_play_clue.result.focus])));
+
+		const validStall = best_stall_clue(stall_clues, common_severity, valid_play_clue ? best_play_clue : undefined);
 
 		// 8 clues, must stall
 		if (state.clue_tokens === 8) {
