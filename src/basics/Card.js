@@ -29,7 +29,7 @@ export class BasicCard {
 
 	identity() {
 		if (this.suitIndex !== -1 && this.rank !== -1)
-			return { suitIndex: this.suitIndex, rank: this.rank };
+			return new BasicCard(this.suitIndex, this.rank);
 	}
 
 	matches({ suitIndex, rank }) {

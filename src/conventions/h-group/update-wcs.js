@@ -164,8 +164,8 @@ export function resolve_card_retained(game, waiting_connection) {
 		}
 
 		// Didn't play into a self-connection
-		if (!bluff && reacting === target) {
-			const alternate_conn = game.common.waiting_connections.find(wc =>
+		if (!bluff && (reacting === target || reacting === state.ourPlayerIndex)) {
+			const alternate_conn = common.waiting_connections.find(wc =>
 				wc.focus === focus && wc.connections.every(conn => conn.order !== order));
 
 			if (alternate_conn !== undefined) {
@@ -174,6 +174,9 @@ export function resolve_card_retained(game, waiting_connection) {
 			}
 
 			if (!selfPassback) {
+				// Find all waiting connections using this order and merge their possible identities
+				const linked_ids = common.waiting_connections.filter(wc => wc.focus === focus).flatMap(wc => wc.connections.find((conn, i) => i >= wc.conn_index && conn.order === order)?.identities);
+
 				/** @param {number} finesse */
 				const allowable_hesitation = (finesse) => {
 					if (finesse === undefined)
@@ -181,7 +184,7 @@ export function resolve_card_retained(game, waiting_connection) {
 
 					// Returns an identity that the player could be hesitating for on the given finesse order, if it exists.
 					const id = state.deck[finesse].identity();
-					return common.thoughts[order].inferred.find(i => (id === undefined) ? common.thoughts[finesse].inferred.has(i) : i.matches(id));
+					return linked_ids.find(i => (id === undefined) ? common.thoughts[finesse].inferred.has(i) : id.matches(i));
 				};
 
 				for (let playerIndex = state.nextPlayerIndex(reacting); playerIndex != giver; playerIndex = state.nextPlayerIndex(playerIndex)) {
@@ -189,7 +192,7 @@ export function resolve_card_retained(game, waiting_connection) {
 					const hesitation_poss = allowable_hesitation(finesse);
 
 					if (hesitation_poss) {
-						logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but allowable hestiation on ${state.playerNames[playerIndex]} ${logCard(hesitation_poss)}`);
+						logger.warn(`${state.playerNames[reacting]} didn't play into ${type} but allowable hesitation on ${state.playerNames[playerIndex]} ${logCard(hesitation_poss)}`);
 						return { remove: false, selfPassback: true };
 					}
 				}

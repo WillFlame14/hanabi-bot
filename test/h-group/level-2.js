@@ -619,6 +619,29 @@ describe('asymmetric clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['g3']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
+
+	it('accepts asymmetric information when directly clued a critical', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y1', 'r4', 'b2', 'r2'],
+			['r3', 'y4', 'r1', 'b5'],
+			['b4', 'y3', 'p4', 'y1']
+		], {
+			level: { min: 2 },
+			play_stacks: [1, 0, 0, 0, 0]
+		});
+
+		takeTurn(game, 'Alice clues red to Bob');				// r2 play, touching r4
+		takeTurn(game, 'Bob plays r2', 'p1');
+		takeTurn(game, 'Cathy clues yellow to Donald');
+		takeTurn(game, 'Donald clues 3 to Cathy');				// getting r3
+
+		takeTurn(game, 'Alice clues 5 to Cathy');
+		takeTurn(game, 'Bob clues red to Alice (slot 1)');
+
+		// We should assume this is r5 and not r4.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r5']);
+	});
 });
 
 describe('continuation clues', () => {

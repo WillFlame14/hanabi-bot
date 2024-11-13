@@ -194,7 +194,7 @@ export function safe_situation(game, player) {
 	const safe = !chopUnsafe(game, player, next_discard) || has_early_clue;
 	const discard = possible_discard(game, player, state.hands[next_discard], potential_cluers >= 1);
 
-	logger.info(`next discard may come from ${state.playerNames[next_discard]}, chop ${safe ? 'safe' : 'unsafe'} ${discard ? logCard(state.deck[discard]) : '(locked)'}, ${potential_cluers} potential cluers`);
+	logger.info(`next discard may come from ${state.playerNames[next_discard]}, chop ${safe ? 'safe' : 'unsafe'} ${discard !== undefined ? logCard(state.deck[discard]) : '(locked)'}, ${potential_cluers} potential cluers`);
 
 	if (safe || potential_cluers >= 1)
 		return { safe: true, discard: has_early_clue ? undefined : discard };
@@ -232,7 +232,7 @@ export function chopUnsafe(game, player, playerIndex) {
 	const chop = game.players[playerIndex].chop(state.hands[playerIndex], { afterClue: true });
 
 	// Crit or unique 2 on chop
-	if (chop) {
+	if (chop !== undefined) {
 		const chop_card = state.deck[chop];
 		return chop_card.identity() && (state.isCritical(chop_card) || save2(state, player, chop_card));
 	}

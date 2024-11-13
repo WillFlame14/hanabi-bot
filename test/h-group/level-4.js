@@ -348,6 +348,23 @@ describe('interpreting order chop move', () => {
 		// Alice's slot 4 should be chop moved.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]].chop_moved, true);
 	});
+
+	it('will interpret an ocm that bombs', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'b1', 'g1', 'r1', 'r5'],
+			['y4', 'r4', 'g4', 'r4', 'b5']
+		], {
+			play_stacks: [0, 0, 1, 0, 0],
+			level: { min: 4 }
+		});
+
+		takeTurn(game, 'Alice clues 1 to Bob');
+		takeTurn(game, 'Bob bombs g1', 'r1');		// OCM on Cathy
+
+		// Cathy's slot 5 should be chop moved.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4]].chop_moved, true);
+	});
 });
 
 describe('interpreting chop moves', () => {

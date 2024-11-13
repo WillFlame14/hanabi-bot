@@ -72,9 +72,9 @@ describe('ambiguous finesse', () => {
 	it('understands an ambiguous finesse pass-back', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['b1', 'b5', 'r3', 'y5'],
+			['b1', 'b5', 'r1', 'y5'],
 			['r4', 'g2', 'g4', 'r5'],
-			['p4', 'b4', 'y1', 'p2']
+			['p4', 'b4', 'p2', 'y1']
 		], {
 			level: { min: 5 },
 			starting: PLAYER.CATHY
@@ -83,7 +83,7 @@ describe('ambiguous finesse', () => {
 		takeTurn(game, 'Cathy clues blue to Donald');	// Ambiguous finesse on us and Bob
 		takeTurn(game, 'Donald clues 5 to Cathy');
 		takeTurn(game, 'Alice clues 5 to Bob');			// we pass finesse to Bob
-		takeTurn(game, 'Bob discards r3', 'b2');		// Bob passes back
+		takeTurn(game, 'Bob clues yellow to Donald');		// Bob passes back (not urgent save, Donald can clue r1)
 
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['b1']);

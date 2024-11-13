@@ -35,8 +35,12 @@ export function interpret_discard(game, action) {
 	const old_chop = common.chop(state.hands[playerIndex]);
 	const slot = state.hands[playerIndex].findIndex(o => o === order) + 1;
 
-	if (game.level >= LEVEL.BASIC_CM && rank === 1 && failed)
-		check_ocm(game, action);
+	if (game.level >= LEVEL.BASIC_CM && rank === 1 && failed) {
+		const ocm_order = check_ocm(game, action);
+
+		if (ocm_order !== -1)
+			common.updateThoughts(ocm_order, (draft) => { draft.chop_moved = true; });
+	}
 
 	Basics.onDiscard(game, action);
 

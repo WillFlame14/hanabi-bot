@@ -225,8 +225,8 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(alice_slot1, ['b3']);
 		assert.equal(alice_slot1.possibly_bluffed, true);
 
-		// Bob's slot 1 must be b4.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0]], ['b4']);
+		// Bob's slot 1 is symmetrically [b3,b4].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0]], ['b3', 'b4']);
 
 		takeTurn(game, 'Alice plays b3 (slot 1)', 'y5');
 
@@ -404,8 +404,8 @@ describe('bluff clues', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['b1']);
 
-		// Bob's slot 4 must be b2.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['b2']);
+		// Bob's slot 4 is symmetrically [b1,b2].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['b1', 'b2']);
 
 		const action = await take_action(game);
 
@@ -995,6 +995,26 @@ describe('bluff clues', () => {
 
 		// We should not give yellow to Donald as a bluff.
 		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.YELLOW));
+	});
+
+	it(`doesn't bluff symmetrically finessed cards 2`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r2', 'y3', 'p4', 'y4'],
+			['y1', 'r4', 'b2', 'b3'],
+			['r3', 'p2', 'r1', 'b5']
+		], {
+			level: { min: 11 },
+			play_stacks: [1, 0, 0, 2, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 3 to Bob');	// could be y3 (finessing Cathy + self) or b3 (direct)
+
+		const { play_clues } = find_clues(game);
+
+		// We should not give purple to Donald as a bluff.
+		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.PURPLE));
 	});
 });
 

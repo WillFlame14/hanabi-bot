@@ -105,7 +105,9 @@ function acceptable_clue(game, hypo_game, action, result) {
 		return `target ${state.playerNames[target]} is symmetrically locked on a fake finesse`;
 
 	const finessed_symmetric_card = finessed_after_clue.find(o => !finessed_before_clue.includes(o) && game.common.waiting_connections.some(wc => wc.symmetric &&
-		wc.connections.some((conn, i) => i >= wc.conn_index && conn.order === o && conn.type === 'finesse')));
+		wc.connections.some((conn, i) => i >= wc.conn_index && conn.type === 'finesse' &&
+			// It might be connecting on us (we don't know), but if not, they could think it's a self-finesse
+			(conn.order === o || (state.ourHand.includes(conn.order) && common.thoughts[o].possible.has(conn.identities[0]))))));
 
 	if (finessed_symmetric_card)
 		return `finesses ${finessed_symmetric_card}, preventing a symmetric finesse from being disproven`;

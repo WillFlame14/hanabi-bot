@@ -208,7 +208,7 @@ describe('early game', () => {
 	it(`doesn't try to save in early game when duplicated clues are available`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['g4', 'r2', 'r4', 'p4'],
+			['g4', 'r2', 'r4', 'b4'],
 			['r1', 'b4', 'y4', 'r1'],
 			['y2', 'b3', 'b3', 'r1']
 		], {
@@ -219,6 +219,24 @@ describe('early game', () => {
 
 		// Bob can must clue at least one r1.
 		assert.equal(early_game_clue(game, PLAYER.BOB), true);
+	});
+
+	it(`saves double chop 2s in early game`, async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g4', 'r5', 'r4', 'b4'],
+			['r3', 'b4', 'y4', 'r2'],
+			['y2', 'b3', 'b3', 'r2']
+		], {
+			level: { min: 11 },
+			clue_tokens: 7
+		});
+
+		// Bob can must clue at least one r1.
+		assert.equal(early_game_clue(game, PLAYER.ALICE), true);
+
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, value: 2 });
 	});
 });
 

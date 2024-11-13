@@ -138,6 +138,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 		if (best_action === undefined)
 			throw new UnsolvedGame(`couldn't find a winning strategy`);
 
+		logger.on();
 		logger.highlight('purple', `endgame winnable! found action ${logObjectiveAction(common_state, best_action)} with winrate ${max_deck_wins}/${arrangements.length}`);
 		return best_action;
 	}
@@ -150,6 +151,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 	if (!win)
 		throw new UnsolvedGame(`couldn't find a winning strategy`);
 
+	logger.on();
 	logger.highlight('purple', `endgame solved! found actions [${actions.map(action => logObjectiveAction(common_state, action)).join(', ')}]`);
 	return actions[0];
 }
@@ -536,6 +538,7 @@ if (!isMainThread) {
 	simple_cache.clear();
 	simpler_cache.clear();
 
+	logger.setLevel(workerData.logLevel);
 	logger.off();
 
 	const { find_clues, find_discards } = ENDGAME_SOLVING_FUNCS[workerData.conv];

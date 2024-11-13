@@ -3,12 +3,14 @@ import { LEVEL, STALL_INDICES } from '../h-constants.js';
 import { CLUE_INTERP } from '../h-constants.js';
 import { find_clue_value } from '../action-helper.js';
 import { get_result } from '../clue-finder/determine-clue.js';
+import { colour_save, rank_save } from './focus-possible.js';
 import { determine_focus, minimum_clue_value, stall_severity } from '../hanabi-logic.js';
 import { get_clue_interp } from '../clue-finder/clue-finder.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logClue } from '../../../tools/log.js';
+
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -43,6 +45,10 @@ function isStall(game, action, giver, severity, prev_game) {
 	const focused_card = state.deck[focus];
 
 	if (severity === 0)
+		return;
+
+	// We are giving a save clue, not a stall
+	if (chop && giver === state.ourPlayerIndex && (clue.type === CLUE.COLOUR ? colour_save : rank_save)(game, state.deck[focus], action, focus))
 		return;
 
 	const trash = target !== state.ourPlayerIndex ?

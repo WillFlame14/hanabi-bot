@@ -182,7 +182,7 @@ export function early_game_clue(game, playerIndex) {
 	new_game.state.screamed_at = false;
 
 	logger.off();
-	const options = { giver: playerIndex, hypothetical: true, no_fix: true, early_exits: expected_early_game_clue };
+	const options = { giver: playerIndex, hypothetical: true, no_fix: true, early_exits: expected_early_game_clue, noRecurse: true };
 	const { play_clues, save_clues, stall_clues } = find_clues(new_game, options);
 	logger.on();
 
@@ -337,7 +337,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			}
 
 			// Check if Scream/Shout Discard is available (only to next player)
-			if (!finessed_card && game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0) && target === state.nextPlayerIndex(state.ourPlayerIndex)) {
+			if (!finessed_card && game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0) && target === state.nextPlayerIndex(state.ourPlayerIndex) && !me.thinksLoaded(state, target)) {
 				const trash = me.thinksTrash(state, state.ourPlayerIndex).filter(o =>
 					state.deck[o].clued && me.thoughts[o].inferred.every(i => state.isBasicTrash(i)));
 

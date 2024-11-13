@@ -1,3 +1,4 @@
+import { CLUE } from '../../../constants.js';
 import { CLUE_INTERP, STALL_INDICES } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
 import { find_fix_clues } from './fix-clues.js';
@@ -35,7 +36,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 
 	if (chop_moved.length === 0) {
 		// Chop can be clued later
-		if (state.hands.some(hand => hand.some(o => o !== old_chop && state.deck[o].matches(old_chop_card))))
+		if (!game.state.early_game && state.hands.some(hand => hand.some(o => o !== old_chop && state.deck[o].matches(old_chop_card))))
 			return -10;
 
 		return safe ? Math.max(find_clue_value(result), state.isCritical(old_chop_card) ? 0.1 : -Infinity) : 0.01;
@@ -117,6 +118,10 @@ export function get_clue_interp(game, clue, giver, options) {
 	const interpret = hypo_game.common.thoughts[focus].inferred;
 	const { elim, new_touched, bad_touch, cm_dupe, trash, avoidable_dupe, finesses, playables, chop_moved, discard, safe, interp } = result;
 
+	// Do not break pink promise
+	if (clue.type === CLUE.RANK && state.deck[focus].rank !== clue.value && interp !== CLUE_INTERP.POSITIONAL)
+		return;
+
 	const result_log = {
 		clue: logClue(clue),
 		bad_touch,
@@ -190,6 +195,12 @@ export function get_clue_interp(game, clue, giver, options) {
 			}
 
 			// if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0)
+			break;
+		case CLUE_INTERP.POSITIONAL:
+			if (!safe) {
+				logger.highlight('yellow', 'unsafe!');
+				return;
+			}
 			break;
 	}
 
@@ -274,6 +285,7 @@ export function find_clues(game, options = {}) {
 
 				case CLUE_INTERP.PLAY:
 				case CLUE_INTERP.DISTRIBUTION:
+				case CLUE_INTERP.POSITIONAL:
 					play_clues[target].push(new_clue);
 					break;
 			}

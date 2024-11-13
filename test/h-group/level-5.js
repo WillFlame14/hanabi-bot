@@ -253,7 +253,7 @@ describe('ambiguous clues', () => {
 			['xx', 'xx', 'xx', 'xx'],
 			['p4', 'r1', 'g4', 'p4'],
 			['p4', 'b2', 'b3', 'y4'],
-			['r1', 'y2', 'r4', 'r5']
+			['r1', 'y2', 'r4', 'g5']
 		], {
 			level: { min: 5 },
 			starting: PLAYER.BOB

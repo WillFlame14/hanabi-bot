@@ -73,7 +73,26 @@ describe('scream discard chop moves', () => {
 
 		// Alice should discard slot 4 to SDCM as y2 is playable.
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][3] });
+	});
 
+	it(`doesn't scream discard when target is loaded`, async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g1', 'r3', 'g4', 'b4', 'r5'],
+			['r4', 'b3', 'r2', 'y3', 'p3']
+		], {
+			level: { min: 7 },
+			clue_tokens: 2,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues red to Alice (slot 5)');
+		takeTurn(game, 'Cathy clues green to Bob');
+
+		const action = await take_action(game);
+
+		// Alice should play as Bob is loaded.
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 
 	it(`stalls after a scream discard`, async () => {

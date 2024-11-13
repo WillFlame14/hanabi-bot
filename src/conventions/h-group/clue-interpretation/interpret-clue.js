@@ -19,6 +19,7 @@ import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection, logConnections, logHand } from '../../../tools/log.js';
+import { early_game_clue } from '../urgent-actions.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -241,14 +242,17 @@ export function finalize_connections(focus_possibilities) {
  * @param {ClueAction} action
  * @param {number} focus
  * @param {Player} oldCommon
+ * @param {Game} old_game
  */
-function urgent_save(game, action, focus, oldCommon) {
+function urgent_save(game, action, focus, oldCommon, old_game) {
 	const { common, state } = game;
 	const { giver, target } = action;
 	const old_focus_thoughts = oldCommon.thoughts[focus];
 	const focus_thoughts = common.thoughts[focus];
 
-	if (old_focus_thoughts.saved || !focus_thoughts.saved || common.thinksLoaded(state, target, { assume: false }))
+	if (old_focus_thoughts.saved || !focus_thoughts.saved ||
+		common.thinksLoaded(state, target, { assume: false }) ||
+		(state.early_game && early_game_clue(old_game, target)))
 		return false;
 
 	const play_stacks = state.play_stacks.slice();
@@ -348,9 +352,11 @@ export function interpret_clue(game, action) {
 	if (rewinded)
 		return;
 
-	if (chop) {
+	if (chop && !action.noRecurse) {
 		common.updateThoughts(focus, (draft) => { draft.chop_when_first_clued = true; });
-		action.important = urgent_save(game, action, focus, oldCommon);
+		action.important = urgent_save(game, action, focus, oldCommon, prev_game);
+		if (action.important)
+			logger.highlight('yellow', 'important save!');
 	}
 
 	if (common.thoughts[focus].inferred.length === 0 && oldCommon.thoughts[focus].possible.length > 1) {
@@ -575,14 +581,33 @@ export function interpret_clue(game, action) {
 					const connections = find_own_finesses(game, action, id, looksDirect);
 					logger.info('found connections:', logConnections(connections, id));
 
-					if (all_connections.some(fp => connections.some(conn =>
-						conn.type === 'known' && conn.reacting === giver && conn.identities.every(i => i.rank === fp.rank && i.suitIndex === fp.suitIndex)))
-					) {
+					const rank = inference_rank(state, id.suitIndex, connections);
+
+					let same_match = false;
+
+					for (const fp of all_connections) {
+						for (const conn of connections) {
+							if (conn.type !== 'known' || conn.reacting !== giver || !conn.identities.every(i => i.rank === fp.rank && i.suitIndex === fp.suitIndex))
+								continue;
+
+							same_match = true;
+
+							// Valid asymmetric clue (or we at least have to entertain it)
+							if (game.players[giver].thoughts[conn.order].inferred.every(i =>
+								i.matches(fp) || (state.isCritical(i) && i.matches({ suitIndex: id.suitIndex, rank })))) {
+								same_match = false;
+								conn.asymmetric = false;
+								break;
+							}
+						}
+					}
+
+					if (same_match) {
 						logger.warn(`attempted to use giver's known connecting when focus could be it!`);
 						continue;
 					}
 
-					all_connections.push({ connections, suitIndex: id.suitIndex, rank: inference_rank(state, id.suitIndex, connections), interp: CLUE_INTERP.PLAY });
+					all_connections.push({ connections, suitIndex: id.suitIndex, rank, interp: CLUE_INTERP.PLAY });
 				}
 				catch (error) {
 					if (error instanceof IllegalInterpretation)
@@ -600,6 +625,14 @@ export function interpret_clue(game, action) {
 			try {
 				const connections = find_own_finesses(game, action, focused_card, looksDirect);
 				logger.info('found connections:', logConnections(connections, focused_card));
+
+				// Add in all the potential non-finesse possibilities
+				for (let i = 0; i < connections.length; i++) {
+					if (connections[i].type === 'finesse') {
+						const next_rank = state.play_stacks[suitIndex] + 1 + i;
+						all_connections.push({ connections: connections.slice(0, i), suitIndex, rank: next_rank, interp: CLUE_INTERP.PLAY });
+					}
+				}
 				all_connections.push({ connections, suitIndex, rank: inference_rank(state, suitIndex, connections), interp: CLUE_INTERP.PLAY });
 			}
 			catch (error) {
@@ -640,7 +673,7 @@ export function interpret_clue(game, action) {
 			resolve_clue(game, old_game, action, finalized_connections, focused_card);
 		}
 	}
-	logger.highlight('blue', 'final inference on focused card', common.thoughts[focus].inferred.map(logCard).join(','));
+	logger.highlight('blue', `final inference on focused card ${common.thoughts[focus].inferred.map(logCard).join(',')} (${game.lastMove})`);
 
 	// Pink 1's Assumption
 	if (state.includesVariant(variantRegexes.pinkish) && clue.type === CLUE.RANK && clue.value === 1) {
@@ -663,11 +696,16 @@ export function interpret_clue(game, action) {
 	common.refresh_links(state);
 	common.update_hypo_stacks(state);
 
-	if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && !positional) {
+	if (positional) {
+		game.moveHistory.pop();
+		game.interpretMove(CLUE_INTERP.POSITIONAL);
+	}
+	else if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2) {
 		const cm_orders = interpret_tccm(game, oldCommon, target, list, focused_card);
 
 		if (cm_orders.length > 0) {
 			perform_cm(state, common, cm_orders);
+			game.moveHistory.pop();
 			game.interpretMove(CLUE_INTERP.CM_TEMPO);
 		}
 	}

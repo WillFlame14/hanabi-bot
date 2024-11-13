@@ -35,7 +35,8 @@ export const CLUE_INTERP = /** @type {const} */ ({
 	FIX: 'fix',
 	CM_TRASH: 'trash cm',
 	CM_5: '5cm',
-	CM_TEMPO: 'tempo cm'
+	CM_TEMPO: 'tempo cm',
+	POSITIONAL: 'positional'
 });
 
 export const PLAY_INTERP = /** @type {const} */ ({

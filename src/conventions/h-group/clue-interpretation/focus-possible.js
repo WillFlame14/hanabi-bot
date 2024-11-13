@@ -20,6 +20,57 @@ import { logCard, logConnections } from '../../../tools/log.js';
 /**
  * Returns all the valid focus possibilities of the focused card from a clue of the given colour.
  * @param {Game} game
+ * @param {Identity} identity
+ * @param {ClueAction} action
+ * @param {number} focus
+ */
+export function colour_save(game, identity, action, focus) {
+	const { common, state } = game;
+	const { suitIndex, rank } = identity;
+	const { clue, list, target } = action;
+	const focus_thoughts = common.thoughts[focus];
+
+	// Skip if the card would not be touched.
+	if (!cardTouched({ suitIndex, rank }, game.state.variant, clue) || !focus_thoughts.possible.has({ suitIndex, rank }))
+		return false;
+
+	const brown_poss = focus_thoughts.possible.filter(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) !== null);
+
+	// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
+	// OR if the clue given is not black.
+	if (rank === 5 && state.variant.suits[suitIndex] !== 'Black' && brown_poss.length === 0)
+		return false;
+
+	// Determine if possible save on k2, k5 with colour
+	if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
+		const fill_ins = state.hands[target].filter(o => ((c = state.deck[o]) =>
+			list.includes(o) &&
+			(c.newly_clued || c.clues.some((clue, i) => ((last_clue = c.clues.at(-1)) =>
+				i !== c.clues.length - 1 && !(last_clue.type === clue.type && last_clue.value === clue.value))())))()).length;
+
+		const trash = state.hands[target].filter(o => ((c = state.deck[o]) => c.rank === rank && !c.clued && state.isBasicTrash(c))()).length;
+
+		// Only touched/filled in 1 new card and wasn't to keep GTP
+		if (fill_ins < 2 && trash === 0)
+			return false;
+	}
+
+	if (state.includesVariant(/Dark Rainbow|Dark Prism/) && state.variant.suits[suitIndex].match(/Dark Rainbow|Dark Prism/)) {
+		const completed_suit = common.hypo_stacks[suitIndex] === state.max_ranks[suitIndex];
+		const saved_crit = state.hands[target].some(o => ((c = state.deck[o]) =>
+			state.isCritical(c) && c.newly_clued && c.rank !== 5 && !state.variant.suits[c.suitIndex].match(/Dark Rainbow|Dark Prism/))());
+
+		if (!completed_suit && !saved_crit)
+			return false;
+	}
+
+	// Check if card is critical or a brownish-2
+	return state.isCritical({ suitIndex, rank }) || brown_poss.some(c => c.rank === 2);
+}
+
+/**
+ * Returns all the valid focus possibilities of the focused card from a clue of the given colour.
+ * @param {Game} game
  * @param {number} suitIndex
  * @param {ClueAction} action
  * @param {Set<number>} thinks_stall
@@ -110,46 +161,43 @@ function find_colour_focus(game, suitIndex, action, thinks_stall) {
 	// Save clue on chop
 	if (chop) {
 		for (let rank = state.play_stacks[suitIndex] + 1; rank <= Math.min(state.max_ranks[suitIndex], 5); rank++) {
-			// Skip if the card would not be touched.
-			if (!cardTouched({ suitIndex, rank }, game.state.variant, action.clue) || !focus_thoughts.possible.has({ suitIndex, rank }))
-				continue;
-
-			const brown_poss = focus_thoughts.possible.filter(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) !== null);
-
-			// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
-			// OR if the clue given is not black.
-			if (rank === 5 && state.variant.suits[suitIndex] !== 'Black' && brown_poss.length === 0)
-				continue;
-
-			// Determine if possible save on k2, k5 with colour
-			if (state.variant.suits[suitIndex] === 'Black' && (rank === 2 || rank === 5)) {
-				const fill_ins = state.hands[target].filter(o => ((c = state.deck[o]) =>
-					list.includes(o) &&
-					(c.newly_clued || c.clues.some((clue, i) => ((last_clue = c.clues.at(-1)) =>
-						i !== c.clues.length - 1 && !(last_clue.type === clue.type && last_clue.value === clue.value))())))()).length;
-
-				const trash = state.hands[target].filter(o => ((c = state.deck[o]) => c.rank === rank && !c.clued && state.isBasicTrash(c))()).length;
-
-				// Only touched/filled in 1 new card and wasn't to keep GTP
-				if (fill_ins < 2 && trash === 0)
-					continue;
-			}
-
-			if (state.includesVariant(/Dark Rainbow|Dark Prism/) && state.variant.suits[suitIndex].match(/Dark Rainbow|Dark Prism/)) {
-				const completed_suit = common.hypo_stacks[suitIndex] === state.max_ranks[suitIndex];
-				const saved_crit = state.hands[target].some(o => ((c = state.deck[o]) =>
-					state.isCritical(c) && c.newly_clued && c.rank !== 5 && !state.variant.suits[c.suitIndex].match(/Dark Rainbow|Dark Prism/))());
-
-				if (!completed_suit && !saved_crit)
-					continue;
-			}
-
-			// Check if card is critical or a brownish-2
-			if (state.isCritical({ suitIndex, rank }) || brown_poss.some(c => c.rank === 2))
+			if (colour_save(game, { suitIndex, rank }, action, focus))
 				focus_possible.push({ suitIndex, rank, save: true, connections: [], interp: CLUE_INTERP.SAVE });
 		}
 	}
 	return focus_possible;
+}
+
+/**
+ * Returns all the valid focus possibilities of the focused card from a clue of the given rank.
+ * @param {Game} game
+ * @param {Identity} identity
+ * @param {ClueAction} action
+ * @param {number} focus
+ */
+export function rank_save(game, identity, action, focus) {
+	const { common, state } = game;
+	const { suitIndex, rank } = identity;
+	const { target } = action;
+	const focus_thoughts = common.thoughts[focus];
+
+	if (!focus_thoughts.possible.has(identity))
+		return false;
+
+	// Don't consider save on k3, k4 with rank
+	if (state.variant.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
+		return false;
+
+	// Don't consider loaded save with 3,4 in whitish variants (also dark rainbow/prism)
+	const loaded_34 = common.thinksLoaded(state, target) &&
+		state.includesVariant(Utils.combineRegex(variantRegexes.whitish, /Dark Rainbow|Dark Prism/)) &&
+		(rank === 3 || rank === 4);
+
+	if (loaded_34)
+		return false;
+
+	// Critical save or 2 save
+	return state.isCritical(identity) || (rank === 2 && !state.isBasicTrash(identity));
 }
 
 /**
@@ -172,25 +220,7 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 	// Save clue on chop
 	if (chop) {
 		for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
-			const identity = { suitIndex, rank };
-
-			if (!focus_thoughts.possible.has(identity))
-				continue;
-
-			// Don't consider save on k3, k4 with rank
-			if (state.variant.suits[suitIndex] === 'Black' && (rank === 3 || rank === 4))
-				continue;
-
-			// Don't consider loaded save with 3,4 in whitish variants (also dark rainbow/prism)
-			const loaded_34 = common.thinksLoaded(state, target) &&
-				state.includesVariant(Utils.combineRegex(variantRegexes.whitish, /Dark Rainbow|Dark Prism/)) &&
-				(rank === 3 || rank === 4);
-
-			if (loaded_34)
-				continue;
-
-			// Critical save or 2 save
-			if (state.isCritical(identity) || (rank === 2 && !state.isBasicTrash({ suitIndex, rank }))) {
+			if (rank_save(game, { suitIndex, rank }, action, focus)) {
 				focus_possible.push({ suitIndex, rank, save: true, connections: [], interp: CLUE_INTERP.SAVE });
 				looksSave = true;
 			}

@@ -140,6 +140,7 @@ function best_stall_clue(stall_clues, severity, best_play_clue) {
 /**
  * @param {Game} game
  * @param {number} giver
+ * @returns {Clue[]}
  */
 export function find_all_clues(game, giver) {
 	logger.off();
@@ -149,7 +150,7 @@ export function find_all_clues(game, giver) {
 	return [
 		...play_clues.flatMap((clues, target) => clues.map(clue => produce(clue, (draft) => { draft.target = target; }))),
 		...Utils.range(0, game.state.numPlayers).reduce((acc, target) => (save_clues[target] ? acc.concat([produce(save_clues[target], (draft) => { draft.target = target; })]) : acc), []),
-		...stall_clues[6]		// distribution clues
+		...stall_clues.slice(0, 3).flat(), ...stall_clues[6]		// distribution clues
 	];
 }
 
