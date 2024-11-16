@@ -1,10 +1,10 @@
 import { isTrash } from '../../basics/hanabi-util.js';
 import { connectable_simple } from '../../basics/helper.js';
+import { unknown_1 } from './hanabi-logic.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logClue } from '../../tools/log.js';
-import { CLUE } from '../../constants.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -63,10 +63,8 @@ export function select_play_clue(play_clues) {
  * @param {{ no_filter?: boolean}} options
  */
 export function order_1s(state, player, orders, options = { no_filter: false }) {
-	const unknown_1s = options.no_filter ? orders : orders.filter(o => ((card = state.deck[o]) =>
-		card.clues.length > 0 &&
-			card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1) &&
-			player.thoughts[o].possible.every(p => p.rank === 1))());
+	const unknown_1s = options.no_filter ? orders : orders.filter(o =>
+		unknown_1(state.deck[o]) && player.thoughts[o].possible.every(p => p.rank === 1));
 
 	return unknown_1s.sort((order1, order2) => {
 		const [c1_start, c2_start] = [order1, order2].map(o => state.inStartingHand(o));

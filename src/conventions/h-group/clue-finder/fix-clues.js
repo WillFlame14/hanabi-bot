@@ -7,6 +7,7 @@ import { logCard, logClue } from '../../../tools/log.js';
 import { get_result } from './determine-clue.js';
 import { CLUE } from '../../../constants.js';
 import { order_1s } from '../action-helper.js';
+import { unknown_1 } from '../hanabi-logic.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -45,7 +46,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 				if (!state.includesVariant(variantRegexes.pinkish))
 					return false;
 
-				const unknown_1s = state.hands[target].filter(o => state.deck[o].clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+				const unknown_1s = state.hands[target].filter(o => unknown_1(state.deck[o]));
 				const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
 
 				return ordered_1s[0] !== undefined && state.isPlayable(state.deck[ordered_1s[0]]);
@@ -148,7 +149,7 @@ function inference_corrected(game, order, _target) {
 	const card = common.thoughts[order];
 
 	if (state.isBasicTrash(state.deck[order]))
-		return card.possible.every(p => state.isBasicTrash(p));
+		return card.possible.every(p => state.isBasicTrash(p)) || card.trash;
 
 	// Revealed to be pink
 	if (knownAs(game, order, variantRegexes.pinkish))

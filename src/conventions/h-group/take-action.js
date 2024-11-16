@@ -4,7 +4,7 @@ import { select_play_clue, determine_playable_card, order_1s, find_clue_value, f
 import { find_gd, find_unlock, find_urgent_actions } from './urgent-actions.js';
 import { find_clues } from './clue-finder/clue-finder.js';
 import { find_sarcastics } from '../shared/sarcastic.js';
-import { inBetween, minimum_clue_value, older_queued_finesse, stall_severity } from './hanabi-logic.js';
+import { inBetween, minimum_clue_value, older_queued_finesse, stall_severity, unknown_1 } from './hanabi-logic.js';
 import { cardValue, isTrash } from '../../basics/hanabi-util.js';
 
 import logger from '../../tools/logger.js';
@@ -37,11 +37,8 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 	let priority = playable_priorities.findIndex(priority_cards => priority_cards.length > 0);
 	let best_playable_order = playable_priorities[priority][0];
 
-	const unknown_1 = playable_priorities[priority].some(o => ((card = state.deck[o]) =>
-		card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1))());
-
 	// Best playable card is an unknown 1, so we should order correctly
-	if (priority !== 0 && unknown_1) {
+	if (priority !== 0 && playable_priorities[priority].some(o => unknown_1(state.deck[o]))) {
 		const ordered_1s = order_1s(state, common, playable_cards);
 
 		if (ordered_1s.length > 0 && game.level >= LEVEL.BASIC_CM) {
@@ -77,7 +74,7 @@ function find_best_playable(game, playable_cards, playable_priorities) {
 		}
 		else {
 			// Play (possibly pinkish) 1s in order
-			const clued_1s = playable_priorities[priority].filter(o => state.deck[o].clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+			const clued_1s = playable_priorities[priority].filter(o => unknown_1(state.deck[o]));
 			best_playable_order = order_1s(state, common, clued_1s, { no_filter: true })[0];
 		}
 	}
@@ -239,8 +236,10 @@ export async function take_action(game) {
 	const playable_trash = playable_orders.filter(order => {
 		const id = me.thoughts[order].identity({ infer: true });
 
-		// Pick the leftmost of all playable trash cards
-		return id !== undefined && trash_orders.includes(order) && !playable_orders.some(o => me.thoughts[o].matches(id, { infer: true }) && o > order);
+		// Pick the leftmost of all playable trash cards (except unknown 1s)
+		return id !== undefined &&
+			trash_orders.includes(order) &&
+			(unknown_1(state.deck[order]) || !playable_orders.some(o => me.thoughts[o].matches(id, { infer: true }) && o > order));
 	});
 
 	// Remove trash from playables (but not playable trash) and discards and playable trash from trash cards

@@ -234,7 +234,9 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
 		let next_rank = state.play_stacks[suitIndex] + 1;
 
-		if (!focus_thoughts.possible.has({ suitIndex, rank }) || rank < next_rank || focus_possible.some(fp => fp.suitIndex === suitIndex && fp.rank === rank))
+		if (!focus_thoughts.possible.has({ suitIndex, rank }) ||
+			(!positional && rank < next_rank) ||
+			focus_possible.some(fp => fp.suitIndex === suitIndex && fp.rank === rank))
 			continue;
 
 		if (rank === next_rank) {
@@ -309,7 +311,7 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 		state.play_stacks = old_play_stacks;
 
 		const next_identity = { suitIndex, rank: next_rank };
-		if (next_rank > rank) {
+		if (!positional && next_rank > rank) {
 			logger.warn(`stacked beyond clued rank ${logConnections(connections, next_identity)}, ignoring`);
 			continue;
 		}

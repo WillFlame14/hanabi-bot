@@ -3,23 +3,23 @@ import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { IdentitySet } from '../../../basics/IdentitySet.js';
 import { interpret_tcm, interpret_5cm, interpret_tccm, perform_cm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
-import { determine_focus, getRealConnects, rankLooksPlayable } from '../hanabi-logic.js';
+import { determine_focus, getRealConnects, rankLooksPlayable, unknown_1 } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor, connection_score } from './connection-helper.js';
 import { variantRegexes } from '../../../variants.js';
 import { remove_finesse } from '../update-wcs.js';
 import { order_1s } from '../action-helper.js';
-import { produce } from '../../../StateProxy.js';
 import { find_impossible_conn } from '../update-turn.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
+import { early_game_clue } from '../urgent-actions.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 import * as Basics from '../../../basics.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection, logConnections, logHand } from '../../../tools/log.js';
-import { early_game_clue } from '../urgent-actions.js';
+import { produce } from '../../../StateProxy.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -117,7 +117,7 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 					continue;
 
 				// This player could give the finesse, don't mark the action as important.
-				logger.info(`${state.playerNames[i]} could give finesse, not important`);
+				logger.info(`${state.playerNames[i]} could give finesse for id ${logCard(inference)}, not important`);
 				break;
 			}
 		}
@@ -524,6 +524,24 @@ export function interpret_clue(game, action) {
 		}
 	}
 
+	const pink_trash_fix = state.includesVariant(variantRegexes.pinkish) &&
+		!positional && clue.type === CLUE.RANK &&
+		list.every(o => !state.deck[o].newly_clued) &&
+		state.variant.suits.every((suit, i) =>
+			!suit.match(variantRegexes.pinkish) || state.isBasicTrash({ suitIndex: i, rank: clue.value }));
+
+	if (pink_trash_fix) {
+		logger.info('pink trash fix!');
+		common.updateThoughts(focus, (draft) => {
+			draft.inferred = draft.possible.intersect(state.variant.suits.map((_, i) => ({ suitIndex: i, rank: clue.value })));
+			draft.trash = true;
+		});
+
+		game.interpretMove(CLUE_INTERP.FIX);
+		team_elim(game);
+		return;
+	}
+
 	const focus_possible = find_focus_possible(game, action, thinks_stall);
 	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) => logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
 
@@ -677,7 +695,7 @@ export function interpret_clue(game, action) {
 
 	// Pink 1's Assumption
 	if (state.includesVariant(variantRegexes.pinkish) && clue.type === CLUE.RANK && clue.value === 1) {
-		const clued_1s = state.hands[target].filter(o => ((c = state.deck[o]) => c.clues.length > 0 && c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1))());
+		const clued_1s = state.hands[target].filter(o => unknown_1(state.deck[o]));
 		const ordered_1s = order_1s(state, common, clued_1s, { no_filter: true });
 
 		if (ordered_1s.length > 0) {

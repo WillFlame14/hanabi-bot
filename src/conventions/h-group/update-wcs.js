@@ -9,6 +9,7 @@ import { logCard, logConnection } from '../../tools/log.js';
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').PlayAction} PlayAction
  * @typedef {import('../../types.js').WaitingConnection} WaitingConnection
+ * @typedef {import('../../types.js').Demonstration} Demonstration
  * @typedef {import('../../types.js').INTERP} INTERP
  */
 
@@ -286,6 +287,7 @@ export function resolve_card_retained(game, waiting_connection) {
 /**
  * @param {Game} game
  * @param {WaitingConnection} waiting_connection
+ * @returns {{ remove: boolean, remove_finesse?: boolean, next_index?: number, demonstration?: Demonstration }}
  */
 export function resolve_card_played(game, waiting_connection) {
 	const { common, state } = game;
@@ -317,7 +319,7 @@ export function resolve_card_played(game, waiting_connection) {
 		else {
 			// Should prompts demonstrate connections? Sometimes acting on asymmetric info can look like a prompt.
 			const demonstration = (type === 'finesse' || game.level < LEVEL.INTERMEDIATE_FINESSES) ?
-				{ order: focus, inferences: [inference], connections: connections.slice(conn_index + 1) } :
+				{ order: focus, inference, connections: connections.slice(conn_index + 1) } :
 				undefined;
 
 			const only_clued_connections_left = waiting_connection.connections.every((conn, index) =>

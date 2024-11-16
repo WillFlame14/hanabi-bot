@@ -4,11 +4,12 @@ import { describe, it } from 'node:test';
 import { COLOUR, PLAYER, setup, takeTurn } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
-import { CLUE } from '../../../src/constants.js';
+import { ACTION, CLUE } from '../../../src/constants.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
-import logger from '../../../src/tools/logger.js';
 import { clue_safe } from '../../../src/conventions/h-group/clue-finder/clue-safe.js';
+import { take_action } from '../../../src/conventions/h-group/take-action.js';
 
+import logger from '../../../src/tools/logger.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('layered finesse', () => {
@@ -51,6 +52,35 @@ describe('layered finesse', () => {
 
 		// Cathy's hand should be marked correctly.
 		assert.ok(game.state.hands[PLAYER.CATHY].every(o => game.common.thoughts[o].inferred.has(game.state.deck[o])));
+	});
+
+	it('writes correct notes for a fake asymmetric layered finesse', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b2', 'r1', 'r4', 'r3'],
+			['g2', 'g3', 'g1', 'b1'],
+			['b5', 'y4', 'r4', 'b2']
+		], {
+			level: { min: 5 },
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Cathy');
+		takeTurn(game, 'Cathy plays b1', 'r5');
+		takeTurn(game, 'Donald clues 4 to Alice (slots 2,3)');
+
+		// Globally, we could have b4 or r4. However, we can see both r4s visible.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['b4', 'r4']);
+
+		takeTurn(game, 'Alice clues 2 to Cathy');
+		takeTurn(game, 'Bob plays b2', 'b1');
+		takeTurn(game, 'Cathy plays g1', 'y2');
+		takeTurn(game, 'Donald clues 3 to Cathy');
+
+		// We should play slot 1 as b3.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].order });
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['b3']);
 	});
 
 	it('understands playing into a layered finesse', () => {

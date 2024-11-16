@@ -314,6 +314,26 @@ describe('giving order chop move', () => {
 		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 }, `Expected (play slot 4), suggested ${logPerformAction(action)}`);
 	});
+
+	it('plays the last 1 in the correct order when not wanting to ocm', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'b4', 'g4', 'y1', 'p4']
+		], {
+			level: { min: 3 },
+			play_stacks: [1, 1, 1, 0, 0],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Alice (slots 3,4,5)');
+		takeTurn(game, 'Alice plays b1 (slot 5)');
+		takeTurn(game, 'Bob discards p4', 'g3');
+
+		const action = await take_action(game);
+
+		// Alice should play the rightmost 1 to avoid OCM'ing y1.
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
+	});
 });
 
 describe('interpreting order chop move', () => {

@@ -956,6 +956,23 @@ describe('bluff clues', () => {
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
 
+	it(`doesn't give a self-bluff that looks like an ambiguous self-finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y4', 'g2', 'r3', 'y3', 'p3'],
+			['r3', 'r4', 'y5', 'p4', 'r2']
+		], {
+			level: { min: 11 },
+			play_stacks: [2, 2, 1, 0, 0],
+			starting: PLAYER.ALICE
+		});
+
+		const { play_clues } = find_clues(game);
+
+		// 4 to Bob is not a valid self-bluff (looks r4).
+		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 4));
+	});
+
 	it(`doesn't give bluffs through unpromptable cards`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],

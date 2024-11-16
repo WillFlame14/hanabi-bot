@@ -154,9 +154,10 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
  * @param {number[]} [connected] 	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
  * @param {boolean} [assumeTruth]
+ * @param {boolean} [noLayer]
  * @returns {Connection | undefined}
  */
-function find_unknown_connecting(game, action, reacting, identity, connected = [], ignoreOrders = [], assumeTruth = false) {
+function find_unknown_connecting(game, action, reacting, identity, connected = [], ignoreOrders = [], assumeTruth = false, noLayer = false) {
 	const { common, state, me } = game;
 	const { giver, target } = action;
 
@@ -209,7 +210,7 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 		}
 
 		// Finessed card is delayed playable
-		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse_card.suitIndex] + 1 === finesse_card.rank) {
+		if (!noLayer && game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse_card.suitIndex] + 1 === finesse_card.rank) {
 			const bluff = !assumeTruth && valid_bluff(game, action, finesse_card, reacting, connected);
 
 			if (giver === state.ourPlayerIndex) {
@@ -389,10 +390,12 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 	const wrong_prompts = [];
 	const old_play_stacks = state.play_stacks;
 
-	const conn_player_order = [target, ...Utils.range(0, state.numPlayers).map(i => (state.numPlayers + giver - i - 1) % state.numPlayers).filter(i => i !== target)];
+	const conn_player_order = [target, ...Utils.range(0, state.numPlayers).map(i => (state.numPlayers + giver - i - 1) % state.numPlayers).filter(i => i !== target), target];
 
 	// Only consider prompts/finesses if no connecting cards found
-	for (const playerIndex of conn_player_order) {
+	for (let i = 0; i < conn_player_order.length; i++) {
+		const playerIndex = conn_player_order[i];
+
 		// Clue receiver won't find known prompts/finesses in their hand unless it doesn't look direct
 		// Also disallow prompting/finessing a player when they may need to prove a finesse to us
 		if (playerIndex === giver || options.knownOnly?.includes(playerIndex) || (giver === state.ourPlayerIndex && playerIndex === target && looksDirect) ||
@@ -406,7 +409,7 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 		const already_connected = connected.slice();
 		state.play_stacks = old_play_stacks.slice();
 
-		let connecting = find_unknown_connecting(game, action, playerIndex, identity, already_connected, ignoreOrders, options.assumeTruth);
+		let connecting = find_unknown_connecting(game, action, playerIndex, identity, already_connected, ignoreOrders, options.assumeTruth, i === 0);
 
 		if (connecting?.type === 'terminate') {
 			wrong_prompts.push(connecting);

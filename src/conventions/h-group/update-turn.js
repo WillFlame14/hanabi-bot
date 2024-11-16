@@ -14,11 +14,7 @@ import { logCard, logConnection } from '../../tools/log.js';
  * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').IdentifyAction} IdentifyAction
  * @typedef {import('../../types.js').WaitingConnection} WaitingConnection
- * 
- * @typedef Demonstration
- * @property {number} order
- * @property {Identity[]} inferences
- * @property {Connection[]} connections
+ * @typedef {import('../../types.js').Demonstration} Demonstration
  */
 
 /**
@@ -48,6 +44,7 @@ export function find_impossible_conn(game, connections) {
  * @param {Game} game
  * @param {WaitingConnection} waiting_connection
  * @param {number} lastPlayerIndex
+ * @returns {{remove?: boolean, remove_finesse?: boolean, next_index?: number, quit?: boolean, demonstration?: Demonstration, ambiguousPassback?: boolean, selfPassback?: boolean }}
  */
 function update_wc(game, waiting_connection, lastPlayerIndex) {
 	const { common, state, me } = game;
@@ -85,7 +82,7 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 			return { remove: true, remove_finesse: true };
 		}
 	}
-	return {};
+	return { remove: false };
 }
 
 /**
@@ -122,8 +119,8 @@ export function update_turn(game, action) {
 	/** @type {Set<number>} */
 	const to_remove = new Set();
 
-	/** @type {Demonstration[]} */
-	const demonstrated = [];
+	/** @type {Map<number, Demonstration[]>} */
+	const demonstrated = new Map();
 
 	/** @type {Set<number>} Waiting connections that we have to remove finesses for. */
 	const remove_finesses = new Set();
@@ -148,12 +145,12 @@ export function update_turn(game, action) {
 		if (remove_finesse)
 			remove_finesses.add(i);
 
-		if (demonstration !== undefined) {
-			const prev_demo = demonstrated.find(({ order }) => order === demonstration.order);
-			if (prev_demo === undefined)
-				demonstrated.push(demonstration);
+		if (demonstration !== undefined && !waiting_connection.symmetric) {
+			const { order } = demonstration;
+			if (demonstrated.has(order))
+				demonstrated.get(order).push(demonstration);
 			else
-				prev_demo.inferences.push(waiting_connection.inference);
+				demonstrated.set(order, [demonstration]);
 		}
 
 		waiting_connection.conn_index = remove ? -1 : next_index ?? waiting_connection.conn_index;
@@ -164,22 +161,17 @@ export function update_turn(game, action) {
 	reset_superpositions(game);
 
 	// Once a finesse has been demonstrated, the card's identity must be one of the inferences
-	for (const { order, inferences, connections } of demonstrated) {
+	for (const [order, demonstrations] of demonstrated.entries()) {
+		const inferences = demonstrations.flatMap(d => d.inference);
 		logger.info(`intersecting card ${logCard(state.deck[order])} with inferences ${inferences.map(logCard).join(',')}`);
 
 		/** @type {(c_order: number, ids: Identity[]) => ((draft: import('../../types.js').Writable<Card>) => void)} */
 		const update_card = (c_order, ids) => (draft) => {
-			draft.inferred = common.thoughts[c_order].inferred[draft.superposition ? 'union' : 'intersect'](ids);
+			draft.inferred = common.thoughts[c_order].inferred[common.thoughts[c_order].superposition ? 'union' : 'intersect'](ids);
 			draft.superposition = true;
 			draft.uncertain = false;
 		};
 
-		for (const { reacting, identities, order: conn_order } of connections) {
-			if (!state.hands[reacting].includes(conn_order))
-				continue;
-
-			common.updateThoughts(conn_order, update_card(conn_order, identities));
-		}
 		common.updateThoughts(order, update_card(order, inferences));
 	}
 
@@ -187,7 +179,7 @@ export function update_turn(game, action) {
 
 	// Rewind any confirmed finesse connections we have now
 	/** @type {IdentifyAction[]} */
-	const rewind_actions = demonstrated.reduce((acc, { order }) => {
+	const rewind_actions = demonstrated.keys().reduce((acc, order) => {
 		const playerIndex = state.hands.findIndex(hand => hand.includes(order));
 
 		if (playerIndex !== state.ourPlayerIndex || common.thoughts[order].rewinded)
@@ -215,11 +207,10 @@ export function update_turn(game, action) {
 
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const { focus, inference } = common.waiting_connections[i];
+		const { suitIndex, rank } = inference;
 
 		// Filter out connections that have been removed (or connections to the same card where others have been demonstrated)
-		if (demonstrated.some(d => d.order === focus &&
-			!d.inferences.some(inf => inference.suitIndex === inf.suitIndex && inference.rank === inf.rank))
-		) {
+		if (demonstrated.has(focus) && !demonstrated.get(focus).some(d => d.inference.suitIndex === suitIndex && d.inference.rank === rank)) {
 			to_remove.add(i);
 			remove_finesses.add(i);
 		}

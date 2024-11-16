@@ -258,4 +258,70 @@ describe('pink choice tempo clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['i1']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]].chop_moved, false);
 	});
+
+	it('interprets a pink choice tempo clue over a pink fix', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'y3', 'r1', 'r4', 'g5'],
+			['g4', 'i3', 'r2', 'b3', 'b1']
+		], {
+			level: { min: 3 },
+			clue_tokens: 7,
+			play_stacks: [0, 0, 0, 0, 1],
+			starting: PLAYER.CATHY,
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Cathy clues 2 to Alice (slots 1,5)');
+		takeTurn(game, 'Alice plays i2 (slot 5)');
+		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
+
+		// Slot 2 should be i3, not trash.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['i3']);
+	});
+});
+
+describe('pink fixes', () => {
+	it('gives a pink fix', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'i3', 'i1', 'r4', 'g5'],
+			['g4', 'y3', 'r2', 'i1', 'i2']
+		], {
+			level: { min: 3 },
+			clue_tokens: 7,
+			play_stacks: [0, 0, 0, 0, 1],
+			starting: PLAYER.BOB,
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Bob clues 2 to Cathy');		// i2 play
+		takeTurn(game, 'Cathy plays i2', 'b3');
+
+		// 1 to Cathy is a valid pink fix.
+		const { fix_clues } = find_clues(game);
+		assert.ok(fix_clues[PLAYER.CATHY].some(clue => clue.type === CLUE.RANK && clue.value === 1));
+	});
+
+	it('interprets a pink trash fix', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'y3', 'r1', 'r4', 'g5'],
+			['g4', 'i3', 'r2', 'b3', 'b1']
+		], {
+			level: { min: 3 },
+			clue_tokens: 7,
+			play_stacks: [0, 0, 0, 0, 1],
+			starting: PLAYER.CATHY,
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Cathy clues 2 to Alice (slots 4,5)');
+		takeTurn(game, 'Alice plays i2 (slot 5)');
+		takeTurn(game, 'Bob clues 1 to Alice (slot 5)');
+
+		// Slot 5 should be known trash.
+		const trash = game.common.thinksTrash(game.state, PLAYER.ALICE);
+		assert.ok(trash.some(o => o === game.state.hands[PLAYER.ALICE][4]));
+	});
 });

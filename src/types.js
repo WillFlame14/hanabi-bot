@@ -130,6 +130,11 @@
  * @property {boolean} [ambiguousPassback]
  * @property {boolean} [selfPassback]
  * @property {boolean} [symmetric]
+ * 
+ * @typedef Demonstration
+ * @property {number} order
+ * @property {Identity} inference
+ * @property {Connection[]} connections
  */
 /**
  * @typedef Link

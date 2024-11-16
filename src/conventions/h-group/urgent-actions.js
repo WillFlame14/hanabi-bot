@@ -429,7 +429,9 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			// Urgent fix on the next player is particularly urgent, but we should prioritize urgent fixes for others too
 			if (urgent_fixes.length > 0) {
 				const urgent_fix = Utils.maxOn(urgent_fixes, ({ result }) => find_clue_value(result));
-				urgent_actions[PRIORITY.URGENT_FIX + nextPriority].push(Utils.clueToAction(urgent_fix, tableID));
+				const fixPriority = potential_cluers === 0 ? 0 : prioritySize;
+
+				urgent_actions[PRIORITY.URGENT_FIX + fixPriority].push(Utils.clueToAction(urgent_fix, tableID));
 				continue;
 			}
 

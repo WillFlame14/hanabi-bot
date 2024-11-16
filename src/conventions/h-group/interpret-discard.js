@@ -44,6 +44,8 @@ export function interpret_discard(game, action) {
 
 	Basics.onDiscard(game, action);
 
+	let transferred = false;
+
 	const to_remove = [];
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const { connections, conn_index, inference, action_index } = common.waiting_connections[i];
@@ -97,6 +99,7 @@ export function interpret_discard(game, action) {
 						linked: transfers
 					});
 				}
+				transferred = true;
 				to_remove.pop();
 				continue;
 			}
@@ -112,6 +115,9 @@ export function interpret_discard(game, action) {
 
 	if (to_remove.length > 0)
 		common.waiting_connections = common.waiting_connections.filter((_, index) => !to_remove.includes(index));
+
+	if (transferred)
+		return;
 
 	// End early game?
 	if (state.early_game && !action.failed && !state.deck[order].clued) {
@@ -132,8 +138,6 @@ export function interpret_discard(game, action) {
 			return;
 		}
 	}
-
-	let transferred = false;
 
 	// Discarding a useful card
 	// Note: we aren't including chop moved and finessed cards here since those can be asymmetric.

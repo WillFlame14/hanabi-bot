@@ -1,5 +1,5 @@
 import { CLUE } from '../../constants.js';
-import { cardCount, colourableSuits, variantRegexes } from '../../variants.js';
+import { cardCount, variantRegexes } from '../../variants.js';
 import { knownAs, visibleFind } from '../../basics/hanabi-util.js';
 import { order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
@@ -39,15 +39,14 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 		return { focus: chop, chop: true, positional: false };
 
 	const pink_choice_tempo = clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) &&
-		list.every(o => state.deck[o].clues.some(cl =>
-			(cl.type === CLUE.RANK ? cl.value !== clue.value : colourableSuits(state.variant)[cl.value]?.match(variantRegexes.pinkish)))) &&
+		list.every(o => !state.deck[o].newly_clued) &&
 		clue.value <= hand.length && list.includes(hand[clue.value - 1]);
 
 	if (pink_choice_tempo)
 		return { focus: hand[clue.value - 1], chop: false, positional: true };
 
 	if (clue.type === CLUE.RANK && clue.value === 1) {
-		const unknown_1s = list.filter(o => state.deck[o].clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+		const unknown_1s = list.filter(o => unknown_1(state.deck[o]));
 		const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
 
 		if (ordered_1s.length > 0)
@@ -245,4 +244,11 @@ export function getIgnoreOrders(game, index, suitIndex) {
  */
 export function getRealConnects(connections, conn_index) {
 	return connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
+}
+
+/**
+ * @param {ActualCard} card
+ */
+export function unknown_1(card) {
+	return card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1);
 }
