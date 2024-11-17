@@ -121,7 +121,7 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 	const { common, state } = game;
 
 	const { clue, giver, list, target } = action;
-	const { focus } = determine_focus(game, state.hands[target], common, list, clue, { beforeClue: true });
+	const { focus } = determine_focus(game, state.hands[target], common, list, clue);
 	const focused_card = common.thoughts[focus];
 
 	/** @type {{ id: Identity, connections: Connection[], fake: boolean }[][]} */
@@ -213,7 +213,6 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 	logger.info('symmetric connections', sym_conn);
 	return symmetric_connections;
 }
-
 
 /**
  * Applies the given connections on the given suit to the state (e.g. writing finesses).

@@ -3,12 +3,13 @@ import { describe, it } from 'node:test';
 
 import { PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
-import { ACTION } from '../../src/constants.js';
+import { ACTION, CLUE } from '../../src/constants.js';
 import HGroup from '../../src/conventions/h-group.js';
 import logger from '../../src/tools/logger.js';
 
 import { order_1s } from '../../src/conventions/h-group/action-helper.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
+import { determine_focus } from '../../src/conventions/h-group/hanabi-logic.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -76,6 +77,24 @@ describe('playing 1s in the correct order', () => {
 
 		// Alice's slot 2 should still be any 1 (not prompted to be r1).
 		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][1]], ['r1', 'y1', 'g1', 'b1', 'p1']);
+	});
+
+	it('recognizes the correct focus of a 1 clue', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b2', 'r2', 'g3', 'r5', 'b3'],
+			['r4', 'b1', 'g4', 'y1', 'p4']
+		], {
+			level: { min: 3 },
+			starting: PLAYER.BOB
+		});
+
+		const clue = { type: CLUE.RANK, value: 1 };
+		const list = game.state.clueTouched(game.state.hands[PLAYER.CATHY], clue);
+		const { focus } = determine_focus(game, game.state.hands[PLAYER.CATHY], game.common, list, clue, { beforeClue: true });
+
+		// The focus of the clue is Cathy's slot 3.
+		assert.equal(focus, game.state.hands[PLAYER.CATHY][3]);
 	});
 });
 

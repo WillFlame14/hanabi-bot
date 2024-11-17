@@ -39,14 +39,14 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 		return { focus: chop, chop: true, positional: false };
 
 	const pink_choice_tempo = clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) &&
-		list.every(o => !state.deck[o].newly_clued) &&
+		list.every(o => options.beforeClue ? state.deck[o].clued : !state.deck[o].newly_clued) &&
 		clue.value <= hand.length && list.includes(hand[clue.value - 1]);
 
 	if (pink_choice_tempo)
 		return { focus: hand[clue.value - 1], chop: false, positional: true };
 
 	if (clue.type === CLUE.RANK && clue.value === 1) {
-		const unknown_1s = list.filter(o => unknown_1(state.deck[o]));
+		const unknown_1s = list.filter(o => unknown_1(state.deck[o], options.beforeClue));
 		const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
 
 		if (ordered_1s.length > 0)
@@ -248,7 +248,8 @@ export function getRealConnects(connections, conn_index) {
 
 /**
  * @param {ActualCard} card
+ * @param {boolean} [beforeClue]
  */
-export function unknown_1(card) {
-	return card.clues.length > 0 && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1);
+export function unknown_1(card, beforeClue = false) {
+	return (beforeClue || card.clues.length > 0) && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1);
 }

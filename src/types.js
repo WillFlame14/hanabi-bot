@@ -114,6 +114,7 @@
  * @property {Connection[]} connections
  * @property {boolean} [save]
  * @property {INTERP} interp
+ * @property {boolean} [illegal]
  *
  * @typedef {Omit<FocusPossibility, 'interp'> & { fake?: boolean }} SymFocusPossibility
  */

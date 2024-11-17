@@ -227,7 +227,6 @@ describe('layered finesse', () => {
 			starting: PLAYER.CATHY
 		});
 
-		// Cathy clues yellow to Bob, touching y2.
 		takeTurn(game, 'Cathy clues yellow to Bob');		// y2 layered finesse on us
 		takeTurn(game, 'Alice plays p1 (slot 1)');			// expecting y1 finesse
 		takeTurn(game, 'Bob discards r4', 'b2');
@@ -237,6 +236,24 @@ describe('layered finesse', () => {
 
 		// y1 should be in slot 3 now.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['y1']);
+	});
+
+	it(`doesn't try to connect on others inside a self-layered finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b1', 'b4', 'y2', 'r5'],
+			['p2', 'y1', 'b5', 'g4'],
+			['g1', 'r4', 'b4', 'g3']
+		], {
+			level: { min: 5 },
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues yellow to Bob');		// y2 layered finesse on us
+		takeTurn(game, 'Alice plays p1 (slot 1)');			// expecting y1 finesse
+
+		// We should connect with y1 in slot 2, not using Bob's y1 .
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['y1']);
 	});
 
 	it('recognizes unsafe players when they cannot play into a layered finesse', () => {

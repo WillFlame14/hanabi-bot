@@ -86,7 +86,7 @@ describe('bluff clues', () => {
 		});
 		takeTurn(game, 'Donald clues 4 to Alice (slot 2)');
 
-		// Cathy's slot 1 could be any of the next 1's.
+		// Alice's slot 1 could be any of the next 1's.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r1', 'y1', 'g1', 'b1', 'p1']);
 	});
 
@@ -304,6 +304,7 @@ describe('bluff clues', () => {
 			['g4', 'b2', 'r3', 'r1']
 		], {
 			level: { min: 11 },
+			clue_tokens: 7,
 			starting: PLAYER.CATHY
 		});
 		takeTurn(game, 'Cathy clues red to Donald');
@@ -311,12 +312,36 @@ describe('bluff clues', () => {
 		takeTurn(game, 'Alice discards y4 (slot 4)');
 
 		takeTurn(game, 'Bob clues red to Alice (slots 2,3)');
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r2', 'r4']);
 
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r2', 'r4']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][0]].finessed, true);
+
 		takeTurn(game, 'Cathy plays p1', 'p2');
+
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r4']);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.DONALD][3]], ['r3']);
+	});
+
+	it('connects on clued cards not in prompt position', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b4', 'r1', 'y1', 'g5'],
+			['p1', 'r4', 'b5', 'b2'],
+			['g4', 'r5', 'r3', 'r1']
+		], {
+			level: { min: 11 },
+			clue_tokens: 7,
+			starting: PLAYER.CATHY
+		});
+		takeTurn(game, 'Cathy clues red to Donald');
+		takeTurn(game, 'Donald plays r1', 'p5');
+		takeTurn(game, 'Alice discards y4 (slot 4)');
+
+		takeTurn(game, 'Bob clues red to Alice (slots 2,3)');
+		takeTurn(game, 'Cathy plays p1', 'p2');
+
+		// Same scenario as above, but r3 is no longer in prompt position.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r4']);
 	});
 
 	it(`makes the correct inferences on a received bluff`, () => {
@@ -711,7 +736,7 @@ describe('bluff clues', () => {
 	it(`understands a layered finesse if the target is too far away to be a bluff`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['y2', 'p4', 'r2', 'y1'],
+			['y4', 'p4', 'r2', 'y1'],
 			['g5', 'b1', 'b4', 'y3'],
 			['g4', 'p1', 'g3', 'p3']
 		], {
@@ -730,6 +755,7 @@ describe('bluff clues', () => {
 		// Alice should write a layered finesse.
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['y1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['y2']);
 	});
 
 	it('understands a bluff on top of unknown plays that cannot match', () => {

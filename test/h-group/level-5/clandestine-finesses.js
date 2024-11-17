@@ -94,7 +94,35 @@ describe('clandestine finesses', () => {
 
 		// 2 to Bob is an illegal play clue.
 		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 2));
-		takeTurn(game, 'Alice clues 2 to Bob');
+	});
+
+	it('gives finesses that forces another to prevent a clandestine self-finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g2', 'r1', 'g1', 'y3', 'p3'],
+			['g1', 'r4', 'g4', 'r5', 'b4']
+		], { level: { min: 5 } });
+
+		const { play_clues } = find_clues(game);
+
+		// 2 to Bob is okay to give now.
+		assert.ok(play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 2));
+	});
+
+	it('plays into a finesse to prevent a clandestine self-finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'r4', 'g4', 'r5', 'b4'],
+			['g2', 'r1', 'g1', 'y3', 'p3']
+		], {
+			level: { min: 5 },
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 2 to Cathy');
+
+		// We must have g1 on finesse, otherwise Cathy will bomb g2 as r2.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['g1']);
 	});
 
 	it(`recognizes fake clandestine finesses`, () => {

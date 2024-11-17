@@ -71,6 +71,28 @@ export class HGroup_Player extends Player {
 	}
 
 	/**
+	 * Returns all clued card in the hand for the given suitIndex and rank (used for bluffs through clued cards.
+	 * @param {State} state
+	 * @param {number} playerIndex
+	 * @param {Identity} identity
+	 * @param {number[]} connected 		Orders of cards that have previously connected
+	 * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
+	 */
+	find_clued(state, playerIndex, identity, connected = [], ignoreOrders = []) {
+		return state.hands[playerIndex].filter(o => {
+			const { clued, newly_clued, order, clues } = state.deck[o];
+			const { inferred, possible } = this.thoughts[o];
+
+			return !connected.includes(order) &&			// not already connected
+				clued && !newly_clued && 					// previously clued
+				possible.has(identity) &&					// must be a possibility
+				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 		// must not be information-locked on a different identity
+				clues.some(clue => cardTouched(identity, state.variant, clue)) &&		// at least one clue matches
+				!ignoreOrders.includes(o);
+		});
+	}
+
+	/**
 	 * Finds a prompt in the hand for the given suitIndex and rank, or undefined if no card is a valid prompt.
 	 * @param {State} state
 	 * @param {number} playerIndex

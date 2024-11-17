@@ -1,7 +1,7 @@
 import { CLUE } from '../../../constants.js';
 import { CLUE_INTERP } from '../h-constants.js';
 import { determine_focus, getIgnoreOrders, rankLooksPlayable } from '../hanabi-logic.js';
-import { find_connecting, resolve_bluff } from './connecting-cards.js';
+import { find_connecting } from './connecting-cards.js';
 import { cardTouched, colourableSuits, variantRegexes } from '../../../variants.js';
 import { finalize_connections } from './interpret-clue.js';
 import * as Utils from '../../../tools/util.js';
@@ -34,11 +34,9 @@ export function colour_save(game, identity, action, focus) {
 	if (!cardTouched({ suitIndex, rank }, game.state.variant, clue) || !focus_thoughts.possible.has({ suitIndex, rank }))
 		return false;
 
-	const brown_poss = focus_thoughts.possible.filter(c => state.variant.suits[c.suitIndex].match(variantRegexes.brownish) !== null);
-
 	// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
 	// OR if the clue given is not black.
-	if (rank === 5 && state.variant.suits[suitIndex] !== 'Black' && brown_poss.length === 0)
+	if (rank === 5 && state.variant.suits[suitIndex] !== 'Black' && state.variant.suits[suitIndex] !== 'Brown')
 		return false;
 
 	// Determine if possible save on k2, k5 with colour
@@ -64,8 +62,8 @@ export function colour_save(game, identity, action, focus) {
 			return false;
 	}
 
-	// Check if card is critical or a brownish-2
-	return state.isCritical({ suitIndex, rank }) || brown_poss.some(c => c.rank === 2);
+	// Check if identity is critical or a brown 2
+	return state.isCritical({ suitIndex, rank }) || (state.variant.suits[suitIndex] === 'Brown' && rank === 2);
 }
 
 /**
@@ -77,7 +75,7 @@ export function colour_save(game, identity, action, focus) {
  */
 function find_colour_focus(game, suitIndex, action, thinks_stall) {
 	const { common, state } = game;
-	const { clue, giver, list, target } = action;
+	const { clue, list, target } = action;
 	const { focus, chop } = determine_focus(game, state.hands[target], common, list, clue);
 	const focus_thoughts = common.thoughts[focus];
 
@@ -96,7 +94,7 @@ function find_colour_focus(game, suitIndex, action, thinks_stall) {
 	const old_play_stacks = state.play_stacks.slice();
 	let already_connected = [focus];
 
-	let finesses = 0;
+	let finesses = 0, bluffed = false;
 
 	while (next_rank < state.max_ranks[suitIndex]) {
 		const identity = { suitIndex, rank: next_rank };
@@ -105,13 +103,13 @@ function find_colour_focus(game, suitIndex, action, thinks_stall) {
 		const ignoreOrders = getIgnoreOrders(game, next_rank - old_play_stacks[suitIndex] - 1, suitIndex);
 		const looksDirect = focus_thoughts.identity() === undefined;
 
-		const connect_options = action.hypothetical ? { knownOnly: [state.ourPlayerIndex] } : {};
+		const connect_options = { knownOnly: action.hypothetical ? [state.ourPlayerIndex] : [], bluffed };
 		const connecting = find_connecting(game, action, identity, looksDirect, thinks_stall, already_connected, ignoreOrders, connect_options);
 
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
 
-		const { type, order } = connecting.at(-1);
+		const { type, order, bluff } = connecting.at(-1);
 		const card = state.deck[order];
 
 		if (type === 'known' && card.newly_clued && common.thoughts[order].possible.length > 1 && focus_thoughts.inferred.has(identity)) {
@@ -127,10 +125,12 @@ function find_colour_focus(game, suitIndex, action, thinks_stall) {
 				break;
 			}
 
+			if (bluff)
+				bluffed = true;
+
 			// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
-			const possible_connections = resolve_bluff(game, connections, giver);
-			if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
-				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
+			if (!state.isCritical(identity))
+				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: connections.slice(), interp: CLUE_INTERP.PLAY });
 		}
 
 		for (const { order } of connecting)
@@ -143,12 +143,6 @@ function find_colour_focus(game, suitIndex, action, thinks_stall) {
 
 	// Restore play stacks
 	state.play_stacks = old_play_stacks;
-
-	connections = resolve_bluff(game, connections, giver);
-	if (connections.length == 0) {
-		// Undo plays invalidated by a false bluff.
-		next_rank = old_play_stacks[suitIndex] + 1;
-	}
 
 	const next_identity = { suitIndex, rank: next_rank };
 	if (cardTouched(next_identity, state.variant, action.clue) && focus_thoughts.possible.has(next_identity)) {
@@ -248,6 +242,7 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 		let connections = [];
 		let finesses = 0;
 		let already_connected = [focus];
+		let bluffed = false;
 
 		state.play_stacks = old_play_stacks.slice();
 		let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focus));
@@ -256,13 +251,13 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 		while (next_rank <= rank) {
 			const identity = { suitIndex, rank: next_rank };
 			const ignoreOrders = getIgnoreOrders(game, next_rank - old_play_stacks[suitIndex] - 1, suitIndex);
-			const connect_options = action.hypothetical ? { knownOnly: [state.ourPlayerIndex] } : {};
+			const connect_options = { knownOnly: action.hypothetical ? [state.ourPlayerIndex] : [], bluffed };
 			const connecting = find_connecting(game, action, identity, looksDirect, thinks_stall, already_connected, ignoreOrders, connect_options);
 
 			if (connecting.length === 0)
 				break;
 
-			const { type, order } = connecting.at(-1);
+			const { type, order, bluff } = connecting.at(-1);
 			const card = state.deck[order];
 
 			if (type === 'terminate') {
@@ -291,12 +286,12 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 				// A finesse proves that this is not direct
 				looksDirect = focus_thoughts.identity() === undefined && looksSave;
 
-				if (rank === next_rank) {
-					const possible_connections = resolve_bluff(game, connections, giver);
-					// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
-					if ((connections.length == 0 || possible_connections.length > 0) && !state.isCritical(card))
-						focus_possible.push({ suitIndex, rank, save: false, connections: possible_connections, interp: CLUE_INTERP.PLAY });
-				}
+				if (bluff)
+					bluffed = true;
+
+				// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
+				if (rank === next_rank && !state.isCritical(identity))
+					focus_possible.push({ suitIndex, rank, save: false, connections: connections.slice(), interp: CLUE_INTERP.PLAY });
 			}
 
 			connections = connections.concat(connecting);
@@ -316,11 +311,6 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 			continue;
 		}
 
-		connections = resolve_bluff(game, connections, giver);
-
-		if (connections.length == 0)
-			next_rank = old_play_stacks[suitIndex] + 1;
-
 		logger.info('found connections:', logConnections(connections, next_identity));
 
 		// Connected cards can stack up to this rank
@@ -328,14 +318,15 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 			const self_clandestine = connections.some(conn =>
 				conn.reacting === target && conn.type === 'finesse' && conn.hidden && conn.identities[0].rank + 1 === rank);
 
+			const illegal = self_clandestine || connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target));
+
 			if (self_clandestine)
 				logger.warn('illegal clandestine self-finesse!');
 
 			else if (connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target)))
 				logger.warn('illegal self-finesse that will cause a wrong prompt!');
 
-			else
-				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY });
+			focus_possible.push({ suitIndex, rank: next_rank, save: false, connections, interp: CLUE_INTERP.PLAY, illegal });
 		}
 	}
 

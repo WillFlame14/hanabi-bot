@@ -543,16 +543,16 @@ export function interpret_clue(game, action) {
 	}
 
 	const focus_possible = find_focus_possible(game, action, thinks_stall);
-	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save }) => logCard({suitIndex, rank}) + (save ? ' (save)' : '')));
+	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save, illegal }) => logCard({suitIndex, rank}) + (save ? ' (save)' : ''  + (illegal ? ' (illegal)' : ''))));
 
-	const matched_inferences = focus_possible.filter(p => common.thoughts[focus].inferred.has(p));
+	const matched_inferences = focus_possible.filter(p => !p.illegal && common.thoughts[focus].inferred.has(p));
 	const old_game = game.minimalCopy();
 
 	// Card matches an inference and not a save/stall
 	// If we know the identity of the card, one of the matched inferences must also be correct before we can give this clue.
 	if (matched_inferences.length >= 1 && matched_inferences.find(p => focused_card.matches(p))) {
 		if (giver === state.ourPlayerIndex) {
-			const simplest_symmetric_connections = occams_razor(game, focus_possible, target, focus);
+			const simplest_symmetric_connections = occams_razor(game, focus_possible.filter(p => !p.illegal), target, focus);
 
 			common.updateThoughts(focus, (draft) => { draft.inferred = common.thoughts[focus].inferred.intersect(simplest_symmetric_connections); });
 
@@ -562,7 +562,7 @@ export function interpret_clue(game, action) {
 				resolve_clue(game, old_game, action, matched_inferences, focused_card);
 		}
 		else {
-			common.updateThoughts(focus, (draft) => { draft.inferred = common.thoughts[focus].inferred.intersect(focus_possible); });
+			common.updateThoughts(focus, (draft) => { draft.inferred = common.thoughts[focus].inferred.intersect(focus_possible.filter(p => !p.illegal)); });
 			resolve_clue(game, old_game, action, matched_inferences, focused_card);
 		}
 	}
@@ -580,14 +580,11 @@ export function interpret_clue(game, action) {
 		const looksDirect = common.thoughts[focus].identity() === undefined && (					// Focused card must be unknown AND
 			clue.type === CLUE.COLOUR ||													// Colour clue always looks direct
 			rankLooksPlayable(game, clue.value, giver, target, focus) ||		// Looks like a play
-			focus_possible.some(fp => fp.save && game.players[target].thoughts[focus].possible.has(fp)));	// Looks like a save
+			focus_possible.some(fp => !fp.illegal && fp.save && game.players[target].thoughts[focus].possible.has(fp)));	// Looks like a save
 
 		// We are the clue target, so we need to consider all the (sensible) possibilities of the card
 		if (target === state.ourPlayerIndex) {
-			for (const fp of matched_inferences) {
-				if (!isTrash(state, game.players[giver], fp, focus, { ignoreCM: true }))
-					all_connections.push(fp);
-			}
+			all_connections = all_connections.concat(focus_possible.filter(fp => !isTrash(state, game.players[giver], fp, focus, { ignoreCM: true })));
 
 			for (const id of common.thoughts[focus].inferred) {
 				if (isTrash(state, game.players[giver], id, focus, { ignoreCM: true }) ||
@@ -639,6 +636,14 @@ export function interpret_clue(game, action) {
 		}
 		// Someone else is the clue target, so we know exactly what card it is
 		else if (!state.isBasicTrash(focused_card)) {
+			const illegal_fp = focus_possible.find(fp => focused_card.matches(fp) && fp.illegal);
+
+			if (illegal_fp) {
+				// Force ignoring the self component
+				game.next_ignore[0] ??= [];
+				game.next_ignore[0].push({ order: illegal_fp.connections[0].order, inference: focused_card.identity() });
+			}
+
 			const { suitIndex } = focused_card;
 			try {
 				const connections = find_own_finesses(game, action, focused_card, looksDirect);

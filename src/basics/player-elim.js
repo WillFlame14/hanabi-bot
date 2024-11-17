@@ -44,7 +44,9 @@ export function card_elim(state) {
 		if (id !== undefined) {
 			const id_hash = logCard(id);
 			certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
-			candidates.splice(candidates.findIndex(c => c.order === order), 1);
+
+			if (card.possible.length === 1)
+				candidates.splice(candidates.findIndex(c => c.order === order), 1);
 		}
 	};
 

@@ -6,7 +6,7 @@ import { valid_bluff } from './connection-helper.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logConnection } from '../../../tools/log.js';
+import { logCard } from '../../../tools/log.js';
 import { produce } from '../../../StateProxy.js';
 
 /**
@@ -153,13 +153,24 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
  * @param {Identity} identity
  * @param {number[]} [connected] 	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
- * @param {boolean} [assumeTruth]
- * @param {boolean} [noLayer]
+ * @param {{assumeTruth?: boolean, noLayer?: boolean, bluffed?: boolean}} options
  * @returns {Connection | undefined}
  */
-function find_unknown_connecting(game, action, reacting, identity, connected = [], ignoreOrders = [], assumeTruth = false, noLayer = false) {
+function find_unknown_connecting(game, action, reacting, identity, connected = [], ignoreOrders = [], options = {}) {
 	const { common, state, me } = game;
 	const { giver, target } = action;
+
+	if (options.bluffed) {
+		const orders = common.find_clued(state, reacting, identity, connected, ignoreOrders);
+
+		if (orders.length > 0) {
+			const match = orders.find(o => state.deck[o].matches(identity));
+
+			if (match !== undefined)
+				return { type: 'playable', reacting, order: match, linked: orders, identities: [identity] };
+		}
+		return;
+	}
 
 	const prompt = common.find_prompt(state, reacting, identity, connected, ignoreOrders);
 	const finesse = common.find_finesse(state, reacting, connected, ignoreOrders);
@@ -210,8 +221,8 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 		}
 
 		// Finessed card is delayed playable
-		if (!noLayer && game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse_card.suitIndex] + 1 === finesse_card.rank) {
-			const bluff = !assumeTruth && valid_bluff(game, action, finesse_card, reacting, connected);
+		if (!options.noLayer && game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[finesse_card.suitIndex] + 1 === finesse_card.rank) {
+			const bluff = !options.assumeTruth && valid_bluff(game, action, finesse_card, reacting, connected);
 
 			if (giver === state.ourPlayerIndex) {
 				if (bluff) {
@@ -239,103 +250,9 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 				}
 			}
 
-			return { type: 'finesse', reacting, order: finesse, hidden: true, bluff, identities: [finesse_card.raw()] };
+			return { type: 'finesse', reacting, order: finesse, hidden: !bluff, bluff, identities: [finesse_card.raw()] };
 		}
 	}
-}
-
-/**
- * Determines whether a set of connections satisfies the no finesse rule.
- * @param {Game} game
- * @param {Connection[]} connections	The complete connections leading to the play of a card.
- * @param {number} giver
- * @param {number} index
- * @returns {{ valid: boolean, conns: Connection[] }}
- */
-function no_finesse_conns(game, connections, giver, index) {
-	const { common, state } = game;
-
-	// A bluff cannot be followed by finesses, otherwise it wouldn't have been a valid bluff target.
-	let f_index = connections.findIndex((conn, i) => i >= index && conn.type === 'finesse');
-
-	if (f_index === -1)
-		return { valid: true, conns: connections };
-
-	if (giver === state.ourPlayerIndex)
-		return { valid: false, conns: connections };
-
-	const conns = connections.slice();
-
-	// See if we can replace finesse connections with prompts in our own hand
-	while (f_index !== -1) {
-		const connected = conns.slice(0, f_index).map(conn => conn.order);
-		const prompt = common.find_prompt(state, state.ourPlayerIndex, conns[f_index].identities[0], connected, []);
-
-		if (prompt === undefined)
-			break;
-
-		logger.highlight('yellow', `replacing finesse connection [${logConnection(conns[f_index])}] with own prompt ${prompt}`);
-		conns[f_index] = { type: 'prompt', reacting: state.ourPlayerIndex, order: prompt, identities: connections[f_index].identities };
-		f_index = conns.findIndex((conn, i) => i >= index && conn.type === 'finesse');
-	}
-
-	return { valid: f_index === -1, conns };
-}
-
-/**
- * Determines whether a bluff connection is a valid bluff, and updates the connection accordingly.
- * @param {Game} game
- * @param {Connection[]} connections	The complete connections leading to the play of a card.
- * @param {number} giver
- * @returns {Connection[]}
- */
-export function resolve_bluff(game, connections, giver) {
-	if (connections.length == 0 || !connections[0].bluff)
-		return connections;
-
-	const { state } = game;
-	const next_visible = connections.findIndex(conn => ((card = state.deck[conn.order]) =>
-		!(conn.type === 'finesse' && conn.reacting === connections[0].reacting && (card.identity() === undefined || state.isPlayable(card))))());
-	const index = next_visible === -1 ? connections.length : next_visible;
-
-	const { valid, conns } = no_finesse_conns(game, connections, giver, index);
-
-	if (!valid) {
-		// If a bluff is not possible, we only have a valid connection if all cards can be played
-		if (next_visible > 1) {
-			let valid_hidden_finesse = true;
-
-			const hypo_stacks = state.play_stacks.slice();
-			for (const conn of conns) {
-				const { identities } = conn;
-
-				if (identities.length > 1)
-					continue;
-
-				const { suitIndex, rank } = identities[0];
-
-				if (hypo_stacks[suitIndex] + 1 !== rank) {
-					valid_hidden_finesse = false;
-					break;
-				}
-				hypo_stacks[suitIndex] = rank;
-			}
-
-			if (valid_hidden_finesse) {
-				logger.warn('bluff invalid but connection still exists');
-				return conns.with(0, Object.assign(Utils.objClone(conns[0]), { bluff: false }));
-			}
-		}
-
-		logger.warn(`bluff invalid (${conns.map(logConnection).join(' -> ')}), followed by hidden/finesse connections`);
-		return [];
-	}
-
-	// Remove extra hidden finesse connections if the bluff is valid
-	if (conns.length > 1 && conns[1].reacting === conns[0].reacting)
-		return conns.toSpliced(1, index - 1);
-
-	return conns;
 }
 
 /**
@@ -347,7 +264,7 @@ export function resolve_bluff(game, connections, giver) {
  * @param {Set<number>} thinks_stall Whether the clue appears to be a stall to these players.
  * @param {number[]} [connected]	The orders of cards that have previously connected (and should be skipped).
  * @param {number[]} [ignoreOrders] The orders of cards to ignore when searching.
- * @param {{knownOnly?: number[], assumeTruth?: boolean}} options
+ * @param {{knownOnly?: number[], assumeTruth?: boolean, bluffed?: boolean}} options
  * @returns {Connection[]}
  */
 export function find_connecting(game, action, identity, looksDirect, thinks_stall, connected = [], ignoreOrders = [], options = {}) {
@@ -382,7 +299,7 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 		return match !== undefined && match !== prompt;
 	});
 
-	if (non_prompt_copy) {
+	if (!options.bluffed && non_prompt_copy) {
 		logger.warn(`connecting ${logCard(identity)} in non-prompt position, not searching for unknown cards`);
 		return [];
 	}
@@ -409,7 +326,8 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 		const already_connected = connected.slice();
 		state.play_stacks = old_play_stacks.slice();
 
-		let connecting = find_unknown_connecting(game, action, playerIndex, identity, already_connected, ignoreOrders, options.assumeTruth, i === 0);
+		const unk_options = { assumeTruth: options.assumeTruth, noLayer: i === 0, bluffed: options.bluffed };
+		let connecting = find_unknown_connecting(game, action, playerIndex, identity, already_connected, ignoreOrders, unk_options);
 
 		if (connecting?.type === 'terminate') {
 			wrong_prompts.push(connecting);
@@ -418,14 +336,12 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 
 		// If the connection is hidden, that player must have the actual card playable in order for the layer to work.
 		// Thus, we keep searching for unknown connections in their hand until we find a non-hidden connection.
-		// If the connection could be a bluff, we will search for the actual playable card in case it turns out
-		// not to be a valid bluff target.
 		while (connecting?.hidden) {
 			connections.push(connecting);
 			already_connected.push(connecting.order);
 			state.play_stacks[state.deck[connecting.order].suitIndex]++;
 
-			connecting = find_unknown_connecting(game, action, playerIndex, identity, already_connected, ignoreOrders);
+			connecting = find_unknown_connecting(game, action, playerIndex, identity, already_connected, ignoreOrders, unk_options);
 		}
 
 		if (connecting) {
@@ -435,13 +351,6 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 			}
 
 			connections.push(connecting);
-		}
-
-		// If we don't find the actual card, a bluff of the first card is still a valid interpretation.
-		if (connections.length > 0 && connections.at(0).bluff && connections.at(-1).hidden) {
-			// Remove all of the hidden plays after the bluff and treat the bluff as the known target.
-			connections.splice(1, connections.length - 1);
-			connections[0].hidden = false;
 		}
 
 		// The final card must not be hidden

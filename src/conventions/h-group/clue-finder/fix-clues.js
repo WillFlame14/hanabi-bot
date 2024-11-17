@@ -5,7 +5,6 @@ import { isSaved, isTrash, knownAs, visibleFind } from '../../../basics/hanabi-u
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
 import { get_result } from './determine-clue.js';
-import { CLUE } from '../../../constants.js';
 import { order_1s } from '../action-helper.js';
 import { unknown_1 } from '../hanabi-logic.js';
 
