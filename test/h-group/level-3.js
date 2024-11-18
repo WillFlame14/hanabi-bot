@@ -10,6 +10,7 @@ import logger from '../../src/tools/logger.js';
 import { order_1s } from '../../src/conventions/h-group/action-helper.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
 import { determine_focus } from '../../src/conventions/h-group/hanabi-logic.js';
+import { produce } from '../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -138,24 +139,36 @@ describe('sarcastic discard', () => {
 		], {
 			level: { min: 3 },
 			play_stacks: [0, 3, 0, 0, 1],
-			starting: PLAYER.CATHY
+			starting: PLAYER.CATHY,
+			init: (game) => {
+				const { common, state } = game;
+
+				// pace = currScore (4) + state.cardsLeft (18) + state.numPlayers (3) - maxScore (25) = 0
+				state.cardsLeft = 18;
+
+				// Bob's y4 is clued yellow.
+				const y4 = state.hands[PLAYER.BOB][3];
+				let { inferred, possible } = common.thoughts[y4];
+
+				state.deck = state.deck.with(y4, produce(state.deck[y4], (draft) => { draft.clued = true; }));
+				common.updateThoughts(y4, (draft) => {
+					draft.inferred = inferred.intersect(['y4'].map(expandShortCard));
+					draft.possible = possible.intersect(['y1', 'y2', 'y3', 'y4'].map(expandShortCard));
+					draft.clued = true;
+				});
+
+				// Bob's y5 is known.
+				const y5 = state.hands[PLAYER.BOB][2];
+				({ inferred, possible } = common.thoughts[y5]);
+
+				state.deck = state.deck.with(y5, produce(state.deck[y4], (draft) => { draft.clued = true; }));
+				common.updateThoughts(y5, (draft) => {
+					draft.inferred = inferred.intersect(['y5'].map(expandShortCard));
+					draft.possible = possible.intersect(['y5'].map(expandShortCard));
+					draft.clued = true;
+				});
+			}
 		});
-		const { common, state } = game;
-
-		// pace = currScore (4) + state.cardsLeft (18) + state.numPlayers (3) - maxScore (25) = 0
-		state.cardsLeft = 18;
-
-		// Bob's y4 is clued yellow.
-		const y4 = common.thoughts[state.hands[PLAYER.BOB][3]];
-		y4.inferred = y4.inferred.intersect(['y4'].map(expandShortCard));
-		y4.possible = y4.possible.intersect(['y1', 'y2', 'y3', 'y4'].map(expandShortCard));
-		y4.clued = true;
-
-		// Bob's y5 is known.
-		const y5 = common.thoughts[state.hands[PLAYER.BOB][2]];
-		y5.inferred = y5.inferred.intersect(['y5'].map(expandShortCard));
-		y5.possible = y5.possible.intersect(['y5'].map(expandShortCard));
-		y5.clued = true;
 
 		takeTurn(game, 'Cathy clues yellow to Alice (slot 5)');
 

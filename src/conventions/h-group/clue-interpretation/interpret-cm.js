@@ -166,8 +166,8 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 
 	const id = focused_card.identity();
 
-	if (id !== undefined && common.hypo_stacks[id.suitIndex] < id.rank) {
-		logger.info('focused card did not become playable, not tccm');
+	if (!common.unknown_plays.has(focused_card.order) && id !== undefined && common.hypo_stacks[id.suitIndex] < id.rank) {
+		logger.info(`focused card ${logCard(id)} did not become playable, not tccm ${common.hypo_stacks}`);
 		return [];
 	}
 

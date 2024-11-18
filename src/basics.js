@@ -124,18 +124,18 @@ export function onDraw(game, action) {
 	const { order, playerIndex, suitIndex, rank } = action;
 
 	state.hands[playerIndex].unshift(order);
-	state.deck[order] = new ActualCard(suitIndex, rank, order, state.actionList.length);
+	state.deck[order] = Object.freeze(new ActualCard(suitIndex, rank, order, state.actionList.length));
 
 	for (let i = 0; i < state.numPlayers; i++) {
 		const player = game.players[i];
 
-		player.thoughts[order] = new Card(
+		player.thoughts[order] = Object.freeze(new Card(
 			(i !== playerIndex || i === state.ourPlayerIndex) ? suitIndex : -1,
 			(i !== playerIndex || i === state.ourPlayerIndex) ? rank : -1,
 			player.all_possible,
 			player.all_possible,
 			order,
-			state.actionList.length);
+			state.actionList.length));
 	}
 
 	game.players.forEach(player => {
@@ -143,7 +143,7 @@ export function onDraw(game, action) {
 		player.refresh_links(state);
 	});
 
-	game.common.thoughts[order] = new Card(-1, -1, game.common.all_possible, game.common.all_possible, order, state.actionList.length);
+	game.common.thoughts[order] = Object.freeze(new Card(-1, -1, game.common.all_possible, game.common.all_possible, order, state.actionList.length));
 	state.cardOrder = order;
 	state.cardsLeft--;
 

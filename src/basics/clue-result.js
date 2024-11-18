@@ -4,8 +4,6 @@ import { isTrash } from './hanabi-util.js';
  * @typedef {import('./Game.js').Game} Game
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Player.js').Player} Player
- * @typedef {import('./Card.js').Card} Card
- * @typedef {import('./Card.js').ActualCard} ActualCard
  * @typedef {import('../types.js').Identity} Identity
  * @typedef {import('../types.js').Clue} Clue
  */

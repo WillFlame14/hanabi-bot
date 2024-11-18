@@ -282,7 +282,7 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 
 	if (hypo_state.play_stacks[suitIndex] + 1 !== rank) {
 		if (game.level >= LEVEL.BLUFFS && !assumeTruth && bluffed) {
-			logger.highlight('yellow', 'bluff connection failed, retrying with true finesse');
+			logger.highlight('yellow', `bluff connection failed (stacked up to ${hypo_state.play_stacks[suitIndex] + 1}), retrying with true finesse`);
 
 			try {
 				const fixed_connections = find_own_finesses(game, action, identity, looksDirect, ignorePlayer, selfRanks, true);
@@ -299,6 +299,7 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 
 			logger.highlight('yellow', 'failed to connect with true finesse');
 		}
+
 		throw new IllegalInterpretation(`unable to connect`);
 	}
 

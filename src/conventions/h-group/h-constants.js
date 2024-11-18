@@ -21,7 +21,7 @@ export const ACTION_PRIORITY = /** @type {const} */ ({
 });
 
 export const CLUE_INTERP = /** @type {const} */ ({
-	NONE: 'none',
+	NONE: 'none (clue)',
 	MISTAKE: 'mistake',
 	PLAY: 'play',
 	SAVE: 'save',
@@ -40,18 +40,20 @@ export const CLUE_INTERP = /** @type {const} */ ({
 });
 
 export const PLAY_INTERP = /** @type {const} */ ({
-	NONE: 'none',
+	NONE: 'none (play)',
 	CM_ORDER: 'order cm'
 });
 
 export const DISCARD_INTERP = /** @type {const} */ ({
-	NONE: 'none',
+	NONE: 'none (dc)',
 	SARCASTIC: 'sarcastic',
 	SCREAM: 'scream',
 	SHOUT: 'shout',
 	GENERATION: 'gen',
 	POS_DISCARD: 'pos dc',
-	POS_MISPLAY: 'pos misplay'
+	POS_MISPLAY: 'pos misplay',
+	GENTLEMANS: 'gd',
+	BATON: 'baton'
 });
 
 export const STALL_INDICES = /** @type {const} */ ({

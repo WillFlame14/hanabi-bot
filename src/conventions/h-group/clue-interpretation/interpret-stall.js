@@ -143,9 +143,11 @@ function other_expected_clue(game, giver, focus, max_stall) {
 							return false;
 
 						const chop = common.chop(state.hands[target]);
+						const duplicate_holders = Utils.findIndices(state.hands, hand => hand.some(o => state.deck[o].matches(state.deck[chop]) && o !== chop));
 
-						// Not a 2 save that could be duplicated in our hand
-						return !(save_clue.type === CLUE.RANK && save_clue.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[chop])));
+						// Not a 2 save that could be duplicated in our hand, or a save clue that is duplicated in the target's hand
+						return !(save_clue.type === CLUE.RANK && save_clue.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[chop]))) &&
+							!duplicate_holders.includes(clue.target);
 					}
 
 					case CLUE_INTERP.STALL_5:

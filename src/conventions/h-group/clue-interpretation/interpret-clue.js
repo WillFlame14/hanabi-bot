@@ -375,8 +375,8 @@ export function interpret_clue(game, action) {
 
 	const to_remove = new Set();
 
-	for (const [i, waiting_connection] of Object.entries(common.waiting_connections)) {
-		const { connections, conn_index, action_index, focus: wc_focus, inference, target: wc_target } = waiting_connection;
+	for (const [i, waiting_connection] of common.waiting_connections.entries()) {
+		const { connections, conn_index, action_index, focus: wc_focus, inference, target: wc_target, symmetric } = waiting_connection;
 		const focus_id = state.deck[focus].identity();
 
 		// The target of the waiting connection cannot eliminate their own identities
@@ -390,6 +390,11 @@ export function interpret_clue(game, action) {
 
 			if (stomped_conn) {
 				logger.warn(`connection [${connections.map(logConnection)}] had connection clued directly, cancelling`);
+
+				if (symmetric) {
+					to_remove.add(i);
+					continue;
+				}
 
 				const real_connects = getRealConnects(connections, stomped_conn_index);
 				const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: real_connects, order: stomped_conn.order, inference }]);
@@ -421,7 +426,7 @@ export function interpret_clue(game, action) {
 			}
 		}
 
-		to_remove.add(Number(i));
+		to_remove.add(i);
 		remove_finesse(game, waiting_connection);
 	}
 

@@ -398,7 +398,7 @@ describe('interpreting chop moves', () => {
 		});
 
 		// Alice's slots 4 and 5 are chop moved
-		[3, 4].forEach(index => game.common.thoughts[game.state.hands[PLAYER.ALICE][index]].chop_moved = true);
+		[3, 4].forEach(index => game.common.updateThoughts(game.state.hands[PLAYER.ALICE][index], (draft) => { draft.chop_moved = true; }));
 
 		takeTurn(game, 'Bob clues purple to Alice (slots 2,5)');
 
@@ -416,7 +416,7 @@ describe('interpreting chop moves', () => {
 		});
 
 		// Alice's slots 4 and 5 are chop moved
-		[3, 4].forEach(index => game.common.thoughts[game.state.hands[PLAYER.ALICE][index]].chop_moved = true);
+		[3, 4].forEach(index => game.common.updateThoughts(game.state.hands[PLAYER.ALICE][index], (draft) => { draft.chop_moved = true; }));
 
 		takeTurn(game, 'Bob clues purple to Alice (slots 4,5)');
 

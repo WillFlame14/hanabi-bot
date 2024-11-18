@@ -456,7 +456,7 @@ export class Game {
 
 				if (hypo_game.state.cardsLeft > 0) {
 					const order = hypo_game.state.cardOrder + 1;
-					const { suitIndex, rank } = hypo_game.state.deck[order] ?? new ActualCard(-1, -1, order, hypo_game.state.actionList.length);
+					const { suitIndex, rank } = hypo_game.state.deck[order] ?? Object.freeze(new ActualCard(-1, -1, order, hypo_game.state.actionList.length));
 					hypo_game.handle_action({ type: 'draw', playerIndex: action.playerIndex, order, suitIndex, rank });
 				}
 			}

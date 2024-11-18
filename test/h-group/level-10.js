@@ -363,4 +363,27 @@ describe('composition finesse', () => {
 		// We should have [r5,g5].
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r5', 'g5']);
 	});
+
+	it('resolves a fake certain discard correctly', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g2', 'r4', 'y3', 'b5'],
+			['g1', 'g3', 'r2', 'b1'],
+			['b2', 'y5', 'b5', 'b4']
+		], {
+			level: { min: 10 },
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues blue to Alice (slots 1,2,3)');
+		takeTurn(game, 'Alice plays b1 (slot 1)');
+		takeTurn(game, 'Bob clues 4 to Donald');			// looks like b2 self-finesse (Donald) -> b3 prompt (Alice)
+		takeTurn(game, 'Cathy clues 5 to Donald');
+
+		takeTurn(game, 'Donald discards b2', 'g2');			// Donald proves that we are prompted for b2,b3
+
+		// Slots 2,3 should be b2, b3.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['b2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['b3']);
+	});
 });

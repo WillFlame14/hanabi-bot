@@ -122,6 +122,11 @@ export function interpret_sarcastic(game, discardAction) {
 	// Sarcastic discard to other (or known sarcastic discard to us)
 	for (let i = 0; i < state.numPlayers; i++) {
 		const receiver = (state.ourPlayerIndex + i) % state.numPlayers;
+
+		// Can't sarcastic to self
+		if (receiver === playerIndex)
+			continue;
+
 		const sarcastics = find_sarcastics(state, receiver, common, identity);
 
 		if (sarcastics.some(o => me.thoughts[o].matches(identity, { infer: receiver === state.ourPlayerIndex }) && state.deck[o].clued)) {

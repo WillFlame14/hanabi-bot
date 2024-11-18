@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import * as ExAsserts from '../extra-asserts.js';
 
-import { COLOUR, PLAYER, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, expandShortCard, PLAYER, setup, takeTurn } from '../test-utils.js';
 import PlayfulSieve from '../../src/conventions/playful-sieve.js';
 import { ACTION } from '../../src/constants.js';
 import { take_action } from '../../src/conventions/playful-sieve/take-action.js';
@@ -10,6 +10,7 @@ import { team_elim } from '../../src/basics/helper.js';
 
 import logger from '../../src/tools/logger.js';
 import { logPerformAction } from '../../src/tools/log.js';
+import { produce } from '../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -138,16 +139,25 @@ describe('urgency principle', () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'y5', 'g5', 'p3', 'r2']
-		]);
+		], {
+			init: (game) => {
+				// Alice has a fully known r1 in slot 2
+				const order = game.state.hands[PLAYER.ALICE][1];
+				const card = game.common.thoughts[order];
+				const { possible, inferred } = card;
 
-		// Alice has a fully known r1 in slot 2
-		const card = game.common.thoughts[game.state.hands[PLAYER.ALICE][1]];
-		card.clued = true;
-		for (const poss of /** @type {const} */ (['possible', 'inferred']))
-			card[poss] = card[poss].intersect([{ suitIndex: 0, rank: 1 }]);
+				game.state.deck = game.state.deck.with(order, produce(game.state.deck[order], (draft) => { draft.clued = true; }));
 
-		team_elim(game);
-		game.common.update_hypo_stacks(game.state);
+				game.common.updateThoughts(order, (draft) => {
+					draft.clued = true;
+					draft.possible = possible.intersect([expandShortCard('r1')]);
+					draft.inferred = inferred.intersect([expandShortCard('r1')]);
+				});
+
+				team_elim(game);
+				game.common.update_hypo_stacks(game.state);
+			}
+		});
 
 		// Alice should not give purple.
 		const action = await take_action(game);

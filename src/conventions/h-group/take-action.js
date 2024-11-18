@@ -296,8 +296,24 @@ export async function take_action(game) {
 	const is_finessed = playable_orders.length > 0 && priority === 0 && !state.deck[best_playable_order].clued;
 
 	// Bluffs should never be deferred as they can lead to significant desync with human players
-	if (is_finessed && playable_orders.some(o => common.thoughts[o].bluffed || common.thoughts[o].possibly_bluffed))
+	if (is_finessed) {
+		const best_playable_card = common.thoughts[best_playable_order];
+		const { bluffed, possibly_bluffed } = best_playable_card;
+
+		if (bluffed || possibly_bluffed) {
+			logger.info('playing into potential bluff');
+			return { tableID, type: ACTION.PLAY, target: best_playable_order };
+		}
+	}
+
+	const chop_hidden_f = () => common.dependentConnections(best_playable_order).some(wc =>
+		!wc.symmetric && wc.connections.some((conn, i) => i >= wc.conn_index && conn.reacting === nextPlayerIndex && conn.hidden &&
+			wc.connections.some((conn2, j) => j > i && conn2.order === state.hands[nextPlayerIndex].findLast(o => ((c = common.thoughts[o]) => !c.clued && !c.chop_moved)()))));
+
+	if (playable_orders.length > 0 && priority === 0 && chop_hidden_f()) {
+		logger.info('must play into hidden component that may be discarded!');
 		return { tableID, type: ACTION.PLAY, target: best_playable_order };
+	}
 
 	// ALways give a save clue after a Generation Discard to avoid desync
 	if (state.generated && save_clues[nextPlayerIndex]?.safe) {
@@ -419,7 +435,7 @@ export async function take_action(game) {
 	}
 
 	// Attempt to solve endgame
-	if (!is_finessed && state.inEndgame()) {
+	if (state.inEndgame()) {
 		logger.highlight('purple', 'Attempting to solve endgame...');
 
 		const workerData = { game: Utils.toJSON(game), playerTurn: state.ourPlayerIndex, conv: 'HGroup', logLevel: logger.level };

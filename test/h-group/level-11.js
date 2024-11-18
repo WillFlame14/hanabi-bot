@@ -5,9 +5,12 @@ import { COLOUR, PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../t
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
 import { ACTION, CLUE } from '../../src/constants.js';
-import logger from '../../src/tools/logger.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finder.js';
+import { team_elim } from '../../src/basics/helper.js';
+
+import logger from '../../src/tools/logger.js';
+import { produce } from '../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -888,11 +891,21 @@ describe('bluff clues', () => {
 			play_stacks: [2, 0, 0, 0, 0],
 			starting: PLAYER.CATHY,
 			init: (game) => {
-				const d_slot3 = game.common.thoughts[game.state.hands[PLAYER.DONALD][2]];
-				d_slot3.inferred = d_slot3.inferred.intersect(expandShortCard('p2'));
-				d_slot3.possible = d_slot3.possible.intersect(['p2', 'p3', 'p4', 'p5'].map(expandShortCard));
-				d_slot3.clues.push({ type: CLUE.COLOUR, value: COLOUR.PURPLE, giver: PLAYER.ALICE, turn: -1 });
-				d_slot3.clued = true;
+				const d_slot3 = game.state.hands[PLAYER.DONALD][2];
+				const { inferred, possible } = game.common.thoughts[d_slot3];
+
+				game.state.deck = game.state.deck.with(d_slot3, produce(game.state.deck[d_slot3], (draft) => {
+					draft.clues.push({ type: CLUE.COLOUR, value: COLOUR.PURPLE, giver: PLAYER.ALICE, turn: -1 });
+					draft.clued = true;
+				}));
+
+				game.common.updateThoughts(d_slot3, (draft) => {
+					draft.inferred = inferred.intersect(expandShortCard('p2'));
+					draft.possible = possible.intersect(['p2', 'p3', 'p4', 'p5'].map(expandShortCard));
+					draft.clues.push({ type: CLUE.COLOUR, value: COLOUR.PURPLE, giver: PLAYER.ALICE, turn: -1 });
+					draft.clued = true;
+				});
+				team_elim(game);
 			}
 		});
 
@@ -1043,7 +1056,7 @@ describe('bluff clues', () => {
 	it(`doesn't bluff symmetrically finessed cards 2`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['r2', 'y3', 'p4', 'y4'],
+			['r2', 'b3', 'p4', 'y4'],
 			['y1', 'r4', 'b2', 'b3'],
 			['r3', 'p2', 'r1', 'b5']
 		], {

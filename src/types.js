@@ -131,6 +131,7 @@
  * @property {boolean} [ambiguousPassback]
  * @property {boolean} [selfPassback]
  * @property {boolean} [symmetric]
+ * @property {boolean} [rewinded]
  * 
  * @typedef Demonstration
  * @property {number} order

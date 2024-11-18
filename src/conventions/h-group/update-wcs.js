@@ -137,7 +137,7 @@ export function resolve_card_retained(game, waiting_connection) {
 				return { remove: false };
 			}
 
-			if (type === 'prompt' && !/** @type {INTERP[keyof INTERP][]} */([CLUE_INTERP.PLAY, CLUE_INTERP.SAVE, CLUE_INTERP.FIX, CLUE_INTERP.CM_TRASH, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TEMPO]).includes(game.lastMove)) {
+			if (type === 'prompt' && /** @type {INTERP[keyof INTERP][]} */([CLUE_INTERP.PLAY, CLUE_INTERP.SAVE, CLUE_INTERP.FIX, CLUE_INTERP.CM_TRASH, CLUE_INTERP.CM_5, CLUE_INTERP.CM_TEMPO]).includes(game.lastMove)) {
 				logger.warn(`allowing ${state.playerNames[reacting]} to defer a prompt by giving a useful clue`);
 				return { remove: false };
 			}
@@ -250,6 +250,11 @@ export function resolve_card_retained(game, waiting_connection) {
 				logger.warn('delaying for potential self-finesse');
 				return { remove: false, selfPassback: true };
 			}
+		}
+
+		if (!bluff && reacting === state.ourPlayerIndex && common.thoughts[order].rewinded) {
+			logger.highlight('cyan', 'allowing us to delay into a rewinded finesse');
+			return { remove: false, remove_finesse: false };
 		}
 
 		logger.warn(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);

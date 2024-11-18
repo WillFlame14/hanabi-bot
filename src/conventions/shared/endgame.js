@@ -1,11 +1,12 @@
 import HGroup from '../h-group.js';
-import { ActualCard } from '../../basics/Card.js';
 import { ACTION, ENDGAME_SOLVING_FUNCS } from '../../constants.js';
-import { produce } from '../../StateProxy.js';
-import { logCard, logObjectiveAction } from '../../tools/log.js';
-import logger from '../../tools/logger.js';
-
+import { ActualCard } from '../../basics/Card.js';
+import { getShortForms } from '../../variants.js';
 import * as Utils from '../../tools/util.js';
+
+import logger from '../../tools/logger.js';
+import { logCard, logObjectiveAction } from '../../tools/log.js';
+import { produce } from '../../StateProxy.js';
 
 import { isMainThread, parentPort, workerData } from 'worker_threads';
 
@@ -83,7 +84,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 				if (unknown_own.includes(order))
 					deck[order] = produce(deck[order], Utils.assignId(identity));
 				else
-					deck[order] = new ActualCard(identity.suitIndex, identity.rank, order);
+					deck[order] = Object.freeze(new ActualCard(identity.suitIndex, identity.rank, order));
 			}
 
 			return deck;
@@ -92,7 +93,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 		const nextPlayerIndex = state.nextPlayerIndex(playerTurn);
 		const original_deck = state.deck;
 
-		let max_deck_wins = 1, best_action;
+		let max_deck_wins = 0, best_action;
 
 		for (let d = 0; d < arrangements.length; d++) {
 			if (arrangements.length - d <= max_deck_wins)
@@ -326,7 +327,7 @@ function advance_state(state, playerTurn, action) {
 
 		if (state.deck[newCardOrder] === undefined) {
 			new_state.deck = new_state.deck.slice();
-			new_state.deck[newCardOrder] = new ActualCard(-1, -1, newCardOrder, state.actionList.length);
+			new_state.deck[newCardOrder] = Object.freeze(new ActualCard(-1, -1, newCardOrder, state.actionList.length));
 		}
 	};
 
@@ -534,6 +535,8 @@ function winnable(game, playerTurn, find_clues, find_discards, exclude = []) {
 if (!isMainThread) {
 	const game = conventions[workerData.conv].fromJSON(workerData.game);
 	Utils.globalModify({ game });
+
+	await getShortForms(game.state.variant);
 
 	simple_cache.clear();
 	simpler_cache.clear();

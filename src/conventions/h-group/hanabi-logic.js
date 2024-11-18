@@ -40,7 +40,9 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 
 	const pink_choice_tempo = clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) &&
 		list.every(o => options.beforeClue ? state.deck[o].clued : !state.deck[o].newly_clued) &&
-		clue.value <= hand.length && list.includes(hand[clue.value - 1]);
+		clue.value <= hand.length &&
+		list.includes(hand[clue.value - 1]) &&
+		common.thoughts[hand[clue.value - 1]].possible.some(p => state.variant.suits[p.suitIndex].match(variantRegexes.pinkish));
 
 	if (pink_choice_tempo)
 		return { focus: hand[clue.value - 1], chop: false, positional: true };

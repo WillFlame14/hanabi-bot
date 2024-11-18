@@ -4,7 +4,7 @@ import { cardTouched } from '../../../variants.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue } from './determine-clue.js';
 import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
-import { cardValue, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
+import { cardValue, isSaved, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import * as Utils from '../../../tools/util.js';
 
@@ -35,8 +35,11 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	const old_chop_card = state.deck[old_chop];
 
 	if (chop_moved.length === 0) {
+		if (isSaved(state, me, old_chop_card, old_chop, { infer: true }))
+			return -10;
+
 		// Chop can be clued later
-		if (!game.state.early_game && state.hands.some(hand => hand.some(o => o !== old_chop && state.deck[o].matches(old_chop_card))))
+		if (state.hands.some((hand, i) => i === target && hand.some(o => o !== old_chop && state.deck[o].matches(old_chop_card))))
 			return -10;
 
 		return safe ? Math.max(find_clue_value(result), state.isCritical(old_chop_card) ? 0.1 : -Infinity) : 0.01;
@@ -161,7 +164,7 @@ export function get_clue_interp(game, clue, giver, options) {
 			break;
 
 		case CLUE_INTERP.CM_TEMPO: {
-			const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focus);
+			const { tempo } = valuable_tempo_clue(game, clue, playables, focus);
 
 			if (!safe) {
 				logger.highlight('yellow', 'unsafe!');
@@ -171,10 +174,6 @@ export function get_clue_interp(game, clue, giver, options) {
 			if (!tempo) {
 				logger.info('not tempo clue (fill-in?)');
 				new_interp = CLUE_INTERP.STALL_FILLIN;
-			}
-			else if (valuable) {
-				logger.info('valuable tempo clue!');
-				new_interp = CLUE_INTERP.PLAY;
 			}
 			break;
 		}

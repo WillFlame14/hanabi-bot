@@ -327,6 +327,32 @@ describe('self-finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['y4', 'g4', 'p4']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
 	});
+
+	it('understands a very delayed finesse', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p4', 'y4', 'g1', 'r4'],
+			['b1', 'g1', 'y2', 'y2'],
+			['b3', 'y1', 'p1', 'p3']
+		], {
+			level: { min: 2 }
+		});
+
+		takeTurn(game, 'Alice clues 1 to Cathy');
+		takeTurn(game, 'Bob clues 3 to Alice (slot 4)');	// looks b3, g3
+		takeTurn(game, 'Cathy plays g1', 'y5');
+		takeTurn(game, 'Donald clues yellow to Bob');
+
+		takeTurn(game, 'Alice clues 5 to Cathy');			// 5 Stall
+		takeTurn(game, 'Bob clues red to Alice (slot 3)');
+		takeTurn(game, 'Cathy plays b1', 'g2');
+		takeTurn(game, 'Donald clues 5 to Alice (slot 2)');
+
+		takeTurn(game, 'Alice plays y1 (slot 1)');
+
+		// The finesse is revealed to be yellow.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['y3']);
+	});
 });
 
 describe('direct clues', () => {
@@ -755,6 +781,22 @@ describe('early game', () => {
 		assert.ok(action.type === ACTION.DISCARD);
 	});
 
+	it('5 stalls rather than giving a bad touch play clue in the early game', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r5', 'y4', 'p4', 'b3', 'g3'],
+			['b4', 'r2', 'y1', 'b3', 'y1']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
+
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, value: 5 });
+	});
+
 	it('gives a bad touch save clue in the early game', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
@@ -768,6 +810,7 @@ describe('early game', () => {
 
 		takeTurn(game, 'Cathy clues 5 to Bob');
 
+		// y3 must be saved with either a rank or a colour clue.
 		const action = await take_action(game);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 	});

@@ -7,6 +7,7 @@ import HGroup from '../../../src/conventions/h-group.js';
 
 import logger from '../../../src/tools/logger.js';
 import { CLUE } from '../../../src/constants.js';
+import { produce } from '../../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -72,12 +73,20 @@ describe('save clue interpretation', () => {
 			level: { min: 1 },
 			clue_tokens: 7,
 			starting: PLAYER.BOB,
-			variant: VARIANTS.BLACK
-		});
+			variant: VARIANTS.BLACK,
+			init: (game) => {
+				const update_func = (draft) => {
+					draft.clued = true;
+					draft.clues.push({ type: CLUE.COLOUR, value: 4, giver: PLAYER.BOB, turn: -1 });
+				};
 
-		const a_slot1 = game.state.deck[game.state.hands[PLAYER.ALICE][0]];
-		a_slot1.clued = true;
-		a_slot1.clues.push({ type: CLUE.COLOUR, value: 4, giver: PLAYER.BOB, turn: -1 });
+				const a_slot1 = game.state.hands[PLAYER.ALICE][0];
+				game.state.deck = game.state.deck.with(a_slot1, produce(game.state.deck[a_slot1], update_func));
+
+				for (const player of game.allPlayers)
+					player.updateThoughts(a_slot1, update_func);
+			}
+		});
 
 		takeTurn(game, 'Bob clues black to Alice (slot 1,5)');
 

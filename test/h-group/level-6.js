@@ -10,6 +10,8 @@ import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finde
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
+import { produce } from '../../src/StateProxy.js';
+import { team_elim } from '../../src/basics/helper.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -165,11 +167,21 @@ describe('tempo clue chop moves', () => {
 			level: { min: 6 },
 			starting: PLAYER.BOB,
 			init: (game) => {
-				const a_slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0]];
-				a_slot1.inferred = a_slot1.inferred.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
-				a_slot1.possible = a_slot1.possible.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
-				a_slot1.clues = [{ type: CLUE.COLOUR, value: COLOUR.BLUE, giver: PLAYER.BOB, turn: -1 }];
-				a_slot1.clued = true;
+				const a_slot1 = game.state.hands[PLAYER.ALICE][0];
+				const { inferred, possible } = game.common.thoughts[a_slot1];
+
+				game.state.deck = game.state.deck.with(a_slot1, produce(game.state.deck[a_slot1], (draft) => {
+					draft.clues = [{ type: CLUE.COLOUR, value: COLOUR.BLUE, giver: PLAYER.BOB, turn: -1 }];
+					draft.clued = true;
+				}));
+
+				game.common.updateThoughts(a_slot1, (draft) => {
+					draft.inferred = inferred.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
+					draft.possible = possible.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
+					draft.clues = [{ type: CLUE.COLOUR, value: COLOUR.BLUE, giver: PLAYER.BOB, turn: -1 }];
+					draft.clued = true;
+				});
+				team_elim(game);
 			}
 		});
 

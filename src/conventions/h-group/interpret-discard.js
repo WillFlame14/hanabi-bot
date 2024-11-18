@@ -1,4 +1,4 @@
-import { LEVEL } from './h-constants.js';
+import { DISCARD_INTERP, LEVEL, PLAY_INTERP } from './h-constants.js';
 import { isTrash } from '../../basics/hanabi-util.js';
 import { team_elim, undo_hypo_stacks } from '../../basics/helper.js';
 import { interpret_sarcastic } from '../shared/sarcastic.js';
@@ -17,7 +17,124 @@ import { interpret_baton, interpret_gd } from '../shared/special-discards.js';
  * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').DiscardAction} DiscardAction
+ * @typedef {import('../../types.js').WaitingConnection} WaitingConnection
  */
+
+/**
+ * Impure! (updates game if rewinded, otherwise only common.wcs)
+ * @param {Game} game
+ * @param {DiscardAction} action
+ */
+function check_transfer(game, action) {
+	const { common, state } = game;
+	const { order, playerIndex, suitIndex, rank, failed } = action;
+	const identity = { suitIndex, rank };
+
+	/** @type {WaitingConnection[]} */
+	const new_wcs = [];
+
+	for (const [i, waiting_connection] of common.waiting_connections.entries()) {
+		const { connections, conn_index, inference, action_index, giver } = waiting_connection;
+
+		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.order === order);
+		if (dc_conn_index === -1) {
+			new_wcs.push(waiting_connection);
+			continue;
+		}
+
+		if (failed && game.finesses_while_finessed[playerIndex].some(c => c.matches({ suitIndex, rank }))) {
+			logger.info('bombed duplicated card from finessing while finessed');
+			action.intentional = true;
+			new_wcs.push(waiting_connection);
+			continue;
+		}
+
+		logger.info(`discarded connecting card ${logCard({ suitIndex, rank })}, cancelling waiting connection for inference ${logCard(inference)}`);
+
+		// Another waiting connection exists for this, can ignore
+		const other_waiting = new_wcs.find(wc => !wc.symmetric && action_index === wc.action_index) ??
+			common.waiting_connections.find((wc, index) => index > i && !wc.symmetric && action_index === wc.action_index);
+
+		if (other_waiting !== undefined) {
+			logger.info('other waiting connection', other_waiting.connections.map(logConnection).join(' -> '), 'exists, continuing');
+			continue;
+		}
+
+		const replaceable = (state.deck[order].clued || (game.level >= LEVEL.SPECIAL_DISCARDS && common.thoughts[order].touched)) &&
+			rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] &&
+			!failed;
+
+		let transfers = [], interp;
+
+		if (replaceable) {
+			transfers = interpret_sarcastic(game, action);
+			interp = DISCARD_INTERP.SARCASTIC;
+
+			if (transfers.length === 0 && game.level >= LEVEL.SPECIAL_DISCARDS) {
+				transfers = interpret_gd(game, action, common.find_finesse.bind(common));
+				interp = DISCARD_INTERP.GENTLEMANS;
+			}
+
+			// Sarcastic/GD, rewrite connection onto this person
+			if (transfers.length === 1) {
+				logger.info('rewriting connection to transfer to', transfers[0]);
+
+				const new_connections = connections.with(dc_conn_index,
+					{ ...connections[dc_conn_index], reacting: state.hands.findIndex(hand => hand.includes(transfers[0])), order: transfers[0] });
+				new_wcs.push({ ...waiting_connection, connections: new_connections });
+
+				common.waiting_connections = new_wcs.concat(common.waiting_connections.slice(i + 1));
+				return { interp, new_game: game };
+			}
+			else if (transfers.length > 1 && transfers.every(o => state.hands[giver].includes(o))) {
+				logger.info('failed rewind, rewriting connection to transfer to', transfers);
+
+				const new_connections = connections.with(dc_conn_index, {
+					...connections[dc_conn_index],
+					type: 'playable',
+					reacting: state.hands.findIndex(hand => hand.includes(transfers[0])),
+					order: transfers.find(o => state.deck[o].matches(identity, { assume: true })),
+					linked: transfers
+				});
+				new_wcs.push({ ...waiting_connection, connections: new_connections });
+				common.waiting_connections = new_wcs.concat(common.waiting_connections.slice(i + 1));
+				return { interp, new_game: game };
+			}
+		}
+
+		const real_connects = getRealConnects(connections, dc_conn_index);
+		const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: real_connects, order, inference }]);
+		if (new_game) {
+			Object.assign(game, new_game);
+			return { interp, new_game };
+		}
+	}
+
+	game.common.waiting_connections = new_wcs;
+	return { interp: DISCARD_INTERP.NONE, new_game: game };
+}
+
+/**
+ * Impure!
+ * @param {Game} game
+ * @param {DiscardAction} action
+ * @param {typeof DISCARD_INTERP[keyof typeof DISCARD_INTERP]} interp
+ */
+function resolve_discard(game, action, interp) {
+	const { common, state } = game;
+	const { playerIndex } = action;
+
+	game.interpretMove(interp);
+
+	team_elim(game);
+
+	if (playerIndex === state.ourPlayerIndex) {
+		for (const order of state.ourHand) {
+			if (common.thoughts[order].uncertain)
+				common.updateThoughts(order, (draft) => { draft.uncertain = false; });
+		}
+	}
+}
 
 /**
  * Interprets (writes notes) for a discard of the given card.
@@ -38,86 +155,19 @@ export function interpret_discard(game, action) {
 	if (game.level >= LEVEL.BASIC_CM && rank === 1 && failed) {
 		const ocm_order = check_ocm(game, action);
 
-		if (ocm_order !== -1)
+		if (ocm_order !== -1) {
 			common.updateThoughts(ocm_order, (draft) => { draft.chop_moved = true; });
+			game.interpretMove(PLAY_INTERP.CM_ORDER);
+		}
 	}
 
 	Basics.onDiscard(game, action);
 
-	let transferred = false;
-
-	const to_remove = [];
-	for (let i = 0; i < common.waiting_connections.length; i++) {
-		const { connections, conn_index, inference, action_index } = common.waiting_connections[i];
-
-		const dc_conn_index = connections.findIndex((conn, index) => index >= conn_index && conn.order === order);
-		if (dc_conn_index === -1)
-			continue;
-
-		if (failed && game.finesses_while_finessed[playerIndex].some(c => c.matches({ suitIndex, rank }))) {
-			logger.info('bombed duplicated card from finessing while finessed');
-			action.intentional = true;
-			continue;
-		}
-
-		logger.info(`discarded connecting card ${logCard({ suitIndex, rank })}, cancelling waiting connection for inference ${logCard(inference)}`);
-
-		to_remove.push(i);
-
-		// Another waiting connection exists for this, can ignore
-		const other_waiting = common.waiting_connections.find((wc, index) => action_index === wc.action_index && !to_remove.includes(index));
-		if (other_waiting !== undefined) {
-			logger.info('other waiting connection', other_waiting.connections.map(logConnection).join(' -> '), 'exists, continuing');
-			continue;
-		}
-
-		const replaceable = (state.deck[order].clued || (game.level >= LEVEL.SPECIAL_DISCARDS && common.thoughts[order].touched)) &&
-			rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] &&
-			!failed;
-
-		if (replaceable) {
-			let transfers = interpret_sarcastic(game, action);
-
-			if (transfers.length === 0 && game.level >= LEVEL.SPECIAL_DISCARDS)
-				transfers = interpret_gd(game, action, common.find_finesse.bind(common));
-
-			// Sarcastic/GD, rewrite connection onto this person
-			if (transfers.length > 0) {
-				logger.info('rewriting connection to transfer to', transfers);
-
-				if (transfers.length === 1) {
-					Object.assign(connections[dc_conn_index], {
-						reacting: state.hands.findIndex(hand => hand.includes(transfers[0])),
-						order: transfers[0]
-					});
-				}
-				else {
-					Object.assign(connections[dc_conn_index], {
-						type: 'playable',
-						reacting: state.hands.findIndex(hand => hand.includes(transfers[0])),
-						order: transfers.find(o => state.deck[o].matches(identity, { assume: true })),
-						linked: transfers
-					});
-				}
-				transferred = true;
-				to_remove.pop();
-				continue;
-			}
-		}
-
-		const real_connects = getRealConnects(connections, dc_conn_index);
-		const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: real_connects, order, inference }]);
-		if (new_game) {
-			Object.assign(game, new_game);
-			return;
-		}
-	}
-
-	if (to_remove.length > 0)
-		common.waiting_connections = common.waiting_connections.filter((_, index) => !to_remove.includes(index));
-
-	if (transferred)
+	const { interp } = check_transfer(game, action);
+	if (interp !== DISCARD_INTERP.NONE) {
+		resolve_discard(game, action, interp);
 		return;
+	}
 
 	// End early game?
 	if (state.early_game && !action.failed && !state.deck[order].clued) {
@@ -142,7 +192,7 @@ export function interpret_discard(game, action) {
 	// Discarding a useful card
 	// Note: we aren't including chop moved and finessed cards here since those can be asymmetric.
 	// Discarding with a finesse will trigger the waiting connection to resolve.
-	if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {
+	if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !state.hands.flat().some(o => common.thoughts[o].matches(identity, { infer: true }))) {
 		if (state.deck[order].clued) {
 			logger.warn('discarded useful clued card!');
 			common.restore_elim(state.deck[order]);
@@ -152,18 +202,30 @@ export function interpret_discard(game, action) {
 				undo_hypo_stacks(game, identity);
 			}
 			else {
-				transferred = interpret_sarcastic(game, action).length > 0;
+				/** @type {typeof DISCARD_INTERP[keyof typeof DISCARD_INTERP]} */
+				let interp = DISCARD_INTERP.SARCASTIC;
+				let transferred = interpret_sarcastic(game, action).length > 0;
 
 				if (!transferred && game.level >= LEVEL.SPECIAL_DISCARDS) {
-					if (state.isPlayable(identity))
+					if (state.isPlayable(identity)) {
 						transferred = interpret_gd(game, action, common.find_finesse.bind(common)).length > 0;
-					else
+						interp = DISCARD_INTERP.GENTLEMANS;
+					}
+					else {
 						transferred = interpret_baton(game, action, (state, index) => [common.find_finesse(state, index)].filter(c => c !== undefined)).length > 0;
+						interp = DISCARD_INTERP.BATON;
+					}
+				}
+
+				if (transferred) {
+					logger.info('interpreted', interp);
+					resolve_discard(game, action, interp);
+					return;
 				}
 			}
 		}
 
-		if (!transferred && game.level >= LEVEL.STALLING) {
+		if (game.level >= LEVEL.STALLING) {
 			// If there is only one of this card left and it could be in the next player's chop,
 			// they are to be treated as in double discard avoidance.
 			const chop = common.chop(state.hands[state.nextPlayerIndex(playerIndex)]);
@@ -174,29 +236,35 @@ export function interpret_discard(game, action) {
 	}
 
 	if (game.level >= LEVEL.LAST_RESORTS && !action.failed && !state.inEndgame()) {
-		const result = check_sdcm(game, action, before_trash, old_chop);
+		let interp = check_sdcm(game, action, before_trash, old_chop);
 
-		if (result !== undefined) {
+		if (interp !== undefined) {
 			const nextPlayerIndex = state.nextPlayerIndex(playerIndex);
 			const chop = common.chop(state.hands[nextPlayerIndex]);
 
-			logger.info(`interpreted ${result}!`);
-
-			if (result === 'scream' || result === 'shout') {
+			if (interp === DISCARD_INTERP.SCREAM || interp === DISCARD_INTERP.SHOUT) {
 				state.screamed_at = true;
 
-				if (chop === undefined)
+				if (chop === undefined) {
 					logger.warn(`${state.playerNames[nextPlayerIndex]} has no chop!`);
-				else
+					interp = DISCARD_INTERP.NONE;
+				}
+				else {
 					common.updateThoughts(chop, (draft) => { draft.chop_moved = true; });
+				}
 			}
-			else if (result === 'generation') {
+			else if (interp === DISCARD_INTERP.GENERATION) {
 				state.generated = true;
+			}
+
+			if (interp !== undefined) {
+				resolve_discard(game, action, interp);
+				return;
 			}
 		}
 	}
 
-	if (!transferred && !state.screamed_at && !state.generated && game.level >= LEVEL.ENDGAME && state.inEndgame()) {
+	if (!state.screamed_at && !state.generated && game.level >= LEVEL.ENDGAME && state.inEndgame()) {
 		const targets = check_positional_discard(game, action, before_trash, old_chop, slot);
 
 		if (targets.length > 0) {
@@ -212,6 +280,7 @@ export function interpret_discard(game, action) {
 				common.updateThoughts(order, (draft) => {
 					draft.finessed = true;
 					draft.focused = true;
+					draft.old_inferred = draft.inferred;
 					draft.inferred = common.thoughts[order].inferred.intersect(playable_possibilities);
 				});
 
@@ -231,17 +300,12 @@ export function interpret_discard(game, action) {
 				inference: actual_card.raw(),
 				action_index: state.actionList.length - 1
 			});
+
+			resolve_discard(game, action, failed ? DISCARD_INTERP.POS_MISPLAY : DISCARD_INTERP.POS_DISCARD);
+			return;
 		}
 	}
-
-	team_elim(game);
-
-	if (playerIndex === state.ourPlayerIndex) {
-		for (const order of state.ourHand) {
-			if (common.thoughts[order].uncertain)
-				common.updateThoughts(order, (draft) => { draft.uncertain = false; });
-		}
-	}
+	resolve_discard(game, action, DISCARD_INTERP.NONE);
 }
 
 /**
@@ -289,7 +353,7 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
 	}
 
 	// If we haven't found a target, check if we can be the target.
-	if (reacting.length < num_plays) {
+	if (reacting.length < num_plays && playerIndex !== state.ourPlayerIndex) {
 		if (state.ourHand.length >= slot &&
 			me.thoughts[state.ourHand[slot - 1]].inferred.some(i => playable_possibilities.some(p => i.matches(p)))
 		)
@@ -310,7 +374,6 @@ function check_positional_discard(game, action, before_trash, old_chop, slot) {
  * @param {DiscardAction} action
  * @param {number[]} before_trash
  * @param {number} old_chop
- * @returns {'scream' | 'shout' | 'generation' | undefined}
  */
 function check_sdcm(game, action, before_trash, old_chop) {
 	const { common, state } = game;
@@ -318,9 +381,11 @@ function check_sdcm(game, action, before_trash, old_chop) {
 	const nextPlayerIndex = state.nextPlayerIndex(playerIndex);
 	const nextPlayerIndex2 = state.nextPlayerIndex(nextPlayerIndex);
 
+	const { NONE, SCREAM, SHOUT, GENERATION } = DISCARD_INTERP;
+
 	// Forced discard for locked hand
 	if (common.thinksLocked(state, nextPlayerIndex) && state.clue_tokens === 1)
-		return;
+		return NONE;
 
 	const valid_1clue_scream = () => {
 		const nextChop = common.chop(state.hands[nextPlayerIndex]);
@@ -339,23 +404,23 @@ function check_sdcm(game, action, before_trash, old_chop) {
 		isTrash(state, common, { suitIndex, rank }, order, { infer: true });
 
 	if (!scream && !shout)
-		return;
+		return NONE;
 
 	if (state.numPlayers === 2)
-		return scream ? 'scream' : 'shout';
+		return scream ? SCREAM : SHOUT;
 
 	if (common.thinksLoaded(state, nextPlayerIndex, {assume: true})) {
 		logger.warn(`${state.playerNames[playerIndex]} discarded with a playable/kt at 0 clues but next player was safe! (echo?)`);
-		return 'generation';
+		return GENERATION;
 	}
 
 	const next2Chop = common.chop(state.hands[nextPlayerIndex2]);
 
 	if (next2Chop === undefined)
-		return 'scream';
+		return SCREAM;
 
 	if (nextPlayerIndex2 === state.ourPlayerIndex)
-		return scream ? 'scream' : 'shout';
+		return scream ? SCREAM : SHOUT;
 
-	return (common.chopValue(state, nextPlayerIndex2) < 4) ? (scream ? 'scream' : 'shout') : 'generation';
+	return (common.chopValue(state, nextPlayerIndex2) < 4) ? (scream ? SCREAM : SHOUT) : GENERATION;
 }
