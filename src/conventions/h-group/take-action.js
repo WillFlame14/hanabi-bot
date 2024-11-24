@@ -680,6 +680,10 @@ export async function take_action(game) {
 			'cm' in best_play_clue ||
 			!best_play_clue.result.bad_touch.some(o => state.deck[o].matches(state.deck[best_play_clue.result.focus])));
 
+		// Give play clue even if possibly duping
+		if (valid_play_clue && find_clue_value({ ...best_play_clue.result, avoidable_dupe: 0 }) >= minimum_clue_value(state))
+			return Utils.clueToAction(best_play_clue, tableID);
+
 		const validStall = best_stall_clue(stall_clues, common_severity, valid_play_clue ? best_play_clue : undefined);
 
 		// 8 clues, must stall
@@ -691,6 +695,8 @@ export async function take_action(game) {
 			for (let i = 1; i < state.numPlayers; i++) {
 				const playerIndex = (state.ourPlayerIndex + i) % state.numPlayers;
 				const valid_clues = state.allValidClues(playerIndex);
+
+				logger.warn('unable to find any good clue, giving any valid clue!');
 
 				if (valid_clues.length > 0)
 					return Utils.clueToAction(valid_clues[0], tableID);

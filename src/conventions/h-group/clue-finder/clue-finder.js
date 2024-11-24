@@ -195,12 +195,25 @@ export function get_clue_interp(game, clue, giver, options) {
 
 			// if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0)
 			break;
-		case CLUE_INTERP.POSITIONAL:
+		case CLUE_INTERP.POSITIONAL: {
 			if (!safe) {
 				logger.highlight('yellow', 'unsafe!');
 				return;
 			}
+
+			if (playables.length === 0) {
+				const { suitIndex, rank } = state.deck[result.focus];
+
+				if (rank > hypo_game.me.hypo_stacks[suitIndex]) {
+					logger.warn('invalid positional clue (focus is not playable!)');
+					return;
+				}
+
+				logger.warn('positional with no playables!');
+				new_interp = CLUE_INTERP.STALL_BURN;
+			}
 			break;
+		}
 	}
 
 	const new_result = { ...result, interp: new_interp };

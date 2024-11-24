@@ -105,6 +105,7 @@
  * @property {boolean} [bluff]
  * @property {boolean} [possibly_bluff]
  * @property {number[]} [linked]	Only used in 'playable' connections.
+ * @property {boolean} [layered]	Only used in 'playable' connections.
  * @property {boolean} [certain]
  * @property {boolean} [asymmetric]		Only used in 'known' connections.
  * 

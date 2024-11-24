@@ -568,7 +568,7 @@ describe('asymmetric clues', () => {
 		});
 
 		takeTurn(game, 'Donald clues 2 to Alice (slot 4)');	// 2 Save
-		takeTurn(game, 'Alice clues 1 to Donald');				// getting g1, y1
+		takeTurn(game, 'Alice clues 1 to Donald');				// getting g1 and y1
 		takeTurn(game, 'Bob clues 3 to Cathy');				// connecting on y1 (Donald, playable) and y2 (Alice, prompt)
 
 		// The clued card is likely g3 or y3, since that requires the least number of blind plays.

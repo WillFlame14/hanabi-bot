@@ -120,7 +120,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 
 					const { fixed, trash, result } = check_fixed(game, target, order, clue, fix_criteria);
 
-					if (fixed && (result.bad_touch.length === 0 || (state.strikes === 2 && seems_playable)))
+					if (fixed && (result.bad_touch.length === 0 || ((state.strikes === 2 || state.isCritical(card)) && seems_playable)))
 						fix_clues[target].push(Object.assign({}, clue, { trash, result, urgent: seems_playable }));
 				}
 
@@ -128,7 +128,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 				for (const clue of possible_clues) {
 					const { fixed, trash, result } = check_fixed(game, target, order, clue, fix_criteria);
 
-					if (fixed && (result.bad_touch.length === 0 || (state.strikes === 2 && seems_playable)))
+					if (fixed && (result.bad_touch.length === 0 || ((state.strikes === 2 || state.isCritical(card)) && seems_playable)))
 						fix_clues[target].push(Object.assign({}, clue, { trash, result, urgent: seems_playable }));
 				}
 			}

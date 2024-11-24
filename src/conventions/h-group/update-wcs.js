@@ -328,7 +328,7 @@ export function resolve_card_played(game, waiting_connection) {
 				undefined;
 
 			const only_clued_connections_left = waiting_connection.connections.every((conn, index) =>
-				index < conn_index || conn.type !== 'finesse' || conn.reacting === target);
+				index < next_index || conn.type !== 'finesse' || conn.reacting === target);
 
 			const remove = (demonstration !== undefined && only_clued_connections_left) || next_index === -1;
 			return { demonstration, remove, next_index };

@@ -583,7 +583,7 @@ export function interpret_clue(game, action) {
 		let all_connections = [];
 
 		const looksDirect = common.thoughts[focus].identity() === undefined && (					// Focused card must be unknown AND
-			clue.type === CLUE.COLOUR ||													// Colour clue always looks direct
+			clue.type === CLUE.COLOUR || positional ||												// Colour clues & positionals always look direct
 			rankLooksPlayable(game, clue.value, giver, target, focus) ||		// Looks like a play
 			focus_possible.some(fp => !fp.illegal && fp.save && game.players[target].thoughts[focus].possible.has(fp)));	// Looks like a save
 

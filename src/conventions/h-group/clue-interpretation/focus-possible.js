@@ -109,7 +109,7 @@ function find_colour_focus(game, suitIndex, action, thinks_stall) {
 		if (connecting.length === 0 || connecting[0].type === 'terminate')
 			break;
 
-		const { type, order, bluff } = connecting.at(-1);
+		const { type, order, layered, bluff } = connecting.at(-1);
 		const card = state.deck[order];
 
 		if (type === 'known' && card.newly_clued && common.thoughts[order].possible.length > 1 && focus_thoughts.inferred.has(identity)) {
@@ -131,6 +131,10 @@ function find_colour_focus(game, suitIndex, action, thinks_stall) {
 			// Even if a finesse is possible, it might not be a finesse (unless the card is critical)
 			if (!state.isCritical(identity))
 				focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: connections.slice(), interp: CLUE_INTERP.PLAY });
+		}
+		else if (type === 'playable' && layered && !state.isCritical(identity)) {
+			// Might not be layered finesse
+			focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: connections.slice(), interp: CLUE_INTERP.PLAY });
 		}
 
 		for (const { order } of connecting)
@@ -245,7 +249,7 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 		let bluffed = false;
 
 		state.play_stacks = old_play_stacks.slice();
-		let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focus));
+		let looksDirect = focus_thoughts.identity() === undefined && (looksSave || rankLooksPlayable(game, rank, giver, target, focus) || positional);
 
 		// Try looking for all connecting cards
 		while (next_rank <= rank) {
@@ -257,7 +261,7 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 			if (connecting.length === 0)
 				break;
 
-			const { type, order, bluff } = connecting.at(-1);
+			const { type, order, layered, bluff } = connecting.at(-1);
 			const card = state.deck[order];
 
 			if (type === 'terminate') {
@@ -293,6 +297,10 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 				if (rank === next_rank && !state.isCritical(identity))
 					focus_possible.push({ suitIndex, rank, save: false, connections: connections.slice(), interp: CLUE_INTERP.PLAY });
 			}
+			else if (type === 'playable' && layered && rank === next_rank && !state.isCritical(identity)) {
+				// Might not be layered finesse
+				focus_possible.push({ suitIndex, rank, save: false, connections: connections.slice(), interp: CLUE_INTERP.PLAY });
+			}
 
 			connections = connections.concat(connecting);
 			already_connected = already_connected.concat(connecting.map(conn => conn.order));
@@ -316,7 +324,8 @@ function find_rank_focus(game, rank, action, thinks_stall) {
 		// Connected cards can stack up to this rank
 		if (rank === next_rank || positional) {
 			const self_clandestine = connections.some(conn =>
-				conn.reacting === target && conn.type === 'finesse' && conn.hidden && conn.identities[0].rank + 1 === rank);
+				conn.reacting === target && conn.type === 'finesse' && conn.hidden &&
+				focus_thoughts.possible.has({ suitIndex: conn.identities[0].suitIndex, rank: conn.identities[0].rank + 1}));
 
 			const illegal = self_clandestine || connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target));
 

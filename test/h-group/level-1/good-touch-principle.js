@@ -49,7 +49,7 @@ describe('good touch principle', () => {
 		assert.ok([2,3].every(i => trash.includes(game.state.hands[PLAYER.ALICE][i])));
 	});
 
-	it('eliminates from focus (indirect)', () => {
+	it('eliminates from indirect focus', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b2', 'b4', 'b2', 'p2', 'r1'],

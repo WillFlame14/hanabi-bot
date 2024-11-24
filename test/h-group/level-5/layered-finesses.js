@@ -314,4 +314,28 @@ describe('layered finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['b1']);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['g3']);
 	});
+
+	it('writes correct notes after a fake layered finesse is disproven', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g3', 'g2', 'g4', 'b4'],
+			['g5', 'p2', 'g2', 'b3'],
+			['p4', 'y3', 'y5', 'r2']
+		], {
+			level: { min: 5 },
+			play_stacks: [0, 0, 0, 1, 0],
+			discarded: ['b3', 'b4']
+		});
+
+		takeTurn(game, 'Alice clues 3 to Cathy');		// b3 save
+		takeTurn(game, 'Bob clues red to Donald');		// r1 reverse finesse on us
+		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Donald clues blue to Bob');		// b4 save (could be b2 play)
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['b2', 'b4']);
+
+		takeTurn(game, 'Alice plays r1 (slot 1)');
+
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['b2', 'b4']);
+	});
 });

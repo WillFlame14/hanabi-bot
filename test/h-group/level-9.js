@@ -218,8 +218,35 @@ describe('anxiety plays', () => {
 
 		// Alice should play slot 1 as r4.
 		const action = await take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][0] });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
+
+	/*it('gives an anxiety clue to the next player', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'y5', 'b5', 'g5'],
+			['b1', 'g4', 'b4', 'b1'],
+			['y4', 'y4', 'p4', 'p3']
+		], {
+			level: { min: 9 },
+			play_stacks: [2, 0, 0, 0, 0],
+			discarded: ['r3', 'r4', 'b3'],
+			clue_tokens: 2,
+			starting: PLAYER.CATHY,
+			init: (game) => {
+				game.state.early_game = false;
+			}
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Bob');
+		takeTurn(game, 'Donald clues green to Alice (slot 1)');
+
+		// Alice should clue red/3 to Bob as anxiety.
+		const action = await take_action(game);
+		const { type, target, value } = action;
+		assert.ok((type === ACTION.COLOUR && target === PLAYER.BOB && value === COLOUR.RED) ||
+			(type === ACTION.RANK && target === PLAYER.BOB && value === 3), `Expected (3/red to Bob), got ${logPerformAction(action)}`);
+	});*/
 });
 
 describe('double discard avoidance', async () => {

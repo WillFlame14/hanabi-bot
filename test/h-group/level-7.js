@@ -172,7 +172,7 @@ describe('shout discard chop moves', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r5', 'r4', 'g4', 'b4', 'b3'],
-			['g1', 'p1', 'r4', 'y3', 'p3']
+			['p1', 'g1', 'r4', 'y3', 'p3']
 		], {
 			level: { min: 7 },
 			clue_tokens: 2,

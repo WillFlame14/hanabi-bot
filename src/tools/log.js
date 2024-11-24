@@ -181,7 +181,7 @@ export function logAction(action) {
 			return `${state.playerNames[playerIndex]} draws ${logCard({ suitIndex, rank })}`;
 		}
 		case 'gameOver': {
-			const { endCondition, playerIndex } = action;
+			const { endCondition, playerIndex, votes } = action;
 
 			switch(endCondition) {
 				case END_CONDITION.NORMAL:
@@ -190,6 +190,8 @@ export function logAction(action) {
 					return `Players lose!`;
 				case END_CONDITION.TERMINATED:
 					return `${state.playerNames[playerIndex]} terminated the game!`;
+				case END_CONDITION.TERMINATED_BY_VOTE:
+					return `${votes.map(v => state.playerNames[v]).join(', ')} voted to terminate the game!`;
 				case END_CONDITION.IDLE_TIMEOUT:
 					return 'Players were idle for too long.';
 				default:

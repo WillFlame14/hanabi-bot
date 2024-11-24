@@ -336,8 +336,14 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				}
 			}
 
-			// Check if Scream/Shout Discard is available (only to next player)
-			if (!finessed_card && game.level >= LEVEL.LAST_RESORTS && playable_priorities.some(p => p.length > 0) && target === state.nextPlayerIndex(state.ourPlayerIndex) && !me.thinksLoaded(state, target)) {
+			const scream_available = !finessed_card &&
+				!state.inEndgame() &&
+				game.level >= LEVEL.LAST_RESORTS &&
+				playable_priorities.some(p => p.length > 0) &&
+				target === state.nextPlayerIndex(state.ourPlayerIndex) &&
+				!me.thinksLoaded(state, target);
+
+			if (scream_available) {
 				const trash = me.thinksTrash(state, state.ourPlayerIndex).filter(o =>
 					state.deck[o].clued && me.thoughts[o].inferred.every(i => state.isBasicTrash(i)));
 
@@ -367,8 +373,9 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				const tccm = Utils.maxOn(stall_clues[1].filter(clue => clue.target === target), clue => {
 					const { playables, focus } = clue.result;
 					const { tempo, valuable } = valuable_tempo_clue(game, clue, playables, focus);
+					const chop = common.chop(state.hands[target]);
 
-					return (tempo && !valuable && clue.result.safe) ? find_clue_value(clue.result) : -1;
+					return (tempo && !valuable && clue.result.safe && !state.isPlayable(state.deck[chop])) ? find_clue_value(clue.result) : -1;
 				}, 0);
 
 				if (tccm) {

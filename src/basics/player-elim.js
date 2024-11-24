@@ -482,31 +482,42 @@ export function find_links(state, hand = state.hands[this.playerIndex]) {
 
 	for (const order of hand) {
 		const card = this.thoughts[order];
+		const identities = card.inferred;
 
-		if (linked_orders.has(order) ||									// Already in a link
-			card.identity() !== undefined ||							// We know what this card is
-			card.inferred.length === 0 ||								// Card has no inferences
-			card.inferred.length > 3 ||									// Card has too many inferences
-			card.inferred.every(inf => state.isBasicTrash(inf))) {		// Card is trash
+		if (linked_orders.has(order) ||								// Already in a link
+			card.identity() !== undefined ||						// We know what this card is
+			identities.length === 0 ||								// Card has no inferences
+			identities.length > 3 ||								// Card has too many inferences
+			identities.every(inf => state.isBasicTrash(inf))) {		// Card is trash
 			continue;
 		}
 
 		// Find all unknown cards with the same inferences
-		const orders = hand.filter(o => card.identity() === undefined && card.inferred.equals(this.thoughts[o].inferred));
+		const orders = hand.filter(o => card.identity() === undefined && identities.equals(this.thoughts[o].inferred));
 		if (orders.length === 1)
 			continue;
 
+		const focused_orders = orders.filter(o => this.thoughts[o].focused);
+
+		if (focused_orders.length === 1 && identities.length === 1) {
+			logger.info('eliminating link with inferences', identities.map(logCard), 'from focus! final', focused_orders[0]);
+			for (const order of orders) {
+				const op = (order === focused_orders[0]) ? 'intersect' : 'subtract';
+				this.updateThoughts(order, (draft) => { draft.inferred = this.thoughts[order].inferred[op](identities.array[0]); });
+			}
+			continue;
+		}
+
 		// We have enough inferred cards to eliminate elsewhere
 		// TODO: Sudoku elim from this
-		if (orders.length > card.inferred.reduce((sum, inf) => sum += unknownIdentities(state, this, inf), 0)) {
-			logger.info('adding link', orders, 'inferences', card.inferred.map(logCard), state.playerNames[this.playerIndex]);
+		if (orders.length > identities.reduce((sum, inf) => sum += unknownIdentities(state, this, inf), 0)) {
+			logger.info('adding link', orders, 'inferences', identities.map(logCard), state.playerNames[this.playerIndex]);
 
-			links.push({ orders, identities: card.inferred.map(c => c.raw()), promised: false });
+			links.push({ orders, identities: identities.map(c => c.raw()), promised: false });
 			for (const o of orders)
 				linked_orders.add(o);
 		}
 	}
-
 	return links;
 }
 
@@ -564,9 +575,12 @@ export function refresh_links(state) {
 
 			const focused_orders = orders.filter(o => this.thoughts[o].focused);
 
-			if (focused_orders.length === 1) {
+			if (focused_orders.length === 1 && identities.length === 1) {
 				logger.info('eliminating link with inferences', identities.map(logCard), 'from focus! final', focused_orders[0]);
-				this.updateThoughts(orders[0], (draft) => { draft.inferred = this.thoughts[orders[0]].inferred.intersect(identities[0]); });
+				for (const order of orders) {
+					const op = (order === focused_orders[0]) ? 'intersect' : 'subtract';
+					this.updateThoughts(order, (draft) => { draft.inferred = this.thoughts[order].inferred[op](identities[0]); });
+				}
 				remove_indices.push(i);
 			}
 

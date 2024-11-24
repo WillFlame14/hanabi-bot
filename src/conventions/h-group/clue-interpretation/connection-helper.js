@@ -9,6 +9,7 @@ import * as Utils from '../../../tools/util.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
 import { LEVEL } from '../h-constants.js';
 import { variantRegexes } from '../../../variants.js';
+import { colour_save, rank_save } from './focus-possible.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -60,6 +61,7 @@ export function valid_bluff(game, action, identity, reacting, connected) {
 		game.state.nextPlayerIndex(giver) === reacting &&					// must be bluff seat
 		connected.length === 1 &&											// must not be delayed
 		((clue.type === CLUE.RANK && clue.value !== nextCard.rank) ||
+			identity.rank === game.state.base_ids.maxStackRank ||
 			!game.common.thoughts[connected[0]].inferred.has(nextCard)) &&	// must disconnect
 		!(clue.type === CLUE.COLOUR && reacting === target) &&				// must not be self-colour bluff
 		!game.state.hands[reacting].some(o => {								// must not be confused with an existing finesse
@@ -121,7 +123,7 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 	const { common, state } = game;
 
 	const { clue, giver, list, target } = action;
-	const { focus } = determine_focus(game, state.hands[target], common, list, clue);
+	const { focus, chop } = determine_focus(game, state.hands[target], common, list, clue);
 	const focused_card = common.thoughts[focus];
 
 	/** @type {{ id: Identity, connections: Connection[], fake: boolean }[][]} */
@@ -157,6 +159,11 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 
 		if (visible_dupe)
 			continue;
+
+		if (chop && (clue.type === CLUE.COLOUR ? colour_save(game, id, action, focus) : rank_save(game, id, action, focus))) {
+			non_self_connections.push({ id, connections: [], fake: false });
+			continue;
+		}
 
 		const looksDirect = focused_card.identity() === undefined && (		// Focus must be unknown AND
 			clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
@@ -204,7 +211,7 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 	const symmetric_connections = simplest_connections.map(({ id, connections, fake }) => ({
 		connections,
 		suitIndex: id.suitIndex,
-		rank: inference_rank(state, id.suitIndex, connections),
+		rank: id.rank,
 		fake
 	}));
 
@@ -388,6 +395,8 @@ export function connection_score(focus_possibility, playerIndex) {
  */
 export function occams_razor(game, focus_possibilities, playerIndex, focused_order) {
 	const connection_scores = focus_possibilities.map(fp => connection_score(fp, playerIndex));
+
+	logger.debug('occams razor', focus_possibilities.map(logCard), connection_scores);
 
 	const min_score = connection_scores.reduce((min, curr, i) => {
 		const fp = focus_possibilities[i];

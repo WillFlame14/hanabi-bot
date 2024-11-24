@@ -368,18 +368,28 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 
 	// Unknown playable(s) in our hand (obviously, we can't use them in our clues)
 	if (giver !== state.ourPlayerIndex && !options.knownOnly?.includes(state.ourPlayerIndex)) {
-		const playable_conns = state.ourHand.filter(order => {
+		let layered = false;
+		/** @type {number[]} */
+		const playable_conns = [];
+
+		for (const order of state.ourHand) {
 			const card = me.thoughts[order];
 
-			const possibly_hidden = () =>
-				card.uncertain && card.possible.has(identity) && card.finesse_ids.has(identity);
+			if (ignoreOrders.includes(order) || connected.includes(order) ||
+				!card.matches(identity, { assume: true }) ||										// If we know the card (from a rewind), it must match
+				(!(card.inferred.every(i => state.isPlayable(i)) && card.clued) && !card.finessed))	// Must be playable
+				continue;
 
-			return !ignoreOrders.includes(order) &&
-				!connected.includes(order) &&
-				(card.inferred.has(identity) || possibly_hidden()) &&		// At least one inference must match
-				card.matches(identity, { assume: true }) &&				// If we know the card (from a rewind), it must match
-				((card.inferred.every(i => state.isPlayable(i)) && card.clued) || card.finessed);	// Must be playable
-		});
+			if (card.inferred.has(identity)) {
+				playable_conns.push(order);
+				continue;
+			}
+
+			if (card.uncertain && card.possible.has(identity) && card.finesse_ids.has(identity)) {
+				playable_conns.push(order);
+				layered = true;
+			}
+		}
 
 		if (playable_conns.length > 0) {
 			return [{
@@ -387,7 +397,8 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 				reacting: state.ourPlayerIndex,
 				order: (rank === 1 && order_1s(state, common, playable_conns)[0]) || playable_conns.at(-1),	  // If necessary, reorder to oldest 1 to avoid prompting
 				linked: playable_conns,
-				identities: [identity]
+				identities: [identity],
+				layered
 			}];
 		}
 	}

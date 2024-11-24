@@ -5,12 +5,12 @@ import { find_clue_value } from '../action-helper.js';
 import { get_result } from '../clue-finder/determine-clue.js';
 import { colour_save, rank_save } from './focus-possible.js';
 import { determine_focus, minimum_clue_value, stall_severity } from '../hanabi-logic.js';
+import { isSaved } from '../../../basics/hanabi-util.js';
 import { get_clue_interp } from '../clue-finder/clue-finder.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logClue } from '../../../tools/log.js';
-
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -135,19 +135,29 @@ function other_expected_clue(game, giver, focus, max_stall) {
 
 			const expected_clue = (() => {
 				switch (interp) {
-					case CLUE_INTERP.PLAY:
-						return result.playables.some(({ card }) => card.newly_clued) && result.bad_touch.length === 0;
+					case CLUE_INTERP.PLAY: {
+						const depends_on_uncertain = Array.from(hypo_game.common.hypo_plays).some(o =>
+							hypo_game.common.thoughts[o].uncertain &&
+							state.deck[o].playedBefore(state.deck[result.focus]));
 
+						if (depends_on_uncertain)
+							return false;
+
+						return result.playables.some(({ card }) => card.newly_clued) && result.bad_touch.length === 0;
+					}
 					case CLUE_INTERP.SAVE: {
 						if (save_clue === undefined || save_clue.cm?.length > 0 || focus === save_clue.result.focus)
 							return false;
 
+						const { focus: save_focus } = save_clue.result;
+
 						const chop = common.chop(state.hands[target]);
 						const duplicate_holders = Utils.findIndices(state.hands, hand => hand.some(o => state.deck[o].matches(state.deck[chop]) && o !== chop));
 
-						// Not a 2 save that could be duplicated in our hand, or a save clue that is duplicated in the target's hand
+						// Not a 2 save that could be duplicated in our hand, or a save clue that is duplicated in the target's hand, or a bad save
 						return !(save_clue.type === CLUE.RANK && save_clue.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[chop]))) &&
-							!duplicate_holders.includes(clue.target);
+							!duplicate_holders.includes(clue.target) &&
+							!isSaved(state, me, state.deck[save_focus], save_focus, { infer: true });
 					}
 
 					case CLUE_INTERP.STALL_5:

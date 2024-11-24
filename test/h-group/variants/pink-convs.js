@@ -279,6 +279,28 @@ describe('pink choice tempo clues', () => {
 		// Slot 2 should be i3, not trash.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['i3']);
 	});
+
+	it(`doesn't try to self-prompt using a pink positional`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'y3', 'r1', 'i4', 'i3'],
+			['g4', 'i3', 'r2', 'b3', 'b1']
+		], {
+			level: { min: 3 },
+			clue_tokens: 7,
+			play_stacks: [0, 0, 0, 0, 2],
+			discarded: ['i3', 'i4'],
+			starting: PLAYER.CATHY,
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Cathy clues pink to Bob');		// i3,i4 save
+
+		const { play_clues } = find_clues(game);
+
+		// 4 to Bob is not a valid self-prompt.
+		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 4));
+	});
 });
 
 describe('pink fixes', () => {
