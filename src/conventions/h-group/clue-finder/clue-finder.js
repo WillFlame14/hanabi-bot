@@ -9,7 +9,7 @@ import { find_clue_value } from '../action-helper.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard, logClue } from '../../../tools/log.js';
+import { logCard, logClue, logConnection } from '../../../tools/log.js';
 import { produce } from '../../../StateProxy.js';
 
 /**
@@ -95,7 +95,7 @@ export function get_clue_interp(game, clue, giver, options) {
 	const { focus, chop } = determine_focus(game, hand, common, list, clue);
 	const focused_card = state.deck[focus];
 
-	const in_finesse = common.waiting_connections.some(w_conn => {
+	const in_finesse = common.waiting_connections.find(w_conn => {
 		const { focus: wc_focus, inference } = w_conn;
 		const matches = giver_player.thoughts[wc_focus].matches(inference, { assume: true });
 
@@ -103,8 +103,10 @@ export function get_clue_interp(game, clue, giver, options) {
 	});
 
 	// Do not focus cards that are part of a finesse
-	if (giver_player.thoughts[focus].finessed || in_finesse)
+	if (giver_player.thoughts[focus].finessed || in_finesse !== undefined) {
+		logger.debug('skipping clue', logClue(clue), 'in finesse', in_finesse?.connections.map(logConnection).join(' -> '));
 		return;
+	}
 
 	// Do not expect others to clue cards that could be clued in our hand
 	if (hypothetical && state.ourHand.some(o => ((card = game.me.thoughts[o]) => card.touched && card.inferred.has(focused_card))()))

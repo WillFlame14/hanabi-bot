@@ -26,6 +26,8 @@
  * @typedef {Clue & {urgent: boolean, trash: boolean}} FixClue
  */
 /**
+ * @typedef {{focus: number, chop: boolean, positional: boolean}} FocusResult
+ * 
  * @typedef ClueResult
  * @property {number} focus
  * @property {number} elim

@@ -180,15 +180,23 @@ export class Player {
 		// (e.g. if I later discover that I did not have a playable when I thought I did)
 		return state.hands[playerIndex].filter(o => {
 			const card = this.thoughts[o];
+			if (card.trash && !card.possible.every(p => !state.isBasicTrash(p)))
+				return false;
+
 			const unsafe_linked = linked_orders.has(o) &&
 				(state.strikes === 2 ||
 					card.possible.some(p => state.play_stacks[p.suitIndex] + 1 < p.rank && p.rank <= state.max_ranks[p.suitIndex]) ||
 					Array.from(linked_orders).some(o => this.thoughts[o].focused && o !== o));
 
-			return (!card.trash || card.possible.every(p => !state.isBasicTrash(p))) && !unsafe_linked &&
-				card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
+			if (unsafe_linked)
+				return false;
+
+			const known_playable = () =>
+				card.possible.every(p => state.isBasicTrash(p) || state.isPlayable(p)) && card.possible.some(p => state.isPlayable(p));
+
+			return card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
-				((options?.assume ?? true) || !this.waiting_connections.some((wc, i1) =>
+				((options?.assume ?? true) || known_playable() || (!card.uncertain && !this.waiting_connections.some((wc, i1) =>
 					// Unplayable target of possible waiting connection
 					(wc.focus === o && !state.isPlayable(wc.inference) && card.possible.has(wc.inference)) ||
 					wc.connections.some((conn, ci) => ci >= wc.conn_index && conn.order === o && (
@@ -197,7 +205,7 @@ export class Player {
 						// A different connection on the same focus doesn't use this connecting card
 						this.waiting_connections.some((wc2, i2) =>
 							i1 !== i2 && wc2.focus === wc.focus && wc2.connections.every(conn2 => conn2.order !== o))))
-				)) &&
+				))) &&
 				state.hasConsistentInferences(card);
 		});
 	}

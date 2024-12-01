@@ -30,8 +30,8 @@ function getFinessedOrder(game, playerIndex) {
 		if (!card.finessed || !state.isPlayable(state.deck[o]))
 			return false;
 
-		// We can only use hidden cards if they're bluffs, otherwise the player will wait until their real connection is playable
-		return !card.hidden || player.waiting_connections.some(wc => wc.connections.some(conn => conn.order === o && conn.bluff));
+		// We can't use hidden cards, since the player will wait until their real connection is playable
+		return !card.hidden;
 	});
 
 	return Utils.maxOn(finessed_orders, o => -common.thoughts[o].finesse_index);

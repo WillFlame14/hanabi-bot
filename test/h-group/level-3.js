@@ -92,7 +92,7 @@ describe('playing 1s in the correct order', () => {
 
 		const clue = { type: CLUE.RANK, value: 1 };
 		const list = game.state.clueTouched(game.state.hands[PLAYER.CATHY], clue);
-		const { focus } = determine_focus(game, game.state.hands[PLAYER.CATHY], game.common, list, clue, { beforeClue: true });
+		const { focus } = determine_focus(game, game.state.hands[PLAYER.CATHY], game.common, list, clue);
 
 		// The focus of the clue is Cathy's slot 3.
 		assert.equal(focus, game.state.hands[PLAYER.CATHY][3]);

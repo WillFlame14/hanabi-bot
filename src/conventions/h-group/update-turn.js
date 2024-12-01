@@ -53,6 +53,9 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 	const old_card = state.deck[old_order];
 	logger.info(`waiting for connecting ${logCard(old_card)} ${type} ${old_order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}${waiting_connection.symmetric ? ' (symmetric)' : ''}`);
 
+	if (giver_play(game, waiting_connection, lastPlayerIndex))
+		return resolve_giver_play(game, waiting_connection);
+
 	const impossible_conn = find_impossible_conn(game, connections.slice(conn_index));
 	if (impossible_conn !== undefined) {
 		logger.warn(`future connection depends on revealed card having identities ${impossible_conn.identities.map(logCard)}, removing`);
@@ -127,11 +130,6 @@ export function update_turn(game, action) {
 
 	for (let i = 0; i < common.waiting_connections.length; i++) {
 		const waiting_connection = common.waiting_connections[i];
-
-		if (giver_play(game, waiting_connection, lastPlayerIndex)) {
-			resolve_giver_play(game, waiting_connection);
-			continue;
-		}
 
 		const { quit, remove, remove_finesse, demonstration, ambiguousPassback, selfPassback, next_index }
 			= update_wc(game, waiting_connection, lastPlayerIndex);

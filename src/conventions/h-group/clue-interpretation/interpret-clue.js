@@ -31,6 +31,7 @@ import { produce } from '../../../StateProxy.js';
  * @typedef {import('../../../types.js').Connection} Connection
  * @typedef {import('../../../types.js').Identity} Identity
  * @typedef {import('../../../types.js').FocusPossibility} FocusPossibility
+ * @typedef {import('../../../types.js').FocusResult} FocusResult
  */
 
 /**
@@ -47,6 +48,14 @@ function apply_good_touch(game, action) {
 	const { thoughts: oldThoughts } = common.clone();		// Keep track of all cards that previously had inferences (i.e. not known trash)
 
 	Basics.onClue(game, action);
+
+	// Remove chop move on clued cards
+	for (const player of game.allPlayers) {
+		for (const order of list) {
+			if (player.thoughts[order].chop_moved)
+				player.updateThoughts(order, (draft) => { draft.chop_moved = false; });
+		}
+	}
 
 	if (target === state.ourPlayerIndex) {
 		for (const order of state.hands[target]) {
@@ -81,10 +90,11 @@ function apply_good_touch(game, action) {
  * @param {Game} game
  * @param {Game} old_game
  * @param {ClueAction} action
+ * @param {FocusResult} focusResult
  * @param {FocusPossibility[]} inf_possibilities
  * @param {ActualCard} focused_card
  */
-function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
+function resolve_clue(game, old_game, action, focusResult, inf_possibilities, focused_card) {
 	const { common, state } = game;
 	const { giver, target } = action;
 	const focus = focused_card.order;
@@ -151,18 +161,18 @@ function resolve_clue(game, old_game, action, inf_possibilities, focused_card) {
 			).map(conn => conn.identities[0].rank))
 		));
 		const ownBlindPlays = correct_match?.connections.filter(conn => conn.type === 'finesse' && conn.reacting === state.ourPlayerIndex).length || 0;
-		const symmetric_fps = find_symmetric_connections(old_game, action, inf_possibilities, selfRanks, ownBlindPlays);
+		const symmetric_fps = find_symmetric_connections(old_game, action, focusResult, inf_possibilities, selfRanks, ownBlindPlays);
 		const symmetric_connections = generate_symmetric_connections(state, symmetric_fps, inf_possibilities, focus, giver, target);
 
 		if (correct_match?.connections[0]?.bluff) {
 			const { reacting } = correct_match.connections[0];
 			const delay_needed = symmetric_fps.filter(fp =>
 				fp.connections.length > 0 &&
-				fp.connections[0]?.reacting !== reacting &&
+				(fp.connections[0]?.reacting !== reacting || fp.connections[0].type === 'known' || fp.connections[0].type == 'playable') &&
 				connection_score(fp, reacting) <= connection_score(correct_match, reacting));
 
 			if (delay_needed.length > 0) {
-				logger.warn('invalid bluff, symmetrically needs to delay for', delay_needed.map(logCard).join(), 'possibilities');
+				logger.warn('invalid bluff, symmetrically needs to delay for potential', delay_needed.map(logCard).join());
 				game.interpretMove(CLUE_INTERP.NONE);
 				return;
 			}
@@ -342,7 +352,8 @@ export function interpret_clue(game, action) {
 	const oldCommon = common.clone();
 
 	const { clue, giver, list, target, mistake = false } = action;
-	const { focus, chop, positional } = determine_focus(game, state.hands[target], common, list, clue, { beforeClue: true });
+	const focusResult = determine_focus(game, state.hands[target], common, list, clue);
+	const { focus, chop, positional } = focusResult;
 	const focused_card = state.deck[focus];
 
 	common.updateThoughts(focus, (draft) => { draft.focused = true; });
@@ -465,7 +476,7 @@ export function interpret_clue(game, action) {
 	}
 
 	// Check if the giver was in a stalling situation
-	const { stall, thinks_stall } = stalling_situation(game, action, prev_game);
+	const { stall, thinks_stall } = stalling_situation(game, action, focusResult, prev_game);
 
 	if (thinks_stall.size === state.numPlayers) {
 		logger.info('stalling situation', stall);
@@ -547,7 +558,7 @@ export function interpret_clue(game, action) {
 		return;
 	}
 
-	const focus_possible = find_focus_possible(game, action, thinks_stall);
+	const focus_possible = find_focus_possible(game, action, focusResult, thinks_stall);
 	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save, illegal }) => logCard({suitIndex, rank}) + (save ? ' (save)' : ''  + (illegal ? ' (illegal)' : ''))));
 
 	const matched_inferences = focus_possible.filter(p => !p.illegal && common.thoughts[focus].inferred.has(p));
@@ -564,11 +575,11 @@ export function interpret_clue(game, action) {
 			if (!simplest_symmetric_connections.some(fp => focused_card.matches(fp)))
 				game.interpretMove(CLUE_INTERP.NONE);
 			else
-				resolve_clue(game, old_game, action, matched_inferences, focused_card);
+				resolve_clue(game, old_game, action, focusResult, matched_inferences, focused_card);
 		}
 		else {
 			common.updateThoughts(focus, (draft) => { draft.inferred = common.thoughts[focus].inferred.intersect(focus_possible.filter(p => !p.illegal)); });
-			resolve_clue(game, old_game, action, matched_inferences, focused_card);
+			resolve_clue(game, old_game, action, focusResult, matched_inferences, focused_card);
 		}
 	}
 	else if (action.hypothetical) {
@@ -598,7 +609,7 @@ export function interpret_clue(game, action) {
 					continue;
 
 				try {
-					const connections = find_own_finesses(game, action, id, looksDirect);
+					const connections = find_own_finesses(game, action, focus, id, looksDirect);
 					logger.info('found connections:', logConnections(connections, id));
 
 					const rank = inference_rank(state, id.suitIndex, connections);
@@ -651,7 +662,7 @@ export function interpret_clue(game, action) {
 
 			const { suitIndex } = focused_card;
 			try {
-				const connections = find_own_finesses(game, action, focused_card, looksDirect);
+				const connections = find_own_finesses(game, action, focus, focused_card, looksDirect);
 				logger.info('found connections:', logConnections(connections, focused_card));
 
 				// Add in all the potential non-finesse possibilities
@@ -698,10 +709,10 @@ export function interpret_clue(game, action) {
 			common.updateThoughts(focus, (draft) => { draft.inferred = common.thoughts[focus].possible; });
 			logger.info('selecting inferences', finalized_connections.map(conns => logCard(conns)));
 
-			resolve_clue(game, old_game, action, finalized_connections, focused_card);
+			resolve_clue(game, old_game, action, focusResult, finalized_connections, focused_card);
 		}
 	}
-	logger.highlight('blue', `final inference on focused card ${common.thoughts[focus].inferred.map(logCard).join(',')} (${game.lastMove})`);
+	logger.highlight('blue', `final inference on focused card ${common.thoughts[focus].inferred.map(logCard).join(',')} (${game.lastMove}), order ${focus}`);
 
 	// Pink 1's Assumption
 	if (state.includesVariant(variantRegexes.pinkish) && clue.type === CLUE.RANK && clue.value === 1) {

@@ -288,15 +288,28 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 		if (i === giver)
 			return false;
 
-		const prompt = common.find_prompt(state, i, identity, connected, ignoreOrders);
-
-		if (prompt === undefined)
-			return false;
-
 		const match = hand.find(o => ((card = state.deck[o]) =>
 			card.matches(identity) && card.clued && !card.newly_clued && !connected.includes(o) && !ignoreOrders.includes(o))());
 
-		return match !== undefined && match !== prompt;
+		if (match === undefined)
+			return false;
+
+		const connected_copy = connected.slice();
+		let prompt = common.find_prompt(state, i, identity, connected, ignoreOrders);
+
+		while (prompt !== undefined) {
+			if (prompt === match)
+				return false;
+
+			// Can't layered prompt
+			if (!state.isPlayable(state.deck[prompt]))
+				return true;
+
+			connected_copy.push(prompt);
+			prompt = common.find_prompt(state, i, identity, connected_copy, ignoreOrders);
+		}
+
+		return true;
 	});
 
 	if (!options.bluffed && non_prompt_copy) {

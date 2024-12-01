@@ -107,7 +107,7 @@ export function interpret_sarcastic(game, discardAction) {
 		if (sarcastics.length === 1) {
 			logger.info('writing sarcastic on slot', state.ourHand.findIndex(o => o === sarcastics[0]) + 1);
 			common.updateThoughts(sarcastics[0], (common_sarcastic) => {
-				common_sarcastic.inferred = common_sarcastic.inferred.intersect(identity);
+				common_sarcastic.inferred = state.base_ids.union(identity);
 				common_sarcastic.trash = false;
 			});
 		}

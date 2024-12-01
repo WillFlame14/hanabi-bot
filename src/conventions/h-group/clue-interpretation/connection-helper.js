@@ -1,6 +1,5 @@
 import { CLUE } from '../../../constants.js';
 import { IdentitySet } from '../../../basics/IdentitySet.js';
-import { determine_focus } from '../hanabi-logic.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 
 import logger from '../../../tools/logger.js';
@@ -21,6 +20,7 @@ import { colour_save, rank_save } from './focus-possible.js';
  * @typedef {import('../../../types.js').FocusPossibility} FocusPossibility
  * @typedef {import('../../../types.js').SymFocusPossibility} SymFocusPossibility
  * @typedef {import('../../../types.js').WaitingConnection} WaitingConnection
+ * @typedef {import('../../../types.js').FocusResult} FocusResult
  */
 
 /**
@@ -114,25 +114,26 @@ export function generate_symmetric_connections(state, sym_possibilities, existin
  * Returns all focus possibilities that the receiver could interpret from the clue.
  * @param {Game} game
  * @param {ClueAction} action
+ * @param {FocusResult} focusResult
  * @param {FocusPossibility[]} inf_possibilities
  * @param {number[]} selfRanks 		The ranks needed to play by the target (as a self-finesse).
  * @param {number} ownBlindPlays 	The number of blind plays we need to make in the actual connection.
  * @returns {SymFocusPossibility[]}
  */
-export function find_symmetric_connections(game, action, inf_possibilities, selfRanks, ownBlindPlays) {
+export function find_symmetric_connections(game, action, focusResult, inf_possibilities, selfRanks, ownBlindPlays) {
 	const { common, state } = game;
 
-	const { clue, giver, list, target } = action;
-	const { focus, chop } = determine_focus(game, state.hands[target], common, list, clue);
+	const { clue, giver, target } = action;
+	const { focus, chop } = focusResult;
 	const focused_card = common.thoughts[focus];
 
-	/** @type {{ id: Identity, connections: Connection[], fake: boolean }[][]} */
+	/** @type {SymFocusPossibility[][]} */
 	const [self_connections, non_self_connections] = inf_possibilities.reduce((acc, fp) => {
 		const [self, non_self] = acc;
 		const dest = (fp.connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.reacting === target) ? self: non_self;
 		const { suitIndex, rank, connections } = fp;
 
-		dest.push({ id: { suitIndex, rank }, connections, fake: false });
+		dest.push({ suitIndex, rank, connections, fake: false });
 		return acc;
 	}, [[], []]);
 
@@ -161,7 +162,7 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 			continue;
 
 		if (chop && (clue.type === CLUE.COLOUR ? colour_save(game, id, action, focus) : rank_save(game, id, action, focus))) {
-			non_self_connections.push({ id, connections: [], fake: false });
+			non_self_connections.push({ ...id.raw(), connections: [], fake: false });
 			continue;
 		}
 
@@ -173,14 +174,14 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 		logger.off();
 
 		try {
-			const connections = find_own_finesses(game, action, id, looksDirect, target, selfRanks);
+			const connections = find_own_finesses(game, action, focus, id, looksDirect, target, selfRanks);
 			// Fake connection - we need to blind play too many times
 			const fake = blind_plays(connections, state.ourPlayerIndex) > ownBlindPlays;
 
 			if (connections.find(conn => conn.type !== 'known' && conn.type !== 'playable')?.reacting === target)
-				self_connections.push({ id, connections, fake });
+				self_connections.push({ ...id.raw(), connections, fake });
 			else
-				non_self_connections.push({ id, connections, fake });
+				non_self_connections.push({ ...id.raw(), connections, fake });
 		}
 		catch (error) {
 			if (error instanceof IllegalInterpretation) {
@@ -198,27 +199,11 @@ export function find_symmetric_connections(game, action, inf_possibilities, self
 	const possible_connections = non_self_connections.filter(fp => !fp.fake).length === 0 ? self_connections : non_self_connections;
 
 	// Filter out focus possibilities that are strictly more complicated (i.e. connections match up until some point, but has more self-components after)
-	const simplest_connections = possible_connections.filter(({ connections: conns }, i) => !possible_connections.some(({ connections: other_conns }, j) =>
-		i !== j && other_conns.length > 0 && conns.length > other_conns.length && conns.every((conn, index) => {
-			const other_conn = other_conns[index];
-
-			return other_conn === undefined ||
-				Utils.objEquals(other_conn, conn) ||
-				(other_conn.reacting !== target && conn.reacting === target) ||
-				(other_conn.reacting === target && conn.reacting === target && other_conns.length < conns.length);
-		})));
-
-	const symmetric_connections = simplest_connections.map(({ id, connections, fake }) => ({
-		connections,
-		suitIndex: id.suitIndex,
-		rank: id.rank,
-		fake
-	}));
-
-	const sym_conn = symmetric_connections.map(conn => logConnections(conn.connections, { suitIndex: conn.suitIndex, rank: conn.rank }));
+	const simplest_connections = occams_razor(game, possible_connections, target, focus);
+	const sym_conn = simplest_connections.map(conn => logConnections(conn.connections, { suitIndex: conn.suitIndex, rank: conn.rank }));
 
 	logger.info('symmetric connections', sym_conn);
-	return symmetric_connections;
+	return simplest_connections;
 }
 
 /**
@@ -291,11 +276,11 @@ export function assign_connections(game, connections, giver, focused_card, infer
 			if (!bluff && !hidden)
 				draft.superposition = true;
 
-			const uncertain = !draft.uncertain && ((reacting === state.ourPlayerIndex) ?
+			const uncertain = !draft.uncertain && giver !== state.ourPlayerIndex && ((reacting === state.ourPlayerIndex) ?
 				// If we're reacting, we are uncertain if the card is not known and there is some other card in our hand that allows for a swap
 				type !== 'known' && identities.some(i => state.ourHand.some(o => o !== order && me.thoughts[o].possible.has(i))) :
 				// If we're not reacting, we are uncertain if the connection is a finesse that could be ambiguous
-				type === 'finesse' && !(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)));
+				(type === 'finesse' || type === 'prompt') && !(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)));
 
 			if (uncertain) {
 				const self_playable_identities = state.ourHand.reduce((stacks, order) => {

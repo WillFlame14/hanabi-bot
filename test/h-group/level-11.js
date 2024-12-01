@@ -1072,6 +1072,25 @@ describe('bluff clues', () => {
 		// We should not give purple to Donald as a bluff.
 		assert.ok(!play_clues[PLAYER.DONALD].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.PURPLE));
 	});
+
+	it(`doesn't give bluffs when a delayed self interpretation exists`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r2', 'p4', 'g1', 'p3', 'y4'],
+			['r4', 'y1', 'b2', 'r1', 'b3']
+		], {
+			level: { min: 11 },
+			play_stacks: [1, 2, 0, 0, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 2 to Bob');
+
+		const { play_clues } = find_clues(game);
+
+		// We should not give 4 to Bob as a bluff, since Bob will play r2 first.
+		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 4));
+	});
 });
 
 describe('guide principle', () => {

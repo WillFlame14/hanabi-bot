@@ -273,6 +273,35 @@ describe('ambiguous clues', () => {
 	});
 });
 
+describe('hidden prompts', () => {
+	it('cancels a prompt after the reacting player stalls', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p5', 'y4', 'p4', 'p2', 'g3'],
+			['b4', 'y2', 'y1', 'b3', 'r2']
+		], {
+			level: { min: 5 },
+			play_stacks: [1, 0, 0, 0, 0],
+			clue_tokens: 4,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 2 to Cathy');					// Touching r2, y2
+		takeTurn(game, 'Cathy clues yellow to Alice (slots 4,5)');
+		takeTurn(game, 'Alice plays y1 (slot 5)');
+
+		takeTurn(game, 'Bob clues 3 to Alice (slots 1,5)');
+
+		// Most likely r3 (hidden prompt)
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r3']);
+
+		takeTurn(game, 'Cathy clues 5 to Bob');
+
+		// After Cathy stalls, Alice's slot 2 should be finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
+	});
+});
+
 describe('ambiguous self-finesses', () => {
 	it(`recognizes an ambiguous self-finesse`, () => {
 		const game = setup(HGroup, [
@@ -347,7 +376,7 @@ describe('guide principle', () => {
 		takeTurn(game, 'Donald clues blue to Cathy');
 
 		const action = await take_action(game);
-		assert(action.type == ACTION.COLOUR || action.type == ACTION.RANK);
+		assert(action.type == ACTION.COLOUR || action.type == ACTION.RANK, `Expected purple/4 to Bob, got ${logPerformAction(action)}.`);
 		if (action.type == ACTION.COLOUR)
 			ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: 1, value: 5 });
 		else

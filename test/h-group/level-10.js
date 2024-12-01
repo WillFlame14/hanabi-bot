@@ -268,7 +268,7 @@ describe('composition finesse', () => {
 		takeTurn(game, 'Alice plays r2 (slot 5)');
 		takeTurn(game, 'Bob clues blue to Cathy');
 
-		takeTurn(game, 'Cathy clues 5 to Alice (slot 4)');
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 4)');		// 5 Save on slot 4, [r,!5] in slot 5
 		takeTurn(game, 'Alice clues red to Bob');				// Composition finesse, getting r3 on Cathy's finesse
 		takeTurn(game, 'Bob discards b3', 'y1');
 
@@ -288,7 +288,7 @@ describe('composition finesse', () => {
 			play_stacks: [1, 0, 0, 0, 0]
 		});
 
-		takeTurn(game, 'Alice clues red to Bob (slots 4,5)');
+		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r2', 'g2');
 		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
 

@@ -221,7 +221,7 @@ export async function take_action(game) {
 	let playable_orders = me.thinksPlayables(state, state.ourPlayerIndex);
 	let trash_orders = me.thinksTrash(state, state.ourPlayerIndex).filter(o => common.thoughts[o].saved);
 
-	// Discards must be inferred, playable, trash, not duplicated in our hand and not part of a connection
+	// Discards must be inferred, playable, trash, and not duplicated in our hand
 	const discards = playable_orders.filter(order => {
 		const card = me.thoughts[order];
 		const id = card.identity({ infer: true });
@@ -229,8 +229,7 @@ export async function take_action(game) {
 		return game.level >= LEVEL.SARCASTIC &&
 			id !== undefined &&
 			trash_orders.includes(order) &&
-			!playable_orders.some(o => me.thoughts[o].matches(id, { infer: true }) && o !== order) &&
-			!common.dependentConnections(order).some(wc => wc.symmetric);
+			!playable_orders.some(o => me.thoughts[o].matches(id, { infer: true }) && o !== order);
 	});
 
 	const playable_trash = playable_orders.filter(order => {
@@ -350,17 +349,30 @@ export async function take_action(game) {
 
 		// Generate for next next player
 		if (gen_required) {
-			const nextChop = common.chop(state.hands[nextPlayerIndex]);
-
 			// Play a 5 if we have one
 			if (playable_priorities[3].length > 0)
 				return { tableID, type: ACTION.PLAY, target: playable_priorities[3][0] };
 
-			// Next player can't SDCM
-			if (me.thinksPlayables(state, nextPlayerIndex).length === 0 || nextChop === undefined || cardValue(state, me, state.deck[nextChop], nextChop) >= 4) {
+			const gen_action = () => {
+				const nextChop = common.chop(state.hands[nextPlayerIndex]);
+
+				// Try to let next player SDCM
+				if (nextChop !== undefined && cardValue(state, me, state.deck[nextChop], nextChop) < 4) {
+					if (me.thinksLoaded(state, nextPlayerIndex))
+						return;
+
+					const next_connecting = find_unlock(game, nextPlayerIndex);
+					if (next_connecting !== undefined)
+						return { tableID, type: ACTION.PLAY, target: next_connecting };
+				}
+
 				logger.highlight('yellow', `performing generation discard for ${state.playerNames[nextNextPlayerIndex]}`);
 				return { tableID, type: ACTION.DISCARD, target: discardable };
-			}
+			};
+
+			const action = gen_action();
+			if (action !== undefined)
+				return action;
 		}
 	}
 
@@ -476,7 +488,7 @@ export async function take_action(game) {
 	// Consider finesses while finessed if we are only waited on to play one card,
 	// it's not a selfish finesse, doesn't require more than one play from our own hand,
 	// and we're not in the end-game.
-	const waiting_self_connections = common.waiting_connections.filter(c => c.connections[c.conn_index]?.reacting === state.ourPlayerIndex);
+	const waiting_self_connections = common.waiting_connections.filter(c => !c.symmetric && c.connections[c.conn_index]?.reacting === state.ourPlayerIndex);
 	const waiting_cards = waiting_self_connections.reduce((sum, c) => sum + c.connections.length - c.conn_index, 0);
 	const waiting_out_of_order = waiting_self_connections.some(({ connections, conn_index, target }) =>
 		connections.length >= conn_index + 2 &&

@@ -4,7 +4,7 @@ import { CLUE_INTERP } from '../h-constants.js';
 import { find_clue_value } from '../action-helper.js';
 import { get_result } from '../clue-finder/determine-clue.js';
 import { colour_save, rank_save } from './focus-possible.js';
-import { determine_focus, minimum_clue_value, stall_severity } from '../hanabi-logic.js';
+import { minimum_clue_value, stall_severity } from '../hanabi-logic.js';
 import { isSaved } from '../../../basics/hanabi-util.js';
 import { get_clue_interp } from '../clue-finder/clue-finder.js';
 import * as Utils from '../../../tools/util.js';
@@ -18,6 +18,7 @@ import { logClue } from '../../../tools/log.js';
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').ClueResult} ClueResult
  * @typedef {import('../../../types.js').SaveClue} SaveClue
+ * @typedef {import('../../../types.js').FocusResult} FocusResult
  */
 
 const stall_to_severity = {
@@ -33,14 +34,14 @@ const stall_to_severity = {
  * Returns whether a clue could be a stall or not, given the severity level.
  * @param {Game} game
  * @param {ClueAction} action
- * @param {number} giver
+ * @param {FocusResult} focusResult
  * @param {number} severity
  * @param {Game} prev_game
  */
-function isStall(game, action, giver, severity, prev_game) {
+function isStall(game, action, focusResult, severity, prev_game) {
 	const { common, me, state } = game;
-	const { clue, list, target } = action;
-	const { focus, chop } = determine_focus(game, state.hands[target], common, list, clue);
+	const { clue, giver, list, target } = action;
+	const { focus, chop } = focusResult;
 	const focus_thoughts = common.thoughts[focus];
 	const focused_card = state.deck[focus];
 
@@ -193,20 +194,21 @@ function other_expected_clue(game, giver, focus, max_stall) {
  * Returns whether the clue was given in a valid stalling situation.
  * @param {Game} game
  * @param {ClueAction} action
+ * @param {FocusResult} focusResult
  * @param {Game} prev_game
  */
-export function stalling_situation(game, action, prev_game) {
+export function stalling_situation(game, action, focusResult, prev_game) {
 	const { common, state } = game;
-	const { clue, giver, list, target, noRecurse } = action;
+	const { giver, noRecurse } = action;
+	const { focus } = focusResult;
 
-	const { focus } = determine_focus(game, state.hands[target], common, list, clue);
 	const severity = stall_severity(prev_game.state, prev_game.common, giver);
 
 	logger.info('severity', severity);
 
-	const stall = isStall(game, action, giver, severity, prev_game);
+	const stall = isStall(game, action, focusResult, severity, prev_game);
 
-	if (stall === undefined)
+	if (stall === undefined || common.thinksLoaded(state, giver, { assume: false }))
 		return { stall, thinks_stall: new Set() };
 
 	if (noRecurse)

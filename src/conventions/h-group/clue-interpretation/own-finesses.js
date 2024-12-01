@@ -1,6 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
-import { determine_focus, getIgnoreOrders } from '../hanabi-logic.js';
+import { getIgnoreOrders } from '../hanabi-logic.js';
 import { find_connecting, find_known_connecting } from './connecting-cards.js';
 import { cardTouched, find_possibilities } from '../../../variants.js';
 import { valid_bluff } from './connection-helper.js';
@@ -189,6 +189,7 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
  * Looks for a connecting card, resorting to a prompt/finesse/bluff through own hand if necessary.
  * @param {Game} game
  * @param {ClueAction} action
+ * @param {number} focus
  * @param {Identity} identity
  * @param {boolean} looksDirect
  * @param {number} [ignorePlayer]
@@ -197,11 +198,10 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
  * @throws {IllegalInterpretation} If no connection can be found.
  * @returns {Connection[]}
  */
-export function find_own_finesses(game, action, identity, looksDirect, ignorePlayer = -1, selfRanks = [], assumeTruth = false) {
+export function find_own_finesses(game, action, focus, identity, looksDirect, ignorePlayer = -1, selfRanks = [], assumeTruth = false) {
 	const { common, state } = game;
-	const { giver, target, list, clue } = action;
+	const { giver, target, clue } = action;
 	const { suitIndex, rank } = identity;
-	const { focus } = determine_focus(game, state.hands[target], common, list, clue);
 
 	if (giver === state.ourPlayerIndex && ignorePlayer === -1)
 		throw new IllegalInterpretation('cannot finesse ourselves.');
@@ -285,7 +285,7 @@ export function find_own_finesses(game, action, identity, looksDirect, ignorePla
 			logger.highlight('yellow', `bluff connection failed (stacked up to ${hypo_state.play_stacks[suitIndex] + 1}), retrying with true finesse`);
 
 			try {
-				const fixed_connections = find_own_finesses(game, action, identity, looksDirect, ignorePlayer, selfRanks, true);
+				const fixed_connections = find_own_finesses(game, action, focus, identity, looksDirect, ignorePlayer, selfRanks, true);
 
 				if (fixed_connections.length > 0)
 					return fixed_connections;

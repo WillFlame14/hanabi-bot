@@ -16,6 +16,7 @@ import { logClue } from '../../tools/log.js';
  * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').Identity} Identity
+ * @typedef {import('../../types.js').FocusResult} FocusResult
  */
 
 /**
@@ -28,9 +29,9 @@ import { logClue } from '../../tools/log.js';
  * @param {Player} player
  * @param {number[]} list 	The orders of all cards that were just clued.
  * @param {BaseClue} clue
- * @param {{beforeClue?: boolean}} options
+ * @returns {FocusResult}
  */
-export function determine_focus(game, hand, player, list, clue, options = {}) {
+export function determine_focus(game, hand, player, list, clue) {
 	const { common, state } = game;
 	const chop = player.chop(hand);
 
@@ -39,7 +40,7 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 		return { focus: chop, chop: true, positional: false };
 
 	const pink_choice_tempo = clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) &&
-		list.every(o => options.beforeClue ? state.deck[o].clued : !state.deck[o].newly_clued) &&
+		list.every(o => state.deck[o].clued) &&
 		clue.value <= hand.length &&
 		list.includes(hand[clue.value - 1]) &&
 		common.thoughts[hand[clue.value - 1]].possible.some(p => state.variant.suits[p.suitIndex].match(variantRegexes.pinkish));
@@ -48,7 +49,7 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 		return { focus: hand[clue.value - 1], chop: false, positional: true };
 
 	if (clue.type === CLUE.RANK && clue.value === 1) {
-		const unknown_1s = list.filter(o => unknown_1(state.deck[o], options.beforeClue));
+		const unknown_1s = list.filter(o => unknown_1(state.deck[o], true));
 		const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
 
 		if (ordered_1s.length > 0)
@@ -57,7 +58,7 @@ export function determine_focus(game, hand, player, list, clue, options = {}) {
 
 	const sorted_list = list.toSorted((a, b) => b - a);
 	const focus =
-		sorted_list.find(o => (!player.thoughts[o].known && (options.beforeClue ? !state.deck[o].clued : state.deck[o].newly_clued))) ??	// leftmost newly clued
+		sorted_list.find(o => !player.thoughts[o].known && !state.deck[o].clued) ??	// leftmost newly clued
 		sorted_list.find(o => player.thoughts[o].chop_moved) ??					// leftmost chop moved
 		sorted_list[0];															// leftmost reclued
 

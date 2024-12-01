@@ -424,6 +424,26 @@ describe('interpreting chop moves', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['p1']);
 	});
 
+	it('will interpret touching previously cm and clued correctly', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'b3', 'g3', 'r3', 'r5']
+		], {
+			level: { min: 4 },
+			starting: PLAYER.BOB
+		});
+
+		// Alice's slots 4 and 5 are chop moved
+		[3, 4].forEach(index => game.common.updateThoughts(game.state.hands[PLAYER.ALICE][index], (draft) => { draft.chop_moved = true; }));
+
+		takeTurn(game, 'Bob clues purple to Alice (slots 2,3,4,5)');
+		takeTurn(game, 'Alice plays p1 (slot 3)');
+		takeTurn(game, 'Bob clues purple to Alice (slots 3,4,5)');	// Focus is leftmost, not leftmost previously cm'd
+
+		// Alice's slot 3 should be p2.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['p2']);
+	});
+
 	it('prioritizes new cards over gt-eliminated chop moved cards', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
