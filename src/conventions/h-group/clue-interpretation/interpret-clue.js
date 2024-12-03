@@ -69,6 +69,7 @@ function apply_good_touch(game, action) {
 					game.rewind(action_index, [{ type: 'ignore', order, conn_index: 0 }]);		// Rewinding the layered finesse doesn't work, just ignore us then.
 
 				if (new_game) {
+					new_game.updateNotes();
 					Object.assign(game, new_game);
 					return { rewinded: true };
 				}
@@ -352,6 +353,51 @@ export function interpret_clue(game, action) {
 	const oldCommon = common.clone();
 
 	const { clue, giver, list, target, mistake = false } = action;
+
+	// Empty clue
+	if (list.length === 0) {
+		logger.highlight('yellow', 'empty clue!');
+		apply_good_touch(game, action);
+
+		const to_remove = new Set();
+
+		for (const [i, waiting_connection] of common.waiting_connections.entries()) {
+			const { connections, conn_index, focus: wc_focus, inference, target: wc_target, } = waiting_connection;
+
+			// The target of the waiting connection cannot eliminate their own identities
+			if (wc_target === giver)
+				continue;
+
+			const impossible_conn = find_impossible_conn(game, connections.slice(conn_index));
+			if (impossible_conn !== undefined)
+				logger.warn(`connection [${connections.map(logConnection)}] depends on revealed card having identities ${impossible_conn.identities.map(logCard)}`);
+
+			else if (!common.thoughts[wc_focus].possible.has(inference))
+				logger.warn(`connection [${connections.map(logConnection)}] depends on originally focused card having identity ${logCard(inference)}`);
+
+			else
+				continue;
+
+			const rewind_order = impossible_conn?.order ?? wc_focus;
+			const rewind_identity = common.thoughts[rewind_order]?.identity();
+
+			if (rewind_identity !== undefined && !common.thoughts[rewind_order].rewinded && wc_target === state.ourPlayerIndex && state.ourHand.includes(rewind_order)) {
+				const new_game = game.rewind(state.deck[rewind_order].drawn_index, [{ type: 'identify', order: rewind_order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] }]);
+				if (new_game) {
+					Object.assign(game, new_game);
+					return;
+				}
+			}
+
+			to_remove.add(i);
+			remove_finesse(game, waiting_connection);
+		}
+
+		common.waiting_connections = common.waiting_connections.filter((_, i) => !to_remove.has(i));
+		team_elim(game);
+		return;
+	}
+
 	const focusResult = determine_focus(game, state.hands[target], common, list, clue);
 	const { focus, chop, positional } = focusResult;
 	const focused_card = state.deck[focus];
@@ -378,6 +424,7 @@ export function interpret_clue(game, action) {
 		if (common.thoughts[focus].possible.length === 1 && common.dependentConnections(focus).length > 0) {
 			const new_game = game.rewind(state.deck[focus].drawn_index, [{ type: 'identify', order: focus, playerIndex: target, identities: [common.thoughts[focus].possible.array[0].raw()] }]);
 			if (new_game) {
+				new_game.updateNotes();
 				Object.assign(game, new_game);
 				return;
 			}
@@ -410,6 +457,7 @@ export function interpret_clue(game, action) {
 				const real_connects = getRealConnects(connections, stomped_conn_index);
 				const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: real_connects, order: stomped_conn.order, inference }]);
 				if (new_game) {
+					new_game.updateNotes();
 					Object.assign(game, new_game);
 					return;
 				}
@@ -432,6 +480,7 @@ export function interpret_clue(game, action) {
 		if (rewind_identity !== undefined && !common.thoughts[rewind_order].rewinded && wc_target === state.ourPlayerIndex && state.ourHand.includes(rewind_order)) {
 			const new_game = game.rewind(state.deck[rewind_order].drawn_index, [{ type: 'identify', order: rewind_order, playerIndex: state.ourPlayerIndex, identities: [rewind_identity.raw()] }]);
 			if (new_game) {
+				new_game.updateNotes();
 				Object.assign(game, new_game);
 				return;
 			}

@@ -1,5 +1,5 @@
 import { CLUE } from '../../../constants.js';
-import { CLUE_INTERP, STALL_INDICES } from '../h-constants.js';
+import { CLUE_INTERP, LEVEL, STALL_INDICES } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue } from './determine-clue.js';
@@ -84,7 +84,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
  * @param {ClueFindingOptions} options
  */
 export function get_clue_interp(game, clue, giver, options) {
-	const { common, state } = game;
+	const { common, me, state } = game;
 	const { target } = clue;
 	const { hypothetical = giver !== state.ourPlayerIndex, noRecurse = false } = options;
 
@@ -190,6 +190,11 @@ export function get_clue_interp(game, clue, giver, options) {
 				return;
 			}
 
+			if (list.some(o => finesses.some(({ card }) => state.deck[card.order].matches(state.deck[o])))) {
+				logger.warn('looks like out-of-order play clue, not giving');
+				return;
+			}
+
 			if (playables.length === 0) {
 				logger.warn('play clue with no playables!');
 				new_interp = CLUE_INTERP.STALL_BURN;
@@ -213,6 +218,33 @@ export function get_clue_interp(game, clue, giver, options) {
 
 				logger.warn('positional with no playables!');
 				new_interp = CLUE_INTERP.STALL_BURN;
+			}
+			break;
+		}
+		case CLUE_INTERP.STALL_5: {
+			if (game.level >= LEVEL.STALLING && giver === state.ourPlayerIndex) {
+				const chopIndex = common.chopIndex(hand);
+				const oldest_5 = hand.findLast((o, i) => ((card = state.deck[o]) =>
+					i < chopIndex && card.rank === 5 && !card.clued)());
+
+				const distance_from_chop = common.chopDistance(hand, oldest_5);
+
+				for (let i = 0; i < state.numPlayers; i++) {
+					if (i === state.ourPlayerIndex)
+						continue;
+
+					const hand2 = state.hands[i];
+
+					const closer5 = hand2.find(o => ((card = me.thoughts[o]) =>
+						card.rank === 5 && !card.saved && common.chopDistance(hand2, o) < distance_from_chop)());
+
+					// There is a 5 closer to chop that we could stall on.
+					if (closer5 !== undefined) {
+						logger.warn('closer 5 to chop', closer5, state.playerNames[i]);
+						new_interp = CLUE_INTERP.NONE;
+						break;
+					}
+				}
 			}
 			break;
 		}

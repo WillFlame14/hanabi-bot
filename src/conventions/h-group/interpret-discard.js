@@ -105,6 +105,7 @@ function check_transfer(game, action) {
 		const real_connects = getRealConnects(connections, dc_conn_index);
 		const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: real_connects, order, inference }]);
 		if (new_game) {
+			new_game.updateNotes();
 			Object.assign(game, new_game);
 			return { interp, new_game };
 		}
@@ -184,6 +185,7 @@ export function interpret_discard(game, action) {
 		const action_index = state.deck[order].drawn_index;
 		const new_game = game.rewind(action_index, [{ type: 'identify', order, playerIndex, identities: [{ suitIndex, rank }] }], thoughts.finessed);
 		if (new_game) {
+			new_game.updateNotes();
 			Object.assign(game, new_game);
 			return;
 		}
@@ -250,17 +252,17 @@ export function interpret_discard(game, action) {
 					interp = DISCARD_INTERP.NONE;
 				}
 				else {
+					logger.info(`interpreting ${interp}!`);
 					common.updateThoughts(chop, (draft) => { draft.chop_moved = true; });
 				}
 			}
 			else if (interp === DISCARD_INTERP.GENERATION) {
+				logger.info(`interpreting ${interp}!`);
 				state.generated = true;
 			}
 
-			if (interp !== undefined) {
-				resolve_discard(game, action, interp);
-				return;
-			}
+			resolve_discard(game, action, interp);
+			return;
 		}
 	}
 
@@ -397,19 +399,21 @@ function check_sdcm(game, action, before_trash, old_chop) {
 	};
 
 	const scream = (state.clue_tokens === 1 || valid_1clue_scream()) && old_chop !== undefined &&
-		(common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 || before_trash.length > 0) && order === old_chop;
+		(common.thinksPlayables(state, playerIndex).length > 0 || before_trash.length > 0) && order === old_chop;
 
-	const shout = common.thinksPlayables(state, playerIndex, {assume: true}).length > 0 &&
+	const shout = common.thinksPlayables(state, playerIndex).length > 0 &&
 		before_trash.includes(order) &&
 		isTrash(state, common, { suitIndex, rank }, order, { infer: true });
+
+	const res = scream ? SCREAM : SHOUT;
 
 	if (!scream && !shout)
 		return NONE;
 
 	if (state.numPlayers === 2)
-		return scream ? SCREAM : SHOUT;
+		return res;
 
-	if (common.thinksLoaded(state, nextPlayerIndex, {assume: true})) {
+	if (common.thinksLoaded(state, nextPlayerIndex)) {
 		logger.warn(`${state.playerNames[playerIndex]} discarded with a playable/kt at 0 clues but next player was safe! (echo?)`);
 		return GENERATION;
 	}
@@ -417,10 +421,10 @@ function check_sdcm(game, action, before_trash, old_chop) {
 	const next2Chop = common.chop(state.hands[nextPlayerIndex2]);
 
 	if (next2Chop === undefined)
-		return SCREAM;
+		return res;
 
-	if (nextPlayerIndex2 === state.ourPlayerIndex)
-		return scream ? SCREAM : SHOUT;
+	if (nextPlayerIndex2 === state.ourPlayerIndex || common.thinksLoaded(state, nextPlayerIndex2))
+		return res;
 
-	return (common.chopValue(state, nextPlayerIndex2) < 4) ? (scream ? SCREAM : SHOUT) : GENERATION;
+	return (common.chopValue(state, nextPlayerIndex2) < 4) ? res : GENERATION;
 }

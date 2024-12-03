@@ -205,6 +205,37 @@ describe('play clue', () => {
 		// 2 to Bob is a nonsensical clue, we don't know where r1 is.
 		assert.ok(!play_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 2));
 	});
+
+	it(`doesn't give out-of-order play clues, intending to finesse`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'r4', 'r2', 'p3', 'b3'],
+			['y5', 'p1', 'y3', 'r1', 'r2']
+		], {
+			level: { min: 1 }
+		});
+
+		const { play_clues } = find_clues(game);
+
+		// Red to Cathy is a confusing clue, we shouldn't give it.
+		assert.ok(!play_clues[PLAYER.CATHY].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.RED));
+	});
+
+	it(`gives finesses with bad touch`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r2', 'r4', 'r2', 'p3', 'b3'],
+			['y5', 'p1', 'y3', 'r1', 'r3']
+		], {
+			level: { min: 1 },
+			play_stacks: [1, 0, 0, 0, 0]
+		});
+
+		const { play_clues } = find_clues(game);
+
+		// Red to Cathy is okay, since r1 is basic trash.
+		assert.ok(play_clues[PLAYER.CATHY].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.RED));
+	});
 });
 
 describe('counting playables', () => {
@@ -348,6 +379,29 @@ describe('counting playables', () => {
 		const clue = play_clues[PLAYER.CATHY].find(clue => clue.type === CLUE.RANK && clue.value === 2);
 
 		// 2 to Cathy gets 1 new playable.
+		assert.ok(clue !== undefined);
+		assert.equal(clue.result.playables.length, 1);
+	});
+
+	it('correctly counts the number of playables when ambiguously connecting through duplicated plays', () => {
+		const game = setup(HGroup, [
+			['r3', 'b1', 'p2', 'p3', 'p1'],
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p4', 'y2', 'r3', 'y3', 'b1']
+		], {
+			level: { min: 1 },
+			ourPlayerIndex: PLAYER.BOB,
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Cathy');
+		takeTurn(game, 'Cathy clues 1 to Alice');
+		takeTurn(game, 'Alice plays p1', 'g3');
+
+		const { play_clues } = find_clues(game);
+		const clue = play_clues[PLAYER.ALICE].find(clue => clue.type === CLUE.RANK && clue.value === 2);
+
+		// 2 to Alice gets 1 new playable.
 		assert.ok(clue !== undefined);
 		assert.equal(clue.result.playables.length, 1);
 	});

@@ -198,6 +198,7 @@ export function update_turn(game, action) {
 	if (rewind_actions.length > 0) {
 		const new_game = game.rewind(min_drawn_index, rewind_actions);
 		if (new_game) {
+			new_game.updateNotes();
 			Object.assign(game, new_game);
 			return;
 		}

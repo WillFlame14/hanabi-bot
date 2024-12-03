@@ -125,7 +125,7 @@ export function playables_result(state, player, hypo_player) {
 		const hypo_card = hypo_player.thoughts[order];
 
 		// Only counts as a playable if it wasn't already playing
-		if (player.hypo_plays.has(order))
+		if (player.hypo_plays.has(order) || Array.from(player.hypo_plays).some(o => state.deck[o].matches(state.deck[order])))
 			continue;
 
 		if (hypo_card.finessed && !old_card.finessed)

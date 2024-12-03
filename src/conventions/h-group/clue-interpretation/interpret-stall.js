@@ -15,6 +15,7 @@ import { logClue } from '../../../tools/log.js';
 /**
  * @typedef {import('../../h-group.js').default} Game
  * @typedef {import('../../../types.js').ClueAction} ClueAction
+ * @typedef {import('../../../types.js').BaseClue} BaseClue
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').ClueResult} ClueResult
  * @typedef {import('../../../types.js').SaveClue} SaveClue
@@ -113,8 +114,9 @@ function isStall(game, action, focusResult, severity, prev_game) {
  * @param {number} giver
  * @param {number} focus
  * @param {number} max_stall
+ * @param {BaseClue} original_clue
  */
-function other_expected_clue(game, giver, focus, max_stall) {
+function other_expected_clue(game, giver, focus, max_stall, original_clue) {
 	const { common, me, state } = game;
 	const options = { giver, hypothetical: true, noRecurse: true };
 
@@ -125,6 +127,9 @@ function other_expected_clue(game, giver, focus, max_stall) {
 			continue;
 
 		for (const clue of state.allValidClues(target)) {
+			if (Utils.objEquals(clue, original_clue))
+				continue;
+
 			logger.off();
 			const res = get_clue_interp(game, clue, giver, options);
 			logger.on();
@@ -199,7 +204,7 @@ function other_expected_clue(game, giver, focus, max_stall) {
  */
 export function stalling_situation(game, action, focusResult, prev_game) {
 	const { common, state } = game;
-	const { giver, noRecurse } = action;
+	const { giver, clue, noRecurse } = action;
 	const { focus } = focusResult;
 
 	const severity = stall_severity(prev_game.state, prev_game.common, giver);
@@ -214,7 +219,7 @@ export function stalling_situation(game, action, focusResult, prev_game) {
 	if (noRecurse)
 		return { stall, thinks_stall: new Set(Utils.range(0, state.numPlayers)) };
 
-	const thinks_stall = other_expected_clue(game, giver, focus, stall_to_severity[stall]);
+	const thinks_stall = other_expected_clue(game, giver, focus, stall_to_severity[stall], clue);
 
 	// Only early game 5 stall exists before level 9
 	if (game.level < LEVEL.STALLING && severity !== 1)

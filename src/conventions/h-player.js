@@ -71,6 +71,39 @@ export class HGroup_Player extends Player {
 	}
 
 	/**
+	 * Returns the distance that a card is left of chop, ignoring previously-clued cards.
+	 * @param {number[]} hand
+	 * @param {number} order
+	 */
+	chopDistance(hand, order) {
+		const chop = this.chop(hand);
+
+		let dist = 0, counting = false;
+
+		for (const o of hand) {
+			const card = this.thoughts[o];
+
+			if (o === order)
+				counting = true;
+
+			if (!counting)
+				continue;
+
+			if (o === chop)
+				return dist;
+
+			// Skip previously clued cards
+			if (card.clued && !card.newly_clued)
+				continue;
+
+			dist++;
+		}
+
+		throw new Error(`distance from ${order} to chop ${chop} in hand ${hand} was negative!`);
+	}
+
+
+	/**
 	 * Returns all clued card in the hand for the given suitIndex and rank (used for bluffs through clued cards.
 	 * @param {State} state
 	 * @param {number} playerIndex

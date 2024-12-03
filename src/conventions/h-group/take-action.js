@@ -386,6 +386,7 @@ export async function take_action(game) {
 	};
 
 	let best_play_clue, best_clue_value;
+	let saved_clue;
 
 	if (state.clue_tokens > 0) {
 		const consider_clues = play_clues.flat().concat(save_clues.filter(clue => clue !== undefined && clue.safe));
@@ -419,10 +420,10 @@ export async function take_action(game) {
 					const otherChop = player.chop(state.hands[playerIndex]);
 					const chop_value = otherChop === undefined ? 4 : cardValue(state, player, state.deck[otherChop], otherChop);
 
-					if (chop_value >= our_chop_value)
-						logger.info(`saved clue ${logClue(clue)} for ${state.playerNames[playerIndex]} ${chop_value}`);
+					if (chop_value > 0 && chop_value >= our_chop_value)
+						logger.info(`saved clue ${logClue(clue)} for ${state.playerNames[playerIndex]} ${chop_value} > ${our_chop_value}`);
 
-					return chop_value >= our_chop_value;
+					return chop_value > 0 && chop_value >= our_chop_value;
 				};
 
 				const saved_for = find_clue_givers(game, clue, state.ourPlayerIndex).filter(i => i !== state.ourPlayerIndex && better_giver(hypo_game.players[i]));
@@ -433,7 +434,9 @@ export async function take_action(game) {
 			}
 
 			const { clue, clue_value } = select_play_clue(consider_clues.filter(clue => !saved_clues.some(cl => Utils.objEquals(clue, cl))));
-			const { clue: saved_clue, clue_value: saved_value } = select_play_clue(saved_clues);
+			const save = select_play_clue(saved_clues);
+			saved_clue = save.clue;
+			const saved_value = save.clue_value;
 
 			if (saved_clue === undefined || clue_value > saved_value) {
 				best_play_clue = clue;
@@ -599,7 +602,7 @@ export async function take_action(game) {
 	const next_chop = me.chop(state.hands[nextPlayerIndex]);
 	const should_shout = game.level >= LEVEL.LAST_RESORTS &&
 		best_playable_order !== undefined &&
-		!me.thinksLoaded(state, nextPlayerIndex, { assume: true }) &&
+		!me.thinksLoaded(state, nextPlayerIndex) &&
 		trash_orders.length > 0 &&
 		next_chop !== undefined &&
 		state.clue_tokens <= 2;
@@ -688,11 +691,13 @@ export async function take_action(game) {
 
 	// Stalling situations
 	if (state.clue_tokens > 0 && actual_severity > 0 && common_severity > 0) {
+		best_play_clue ??= saved_clue;
+
 		const valid_play_clue = best_play_clue && (state.turn_count === 1 ||
 			'cm' in best_play_clue ||
 			!best_play_clue.result.bad_touch.some(o => state.deck[o].matches(state.deck[best_play_clue.result.focus])));
 
-		// Give play clue even if possibly duping
+		// Give play clue even if possibly duping or someone else has a better chop
 		if (valid_play_clue && find_clue_value({ ...best_play_clue.result, avoidable_dupe: 0 }) >= minimum_clue_value(state))
 			return Utils.clueToAction(best_play_clue, tableID);
 

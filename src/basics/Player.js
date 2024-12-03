@@ -314,9 +314,10 @@ export class Player {
 
 	/**
 	 * @param {State} state
+	 * @param {Set<number>} [ignoreOrders]
 	 * Computes the hypo stacks and unknown plays.
 	 */
-	update_hypo_stacks(state) {
+	update_hypo_stacks(state, ignoreOrders) {
 		// Reset hypo stacks to play stacks
 		const hypo_stacks = state.play_stacks.slice();
 		const unknown_plays = new Set();
@@ -336,11 +337,16 @@ export class Player {
 			return remaining_poss.length > 0 && remaining_poss.every(c => hypo_stacks[c.suitIndex] + 1 === c.rank);
 		};
 
+		const duplicated_plays = /** @type {Map<string, number[]>} */(new Map());
+
 		// Attempt to play all playable cards
 		while (found_new_playable) {
 			found_new_playable = false;
 
 			for (const order of state.hands.flat()) {
+				if (ignoreOrders?.has(order))
+					continue;
+
 				const card = this.thoughts[order];
 
 				if (!card.saved || good_touch_elim.has(card) || linked_orders.has(order) || unknown_plays.has(order) || already_played.has(order))
@@ -365,11 +371,20 @@ export class Player {
 				// Do not allow false updating of hypo stacks
 				if (this.playerIndex === -1 && (
 					(id && state.deck.filter(c => c?.matches(id) && c.order !== order).length === cardCount(state.variant, id)) ||
-					(actual_id &&
-						(!card.inferred.has(actual_id) ||		// None of the inferences match
-						state.hands.flat().some(o => unknown_plays.has(o) && state.deck[o].matches(actual_id))))
+					(actual_id && !card.inferred.has(actual_id))		// None of the inferences match
 				))
 					continue;
+
+				if (this.playerIndex === -1 && actual_id) {
+					const existing = Array.from(unknown_plays).find(o => state.deck[o].matches(actual_id));
+
+					// An unknown play matches this identity, try swapping it out later
+					if (existing !== undefined) {
+						const hash = logCard(actual_id);
+						duplicated_plays.set(hash, (duplicated_plays.get(hash) ?? [existing]).concat(order));
+						continue;
+					}
+				}
 
 				if (id === undefined) {
 					// Playable, but the player doesn't know what card it is
@@ -408,8 +423,34 @@ export class Player {
 				already_played.add(order);
 			}
 		}
-		this.hypo_stacks = hypo_stacks;
-		this.unknown_plays = unknown_plays;
-		this.hypo_plays = already_played;
+
+		let best_hypo_stacks = hypo_stacks,
+			best_unknown_plays = unknown_plays,
+			best_hypo_plays = already_played,
+			best_score = hypo_stacks.reduce((a, s) => a + s) + unknown_plays.size;
+
+		if (ignoreOrders === undefined) {
+			// TODO: This doesn't quite get all possible arrangements of possible dupes; it should be some permutation of ignores between ids
+			// Hopefully it's good enough.
+			for (const orders of duplicated_plays.values()) {
+				const ignore = new Set().add(orders[0]);
+
+				for (let i = 0; i < orders.length; i++) {
+					ignore.add(orders[i]);
+					this.update_hypo_stacks(state, ignore);
+
+					if (this.hypo_score > best_score) {
+						best_hypo_stacks = this.hypo_stacks;
+						best_unknown_plays = this.unknown_plays;
+						best_hypo_plays = this.hypo_plays;
+						best_score = this.hypo_score;
+					}
+				}
+			}
+		}
+
+		this.hypo_stacks = best_hypo_stacks;
+		this.unknown_plays = best_unknown_plays;
+		this.hypo_plays = best_hypo_plays;
 	}
 }

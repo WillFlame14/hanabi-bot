@@ -54,6 +54,10 @@ export function colour_save(game, identity, action, focus) {
 			return false;
 	}
 
+	// Don't consider loaded save with brown
+	if (state.variant.suits[suitIndex] === 'Brown' && common.thinksLoaded(state, target))
+		return false;
+
 	if (state.includesVariant(/Dark Rainbow|Dark Prism/) && state.variant.suits[suitIndex].match(/Dark Rainbow|Dark Prism/)) {
 		const completed_suit = common.hypo_stacks[suitIndex] === state.max_ranks[suitIndex];
 		const saved_crit = state.hands[target].some(o => ((c = state.deck[o]) =>

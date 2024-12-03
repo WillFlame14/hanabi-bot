@@ -11,6 +11,7 @@ A game played at H-Group level 5 can be seen [here](https://github.com/WillFlame
 
 ## Bot features
 - Can play with different conventions! Currently, Playful Sieve (2p only) and HGroup levels 1 through 11 are supported.
+- Supports No Variant, Black, White, Rainbow, Prism, Pink and Brown variants, as well as their 6-suit equivalents.
 - Takes notes during the game on what it thinks each player knows about their own hand.
 - Internally rewinds to relevant turns to understand mistakes.
 - Can create and start games on its own (i.e. for playing bot-only games).

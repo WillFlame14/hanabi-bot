@@ -135,7 +135,29 @@ describe('stalling', () => {
 		// Alice is in DDA, she should clue 2 to Bob even though it bad touches.
 		const action = await take_action(game);
 
-		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.BOB, value: 2});
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.BOB, value: 2 });
+	});
+
+	it('gives a 5 stall on the 5 closest to chop', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r2', 'y4', 'r5', 'g2', 'r3'],
+			['y5', 'r4', 'b3', 'b4', 'b1'],
+		], {
+			level: { min: 9 },
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues blue to Cathy');
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
+
+		// Alice should 5 Stall on Cathy, since Bob's 5 is farther away from chop.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.CATHY, value: 5 });
+
+		// 5 to Bob is not a valid 5 stall.
+		const { stall_clues } = find_clues(game);
+		assert.ok(!stall_clues[0].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 5));
 	});
 });
 

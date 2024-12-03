@@ -102,6 +102,21 @@ export function range(start, end) {
 }
 
 /**
+ * Returns an iterator of numbers start to end, not including end.
+ * @param {number} start
+ * @param {number} end
+ * @yields {number}
+ */
+export function* rangeI(start, end) {
+	let i = start;
+
+	while (i < end) {
+		yield i;
+		i++;
+	}
+}
+
+/**
  * Deep clones an object. Does not create clones of functions.
  * @template T
  * @param {T} obj

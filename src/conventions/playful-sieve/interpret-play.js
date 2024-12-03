@@ -99,6 +99,7 @@ export function interpret_play(game, action) {
 			// If the rewind succeeds, it will redo this action, so no need to complete the rest of the function
 			const new_game = game.rewind(card.drawn_index, [{ type: 'identify', order, playerIndex, identities: [identity] }]);
 			if (new_game) {
+				new_game.updateNotes();
 				Object.assign(game, new_game);
 				return;
 			}

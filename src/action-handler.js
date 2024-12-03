@@ -1,8 +1,11 @@
+import { BOT_VERSION } from './constants.js';
+import { team_elim } from './basics/helper.js';
 import * as Basics from './basics.js';
+import * as Utils from './tools/util.js';
+
 import logger from './tools/logger.js';
 import { logAction, logCard } from './tools/log.js';
-import * as Utils from './tools/util.js';
-import { team_elim } from './basics/helper.js';
+
 import { produce } from './StateProxy.js';
 
 /**
@@ -87,33 +90,14 @@ export function handle_action(action) {
 			state.currentPlayerIndex = currentPlayerIndex;
 			state.turn_count = num + 1;
 
-			if (!state.options.speedrun) {
-				// Update notes on cards
-				for (const order of state.hands.flat()) {
-					const card = this.common.thoughts[order];
-					if (card.saved || card.called_to_discard) {
-						const note = card.getNote();
+			if (state.turn_count == 2 && this.notes[0] === undefined && !this.catchup && this.in_progress) {
+				const note = `[INFO: v${BOT_VERSION}, ${this.convention_name + (/** @type {any} */(this).level ?? '')}]`;
 
-						if (this.notes[order] === undefined)
-							this.notes[order] = { last: '', turn: 0, full: '' };
-
-						// Only write a new note if it's different from the last note and is a later turn
-						if (note !== this.notes[order].last && state.turn_count > this.notes[order].turn) {
-							this.notes[order].last = note;
-							this.notes[order].turn = state.turn_count;
-
-							if (this.notes[order].full !== '')
-								this.notes[order].full += ' | ';
-
-							this.notes[order].full += `t${state.turn_count}: ${note}`;
-
-							if (!this.catchup && this.in_progress)
-								Utils.sendCmd('note', { tableID: this.tableID, order, note: this.notes[order].full });
-						}
-					}
-				}
+				Utils.sendCmd('note', { tableID: this.tableID, order: 0, note });
+				this.notes[0] = { last: note, turn: 0, full: note };
 			}
 
+			this.updateNotes();
 			this.update_turn(this, action);
 			break;
 		}

@@ -92,38 +92,28 @@ export function interpret_5cm(game, target, focus_order, clue) {
 	const hand = state.hands[target];
 	const chopIndex = common.chopIndex(hand);
 
-	// Find the oldest 5 clued and its distance from chop
-	let distance_from_chop = 0;
-	for (let i = chopIndex; i >= 0; i--) {
-		const card = state.deck[hand[i]];
+	const oldest_5 = hand.findLast((o, i) => ((card = state.deck[o]) =>
+		i < chopIndex && card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5))());
 
-		// Skip previously clued cards
-		if (card.clued && !card.newly_clued)
-			continue;
+	if (oldest_5 === undefined)
+		return [];
 
-		// Check the next card that meets the requirements (must be 5 and newly clued to be 5cm)
-		// TODO: Asymmetric 5cm - If we aren't the target, we can see the card being chop moved
-		// However, this requires that there is some kind of finesse/prompt to prove it is not 5cm
-		if (card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5)) {
-			if (distance_from_chop === 1) {
-				const order = state.hands[target][chopIndex];
-				const saved_card = common.thoughts[order];
+	const distance_from_chop = common.chopDistance(hand, oldest_5);
 
-				if (saved_card.possible.every(p => isTrash(state, common, p, order, { infer: true }))) {
-					logger.info(`saved card ${logCard(saved_card)} has only trash possibilities, not 5cm`);
-					return [];
-				}
+	if (distance_from_chop === 1) {
+		const order = state.hands[target][chopIndex];
+		const saved_card = common.thoughts[order];
 
-				logger.info(`5cm, saving ${logCard(saved_card)}`);
-				return [order];
-			}
-			else {
-				logger.info(`rightmost 5 was clued ${distance_from_chop} away from chop, not interpreting 5cm`);
-				return [];
-			}
+		if (saved_card.possible.every(p => isTrash(state, common, p, order, { infer: true }))) {
+			logger.info(`saved card ${logCard(saved_card)} has only trash possibilities, not 5cm`);
+			return [];
 		}
-		distance_from_chop++;
+
+		logger.info(`5cm, saving ${logCard(saved_card)}`);
+		return [order];
 	}
+
+	logger.info(`rightmost 5 was clued ${distance_from_chop} away from chop, not interpreting 5cm`);
 	return [];
 }
 

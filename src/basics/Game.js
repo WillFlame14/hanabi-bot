@@ -213,6 +213,39 @@ export class Game {
 	}
 
 	/**
+	 * Updates notes on cards.
+	 */
+	updateNotes() {
+		if (this.state.options.speedrun)
+			return;
+
+		for (const order of this.state.hands.flat()) {
+			const card = this.common.thoughts[order];
+
+			if (!card.saved && !card.called_to_discard)
+				continue;
+
+			this.notes[order] ??= { last: '', turn: 0, full: '' };
+
+			const note = card.getNote();
+
+			// Only write a new note if it's different from the last note and is a later turn
+			if (note !== this.notes[order].last && this.state.turn_count > this.notes[order].turn) {
+				this.notes[order].last = note;
+				this.notes[order].turn = this.state.turn_count;
+
+				if (this.notes[order].full !== '')
+					this.notes[order].full += ' | ';
+
+				this.notes[order].full += `t${this.state.turn_count}: ${note}`;
+
+				if (!this.catchup && this.in_progress)
+					Utils.sendCmd('note', { tableID: this.tableID, order, note: this.notes[order].full });
+			}
+		}
+	}
+
+	/**
 	 * Rewinds the state to a particular action index, inserts the rewind actions just before it and then replays all future moves.
 	 * @param {number} action_index
 	 * @param {Action[]} rewind_actions	The rewind action to insert before the target action
@@ -342,6 +375,9 @@ export class Game {
 		newGame.catchup = this.catchup;
 		newGame.handle_action(actionList.at(-1));
 
+		for (const [order, noteObj] of this.notes.entries())
+			newGame.notes[order] = noteObj;
+
 		Utils.globalModify({ game: old_global_game });
 
 		return /** @type {this} */ (newGame);
@@ -418,6 +454,14 @@ export class Game {
 		hypo_game.catchup = true;
 		hypo_game.rewind = () => undefined;
 
+		// Remove all existing newly clued notes
+		for (const o of this.state.hands.flat()) {
+			hypo_game.state.deck[o].newly_clued = false;
+
+			for (const player of hypo_game.allPlayers)
+				player.updateThoughts(o, (draft) => { draft.newly_clued = false; });
+		}
+
 		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: hypo_game });
 
@@ -444,6 +488,14 @@ export class Game {
 		const hypo_game = /** @type {this} */ (this.minimalCopy());
 		hypo_game.catchup = true;
 		hypo_game.rewind = () => undefined;
+
+		// Remove all existing newly clued notes
+		for (const o of this.state.hands.flat()) {
+			hypo_game.state.deck[o].newly_clued = false;
+
+			for (const player of hypo_game.allPlayers)
+				player.updateThoughts(o, (draft) => { draft.newly_clued = false; });
+		}
 
 		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: hypo_game });
