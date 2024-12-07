@@ -188,6 +188,56 @@ describe('pink prompts', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['i2']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
+
+	it('prompts even when rank mismatches if no finesse position', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['i3', 'b3', 'r1', 'r4', 'g5'],
+			['g4', 'y3', 'r2', 'b3', 'b1']
+		], {
+			level: { min: 3 },
+			clue_tokens: 7,
+			play_stacks: [0, 0, 0, 0, 1],
+			discarded: ['y4'],
+			starting: PLAYER.BOB,
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Bob clues yellow to Alice (slots 3,4,5)');
+		takeTurn(game, 'Cathy clues 5 to Alice (slots 1,2)');
+		takeTurn(game, 'Alice clues red to Bob');
+
+		takeTurn(game, 'Bob plays r1', 'r1');
+		takeTurn(game, 'Cathy clues pink to Bob');
+
+		// Alice should play slot 1 as i2.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['i2']);
+	});
+
+	it('understands a mismatched rank prompt', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b3', 'i3', 'r1', 'r4', 'g5'],
+			['i2', 'b5', 'y2', 'y3', 'y4']
+		], {
+			level: { min: 3 },
+			clue_tokens: 7,
+			play_stacks: [0, 0, 0, 0, 1],
+			discarded: ['y4'],
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Alice clues yellow to Cathy');
+		takeTurn(game, 'Bob clues 5 to Cathy');
+		takeTurn(game, 'Cathy clues red to Alice (slot 3)');
+
+		takeTurn(game, 'Alice plays r1 (slot 3)');
+		takeTurn(game, 'Bob clues 3 to Alice (slots 2,3)');
+
+		// Alice should understand Cathy's i2 is prompted, and not self-finesse.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['i3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
+	});
 });
 
 describe('pink choice tempo clues', () => {

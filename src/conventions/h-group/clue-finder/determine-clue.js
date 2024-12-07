@@ -1,13 +1,14 @@
+import { CLUE } from '../../../constants.js';
 import { CLUE_INTERP } from '../h-constants.js';
 import { bad_touch_result, cm_result, elim_result, playables_result } from '../../../basics/clue-result.js';
 import { isTrash } from '../../../basics/hanabi-util.js';
+import { determine_focus } from '../hanabi-logic.js';
+import { variantRegexes } from '../../../variants.js';
+import { clue_safe } from './clue-safe.js';
+import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logClue } from '../../../tools/log.js';
-import { determine_focus } from '../hanabi-logic.js';
-import { variantRegexes } from '../../../variants.js';
-import { CLUE } from '../../../constants.js';
-import { clue_safe } from './clue-safe.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -115,8 +116,14 @@ function acceptable_clue(game, hypo_game, action, result) {
  * Evaluates the result of a clue. Returns the hypothetical state after the clue if correct, otherwise undefined.
  * @param  {Game} game
  * @param  {ClueAction & { clue: Clue }} action
+ * @returns {{ hypo_game: Game, result: ClueResult }}
  */
 export function evaluate_clue(game, action) {
+	const hash = game.hash + ',' + JSON.stringify(action);
+
+	if (Utils.globals.cache.has(hash))
+		return /** @type {{ hypo_game: Game, result: ClueResult }} */(Utils.globals.cache.get(hash));
+
 	const { state } = game;
 	const { clue, giver } = action;
 
@@ -138,9 +145,13 @@ export function evaluate_clue(game, action) {
 
 	logger.highlight('green', `------- EXITING HYPO ${logClue(clue)} --------`);
 
+	const fail = { hypo_game: undefined, result: undefined };
+
 	if (action.hypothetical && hypo_game.lastMove === CLUE_INTERP.NONE) {
 		logger.flush(false);
-		return { hypo_game: undefined, result: undefined };
+
+		Utils.globals.cache.set(hash, fail);
+		return fail;
 	}
 
 	const result = get_result(game, hypo_game, action);
@@ -151,9 +162,12 @@ export function evaluate_clue(game, action) {
 
 	if (failure_reason) {
 		logger.info(`${logClue(clue)} has incorrect interpretation, (${failure_reason})`);
-		return { hypo_game: undefined, result: undefined };
+
+		Utils.globals.cache.set(hash, fail);
+		return fail;
 	}
 
+	Utils.globals.cache.set(hash, { hypo_game, result });
 	return { hypo_game, result };
 }
 
@@ -181,7 +195,7 @@ export function get_result(game, hypo_game, action, provisions = {}) {
 	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
 	const chop_moved = cm_result(common, hypo_common, hand);
 
-	const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game,game.players[giver], clue);
+	const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game, game.players[giver], clue);
 
 	return {
 		focus,

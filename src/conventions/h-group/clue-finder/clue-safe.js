@@ -5,6 +5,7 @@ import logger from '../../../tools/logger.js';
 
 import * as Utils from '../../../tools/util.js';
 import { team_elim } from '../../../basics/helper.js';
+import { produce } from '../../../StateProxy.js';
 
 
 /**
@@ -170,6 +171,15 @@ export function clue_safe(game, player, clue) {
 	hypo_game.last_actions[state.ourPlayerIndex] = clue_action;
 	hypo_game.handle_action({ type: 'turn', num: state.turn_count, currentPlayerIndex: state.nextPlayerIndex(state.ourPlayerIndex) });
 	hypo_game.catchup = false;
+
+	// Remove all existing newly clued notes
+	for (const o of state.hands.flat()) {
+		const { deck } = hypo_game.state;
+		hypo_game.state.deck = deck.with(o, produce(deck[o], (draft) => { draft.newly_clued = false; }));
+
+		for (const player of hypo_game.allPlayers)
+			player.updateThoughts(o, (draft) => { draft.newly_clued = false; });
+	}
 
 	return safe_situation(hypo_game, hypo_game.players[player.playerIndex]);
 }

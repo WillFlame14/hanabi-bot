@@ -3,10 +3,11 @@ import { Player } from './Player.js';
 import { ActualCard } from '../basics/Card.js';
 import { State } from '../basics/State.js';
 import { handle_action } from '../action-handler.js';
+import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
-import * as Utils from '../tools/util.js';
 import { logCard, logPerformAction } from '../tools/log.js';
+import { produce } from '../StateProxy.js';
 
 
 /**
@@ -456,7 +457,8 @@ export class Game {
 
 		// Remove all existing newly clued notes
 		for (const o of this.state.hands.flat()) {
-			hypo_game.state.deck[o].newly_clued = false;
+			const { deck } = hypo_game.state;
+			hypo_game.state.deck = deck.with(o, produce(deck[o], (draft) => { draft.newly_clued = false; }));
 
 			for (const player of hypo_game.allPlayers)
 				player.updateThoughts(o, (draft) => { draft.newly_clued = false; });

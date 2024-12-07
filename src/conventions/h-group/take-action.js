@@ -141,7 +141,7 @@ function best_stall_clue(stall_clues, severity, best_play_clue) {
  */
 export function find_all_clues(game, giver) {
 	logger.off();
-	const { play_clues, save_clues, stall_clues } = find_clues(game, { giver, no_fix: true });
+	const { play_clues, save_clues, stall_clues } = find_clues(game, { giver, noFix: true });
 	logger.on();
 
 	return [
@@ -337,7 +337,7 @@ export async function take_action(game) {
 			return action;
 	}
 
-	const discardable = trash_orders[0] ?? common.chop(state.ourHand);
+	const discardable = discards[0] ?? trash_orders[0] ?? common.chop(state.ourHand);
 
 	if (!is_finessed && state.clue_tokens === 0 && state.numPlayers > 2 && discardable !== undefined) {
 		const nextNextPlayerIndex = state.nextPlayerIndex(nextPlayerIndex);

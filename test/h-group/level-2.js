@@ -74,6 +74,24 @@ describe('reverse finesse', () => {
 		assert.ok(donald_1);
 		assert.equal(donald_1.result.bad_touch.length, 1);
 	});
+
+	it(`doesn't make finesse assumptions`, async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p4', 'r4', 'r4', 'g1'],
+			['r1', 'b4', 'y4', 'r2'],
+			['y2', 'b3', 'r3', 'b1']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues red to Alice (slot 1)');	// Could be r1 or r2: if it's r2, then r3 can be clued, but otherwise it can't.
+
+		// We must clue Bob or g1 may be discarded. Cluing Donald isn't safe if we have r1.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { target: PLAYER.BOB });
+	});
 });
 
 describe('self-finesse', () => {

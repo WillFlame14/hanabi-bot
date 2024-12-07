@@ -1,4 +1,4 @@
-import { cardCount } from '../../../variants.js';
+import { cardCount, variantRegexes } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
 import { order_1s } from '../action-helper.js';
 import { inBetween } from '../hanabi-logic.js';
@@ -11,6 +11,7 @@ import { produce } from '../../../StateProxy.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
+ * @typedef {import('../../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../../basics/Card.js').Card} Card
  * @typedef {import('../../../types.js').ClueAction} ClueAction
  * @typedef {import('../../../types.js').Connection} Connection
@@ -174,27 +175,54 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 
 	const prompt = common.find_prompt(state, reacting, identity, connected, ignoreOrders);
 	const finesse = common.find_finesse(state, reacting, connected, ignoreOrders);
-	const [prompt_card, finesse_card] = [prompt, finesse].map(o => state.deck[o]);
 
 	logger.debug('finding unknown connecting for', logCard(identity), state.playerNames[reacting], prompt, finesse, connected, ignoreOrders);
 
-	// Prompt takes priority over finesse
-	if (prompt_card?.identity() !== undefined) {
-		if (prompt_card.matches(identity))
-			return { type: 'prompt', reacting, order: prompt, identities: [identity] };
+	/**
+	 * @param {number} prompt_order
+	 * @returns {{tried: boolean, conn?: Connection}}
+	 */
+	const try_prompt = (prompt_order) => {
+		const prompt_c = state.deck[prompt_order];
+
+		// Prompt takes priority over finesse
+		if (prompt_c?.identity() === undefined)
+			return { tried: false };
+
+		if (prompt_c.matches(identity))
+			return { tried: true, conn: { type: 'prompt', reacting, order: prompt_order, identities: [identity] } };
 
 		// Prompted card is delayed playable
-		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt_card.suitIndex] + 1 === prompt_card.rank) {
+		if (game.level >= LEVEL.INTERMEDIATE_FINESSES && state.play_stacks[prompt_c.suitIndex] + 1 === prompt_c.rank) {
 			// Could be duplicated in giver's hand - disallow hidden prompt
 			if (giver === state.ourPlayerIndex && state.hands[giver].some(o => state.deck[o].clued && game.players[giver].thoughts[o].inferred.has(identity))) {
-				logger.warn(`disallowed hidden prompt on ${logCard(prompt_card)} ${prompt}, true ${logCard(identity)}  could be duplicated in giver's hand`);
-				return;
+				logger.warn(`disallowed hidden prompt on ${logCard(prompt_c)} ${prompt_order}, true ${logCard(identity)}  could be duplicated in giver's hand`);
+				return { tried: true };
 			}
-			return { type: 'prompt', reacting, order: prompt, hidden: true, identities: [prompt_card.raw()] };
+			return { tried: true, conn: { type: 'prompt', reacting, order: prompt_order, hidden: true, identities: [prompt_c.raw()] } };
 		}
-		logger.warn(`wrong prompt on ${logCard(prompt_card)} ${prompt} when searching for ${logCard(identity)}, play stacks at ${state.play_stacks[prompt_card.suitIndex]}`);
-		return { type: 'terminate', reacting, order: prompt, identities: [identity] };
+		logger.warn(`wrong prompt on ${logCard(prompt_c)} ${prompt_order} when searching for ${logCard(identity)}, play stacks at ${state.play_stacks[prompt_c.suitIndex]}`);
+		return { tried: true, conn: { type: 'terminate', reacting, order: prompt_order, identities: [identity] } };
+	};
+
+	const { tried, conn } = try_prompt(prompt);
+
+	if (tried)
+		return conn;
+
+	// Try prompting a wrongly-ranked pink card
+	if ((finesse === undefined || !common.thoughts[finesse].possible.has(identity)) && state.includesVariant(variantRegexes.pinkish)) {
+		const pink_prompt = common.find_prompt(state, reacting, identity, connected, ignoreOrders, true);
+
+		if (pink_prompt !== undefined && pink_prompt !== prompt) {
+			const { tried: tried2, conn: conn2 } = try_prompt(pink_prompt);
+
+			if (tried2)
+				return conn2;
+		}
 	}
+
+	const finesse_card = state.deck[finesse];
 
 	if (finesse_card?.identity() !== undefined) {
 		/** @param {number} order */
@@ -295,7 +323,7 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 			return false;
 
 		const connected_copy = connected.slice();
-		let prompt = common.find_prompt(state, i, identity, connected, ignoreOrders);
+		let prompt = common.find_prompt(state, i, identity, connected, ignoreOrders, true);
 
 		while (prompt !== undefined) {
 			if (prompt === match)
@@ -306,7 +334,7 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 				return true;
 
 			connected_copy.push(prompt);
-			prompt = common.find_prompt(state, i, identity, connected_copy, ignoreOrders);
+			prompt = common.find_prompt(state, i, identity, connected_copy, ignoreOrders, true);
 		}
 
 		return true;

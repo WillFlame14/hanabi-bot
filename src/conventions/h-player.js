@@ -132,8 +132,9 @@ export class HGroup_Player extends Player {
 	 * @param {Identity} identity
 	 * @param {number[]} connected 		Orders of cards that have previously connected
 	 * @param {number[]} ignoreOrders 	Orders of cards to ignore when searching.
+	 * @param {boolean} forcePink 		Whether to force a prompt on a possibly-pink card.
 	 */
-	find_prompt(state, playerIndex, identity, connected = [], ignoreOrders = []) {
+	find_prompt(state, playerIndex, identity, connected = [], ignoreOrders = [], forcePink = false) {
 		const order = state.hands[playerIndex].find(o => {
 			const { clued, newly_clued, order, clues } = state.deck[o];
 			const { inferred, possible } = this.thoughts[o];
@@ -143,7 +144,7 @@ export class HGroup_Player extends Player {
 				possible.has(identity) &&					// must be a possibility
 				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 		// must not be information-locked on a different identity
 				clues.some(clue => cardTouched(identity, state.variant, clue)) &&				// at least one clue matches
-				(!state.variant.suits[identity.suitIndex].match(variantRegexes.pinkish) ||	// pink rank match
+				(!state.variant.suits[identity.suitIndex].match(variantRegexes.pinkish) || forcePink ||	// pink rank match
 					clues.some(clue => clue.type === CLUE.RANK && clue.value === identity.rank) ||
 					clues.some(clue => clue.type === CLUE.COLOUR && colourableSuits(state.variant)[clue.value]?.match(variantRegexes.pinkish)));
 		});

@@ -455,7 +455,7 @@ describe('guide principle', () => {
 		// Bob may think playing gives Cathy a play, but Alice can see that it doesn't,
 		// and should save Cathy's 5.
 		const action = await take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 2, value: 5 }, `Expected (5 to Cathy), got (${logPerformAction(action)})`);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: 2, value: 5 }, `Expected (5 to Cathy), got ${logPerformAction(action)}`);
 		takeTurn(game, 'Alice clues 5 to Cathy');
 
 		// Understands that Alice may have been deferring the finesse to save the 5 and allow Bob to play.

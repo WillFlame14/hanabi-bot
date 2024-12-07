@@ -5,8 +5,7 @@ import { find_clue_value } from '../action-helper.js';
 import { get_result } from '../clue-finder/determine-clue.js';
 import { colour_save, rank_save } from './focus-possible.js';
 import { minimum_clue_value, stall_severity } from '../hanabi-logic.js';
-import { isSaved } from '../../../basics/hanabi-util.js';
-import { get_clue_interp } from '../clue-finder/clue-finder.js';
+import { find_expected_clue } from '../clue-finder/clue-finder.js';
 import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
@@ -117,79 +116,45 @@ function isStall(game, action, focusResult, severity, prev_game) {
  * @param {BaseClue} original_clue
  */
 function other_expected_clue(game, giver, focus, max_stall, original_clue) {
-	const { common, me, state } = game;
-	const options = { giver, hypothetical: true, noRecurse: true };
-
+	const { state } = game;
 	const thinks_stall = new Set(Utils.range(0, state.numPlayers));
 
-	for (let target = 0; target < state.numPlayers; target++) {
-		if (target === giver || thinks_stall.size === 0)
-			continue;
+	/**
+	 * @param {Game} _game
+	 * @param {Clue} _clue
+	 * @param {{result: ClueResult, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]}} res
+	 */
+	const satisfied = (_game, _clue, { result, interp }) => {
+		switch (interp) {
+			case CLUE_INTERP.CM_TEMPO:
+			case CLUE_INTERP.STALL_TEMPO:
+			case CLUE_INTERP.STALL_FILLIN:
+			case CLUE_INTERP.STALL_LOCKED:
+			case CLUE_INTERP.STALL_8CLUES:
+			case CLUE_INTERP.STALL_BURN:
+				logger.info(interp, STALL_INDICES[interp], max_stall, focus, result.focus, STALL_INDICES[interp] < max_stall);
+				return STALL_INDICES[interp] < max_stall;
 
-		for (const clue of state.allValidClues(target)) {
-			if (Utils.objEquals(clue, original_clue))
+			default:
+				return false;
+		}
+	};
+
+	/** @param {Clue} clue */
+	const excludeClue = (clue) =>
+		thinks_stall.size === 0 || (clue.type === original_clue.type && clue.value === original_clue.value);
+
+	for (const { clue, res } of find_expected_clue(game, giver, satisfied, excludeClue)) {
+		logger.highlight('yellow', `expected ${logClue(clue)}, not interpreting stall`);
+
+		const new_wc = res.hypo_game.common.waiting_connections.find(wc => wc.turn === state.turn_count);
+
+		// Everyone not the target (or with an unknown connection) can see this clue
+		for (let i = 0; i < state.numPlayers; i++) {
+			if (i === clue.target || new_wc?.connections.some(conn => conn.type !== 'known' && state.hands[i].includes(conn.order)))
 				continue;
 
-			logger.off();
-			const res = get_clue_interp(game, clue, giver, options);
-			logger.on();
-
-			if (res === undefined)
-				continue;
-
-			const { hypo_game, result, interp, save_clue } = res;
-
-			const expected_clue = (() => {
-				switch (interp) {
-					case CLUE_INTERP.PLAY: {
-						const depends_on_uncertain = Array.from(hypo_game.common.hypo_plays).some(o =>
-							hypo_game.common.thoughts[o].uncertain &&
-							state.deck[o].playedBefore(state.deck[result.focus]));
-
-						if (depends_on_uncertain)
-							return false;
-
-						return result.playables.some(({ card }) => card.newly_clued) && result.bad_touch.length === 0;
-					}
-					case CLUE_INTERP.SAVE: {
-						if (save_clue === undefined || save_clue.cm?.length > 0 || focus === save_clue.result.focus)
-							return false;
-
-						const { focus: save_focus } = save_clue.result;
-
-						const chop = common.chop(state.hands[target]);
-						const duplicate_holders = Utils.findIndices(state.hands, hand => hand.some(o => state.deck[o].matches(state.deck[chop]) && o !== chop));
-
-						// Not a 2 save that could be duplicated in our hand, or a save clue that is duplicated in the target's hand, or a bad save
-						return !(save_clue.type === CLUE.RANK && save_clue.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[chop]))) &&
-							!duplicate_holders.includes(clue.target) &&
-							!isSaved(state, me, state.deck[save_focus], save_focus, { infer: true });
-					}
-
-					case CLUE_INTERP.STALL_5:
-					case CLUE_INTERP.CM_TEMPO:
-					case CLUE_INTERP.STALL_TEMPO:
-					case CLUE_INTERP.STALL_FILLIN:
-					case CLUE_INTERP.STALL_LOCKED:
-					case CLUE_INTERP.STALL_8CLUES:
-					case CLUE_INTERP.STALL_BURN:
-						return STALL_INDICES[interp] < max_stall && focus !== result.focus;
-				}
-			})();
-
-			if (expected_clue) {
-				logger.highlight('yellow', `expected ${logClue(clue)}, not interpreting stall`);
-
-				const new_wc = hypo_game.common.waiting_connections.find(wc => wc.turn === state.turn_count);
-
-				// Everyone not the target (or with an unknown connection) can see this clue
-				for (let i = 0; i < state.numPlayers; i++) {
-					if (i === target || new_wc?.connections.some(conn => conn.type !== 'known' && state.hands[i].includes(conn.order)))
-						continue;
-
-					thinks_stall.delete(i);
-				}
-			}
+			thinks_stall.delete(i);
 		}
 	}
 	return thinks_stall;

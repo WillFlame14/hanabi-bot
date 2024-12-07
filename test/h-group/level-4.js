@@ -434,7 +434,10 @@ describe('interpreting chop moves', () => {
 		});
 
 		// Alice's slots 4 and 5 are chop moved
-		[3, 4].forEach(index => game.common.updateThoughts(game.state.hands[PLAYER.ALICE][index], (draft) => { draft.chop_moved = true; }));
+		for (const index of [3,4]) {
+			for (const player of game.allPlayers)
+				player.updateThoughts(game.state.hands[PLAYER.ALICE][index], (draft) => { draft.chop_moved = true; });
+		}
 
 		takeTurn(game, 'Bob clues purple to Alice (slots 2,3,4,5)');
 		takeTurn(game, 'Alice plays p1 (slot 3)');

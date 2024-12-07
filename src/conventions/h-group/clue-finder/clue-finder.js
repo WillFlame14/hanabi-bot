@@ -3,7 +3,7 @@ import { CLUE_INTERP, LEVEL, STALL_INDICES } from '../h-constants.js';
 import { cardTouched } from '../../../variants.js';
 import { find_fix_clues } from './fix-clues.js';
 import { evaluate_clue } from './determine-clue.js';
-import { determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
+import { clueUncertain, determine_focus, valuable_tempo_clue } from '../hanabi-logic.js';
 import { cardValue, isSaved, isTrash, visibleFind } from '../../../basics/hanabi-util.js';
 import { find_clue_value } from '../action-helper.js';
 import * as Utils from '../../../tools/util.js';
@@ -17,6 +17,7 @@ import { produce } from '../../../StateProxy.js';
  * @typedef {import('../../../types.js').Clue} Clue
  * @typedef {import('../../../types.js').FixClue} FixClue
  * @typedef {import('../../../types.js').SaveClue} SaveClue
+ * @typedef {import('../../../types.js').ClueResult} ClueResult
  */
 
 /**
@@ -75,6 +76,75 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
 		find_clue_value(result)
 		+ 0.1*chop_moved.reduce((acc, o) => acc + cardValue(state, hypo_game.common, state.deck[o], o), 0)
 		- 0.5*saved_trash.length;
+}
+
+/**
+ * @param {Game} game
+ * @param {Clue} clue
+ * @param {{ hypo_game: Game, result: ClueResult, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP], save_clue: SaveClue }} res
+ */
+function basic_expectations(game, clue, { hypo_game, result, interp, save_clue}) {
+	const { common, me, state } = game;
+	const { target } = clue;
+
+	switch (interp) {
+		case CLUE_INTERP.PLAY: {
+			// Clue depends on an uncertain connection
+			if (clueUncertain(hypo_game, result.focus))
+				return false;
+
+			return result.playables.some(({ card }) => card.newly_clued) && result.bad_touch.length === 0;
+		}
+		case CLUE_INTERP.SAVE: {
+			if (save_clue === undefined || save_clue.cm?.length > 0)
+				return false;
+
+			const { focus: save_focus } = save_clue.result;
+
+			const chop = common.chop(state.hands[target]);
+			const duplicate_holders = Utils.findIndices(state.hands, hand => hand.some(o => state.deck[o].matches(state.deck[chop]) && o !== chop));
+
+			// Not a 2 save that could be duplicated in our hand, or a save clue that is duplicated in the target's hand, or a bad save
+			return !(save_clue.type === CLUE.RANK && save_clue.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[chop]))) &&
+				!duplicate_holders.includes(target) &&
+				!isSaved(state, me, state.deck[save_focus], save_focus, { infer: true });
+		}
+
+		case CLUE_INTERP.STALL_5:
+			return game.level >= 2 && !game.stalled_5;
+
+		default:
+			return false;
+	}
+}
+
+/**
+ * @param {Game} game
+ * @param {number} giver
+ * @param {(game: Game, clue: Clue, res: { hypo_game?: Game, result?: ClueResult, interp?: typeof CLUE_INTERP[keyof typeof CLUE_INTERP], save_clue?: SaveClue }) => boolean} satisfied
+ * @param {(clue: Clue) => boolean} excludeClue
+ * @yields {{ clue: Clue, res: { hypo_game: Game, result: ClueResult, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP], save_clue: SaveClue }}}
+ */
+export function* find_expected_clue(game, giver, satisfied, excludeClue) {
+	const { state } = game;
+	const options = { giver, hypothetical: true, noFix: true, noRecurse: true };
+
+	for (let target = 0; target < state.numPlayers; target++) {
+		if (target === giver)
+			continue;
+
+		for (const clue of state.allValidClues(target)) {
+			if (excludeClue(clue))
+				continue;
+
+			logger.off();
+			const res = get_clue_interp(game, clue, giver, options);
+			logger.on();
+
+			if (res !== undefined && (basic_expectations(game, clue, res) || satisfied(game, clue, res)))
+				yield { clue, res };
+		}
+	}
 }
 
 /**
@@ -140,6 +210,7 @@ export function get_clue_interp(game, clue, giver, options) {
 		playables: playables.map(({ playerIndex, card }) => `${logCard(state.deck[card.order])} (${state.playerNames[playerIndex]})`),
 		chop_moved: chop_moved.map(o => `${logCard(state.deck[o])} ${o}`),
 		discard: discard ? logCard(state.deck[discard]) : undefined,
+		focus,
 		interp,
 		safe
 	};
@@ -266,18 +337,12 @@ export function get_clue_interp(game, clue, giver, options) {
  * @typedef ClueFindingOptions
  * @property {number} [giver]
  * @property {boolean} [hypothetical]
- * @property {boolean} [no_fix]
+ * @property {boolean} [noFix]
  * @property {boolean} [noRecurse]
- * @property {(game: Game, clue: Clue, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]) => boolean} [early_exits]
  */
 export function find_clues(game, options = {}) {
-	const hash = game.hash + ',' + JSON.stringify(options) + ',' + options.early_exits?.toString();
-
-	if (Utils.globals.cache.has(hash))
-		return Utils.globals.cache.get(hash);
-
 	const { state } = game;
-	const { giver = state.ourPlayerIndex, no_fix = false, early_exits = () => false } = options;
+	const { giver = state.ourPlayerIndex, noFix = false } = options;
 
 	logger.highlight('whiteb', `------- FINDING CLUES ${giver !== state.ourPlayerIndex ? `(${state.playerNames[giver]}) ` : ''}-------`);
 
@@ -287,7 +352,6 @@ export function find_clues(game, options = {}) {
 
 	logger.debug('play/hypo/max stacks in clue finder:', state.play_stacks, game.players[giver].hypo_stacks, state.max_ranks);
 
-	let early_exit = false;
 	const hypo_games = /** @type {Record<string, Game>} */ ({});
 
 	// Find all valid clues
@@ -335,18 +399,7 @@ export function find_clues(game, options = {}) {
 					play_clues[target].push(new_clue);
 					break;
 			}
-
-			if (early_exits(game, new_clue, interp)) {
-				if (interp === CLUE_INTERP.SAVE)
-					save_clues[target] = saves.at(-1);
-
-				early_exit = true;
-				break;
-			}
 		}
-
-		if (early_exit)
-			break;
 
 		save_clues[target] = Utils.maxOn(saves, (save_clue) => {
 			const value = save_clue_value(game, save_clue.game, save_clue, [...saves, ...play_clues[target]]);
@@ -390,7 +443,7 @@ export function find_clues(game, options = {}) {
 	}
 
 	/** @type {FixClue[][]} */
-	const fix_clues = (early_exit || no_fix) ? Utils.range(0, state.numPlayers).map(_ => []) : find_fix_clues(game, play_clues, save_clues);
+	const fix_clues = noFix ? Utils.range(0, state.numPlayers).map(_ => []) : find_fix_clues(game, play_clues, save_clues);
 
 	if (play_clues.some(clues => clues.length > 0))
 		logger.info('found play clues', play_clues.flatMap(clues => clues.map(logClue)));
@@ -404,6 +457,5 @@ export function find_clues(game, options = {}) {
 	if (stall_clues.some(clues => clues.length > 0))
 		logger.info('found stall clues', stall_clues.map(clues => clues.map(logClue)));
 
-	Utils.globals.cache.set(hash, { play_clues, save_clues, fix_clues, stall_clues });
 	return { play_clues, save_clues, fix_clues, stall_clues };
 }

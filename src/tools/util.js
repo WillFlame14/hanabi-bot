@@ -16,9 +16,10 @@ import { cardTouched } from '../variants.js';
  * @typedef {import('../types.js').FixClue} FixClue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').PerformAction} PerformAction
+ * @typedef {import('../types.js').ClueResult} ClueResult
  */
 
-/** @type {Record<string, any> & {cache: Map<string, { play_clues: Clue[][], save_clues: SaveClue[], fix_clues: FixClue[][], stall_clues: Clue[][] }>}} */
+/** @type {Record<string, any> & {cache: Map<string, { hypo_game: Game, result: ClueResult }>}} */
 export const globals = { cache: new Map() };
 
 /**

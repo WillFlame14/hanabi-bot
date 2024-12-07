@@ -212,7 +212,7 @@ describe('early game', () => {
 			['r1', 'b4', 'y4', 'r1'],
 			['y2', 'b3', 'b3', 'r1']
 		], {
-			level: { min: 11 },
+			level: { min: 1 },
 			clue_tokens: 7,
 			variant: VARIANTS.BLACK		// Necessary so that cluing (potential) k1 is treated as a save clue
 		});
@@ -228,7 +228,7 @@ describe('early game', () => {
 			['r3', 'b4', 'y4', 'r2'],
 			['y2', 'b3', 'b3', 'r2']
 		], {
-			level: { min: 11 },
+			level: { min: 1 },
 			clue_tokens: 7
 		});
 

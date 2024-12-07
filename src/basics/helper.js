@@ -84,9 +84,11 @@ export function checkFix(game, oldThoughts, clueAction) {
 		if (reset_order !== undefined) {
 			const reset_card = common.thoughts[reset_order];
 			const new_game = game.rewind(reset_card.drawn_index, [{ type: 'identify', order: reset_order, playerIndex: target, identities: [reset_card.possible.array[0].raw()] }]);
-			new_game.updateNotes();
-			Object.assign(game, new_game);
-			return { rewinded: true };
+			if (new_game !== undefined) {
+				new_game.updateNotes();
+				Object.assign(game, new_game);
+				return { rewinded: true };
+			}
 		}
 
 		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims

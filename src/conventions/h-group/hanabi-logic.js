@@ -256,3 +256,15 @@ export function getRealConnects(connections, conn_index) {
 export function unknown_1(card, beforeClue = false) {
 	return (beforeClue || card.clues.length > 0) && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1);
 }
+
+/**
+ * @param {Game} hypo_game
+ * @param {number} focus
+ */
+export function clueUncertain(hypo_game, focus) {
+	const { state } = hypo_game;
+
+	return Array.from(hypo_game.common.hypo_plays).some(o =>
+		hypo_game.common.thoughts[o].uncertain &&
+		state.deck[o].playedBefore(state.deck[focus]));
+}

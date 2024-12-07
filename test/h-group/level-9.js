@@ -55,20 +55,20 @@ describe('stalling', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b3', 'g4', 'g2', 'b4'],
-			['y4', 'y4', 'r4', 'p5'],
-			['y5', 'r5', 'b5', 'g5']
+			['y4', 'y4', 'r5', 'r4'],
+			['r2', 'y2', 'b5', 'g5']
 		], {
 			level: { min: 9 },
-			play_stacks: [2, 0, 0, 0, 0],
+			play_stacks: [2, 0, 0, 0, 2],
 			discarded: ['r4'],
 		});
 
-		takeTurn(game, 'Alice clues 5 to Cathy');
+		takeTurn(game, 'Alice clues 5 to Donald');
 		takeTurn(game, 'Bob clues red to Cathy');	// r4 save
-		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Cathy clues 2 to Donald');
 		takeTurn(game, 'Donald clues red to Cathy');
 
-		// Can't be a hard burn, because filling in p5 is available.
+		// Can't be a hard burn, because filling in r5 is available.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r3']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
@@ -153,7 +153,7 @@ describe('stalling', () => {
 
 		// Alice should 5 Stall on Cathy, since Bob's 5 is farther away from chop.
 		const action = await take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.CATHY, value: 5 });
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.CATHY, value: 5 }, `Expected (5 to Cathy), got ${logPerformAction(action)}`);
 
 		// 5 to Bob is not a valid 5 stall.
 		const { stall_clues } = find_clues(game);

@@ -4,7 +4,7 @@ import { get_result } from './clue-finder/determine-clue.js';
 import { playersBetween, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
-import { find_clues } from './clue-finder/clue-finder.js';
+import { find_expected_clue } from './clue-finder/clue-finder.js';
 import { cardTouched } from '../../variants.js';
 import { find_sarcastics } from '../shared/sarcastic.js';
 import * as Utils from '../../tools/util.js';
@@ -139,63 +139,23 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 
 /**
  * @param {Game} game
- * @param {Clue} clue
- * @param {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} interp
+ * @param {number} giver
+ * @param {number} [exceptTarget]
  */
-function expected_early_game_clue(game, clue, interp) {
-	const { common, state } = game;
-
-	switch(interp) {
-		case CLUE_INTERP.STALL_5:
-			return game.level >= 2 && !game.stalled_5;
-
-		case CLUE_INTERP.PLAY:
-			return clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch.length === 0;
-
-		case CLUE_INTERP.SAVE: {
-			const save_clue = /** @type {SaveClue} */(clue);
-			const chop = common.chop(state.hands[clue.target]);
-			const duplicate_holders = Utils.findIndices(state.hands, hand => hand.some(o => state.deck[o].matches(state.deck[chop]) && o !== chop));
-
-			return (save_clue.cm === undefined || save_clue.cm.length === 0) &&
-				!duplicate_holders.includes(clue.target) &&
-				(save_clue.playable || duplicate_holders.length === 0);
-		}
-
-		default:
-			return false;
-	}
-}
-
-/**
- * @param {Game} game
- * @param {number} playerIndex
- */
-export function early_game_clue(game, playerIndex) {
-	const { state } = game;
-
-	if (state.clue_tokens <= 0)
+export function early_game_clue(game, giver, exceptTarget = -1) {
+	if (game.state.clue_tokens <= 0)
 		return false;
 
-	const new_game = game.shallowCopy();
-	new_game.state.generated = false;
-	new_game.state.screamed_at = false;
+	const { state } = game;
+	const result = find_expected_clue(game, giver, () => false, (clue) => clue.target === exceptTarget).next();
 
-	logger.off();
-	const options = { giver: playerIndex, hypothetical: true, no_fix: true, early_exits: expected_early_game_clue, noRecurse: true };
-	const { play_clues, save_clues, stall_clues } = find_clues(new_game, options);
-	logger.on();
+	if (result.done === false) {
+		const { clue } = result.value;
+		logger.highlight('yellow', `expecting ${state.playerNames[giver]} to give ${logClue(clue)} in early game`);
+		return true;
+	}
 
-	logger.debug('found clues', play_clues.flat().map(logClue), save_clues.filter(c => c !== undefined).map(logClue), state.playerNames[playerIndex]);
-
-	const expected_clue = play_clues.flat().find(clue => clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch.length === 0) ||
-		save_clues.find(clue => clue !== undefined && (clue.cm === undefined || clue.cm.length === 0)) ||
-		((game.level >= 2 && !game.stalled_5 && stall_clues[0][0]) || undefined);
-
-	if (expected_clue !== undefined)
-		logger.highlight('yellow', `expecting ${state.playerNames[playerIndex]} to give ${logClue(expected_clue)} in early game`);
-
-	return expected_clue !== undefined;
+	return false;
 }
 
 /**

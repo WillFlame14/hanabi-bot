@@ -48,7 +48,7 @@ function own_prompt(game, finesses, prompt, identity) {
 		return [{ type: 'prompt', reacting, order: prompt, hidden: true, self: true, identities: [actual_card.raw()] }];
 	}
 
-	if (card.matches(identity, { assume: true }))
+	if (card.matches(identity, { assume: true }) && card.possible.has(identity))
 		return [{ type: 'prompt', reacting, order: prompt, self: true, identities: [identity] }];
 
 	return [];
@@ -114,11 +114,24 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
 				return find_self_finesse(game, action, identity, connected, ignoreOrders, finesses, options.assumeTruth);
 			}
 			catch (error) {
-				if (error instanceof IllegalInterpretation)
+				if (error instanceof IllegalInterpretation) {
 					// Will probably never be seen
 					logger.warn(error.message);
-				else
+
+					if (error.message.startsWith('no finesse slot') || error.message.startsWith('self-finesse not found')) {
+						const pink_prompt = common.find_prompt(state, state.ourPlayerIndex, identity, connected, ignoreOrders, true);
+
+						if (pink_prompt !== undefined && pink_prompt !== prompt) {
+							const connections = own_prompt(game, finesses, pink_prompt, identity);
+
+							if (connections.length > 0)
+								return connections;
+						}
+					}
+				}
+				else {
 					throw error;
+				}
 			}
 		}
 	}

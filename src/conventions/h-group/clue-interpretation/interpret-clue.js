@@ -49,14 +49,6 @@ function apply_good_touch(game, action) {
 
 	Basics.onClue(game, action);
 
-	// Remove chop move on clued cards
-	for (const player of game.allPlayers) {
-		for (const order of list) {
-			if (player.thoughts[order].chop_moved)
-				player.updateThoughts(order, (draft) => { draft.chop_moved = false; });
-		}
-	}
-
 	if (target === state.ourPlayerIndex) {
 		for (const order of state.hands[target]) {
 			const card = common.thoughts[order];
@@ -263,7 +255,7 @@ function urgent_save(game, action, focus, oldCommon, old_game) {
 
 	if (old_focus_thoughts.saved || !focus_thoughts.saved ||
 		common.thinksLoaded(state, target, { assume: false }) ||
-		(state.early_game && early_game_clue(old_game, target)))
+		(state.early_game && early_game_clue(old_game, target, giver)))
 		return false;
 
 	const play_stacks = state.play_stacks.slice();
@@ -811,6 +803,14 @@ export function interpret_clue(game, action) {
 
 		if (modified)
 			logger.info(`advanced waiting connection due to speed-up clue: [${wc.connections.map(logConnection).join(' -> ')}]`);
+	}
+
+	// Remove chop move on clued cards
+	for (const player of game.allPlayers) {
+		for (const order of list) {
+			if (player.thoughts[order].chop_moved)
+				player.updateThoughts(order, (draft) => { draft.chop_moved = false; });
+		}
 	}
 
 	try {
