@@ -128,7 +128,7 @@ function resolve_clue(game, old_game, action, focusResult, inf_possibilities, fo
 		const matches = focused_card.matches(inference, { assume: true }) && game.players[target].thoughts[focus].possible.has(inference);
 		// Don't assign save connections or known false connections
 		if (!save && matches)
-			assign_connections(game, connections, giver, focused_card, inference);
+			assign_connections(game, connections, action, focused_card, inference);
 
 		// Multiple possible sets, we need to wait for connections
 		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
@@ -209,6 +209,8 @@ function resolve_clue(game, old_game, action, focusResult, inf_possibilities, fo
 
 		logger.highlight('yellow', `undoing scream discard chop move on ${old_chop} due to generation!`);
 	}
+
+	common.updateThoughts(focus, (draft) => { draft.info_lock = draft.inferred.clone(); });
 
 	reset_superpositions(game);
 }
@@ -435,6 +437,7 @@ export function interpret_clue(game, action) {
 
 		if (focus_id !== undefined && !common.thoughts[focus].finessed) {
 			const stomped_conn_index = connections.findIndex(conn =>
+				!(conn.hidden && conn.reacting === giver) &&		// Allow a hidden player to stomp, since they don't know
 				conn.identities.every(i => focus_id.suitIndex === i.suitIndex && focus_id.rank === i.rank));
 			const stomped_conn = connections[stomped_conn_index];
 
@@ -504,7 +507,7 @@ export function interpret_clue(game, action) {
 				const order = old_ordered_1s[0];
 				const { inferred } = common.thoughts[order];
 				common.updateThoughts(order, (draft) => { draft.inferred = inferred.intersect(inferred.filter(i => i.rank === clue.value)); });
-				logger.info('pink fix promise!', common.thoughts[order].inferred.map(logCard));
+				logger.info('pink fix promise!', common.thoughts[order].inferred.map(logCard), order);
 			}
 		}
 

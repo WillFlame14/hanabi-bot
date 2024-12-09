@@ -61,6 +61,7 @@ export function checkFix(game, oldThoughts, clueAction) {
 	for (const order of state.hands[target]) {
 		const clued_reset = (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) ||
 			(list.includes(order) && state.includesVariant(variantRegexes.pinkish) &&
+				!oldThoughts[order].focused &&		// Do not allow pink fix on focused cards
 				oldThoughts[order].inferred.every(i => i.rank === 1) && clue.type === CLUE.RANK && clue.value !== 1);
 
 		if (clued_reset) {

@@ -111,20 +111,19 @@ function isStall(game, action, focusResult, severity, prev_game) {
 /**
  * @param {Game} game
  * @param {number} giver
- * @param {number} focus
  * @param {number} max_stall
  * @param {BaseClue} original_clue
  */
-function other_expected_clue(game, giver, focus, max_stall, original_clue) {
+function other_expected_clue(game, giver, max_stall, original_clue) {
 	const { state } = game;
 	const thinks_stall = new Set(Utils.range(0, state.numPlayers));
 
 	/**
 	 * @param {Game} _game
 	 * @param {Clue} _clue
-	 * @param {{result: ClueResult, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]}} res
+	 * @param {{interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]}} res
 	 */
-	const satisfied = (_game, _clue, { result, interp }) => {
+	const satisfied = (_game, _clue, { interp }) => {
 		switch (interp) {
 			case CLUE_INTERP.CM_TEMPO:
 			case CLUE_INTERP.STALL_TEMPO:
@@ -132,7 +131,6 @@ function other_expected_clue(game, giver, focus, max_stall, original_clue) {
 			case CLUE_INTERP.STALL_LOCKED:
 			case CLUE_INTERP.STALL_8CLUES:
 			case CLUE_INTERP.STALL_BURN:
-				logger.info(interp, STALL_INDICES[interp], max_stall, focus, result.focus, STALL_INDICES[interp] < max_stall);
 				return STALL_INDICES[interp] < max_stall;
 
 			default:
@@ -170,7 +168,6 @@ function other_expected_clue(game, giver, focus, max_stall, original_clue) {
 export function stalling_situation(game, action, focusResult, prev_game) {
 	const { common, state } = game;
 	const { giver, clue, noRecurse } = action;
-	const { focus } = focusResult;
 
 	const severity = stall_severity(prev_game.state, prev_game.common, giver);
 
@@ -184,7 +181,7 @@ export function stalling_situation(game, action, focusResult, prev_game) {
 	if (noRecurse)
 		return { stall, thinks_stall: new Set(Utils.range(0, state.numPlayers)) };
 
-	const thinks_stall = other_expected_clue(game, giver, focus, stall_to_severity[stall], clue);
+	const thinks_stall = other_expected_clue(prev_game, giver, stall_to_severity[stall], clue);
 
 	// Only early game 5 stall exists before level 9
 	if (game.level < LEVEL.STALLING && severity !== 1)

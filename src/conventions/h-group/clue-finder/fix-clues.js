@@ -41,14 +41,16 @@ export function find_fix_clues(game, play_clues, save_clues) {
 		for (const order of state.hands[target]) {
 			const card = me.thoughts[order];
 
-			const pink_1s = () => {
+			/** @param {number} order */
+			const pink_1s = (order) => {
 				if (!state.includesVariant(variantRegexes.pinkish))
 					return false;
 
 				const unknown_1s = state.hands[target].filter(o => unknown_1(state.deck[o]));
 				const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
 
-				return ordered_1s[0] !== undefined && state.isPlayable(state.deck[ordered_1s[0]]);
+				// Don't try to fix promised 1s if PPCL or this is not the 1 about to play
+				return ordered_1s[0] !== undefined && (state.isPlayable(state.deck[ordered_1s[0]]) || order !== ordered_1s[0]);
 			};
 
 			const fix_unneeded = card.possible.length === 1 ||
@@ -56,7 +58,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 				(card.chop_moved && !state.deck[order].clued) ||										// Card chop moved but not clued, don't fix
 				common.dependentConnections(order).some(wc => wc.symmetric)	||		// Part of a symmetric waiting connection
 				card.inferred.length === 0 ||
-				pink_1s();
+				pink_1s(order);
 
 			if (fix_unneeded)
 				continue;

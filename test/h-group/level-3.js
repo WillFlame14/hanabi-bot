@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import HGroup from '../../src/conventions/h-group.js';
@@ -205,18 +205,59 @@ describe('sarcastic discard', () => {
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p4', 'g2', 'b2', 'r4', 'p2'],
 		], {
-			level: { min: 7 },
+			level: { min: 3 },
 			play_stacks: [1, 1, 0, 1, 0],
 			clue_tokens: 6
 		});
 
-		takeTurn(game, "Alice clues 2 to Bob");
-		takeTurn(game, "Bob clues blue to Alice (slot 1)");
-		takeTurn(game, "Alice discards b2 (slot 1)");
+		takeTurn(game, 'Alice clues 2 to Bob');
+		takeTurn(game, 'Bob clues blue to Alice (slot 1)');
+		takeTurn(game, 'Alice discards b2 (slot 1)');
 
 		// Every 2 can still be inferred b2.
 		assert.ok([1, 2, 4].every(index =>
 			game.allPlayers[PLAYER.BOB].thoughts[game.state.hands[PLAYER.BOB][index]].inferred.has({ suitIndex: 3, rank:2 })));
+	});
+
+	it('preserves information lock after a sarcastic discard', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p4', 'g2', 'b2', 'r4', 'p2'],
+			['y3', 'y1', 'b5', 'g3', 'r2']
+		], {
+			level: { min: 3 },
+			play_stacks: [0, 1, 1, 2, 2],
+			starting: PLAYER.BOB,
+			clue_tokens: 6,
+			init: (game) => {
+				const { state } = game;
+
+				const update = (draft) => {
+					draft.clued = true;
+					draft.clues = [{ giver: PLAYER.ALICE, turn: -1, type: CLUE.COLOUR, value: COLOUR.RED },
+								   { giver: PLAYER.ALICE, turn: -1, type: CLUE.RANK, value: 2 }];
+				};
+
+				// Cathy's slot 5 is known r2.
+				const c_slot5 = state.hands[PLAYER.CATHY][4];
+				state.deck = state.deck.with(c_slot5, produce(state.deck[c_slot5], update));
+
+				for (const player of game.allPlayers) {
+					player.updateThoughts(c_slot5, (draft) => {
+						update(draft);
+						draft.inferred = draft.inferred.intersect(expandShortCard('r2'));
+						draft.possible = draft.possible.intersect(expandShortCard('r2'));
+					});
+				}
+			}
+		});
+
+		takeTurn(game, 'Bob clues 2 to Alice (slots 1,2)');
+		takeTurn(game, 'Cathy discards r2', 'p5');
+
+		// Alice's slot 1 should remain [y2,g2] and slot 2 should be known r2.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['y2', 'g2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r2']);
 	});
 });
 

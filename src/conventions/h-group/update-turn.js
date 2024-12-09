@@ -1,6 +1,6 @@
 import { reset_superpositions, team_elim } from '../../basics/helper.js';
 import { visibleFind } from '../../basics/hanabi-util.js';
-import { remove_finesse, resolve_card_played, resolve_card_retained, resolve_giver_play } from './update-wcs.js';
+import { remove_finesse, resolve_card_played, resolve_card_retained, resolve_other_play } from './update-wcs.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logConnection } from '../../tools/log.js';
@@ -49,12 +49,12 @@ export function find_impossible_conn(game, connections) {
 function update_wc(game, waiting_connection, lastPlayerIndex) {
 	const { common, state, me } = game;
 	const { connections, conn_index, focus, inference } = waiting_connection;
-	const { type, reacting, order: old_order, identities } = connections[conn_index];
-	const old_card = state.deck[old_order];
-	logger.info(`waiting for connecting ${logCard(old_card)} ${type} ${old_order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}${waiting_connection.symmetric ? ' (symmetric)' : ''}`);
+	const { type, reacting, order, identities } = connections[conn_index];
+	const card = state.deck[order];
+	logger.info(`waiting for connecting ${logCard(card)} ${type} ${order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}${waiting_connection.symmetric ? ' (symmetric)' : ''}`);
 
-	if (giver_play(game, waiting_connection, lastPlayerIndex))
-		return resolve_giver_play(game, waiting_connection);
+	if (other_play(game, waiting_connection, lastPlayerIndex))
+		return resolve_other_play(game, lastPlayerIndex, waiting_connection);
 
 	const impossible_conn = find_impossible_conn(game, connections.slice(conn_index));
 	if (impossible_conn !== undefined) {
@@ -72,7 +72,7 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 	// After the turn we were waiting for
 	if (lastPlayerIndex === reacting) {
 		// They still have the card
-		if (state.hands[reacting].includes(old_order))
+		if (state.hands[reacting].includes(order))
 			return resolve_card_retained(game, waiting_connection);
 
 		// The card was played
@@ -80,8 +80,8 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 			return resolve_card_played(game, waiting_connection);
 
 		// The card was discarded and its copy is not visible
-		if (last_reacting_action.type === 'discard' && visibleFind(state, me, old_card).length === 0 && !last_reacting_action.intentional) {
-			logger.info(`waiting card ${logCard(old_card)} discarded?? removing finesse`);
+		if (last_reacting_action.type === 'discard' && visibleFind(state, me, card).length === 0 && !last_reacting_action.intentional) {
+			logger.info(`waiting card ${logCard(card)} discarded?? removing finesse`);
 			return { remove: true, remove_finesse: true };
 		}
 	}
@@ -93,18 +93,16 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
  * @param {WaitingConnection} waiting_connection
  * @param {number} lastPlayerIndex
  */
-function giver_play(game, waiting_connection, lastPlayerIndex) {
-	const { common, me } = game;
-	const { connections, conn_index, giver, action_index } = waiting_connection;
-	const { order } = connections[conn_index];
-	const last_action = game.last_actions[giver];
+function other_play(game, waiting_connection, lastPlayerIndex) {
+	const { me } = game;
+	const { connections, conn_index } = waiting_connection;
+	const { reacting, order, hidden, identities } = connections[conn_index];
+	const last_action = game.last_actions[lastPlayerIndex];
 
-	// Check if giver played card that matches next connection
-	return lastPlayerIndex === giver &&
-		last_action.type === 'play' &&
-		me.thoughts[order].matches(last_action, { infer: true }) &&		// The giver's card must have been known before the finesse was given
-		common.thoughts[order].finessed &&
-		common.thoughts[last_action.order].reasoning[0] < action_index;
+	// The card needs to match our thoughts as well as the hypothesized identity in the connection
+	return last_action?.type === 'play' && lastPlayerIndex !== reacting && identities.length === 1 &&
+		me.thoughts[order].matches(last_action, { infer: true }) && me.thoughts[order].matches(identities[0], { infer: true }) &&
+		!hidden;	// Do not advance if the real connection is a layered finesse, because that player will not skip
 }
 
 /**

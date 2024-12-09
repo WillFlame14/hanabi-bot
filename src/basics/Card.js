@@ -141,6 +141,12 @@ export class Card extends ActualCard {
 	 */
 	old_possible;
 
+	/**
+	 * The identities that are locked onto the card.
+	 * @type {IdentitySet | undefined}
+	 */
+	info_lock;
+
 	// Boolean flags about the state of the card
 	focused = false;
 	finessed = false;
@@ -196,6 +202,7 @@ export class Card extends ActualCard {
 		this.trash = extras.trash ?? false;
 		this.uncertain = extras.uncertain ?? false;
 		this.known = extras.known ?? false;
+		this.info_lock = extras.info_lock ?? undefined;
 		this.finesse_index = extras.finesse_index ?? -1;
 		this.reasoning = extras.reasoning?.slice() ?? [];
 		this.reasoning_turn = extras.reasoning_turn?.slice() ?? [];
@@ -216,6 +223,7 @@ export class Card extends ActualCard {
 				case 'old_possible':
 				case 'inferred':
 				case 'possible':
+				case 'info_lock':
 					res[property] = IdentitySet.fromJSON(json[property]);
 					break;
 

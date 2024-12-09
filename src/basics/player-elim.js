@@ -445,7 +445,10 @@ export function good_touch_elim(state, only_self = false) {
  * @param {number} order
  */
 export function reset_card(order) {
-	const { possible, old_inferred } = this.thoughts[order];
+	const { possible, old_inferred, info_lock } = this.thoughts[order];
+
+	if (info_lock)
+		return produce(this.thoughts[order], (draft) => { draft.inferred = info_lock; });
 
 	return produce(this.thoughts[order], (draft) => {
 		draft.reset = true;
@@ -602,18 +605,17 @@ export function refresh_links(state) {
  */
 export function restore_elim(identity) {
 	const id = logCard(identity);
-	const elims = this.elims[id];
+	const elims = this.elims[id]?.filter(order => (({ possible, info_lock } = this.thoughts[order]) =>
+		// Only add the inference back if it's still a possibility
+		possible.has(identity) && (info_lock === undefined || info_lock.has(identity))));
 
 	if (elims?.length > 0) {
 		logger.warn('adding back inference', id, 'which was falsely eliminated from', elims);
 
-		for (const order of elims) {
-			// Add the inference back if it's still a possibility
-			if (this.thoughts[order].possible.has(identity))
-				this.updateThoughts(order, (draft) => { draft.inferred = this.thoughts[order].inferred.union(identity); });
-		}
-
-		this.all_inferred = this.all_inferred.union(identity);
-		this.elims[id] = undefined;
+		for (const order of elims)
+			this.updateThoughts(order, (draft) => { draft.inferred = this.thoughts[order].inferred.union(identity); });
 	}
+
+	this.all_inferred = this.all_inferred.union(identity);
+	this.elims[id] = undefined;
 }

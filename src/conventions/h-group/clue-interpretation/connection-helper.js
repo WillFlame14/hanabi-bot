@@ -54,17 +54,18 @@ export function inference_rank(state, suitIndex, connections) {
  * @param {number[]} connected
  */
 export function valid_bluff(game, action, identity, reacting, connected) {
+	const { state } = game;
 	const nextCard = { suitIndex: identity.suitIndex, rank: identity.rank + 1 };
 	const { giver, target, clue } = action;
 
 	return game.level >= LEVEL.BLUFFS &&
-		game.state.nextPlayerIndex(giver) === reacting &&					// must be bluff seat
+		state.nextPlayerIndex(giver) === reacting &&					// must be bluff seat
 		connected.length === 1 &&											// must not be delayed
 		((clue.type === CLUE.RANK && clue.value !== nextCard.rank) ||
-			identity.rank === game.state.base_ids.maxStackRank ||
-			!game.common.thoughts[connected[0]].inferred.has(nextCard)) &&	// must disconnect
+			identity.rank === state.base_ids.maxStackRank ||
+			!game.common.thoughts[connected[0]].possible.has(nextCard)) &&	// must disconnect
 		!(clue.type === CLUE.COLOUR && reacting === target) &&				// must not be self-colour bluff
-		!game.state.hands[reacting].some(o => {								// must not be confused with an existing finesse
+		!state.hands[reacting].some(o => {								// must not be confused with an existing finesse
 			const card = game.players[reacting].thoughts[o];
 			return card.finessed && card.possible.has(identity);
 		});
@@ -212,12 +213,13 @@ export function find_symmetric_connections(game, action, focusResult, inf_possib
  * Impure! (modifies common and game.finesses_while_finessed)
  * @param {Game} game
  * @param {Connection[]} connections
- * @param {number} giver
+ * @param {ClueAction} action
  * @param {ActualCard} focused_card
  * @param {Identity} inference
  */
-export function assign_connections(game, connections, giver, focused_card, inference) {
+export function assign_connections(game, connections, action, focused_card, inference) {
 	const { common, state, me } = game;
+	const { giver, clue } = action;
 	const hypo_stacks = Utils.objClone(common.hypo_stacks);
 
 	for (const conn of connections) {
@@ -280,7 +282,10 @@ export function assign_connections(game, connections, giver, focused_card, infer
 				// If we're reacting, we are uncertain if the card is not known and there is some other card in our hand that allows for a swap
 				type !== 'known' && identities.some(i => state.ourHand.some(o => o !== order && me.thoughts[o].possible.has(i))) :
 				// If we're not reacting, we are uncertain if the connection is a finesse that could be ambiguous
-				(type === 'finesse' || type === 'prompt') && !(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)));
+				(type === 'finesse' || type === 'prompt') &&
+					(!(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)) ||
+					// Colour finesses are guaranteed if the focus cannot be a finessed identity
+					(clue.type === CLUE.COLOUR &&  identities.every(i => !me.thoughts[focused_card.order].possible.has(i)))));
 
 			if (uncertain) {
 				const self_playable_identities = state.ourHand.reduce((stacks, order) => {

@@ -45,7 +45,7 @@ export function remove_finesse(game, waiting_connection) {
 
 		if (card_reset) {
 			if (card.old_inferred !== undefined)
-				new_inferred = card.old_inferred;
+				new_inferred = card.old_inferred.intersect(card.possible);
 			else
 				logger.error(`no old inferences on card ${logCard(card)} ${connection.order} (while removing finesse)! current inferences ${card.inferred.map(logCard)}`);
 		}
@@ -208,9 +208,15 @@ export function resolve_card_retained(game, waiting_connection) {
 
 			if (type === 'finesse') {
 				const play = common.thoughts[reacting_order];
+				const expected_play = common.thoughts[order];
 
-				if (play.finessed && play.finesse_index < common.thoughts[order].finesse_index) {
-					logger.warn(`${state.playerNames[reacting]} played into older finesse ${play.finesse_index} < ${common.thoughts[order].finesse_index}, continuing to wait`);
+				if (play.finessed && play.finesse_index < expected_play.finesse_index) {
+					logger.warn(`${state.playerNames[reacting]} played into older finesse ${play.finesse_index} < ${expected_play.finesse_index}, continuing to wait`);
+					return { remove: false };
+				}
+
+				if (play.finessed && expected_play.hidden && expected_play.clued && play.finesse_index === expected_play.finesse_index) {
+					logger.warn(`${state.playerNames[reacting]} jumped ahead in layered finesse, continuing to wait`);
 					return { remove: false };
 				}
 			}
@@ -344,38 +350,44 @@ export function resolve_card_played(game, waiting_connection) {
 }
 
 /**
- * Fixes a waiting connection after the giver plays a connecting card.
+ * Fixes a waiting connection after someone else plays a connecting card.
  * 
  * Impure! (modifies common)
  * @param {Game} game
+ * @param {number} playerIndex
  * @param {WaitingConnection} waiting_connection
  */
-export function resolve_giver_play(game, waiting_connection) {
+export function resolve_other_play(game, playerIndex, waiting_connection) {
 	const { common, state } = game;
-	const { connections, conn_index, giver } = waiting_connection;
-	const { identities, order } = connections[conn_index];
+	const { connections, conn_index, inference, focus } = waiting_connection;
+	const { type, identities, order } = connections[conn_index];
 
-	logger.highlight('cyan', `giver ${state.playerNames[giver]} played connecting card, continuing connections`);
+	logger.highlight('cyan', `${state.playerNames[playerIndex]} played connecting card, continuing connections`);
 
 	// Advance waiting connection to next card that still exists
 	const next_index = connections.findIndex((conn, index) => index > conn_index && state.hands[conn.reacting].includes(conn.order));
 
+	const card = common.thoughts[order];
 	common.updateThoughts(order, (draft) => {
 		// Remove finesse
-		draft.inferred = common.thoughts[order].inferred.subtract(identities);
+		draft.inferred = card.inferred.subtract(identities);
 
 		if (draft.inferred.length === 0) {
 			if (draft.old_inferred !== undefined) {
 				// Restore old inferences
-				draft.inferred = common.thoughts[order].old_inferred;
+				draft.inferred = card.old_inferred.intersect(card.possible);
 				draft.old_inferred = undefined;
 			}
 			else {
-				logger.error(`no old inferences on card ${logCard(draft)} ${order} (while resolving giver play)! current inferences ${draft.inferred.map(logCard)}`);
+				logger.error(`no old inferences on card ${logCard(draft)} ${order} (while resolving other play)! current inferences ${draft.inferred.map(logCard)}`);
 			}
 			draft.finessed = false;
 		}
 	});
 
-	return { remove: next_index === -1, next_index };
+	const demonstration = (type === 'finesse' || game.level < LEVEL.INTERMEDIATE_FINESSES) ?
+		{ order: focus, inference, connections: connections.slice(conn_index + 1) } :
+		undefined;
+
+	return { demonstration, remove: next_index === -1, next_index };
 }

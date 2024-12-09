@@ -32,7 +32,8 @@ export function find_sarcastics(state, playerIndex, player, identity) {
 		const card = player.thoughts[o];
 
 		return state.deck[o].clued && card.possible.has(identity) &&
-			!(card.inferred.length === 1 && card.inferred.array[0].rank < identity.rank);		// Do not sarcastic on connecting cards
+			!(card.inferred.length === 1 && card.inferred.array[0].rank < identity.rank) &&		// Do not sarcastic on connecting cards
+			(card.info_lock === undefined || card.info_lock.has(identity));
 	});
 }
 
@@ -41,14 +42,14 @@ export function find_sarcastics(state, playerIndex, player, identity) {
  * 
  * Impure! (modifies common)
  * @param {Game} game
- * @param {number[]} sarcastic
+ * @param {number[]} sarcastics
  * @param {Identity} identity
  */
-function apply_unknown_sarcastic(game, sarcastic, identity) {
+function apply_unknown_sarcastic(game, sarcastics, identity) {
 	const { common, state } = game;
 
 	// Need to add the inference back if it was previously eliminated due to good touch
-	for (const order of sarcastic) {
+	for (const order of sarcastics) {
 		common.updateThoughts(order, (draft) => {
 			draft.inferred = common.thoughts[order].inferred.union(identity);
 			draft.trash = false;
@@ -56,7 +57,7 @@ function apply_unknown_sarcastic(game, sarcastic, identity) {
 	}
 
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
-	if (sarcastic.length === 0 || sarcastic.some(order => common.thoughts[order].inferred.some(c => state.playableAway(c) > 0)))
+	if (sarcastics.length === 0 || sarcastics.some(order => common.thoughts[order].inferred.some(c => state.playableAway(c) > 0)))
 		undo_hypo_stacks(game, identity);
 }
 

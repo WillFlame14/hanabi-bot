@@ -89,23 +89,30 @@ describe('pink 1s assumption', () => {
 	it('fixes a pink 1s assumption with pink fix promise', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['r2', 'i4', 'y1', 'r3', 'g4'],
+			['r2', 'i4', 'i2', 'y1', 'g4'],
+			['g3', 'b4', 'r5', 'y3', 'i1']
 		], {
 			level: { min: 3 },
+			starting: PLAYER.CATHY,
 			clue_tokens: 7,
 			variant: VARIANTS.PINK
 		});
 
-		takeTurn(game, 'Alice clues 1 to Bob');
+		takeTurn(game, 'Cathy clues 1 to Bob');
+		takeTurn(game, 'Alice clues pink to Cathy');
 		takeTurn(game, 'Bob plays y1', 'b4');
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
 
 		const { fix_clues } = find_clues(game);
-		assert.ok(fix_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 4));
+		assert.ok(fix_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 2));
 
-		takeTurn(game, 'Alice clues 4 to Bob');
+		// Note that 4 is not a valid fix clue.
+		assert.ok(!fix_clues[PLAYER.BOB].some(clue => clue.type === CLUE.RANK && clue.value === 4));
+
+		takeTurn(game, 'Alice clues 2 to Bob');
 
 		// Bob's slot 3 is promised to be i4.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][2]], ['i4']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['i2']);
 	});
 
 	it('fixes a pink 1s assumption without pink fix promise', () => {

@@ -304,7 +304,7 @@ export class Game {
 
 		/** @param {Action} action */
 		const catchup_action = (action) => {
-			if (!injected && action.type !== 'draw') {
+			if (!injected && action.type !== 'draw' && action.type !== 'identify') {
 				newGame.hookAfterDraws(newGame);
 				injected = true;
 			}
@@ -334,16 +334,20 @@ export class Game {
 			newGame.state.hands[this.state.ourPlayerIndex] = hypoGame.state.hands[this.state.ourPlayerIndex];
 		};
 
+		/** @param {Action} action */
+		const after_action = (action) => {
+			if (!injected && action.type !== 'draw' && action.type !== 'identify') {
+				newGame.hookAfterDraws(newGame);
+				injected = true;
+			}
+			newGame.handle_action(action);
+		};
+
 		logger.wrapLevel(logger.LEVELS.ERROR, () => {
 			// Get up to speed
 			for (const action of history)
 				catchup_action(action);
 		});
-
-		if (!injected) {
-			newGame.hookAfterDraws(newGame);
-			injected = true;
-		}
 
 		const remaining_id_actions = /** @type {IdentifyAction[]} */ ([]);
 
@@ -353,28 +357,28 @@ export class Game {
 				remaining_id_actions.push(action);
 			}
 			else {
-				newGame.handle_action(action);
+				after_action(action);
 
 				if (action.type === 'draw' && action.order === remaining_id_actions[0]?.order)
-					newGame.handle_action(remaining_id_actions.shift());
+					after_action(remaining_id_actions.shift());
 			}
 		}
 
-		newGame.handle_action(pivotal_action);
+		after_action(pivotal_action);
 
 		// Redo all the following actions
 		const future = actionList.slice(action_index + 1, -1);
 		for (const action of future) {
-			newGame.handle_action(action);
+			after_action(action);
 
 			if (action.type === 'draw' && action.order === remaining_id_actions[0]?.order)
-				newGame.handle_action(remaining_id_actions.shift());
+				after_action(remaining_id_actions.shift());
 		}
 
 		logger.highlight('green', '------- REWIND COMPLETE -------');
 
 		newGame.catchup = this.catchup;
-		newGame.handle_action(actionList.at(-1));
+		after_action(actionList.at(-1));
 
 		for (const [order, noteObj] of this.notes.entries())
 			newGame.notes[order] = noteObj;

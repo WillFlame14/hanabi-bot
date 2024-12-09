@@ -13,7 +13,6 @@ import * as Utils from '../../tools/util.js';
 
 import { Worker } from 'worker_threads';
 import * as path from 'path';
-import { produce } from '../../StateProxy.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -145,8 +144,8 @@ export function find_all_clues(game, giver) {
 	logger.on();
 
 	return [
-		...play_clues.flatMap((clues, target) => clues.map(clue => produce(clue, (draft) => { draft.target = target; }))),
-		...Utils.range(0, game.state.numPlayers).reduce((acc, target) => (save_clues[target] ? acc.concat([produce(save_clues[target], (draft) => { draft.target = target; })]) : acc), []),
+		...play_clues.flatMap((clues, target) => clues.map(clue => ({ ...clue,  target }))),
+		...Utils.range(0, game.state.numPlayers).flatMap(target => save_clues[target] ? [{ ...save_clues[target], target }] : []),
 		...stall_clues.slice(0, 3).flat(), ...stall_clues[6]		// distribution clues
 	];
 }

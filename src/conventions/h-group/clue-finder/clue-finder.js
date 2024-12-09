@@ -10,7 +10,6 @@ import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logCard, logClue, logConnection } from '../../../tools/log.js';
-import { produce } from '../../../StateProxy.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -84,7 +83,7 @@ function save_clue_value(game, hypo_game, save_clue, all_clues) {
  * @param {{ hypo_game: Game, result: ClueResult, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP], save_clue: SaveClue }} res
  */
 function basic_expectations(game, clue, { hypo_game, result, interp, save_clue}) {
-	const { common, me, state } = game;
+	const { me, state } = game;
 	const { target } = clue;
 
 	switch (interp) {
@@ -100,12 +99,10 @@ function basic_expectations(game, clue, { hypo_game, result, interp, save_clue})
 				return false;
 
 			const { focus: save_focus } = save_clue.result;
-
-			const chop = common.chop(state.hands[target]);
-			const duplicate_holders = Utils.findIndices(state.hands, hand => hand.some(o => state.deck[o].matches(state.deck[chop]) && o !== chop));
+			const duplicate_holders = Utils.findIndices(state.hands, hand => hand.some(o => state.deck[o].matches(state.deck[save_focus]) && o !== save_focus));
 
 			// Not a 2 save that could be duplicated in our hand, or a save clue that is duplicated in the target's hand, or a bad save
-			return !(save_clue.type === CLUE.RANK && save_clue.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[chop]))) &&
+			return !(save_clue.type === CLUE.RANK && save_clue.value === 2 && state.ourHand.some(o => me.thoughts[o].possible.has(state.deck[save_focus]))) &&
 				!duplicate_holders.includes(target) &&
 				!isSaved(state, me, state.deck[save_focus], save_focus, { infer: true });
 		}
@@ -424,22 +421,21 @@ export function find_clues(game, options = {}) {
 				best_remainder = value;
 		}
 
-		play_clues = produce(play_clues, (draft) => {
-			for (const clue of draft.flat())
-				clue.result.remainder = remainders.get(logClue(clue)) - best_remainder;
-		});
+		/**
+		 * @template {Clue} T
+		 * @param {T} clue
+		 * @returns {T}
+		 */
+		const update_remainder = (clue) => {
+			if (clue === undefined)
+				return clue;
 
-		save_clues = produce(save_clues, (draft) => {
-			for (const clue of draft) {
-				if (clue !== undefined)
-					clue.result.remainder = remainders.get(logClue(clue)) - best_remainder;
-			}
-		});
+			return { ...clue, result: { ...clue.result, remainder: remainders.get(logClue(clue)) - best_remainder }};
+		};
 
-		stall_clues = produce(stall_clues, (draft) => {
-			for (const clue of draft.flat())
-				clue.result.remainder = remainders.get(logClue(clue)) - best_remainder;
-		});
+		play_clues = play_clues.map(clues => clues.map(update_remainder));
+		save_clues = save_clues.map(update_remainder);
+		stall_clues = stall_clues.map(clues => clues.map(update_remainder));
 	}
 
 	/** @type {FixClue[][]} */

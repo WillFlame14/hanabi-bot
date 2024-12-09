@@ -392,11 +392,12 @@ export class Player {
 					already_played.add(order);
 					found_new_playable = true;
 
-					const promised_link = this.links.find(link => link.promised && link.orders.includes(order));
+					const fulfilled_links = this.links.filter(link =>
+						link.promised && link.orders.includes(order) && link.orders.every(o => unknown_plays.has(o)));
 
 					// All cards in a promised link will be played
-					if (promised_link?.orders.every(o => unknown_plays.has(o))) {
-						const id2 = promised_link.identities[0];
+					for (const link of fulfilled_links) {
+						const id2 = link.identities[0];
 
 						if (id2.rank !== hypo_stacks[id2.suitIndex] + 1) {
 							logger.warn(`tried to add ${logCard(id2)} onto hypo stacks, but they were at ${hypo_stacks[id2.suitIndex]}??`);
