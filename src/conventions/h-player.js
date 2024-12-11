@@ -114,11 +114,12 @@ export class HGroup_Player extends Player {
 	find_clued(state, playerIndex, identity, connected = [], ignoreOrders = []) {
 		return state.hands[playerIndex].filter(o => {
 			const { clued, newly_clued, order, clues } = state.deck[o];
-			const { inferred, possible } = this.thoughts[o];
+			const { inferred, possible, info_lock } = this.thoughts[o];
 
 			return !connected.includes(order) &&			// not already connected
 				clued && !newly_clued && 					// previously clued
 				possible.has(identity) &&					// must be a possibility
+				(info_lock === undefined || info_lock.has(identity)) &&
 				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 		// must not be information-locked on a different identity
 				clues.some(clue => cardTouched(identity, state.variant, clue)) &&		// at least one clue matches
 				!ignoreOrders.includes(o);
@@ -137,11 +138,12 @@ export class HGroup_Player extends Player {
 	find_prompt(state, playerIndex, identity, connected = [], ignoreOrders = [], forcePink = false) {
 		const order = state.hands[playerIndex].find(o => {
 			const { clued, newly_clued, order, clues } = state.deck[o];
-			const { inferred, possible } = this.thoughts[o];
+			const { inferred, possible, info_lock } = this.thoughts[o];
 
 			return !connected.includes(order) &&			// not already connected
 				clued && !newly_clued && 					// previously clued
 				possible.has(identity) &&					// must be a possibility
+				(info_lock === undefined || info_lock.has(identity)) &&
 				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 		// must not be information-locked on a different identity
 				clues.some(clue => cardTouched(identity, state.variant, clue)) &&				// at least one clue matches
 				(!state.variant.suits[identity.suitIndex].match(variantRegexes.pinkish) || forcePink ||	// pink rank match

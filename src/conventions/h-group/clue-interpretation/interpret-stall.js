@@ -110,12 +110,13 @@ function isStall(game, action, focusResult, severity, prev_game) {
 
 /**
  * @param {Game} game
+ * @param {Game} prev_game
  * @param {number} giver
  * @param {number} max_stall
- * @param {BaseClue} original_clue
+ * @param {Clue} original_clue
  */
-function other_expected_clue(game, giver, max_stall, original_clue) {
-	const { state } = game;
+function other_expected_clue(game, prev_game, giver, max_stall, original_clue) {
+	const { state } = prev_game;
 	const thinks_stall = new Set(Utils.range(0, state.numPlayers));
 
 	/**
@@ -140,16 +141,17 @@ function other_expected_clue(game, giver, max_stall, original_clue) {
 
 	/** @param {Clue} clue */
 	const excludeClue = (clue) =>
-		thinks_stall.size === 0 || (clue.type === original_clue.type && clue.value === original_clue.value);
+		thinks_stall.size === 0 || (clue.target === original_clue.target && clue.type === original_clue.type && clue.value === original_clue.value);
 
-	for (const { clue, res } of find_expected_clue(game, giver, satisfied, excludeClue)) {
+	for (const { clue, res } of find_expected_clue(prev_game, giver, satisfied, excludeClue)) {
 		logger.highlight('yellow', `expected ${logClue(clue)}, not interpreting stall`);
 
-		const new_wc = res.hypo_game.common.waiting_connections.find(wc => wc.turn === state.turn_count);
+		const new_wcs = res.hypo_game.common.waiting_connections.filter(wc => wc.turn === state.turn_count && wc.connections.every(conn =>
+			conn.identities.some(i => game.common.thoughts[conn.order].possible.has(i))));	// Only count valid wcs based on the new info we have
 
 		// Everyone not the target (or with an unknown connection) can see this clue
 		for (let i = 0; i < state.numPlayers; i++) {
-			if (i === clue.target || new_wc?.connections.some(conn => conn.type !== 'known' && state.hands[i].includes(conn.order)))
+			if (i === clue.target || new_wcs.some(wc => wc.connections.some(conn => conn.type !== 'known' && state.hands[i].includes(conn.order))))
 				continue;
 
 			thinks_stall.delete(i);
@@ -167,7 +169,7 @@ function other_expected_clue(game, giver, max_stall, original_clue) {
  */
 export function stalling_situation(game, action, focusResult, prev_game) {
 	const { common, state } = game;
-	const { giver, clue, noRecurse } = action;
+	const { giver, clue, target, noRecurse } = action;
 
 	const severity = stall_severity(prev_game.state, prev_game.common, giver);
 
@@ -181,7 +183,7 @@ export function stalling_situation(game, action, focusResult, prev_game) {
 	if (noRecurse)
 		return { stall, thinks_stall: new Set(Utils.range(0, state.numPlayers)) };
 
-	const thinks_stall = other_expected_clue(prev_game, giver, stall_to_severity[stall], clue);
+	const thinks_stall = other_expected_clue(game, prev_game, giver, stall_to_severity[stall], { ...clue, target });
 
 	// Only early game 5 stall exists before level 9
 	if (game.level < LEVEL.STALLING && severity !== 1)

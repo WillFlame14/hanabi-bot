@@ -92,3 +92,32 @@ describe('focus connections', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['n4']);
 	});
 });
+
+describe('brown tempo clues', () => {
+	it('understands a brown tempo clue', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['g2', 'b1', 'r2', 'r3', 'n5'],
+			['g4', 'n1', 'b3', 'g4', 'y3']
+		], {
+			level: { min: 1 },
+			starting: PLAYER.CATHY,
+			variant: VARIANTS.BROWN
+		});
+
+		takeTurn(game, 'Cathy clues brown to Alice (slots 3,4,5)');
+		takeTurn(game, 'Alice clues brown to Bob');
+		takeTurn(game, 'Bob clues brown to Alice (slot 3,4,5)');
+
+		takeTurn(game, 'Cathy clues blue to Bob');
+
+		const action = await take_action(game);
+
+		// Alice should play slot 5.
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]], ['n1']);
+
+		// Slot 2 should not be chop moved.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].chop_moved, false);
+	});
+});

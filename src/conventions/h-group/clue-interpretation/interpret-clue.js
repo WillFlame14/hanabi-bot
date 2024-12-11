@@ -6,7 +6,7 @@ import { stalling_situation } from './interpret-stall.js';
 import { determine_focus, getRealConnects, rankLooksPlayable, unknown_1 } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
-import { assign_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor, connection_score } from './connection-helper.js';
+import { assign_all_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor, connection_score } from './connection-helper.js';
 import { variantRegexes } from '../../../variants.js';
 import { remove_finesse } from '../update-wcs.js';
 import { order_1s } from '../action-helper.js';
@@ -77,6 +77,46 @@ function apply_good_touch(game, action) {
 }
 
 /**
+ * Determines whether a clue was important (by causing a finesse).
+ * @param {State} state
+ * @param {ClueAction} action
+ * @param {FocusPossibility[]} inf_possibilities
+ */
+function important_finesse(state, action, inf_possibilities) {
+	const { giver, target } = action;
+
+	for (const { connections, suitIndex, rank } of inf_possibilities) {
+		const inference = { suitIndex, rank };
+
+		// A finesse is considered important if it could only have been given by this player.
+		// A finesse must be given before the first finessed player (card indices would shift after)
+		// and only by someone who knows or can see all of the cards in the connections.
+		if (!connections.some(connection => connection.type == 'finesse'))
+			continue;
+
+		for (let i = state.nextPlayerIndex(giver); i != giver; i = state.nextPlayerIndex(i)) {
+			if (connections.some(connection => connection.type == 'finesse' && connection.reacting == i)) {
+				// The clue must be given before the first finessed player,
+				// as otherwise the finesse position may change.
+				return true;
+			}
+			// The target cannot clue themselves.
+			if (i == target)
+				continue;
+
+			// A player can't give a finesse if they didn't know some card in the finesse.
+			if (connections.some(connection => connection.reacting == i && connection.type != 'known'))
+				continue;
+
+			// This player could give the finesse, don't mark the action as important.
+			logger.info(`${state.playerNames[i]} could give finesse for id ${logCard(inference)}, not important`);
+			break;
+		}
+	}
+	return false;
+}
+
+/**
  * Updates thoughts after a clue, given the possible interpretations.
  * 
  * Impure!
@@ -95,40 +135,16 @@ function resolve_clue(game, old_game, action, focusResult, inf_possibilities, fo
 
 	common.updateThoughts(focus, (draft) => { draft.inferred = common.thoughts[focus].inferred.intersect(inf_possibilities); });
 
-	for (const { connections, suitIndex, rank, save } of inf_possibilities) {
+	if (important_finesse(state, action, inf_possibilities)) {
+		logger.highlight('yellow', 'action is important!');
+		action.important = true;
+	}
+
+	assign_all_connections(game, inf_possibilities, action, focused_card);
+
+	for (const { connections, suitIndex, rank } of inf_possibilities) {
 		const inference = { suitIndex, rank };
-
-		// A finesse is considered important if it could only have been given by this player.
-		// A finesse must be given before the first finessed player (card indices would shift after)
-		// and only by someone who knows or can see all of the cards in the connections.
-		if (connections.some(connection => connection.type == 'finesse')) {
-			for (let i = state.nextPlayerIndex(giver); i != giver; i = state.nextPlayerIndex(i)) {
-				if (connections.some(connection => connection.type == 'finesse' && connection.reacting == i)) {
-					// The clue must be given before the first finessed player,
-					// as otherwise the finesse position may change.
-					if (!action.important)
-						logger.highlight('yellow', 'action is important!');
-					action.important = true;
-					break;
-				}
-				// The target cannot clue themselves.
-				if (i == target)
-					continue;
-
-				// A player can't give a finesse if they didn't know some card in the finesse.
-				if (connections.some(connection => connection.reacting == i && connection.type != 'known'))
-					continue;
-
-				// This player could give the finesse, don't mark the action as important.
-				logger.info(`${state.playerNames[i]} could give finesse for id ${logCard(inference)}, not important`);
-				break;
-			}
-		}
-
 		const matches = focused_card.matches(inference, { assume: true }) && game.players[target].thoughts[focus].possible.has(inference);
-		// Don't assign save connections or known false connections
-		if (!save && matches)
-			assign_connections(game, connections, action, focused_card, inference);
 
 		// Multiple possible sets, we need to wait for connections
 		if (connections.length > 0 && connections.some(conn => ['prompt', 'finesse'].includes(conn.type))) {
@@ -164,7 +180,7 @@ function resolve_clue(game, old_game, action, focusResult, inf_possibilities, fo
 				(fp.connections[0]?.reacting !== reacting || fp.connections[0].type === 'known' || fp.connections[0].type == 'playable') &&
 				connection_score(fp, reacting) <= connection_score(correct_match, reacting));
 
-			if (delay_needed.length > 0) {
+			if (giver === state.ourPlayerIndex && delay_needed.length > 0) {
 				logger.warn('invalid bluff, symmetrically needs to delay for potential', delay_needed.map(logCard).join());
 				game.interpretMove(CLUE_INTERP.NONE);
 				return;
@@ -436,7 +452,8 @@ export function interpret_clue(game, action) {
 			continue;
 
 		if (focus_id !== undefined && !common.thoughts[focus].finessed) {
-			const stomped_conn_index = connections.findIndex(conn =>
+			const stomped_conn_index = connections.findIndex((conn, index) =>
+				index >= conn_index &&
 				!(conn.hidden && conn.reacting === giver) &&		// Allow a hidden player to stomp, since they don't know
 				conn.identities.every(i => focus_id.suitIndex === i.suitIndex && focus_id.rank === i.rank));
 			const stomped_conn = connections[stomped_conn_index];

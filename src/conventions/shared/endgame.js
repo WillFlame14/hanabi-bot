@@ -74,7 +74,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 			.filter(orders => orders.every((o, i) => !unknown_own.includes(o) || me.thoughts[o].possible.has(unseen_identities[i])));
 
 		const decks = arrangements.map(locs => {
-			const deck = state.deck.slice();
+			const deck = common_state.deck.slice();
 
 			// Arrange deck
 			for (let i = 0; i < locs.length; i++) {
@@ -233,6 +233,47 @@ function unwinnable_state(state, playerTurn) {
 	}
 }
 
+/**
+ * @param {State} state
+ * @param {number} playerTurn
+ */
+function get_playables(state, playerTurn) {
+	return state.hands[playerTurn].filter(o => state.isPlayable(state.deck[o])).sort((a, b) => {
+		const card1 = state.deck[a].identity();
+		const card2 = state.deck[b].identity();
+
+		const connecting_other = (id) =>
+			state.hands.some((hand, i) => i !== playerTurn && hand.some(o => state.deck[o].matches({ suitIndex: id.suitIndex, rank: id.rank + 1 })));
+
+		const [conn1, conn2] = [card1, card2].map(connecting_other);
+		if (conn1 && !conn2)
+			return -1;
+
+		if (conn2 && !conn1)
+			return 1;
+
+		const connecting_self = (id) =>
+			state.hands[playerTurn].some(o => state.deck[o].matches({ suitIndex: id.suitIndex, rank: id.rank + 1 }));
+
+		const [conn1_s, conn2_s] = [card1, card2].map(connecting_self);
+		if (conn1_s && !conn2_s)
+			return -1;
+
+		if (conn2_s && !conn1_s)
+			return 1;
+
+		if (state.isCritical(card1) && state.isCritical(card2))
+			return card1.rank < card2.rank ? -1 : 1;
+
+		if (state.isCritical(card1) && !state.isCritical(card2))
+			return -1;
+
+		if (!state.isCritical(card1) && state.isCritical(card2))
+			return 1;
+
+		return card1.rank < card2.rank ? -1 : 1;
+	});
+}
 
 /**
  * Returns whether the game is winnable if everyone can look at their own cards.
@@ -252,12 +293,7 @@ function winnable_simpler(state, playerTurn) {
 	if (cached_result !== undefined)
 		return cached_result;
 
-	for (const order of state.hands[playerTurn]) {
-		const card = state.deck[order];
-
-		if (!state.isPlayable(card))
-			continue;
-
+	for (const order of get_playables(state, playerTurn)) {
 		const action = { type: ACTION.PLAY, target: order, playerIndex: playerTurn };
 
 		if (predict_winnable(state, playerTurn, action))

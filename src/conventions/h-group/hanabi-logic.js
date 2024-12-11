@@ -48,6 +48,12 @@ export function determine_focus(game, hand, player, list, clue) {
 	if (pink_choice_tempo)
 		return { focus: hand[clue.value - 1], chop: false, positional: true };
 
+	const brown_tempo = clue.type === CLUE.COLOUR && state.variant.suits[clue.value] === 'Brown' &&
+		list.every(o => state.deck[o].clued);
+
+	if (brown_tempo)
+		return { focus: hand.findLast(o => list.includes(o)), chop: false, positional: true };
+
 	if (clue.type === CLUE.RANK && clue.value === 1) {
 		const unknown_1s = list.filter(o => unknown_1(state.deck[o], true));
 		const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });

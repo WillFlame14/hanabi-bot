@@ -347,6 +347,36 @@ describe('bluff clues', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r4']);
 	});
 
+	it(`doesn't connect if unnecessary`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'r1', 'y1', 'r4'],
+			['b4', 'r4', 'b1', 'b3'],
+			['g1', 'r5', 'r3', 'r1']
+		], {
+			level: { min: 11 },
+			play_stacks: [1, 1, 0, 0, 2],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues 3 to Bob');
+		takeTurn(game, 'Alice plays b1 (slot 1)');		// bluffed b1
+
+		// Bob's slot 1 should be [r3,y3].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0]], ['r3', 'y3']);
+
+		takeTurn(game, 'Bob clues 5 to Donald');
+		takeTurn(game, 'Cathy clues 4 to Bob');			// bluffing g1
+
+		// Bob's slot 1 should still be [r3,y3], since p4 would be a direct bluff.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0]], ['r3', 'y3']);
+
+		takeTurn(game, 'Donald plays g1', 'y3');
+
+		// Bob's slot 1 should still be [r3,y3].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0]], ['r3', 'y3']);
+	});
+
 	it(`makes the correct inferences on a received bluff`, () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'], // y4 y2 y4 b5

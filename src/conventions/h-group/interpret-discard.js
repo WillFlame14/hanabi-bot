@@ -80,7 +80,7 @@ function check_transfer(game, action) {
 				logger.info('rewriting connection to transfer to', transfers[0]);
 
 				const new_connections = connections.with(dc_conn_index,
-					{ ...connections[dc_conn_index], reacting: state.hands.findIndex(hand => hand.includes(transfers[0])), order: transfers[0] });
+					{ ...connections[dc_conn_index], type: 'known', reacting: state.hands.findIndex(hand => hand.includes(transfers[0])), order: transfers[0] });
 				new_wcs.push({ ...waiting_connection, connections: new_connections });
 
 				common.waiting_connections = new_wcs.concat(common.waiting_connections.slice(i + 1));
@@ -272,7 +272,8 @@ export function interpret_discard(game, action) {
 		if (targets.length > 0) {
 			const playable_possibilities = game.players[playerIndex].hypo_stacks
 				.map((rank, suitIndex) => ({ suitIndex, rank: rank + 1 }))
-				.filter(id => !isTrash(state, common, id, -1, { infer: true }));
+				.filter(id => !isTrash(state, common, id, -1, { infer: true }) && !state.hands[playerIndex].some(o => ((card = state.deck[o]) =>
+					!state.isBasicTrash(card) && card.playedBefore(id))()));		// Disallow selfish pos discards
 
 			/** @type {Connection[]} */
 			const connections = [];
