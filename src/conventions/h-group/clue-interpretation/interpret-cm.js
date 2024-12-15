@@ -93,7 +93,7 @@ export function interpret_5cm(game, target, focus_order, clue) {
 	const chopIndex = common.chopIndex(hand);
 
 	const oldest_5 = hand.findLast((o, i) => ((card = state.deck[o]) =>
-		i < chopIndex && card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5))());
+		i <= chopIndex && card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5))());
 
 	if (oldest_5 === undefined)
 		return [];

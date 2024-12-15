@@ -544,7 +544,7 @@ export function refresh_links(state) {
 			if (orders.some(o => this.thoughts[o].identity()?.matches(identities[0]))) {
 				remove_indices.push(i);
 			}
-			else if (!this.thoughts[target].possible.some(i => identities.some(j => i.suitIndex === j.suitIndex))) {
+			else if (target !== undefined && !this.thoughts[target].possible.some(i => identities.some(j => i.suitIndex === j.suitIndex))) {
 				remove_indices.push(i);
 			}
 			else {

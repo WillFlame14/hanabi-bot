@@ -312,8 +312,10 @@ function find_rank_focus(game, rank, action, focusResult, thinks_stall) {
 			already_connected = already_connected.concat(connecting.map(conn => conn.order));
 
 			next_rank++;
-			for (const { order } of connecting)
-				state.play_stacks[state.deck[order].suitIndex]++;
+			for (const { order, identities } of connecting) {
+				const { suitIndex: si } = state.deck[order];
+				state.play_stacks[si !== -1 ? si : identities[0].suitIndex]++;
+			}
 		}
 
 		// Restore play stacks

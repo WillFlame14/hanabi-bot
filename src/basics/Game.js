@@ -228,7 +228,18 @@ export class Game {
 
 			this.notes[order] ??= { last: '', turn: 0, full: '' };
 
-			const note = card.getNote();
+			let note = card.getNote();
+
+			const links = this.common.links.filter(link => link.promised && link.orders.includes(order));
+
+			if (links.length > 0) {
+				const link_note = links.flatMap(link => link.identities).map(logCard).join('? ') + '?';
+
+				if (note.includes("]"))
+					note += link_note;
+				else
+					note = `[${note}] ${link_note}`;
+			}
 
 			// Only write a new note if it's different from the last note and is a later turn
 			if (note !== this.notes[order].last && this.state.turn_count > this.notes[order].turn) {

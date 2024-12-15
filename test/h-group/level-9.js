@@ -159,6 +159,28 @@ describe('stalling', () => {
 		const { stall_clues } = find_clues(game);
 		assert.ok(!stall_clues[0].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 5));
 	});
+
+	it('gives a play clue to chop in stalling situations', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r2', 'y4', 'r5', 'g2', 'b1'],
+			['y3', 'r4', 'b3', 'b4', 'r3'],
+		], {
+			level: { min: 9 },
+			starting: PLAYER.CATHY,
+			clue_tokens: 7
+		});
+
+		takeTurn(game, 'Cathy discards r3', 'p4');
+
+		// Alice should clue 1 to Bob.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.BOB, value: 1 }, `Expected (1 to Bob), got ${logPerformAction(action)}`);
+
+		// 5 to Bob is not a valid 5 stall.
+		const { stall_clues } = find_clues(game);
+		assert.ok(!stall_clues[0].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 5));
+	});
 });
 
 describe('anxiety plays', () => {

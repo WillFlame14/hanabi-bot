@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, setup, expandShortCard, takeTurn } from '../../test-utils.js';
+import { COLOUR, PLAYER, setup, expandShortCard, takeTurn, VARIANTS } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
 import { CLUE } from '../../../src/constants.js';
 import HGroup from '../../../src/conventions/h-group.js';
@@ -133,6 +133,29 @@ describe('play clue', () => {
 		// Bob's slot 1 should be inferred as r2.
 		const targetOrder = game.state.hands[PLAYER.BOB][0];
 		ExAsserts.cardHasInferences(game.common.thoughts[targetOrder], ['r2']);
+	});
+
+	it('can interpret a complex self-connecting colour play clue', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r2', 'r1', 'b2', 'm4'],
+			['y4', 'g2', 'r4', 'g3'],
+			['m3', 'y4', 'b3', 'r3']
+		], {
+			level: { min: 1 },
+			play_stacks: [2, 0, 0, 0, 2],
+			discarded: ['r3'],
+			variant: VARIANTS.RAINBOW
+		});
+
+		takeTurn(game, 'Alice clues blue to Donald');				// getting b1,m3
+		takeTurn(game, 'Bob clues 3 to Donald');					// revealing m3, also saving r3 on chop
+		takeTurn(game, 'Cathy clues 4 to Alice (slot 3)');			// r4,m4, either connecting on m3 or r3
+		takeTurn(game, 'Donald clues red to Alice (slots 3,4)');	// definitely not r3 or m3, so r5 or m5
+
+		// Alice's slot 5 should be [r5,m5], not [r3].
+		const a_slot5 = game.state.hands[PLAYER.ALICE][3];
+		ExAsserts.cardHasInferences(game.common.thoughts[a_slot5], ['r5', 'm5']);
 	});
 
 	it('correctly undoes a prompt after proven false', () => {

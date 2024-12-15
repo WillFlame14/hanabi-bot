@@ -52,6 +52,10 @@ function isStall(game, action, focusResult, severity, prev_game) {
 	if (chop && giver === state.ourPlayerIndex && (clue.type === CLUE.COLOUR ? colour_save : rank_save)(game, state.deck[focus], action, focus))
 		return;
 
+	// Play clue, not a stall
+	if (common.thoughts[focus].inferred.every(i => state.isPlayable(i)))
+		return;
+
 	const trash = target !== state.ourPlayerIndex ?
 		state.isBasicTrash(focused_card) :
 		me.thoughts[focus].possible.every(c => state.isBasicTrash(c));

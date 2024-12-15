@@ -1,7 +1,7 @@
 import { cardCount, variantRegexes } from '../../../variants.js';
 import { LEVEL } from '../h-constants.js';
 import { order_1s } from '../action-helper.js';
-import { inBetween } from '../hanabi-logic.js';
+import { inBetween, rainbowMismatch } from '../hanabi-logic.js';
 import { valid_bluff } from './connection-helper.js';
 import * as Utils from '../../../tools/util.js';
 
@@ -82,7 +82,7 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 		let known_link;
 
 		const known_linked = state.hands[playerIndex].find(order => {
-			if (ignoreOrders.includes(order))
+			if (ignoreOrders.includes(order) || !state.deck[order].matches(identity))
 				return false;
 
 			known_link = common.links.find(link =>
@@ -186,7 +186,7 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 		const prompt_c = state.deck[prompt_order];
 
 		// Prompt takes priority over finesse
-		if (prompt_c?.identity() === undefined)
+		if (prompt_c?.identity() === undefined || rainbowMismatch(game, action, identity, prompt))
 			return { tried: false };
 
 		if (prompt_c.matches(identity))

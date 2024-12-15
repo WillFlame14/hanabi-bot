@@ -1,6 +1,6 @@
 import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
-import { getIgnoreOrders } from '../hanabi-logic.js';
+import { getIgnoreOrders, rainbowMismatch } from '../hanabi-logic.js';
 import { find_connecting, find_known_connecting } from './connecting-cards.js';
 import { cardTouched, find_possibilities } from '../../../variants.js';
 import { valid_bluff } from './connection-helper.js';
@@ -103,7 +103,7 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
 		const prompt = common.find_prompt(state, state.ourPlayerIndex, identity, connected, ignoreOrders);
 		logger.debug('prompt in slot', prompt ? our_hand.findIndex(o => o === prompt) + 1 : '-1');
 
-		if (prompt !== undefined) {
+		if (prompt !== undefined && !rainbowMismatch(game, action, identity, prompt)) {
 			const connections = own_prompt(game, finesses, prompt, identity);
 
 			if (connections.length > 0)

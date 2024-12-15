@@ -146,7 +146,7 @@
  * @property {number[]} orders
  * @property {Identity[]} identities
  * @property {boolean} promised
- * @property {number} [target]	Only on promised links.
+ * @property {number} [target]	Only on promised links (but not for sarcastic transfers).
  */
 
 export {};

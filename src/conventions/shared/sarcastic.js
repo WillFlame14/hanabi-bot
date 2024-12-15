@@ -56,6 +56,11 @@ function apply_unknown_sarcastic(game, sarcastics, identity) {
 		});
 	}
 
+	if (sarcastics.length > 0) {
+		logger.info('adding link', sarcastics, logCard(identity));
+		common.links.push({ orders: sarcastics, identities: [identity], promised: true });
+	}
+
 	// Mistake discard or sarcastic with unknown transfer location (and not all playable)
 	if (sarcastics.length === 0 || sarcastics.some(order => common.thoughts[order].inferred.some(c => state.playableAway(c) > 0)))
 		undo_hypo_stacks(game, identity);
@@ -106,7 +111,6 @@ export function interpret_sarcastic(game, discardAction) {
 		const sarcastics = find_sarcastics(state, state.ourPlayerIndex, me, identity);
 
 		if (sarcastics.length === 1) {
-			logger.info('writing sarcastic on slot', state.ourHand.findIndex(o => o === sarcastics[0]) + 1);
 			common.updateThoughts(sarcastics[0], (common_sarcastic) => {
 				common_sarcastic.inferred = state.base_ids.union(identity);
 				common_sarcastic.trash = false;
@@ -117,6 +121,7 @@ export function interpret_sarcastic(game, discardAction) {
 			if (locked_discard)
 				apply_locked_discard(game, playerIndex);
 		}
+		logger.info(`writing sarcastic ${logCard(identity)} on slot(s) ${sarcastics.map(s => state.ourHand.findIndex(o => o === s) + 1)}`);
 		return sarcastics;
 	}
 
@@ -141,6 +146,7 @@ export function interpret_sarcastic(game, discardAction) {
 				if (locked_discard)
 					apply_locked_discard(game, playerIndex);
 			}
+			logger.info(`writing sarcastic ${logCard(identity)} on ${state.playerNames[playerIndex]}'s slot(s) ${sarcastics.map(s => state.ourHand.findIndex(o => o === s) + 1)}`);
 			return sarcastics;
 		}
 	}

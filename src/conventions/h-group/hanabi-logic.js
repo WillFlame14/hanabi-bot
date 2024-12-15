@@ -14,6 +14,7 @@ import { logClue } from '../../tools/log.js';
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').BaseClue} BaseClue
  * @typedef {import('../../types.js').Clue} Clue
+ * @typedef {import('../../types.js').ClueAction} ClueAction
  * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').Identity} Identity
  * @typedef {import('../../types.js').FocusResult} FocusResult
@@ -273,4 +274,32 @@ export function clueUncertain(hypo_game, focus) {
 	return Array.from(hypo_game.common.hypo_plays).some(o =>
 		hypo_game.common.thoughts[o].uncertain &&
 		state.deck[o].playedBefore(state.deck[focus]));
+}
+
+/**
+ * @param {Game} game
+ * @param {ClueAction} action
+ * @param {Identity} identity
+ * @param {number} prompt
+ */
+export function rainbowMismatch(game, action, identity, prompt) {
+	const { common, me, state } = game;
+	const { clue, list, target } = action;
+
+	if (clue.type !== CLUE.COLOUR || !state.variant.suits[identity.suitIndex].match(variantRegexes.rainbowish))
+		return false;
+
+	// Prompt is known rainbow
+	if (common.thoughts[prompt].possible.every(i => state.variant.suits[i.suitIndex].match(variantRegexes.rainbowish)))
+		return false;
+
+	const free_choice_clues = state.allValidClues(target).filter(clue => Utils.objEquals(state.clueTouched(state.hands[target], clue), list));
+	const matching_clues = free_choice_clues.filter(cl => state.deck[prompt].clues.some(clu =>
+		cl.type === CLUE.COLOUR && clu.type === CLUE.COLOUR && cl.value === clu.value));
+
+	// There was free choice to clue a matching colour, but didn't
+	return list.every(o => target === state.ourPlayerIndex ?
+		me.thoughts[o].possible.every(c => state.variant.suits[c.suitIndex].match(variantRegexes.rainbowish)) :
+		state.variant.suits[state.deck[o].suitIndex].match(variantRegexes.rainbowish)) &&
+		matching_clues.length > 0 && !matching_clues.some(cl => cl.value === clue.value);
 }

@@ -259,6 +259,55 @@ describe('sarcastic discard', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['y2', 'g2']);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r2']);
 	});
+
+	it('generates a link from a sarcastic discard', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y3', 'g2', 'b2', 'r4', 'b5'],
+			['y4', 'y1', 'p2', 'g3', 'r2']
+		], {
+			level: { min: 3 },
+			play_stacks: [1, 1, 0, 0, 0],
+			starting: PLAYER.BOB,
+			clue_tokens: 6,
+			init: (game) => {
+				const { state } = game;
+
+				const update = (draft) => {
+					draft.clued = true;
+					draft.clues = [{ giver: PLAYER.ALICE, turn: -1, type: CLUE.COLOUR, value: COLOUR.RED },
+								   { giver: PLAYER.ALICE, turn: -1, type: CLUE.RANK, value: 2 }];
+				};
+
+				// Cathy's slot 5 is known r2.
+				const c_slot5 = state.hands[PLAYER.CATHY][4];
+				state.deck = state.deck.with(c_slot5, produce(state.deck[c_slot5], update));
+
+				for (const player of game.allPlayers) {
+					player.updateThoughts(c_slot5, (draft) => {
+						update(draft);
+						draft.inferred = draft.inferred.intersect(expandShortCard('r2'));
+						draft.possible = draft.possible.intersect(expandShortCard('r2'));
+					});
+				}
+			}
+		});
+
+		takeTurn(game, 'Bob clues 2 to Alice (slots 3,4,5)');
+		takeTurn(game, 'Cathy discards r2', 'g1');
+
+		console.log(game.common.links);
+
+		// ALice should have an r2 link between slots 3 and 4 (can't be slot 5, otherwise Bob wouldn't save).
+		assert.ok(game.common.links.some(link =>
+			link.orders.includes(1) && link.orders.includes(2) && link.identities.some(i => i.suitIndex === COLOUR.RED && i.rank === 2)));
+
+		takeTurn(game, 'Alice clues 5 to Bob');
+		takeTurn(game, 'Bob clues green to Alice (slot 3)');	// finessing Cathy's new g1
+
+		// ALice's slot 4 should be known r2 now.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r2']);
+	});
 });
 
 describe('fix clues', () => {

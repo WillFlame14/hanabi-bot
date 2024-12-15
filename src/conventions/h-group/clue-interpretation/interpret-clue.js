@@ -40,12 +40,12 @@ import { produce } from '../../../StateProxy.js';
  * Impure!
  * @param {Game} game
  * @param {ClueAction} action
+ * @param {Card[]} oldThoughts
  * @returns {{fix?: boolean, rewinded?: boolean}} Possible results of the clue.
  */
-function apply_good_touch(game, action) {
+function apply_good_touch(game, action, oldThoughts) {
 	const { common, state } = game;
 	const { list, target } = action;
-	const { thoughts: oldThoughts } = common.clone();		// Keep track of all cards that previously had inferences (i.e. not known trash)
 
 	Basics.onClue(game, action);
 
@@ -367,7 +367,7 @@ export function interpret_clue(game, action) {
 	// Empty clue
 	if (list.length === 0) {
 		logger.highlight('yellow', 'empty clue!');
-		apply_good_touch(game, action);
+		apply_good_touch(game, action, oldCommon.thoughts);
 
 		const to_remove = new Set();
 
@@ -413,7 +413,7 @@ export function interpret_clue(game, action) {
 	const focused_card = state.deck[focus];
 
 	common.updateThoughts(focus, (draft) => { draft.focused = true; });
-	const { fix, rewinded } = apply_good_touch(game, action);
+	const { fix, rewinded } = apply_good_touch(game, action, oldCommon.thoughts);
 
 	// Rewind occurred, this action will be completed as a result of it
 	if (rewinded)
@@ -520,11 +520,17 @@ export function interpret_clue(game, action) {
 			const old_ordered_1s = order_1s(state, common, old_1s, { no_filter: true });
 
 			// Pink fix promise
-			if (old_ordered_1s.length > 0 && !(chop && (clue.value === 2 || clue.value === 5))) {
+			if (old_ordered_1s.length > 0) {
 				const order = old_ordered_1s[0];
-				const { inferred } = common.thoughts[order];
-				common.updateThoughts(order, (draft) => { draft.inferred = inferred.intersect(inferred.filter(i => i.rank === clue.value)); });
-				logger.info('pink fix promise!', common.thoughts[order].inferred.map(logCard), order);
+				const { inferred, possible } = common.thoughts[order];
+				if (!(chop && (clue.value === 2 || clue.value === 5))) {
+					common.updateThoughts(order, (draft) => { draft.inferred = inferred.intersect(inferred.filter(i => i.rank === clue.value)); });
+					logger.info('pink fix promise!', common.thoughts[order].inferred.map(logCard), order);
+				}
+				else {
+					common.updateThoughts(order, (draft) => { draft.inferred = possible.subtract(inferred.filter(i => state.isPlayable(i))); });
+					logger.info('pink fix!', common.thoughts[order].inferred.map(logCard), order);
+				}
 			}
 		}
 
@@ -655,9 +661,9 @@ export function interpret_clue(game, action) {
 		let all_connections = [];
 
 		const looksDirect = common.thoughts[focus].identity() === undefined && (					// Focused card must be unknown AND
-			clue.type === CLUE.COLOUR || positional ||												// Colour clues & positionals always look direct
 			rankLooksPlayable(game, clue.value, giver, target, focus) ||		// Looks like a play
-			focus_possible.some(fp => !fp.illegal && fp.save && game.players[target].thoughts[focus].possible.has(fp)));	// Looks like a save
+			focus_possible.some(fp => !fp.illegal && game.players[target].thoughts[focus].possible.has(fp) &&
+				fp.connections.every(conn => conn.type === 'known' || (conn.type === 'playable' && conn.reacting !== state.ourPlayerIndex))));	// Looks like an existing possibility
 
 		// We are the clue target, so we need to consider all the (sensible) possibilities of the card
 		if (target === state.ourPlayerIndex) {

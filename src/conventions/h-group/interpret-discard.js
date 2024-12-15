@@ -51,15 +51,6 @@ function check_transfer(game, action) {
 
 		logger.info(`discarded connecting card ${logCard({ suitIndex, rank })}, cancelling waiting connection for inference ${logCard(inference)}`);
 
-		// Another waiting connection exists for this, can ignore
-		const other_waiting = new_wcs.find(wc => !wc.symmetric && action_index === wc.action_index) ??
-			common.waiting_connections.find((wc, index) => index > i && !wc.symmetric && action_index === wc.action_index);
-
-		if (other_waiting !== undefined) {
-			logger.info('other waiting connection', other_waiting.connections.map(logConnection).join(' -> '), 'exists, continuing');
-			continue;
-		}
-
 		const replaceable = (state.deck[order].clued || (game.level >= LEVEL.SPECIAL_DISCARDS && common.thoughts[order].touched)) &&
 			rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] &&
 			!failed;
@@ -75,31 +66,58 @@ function check_transfer(game, action) {
 				interp = DISCARD_INTERP.GENTLEMANS;
 			}
 
+			/** @param {Connection} new_conn */
+			const add_remaining_wcs = (new_conn) => {
+				for (let j = i + 1; j < common.waiting_connections.length; j++) {
+					const wc = common.waiting_connections[j];
+					const dc_ci = wc.connections.findIndex((conn, index) => index >= conn_index && conn.order === order);
+
+					if (dc_ci === -1)
+						new_wcs.push(wc);
+					else
+						new_wcs.push({ ...wc, connections: wc.connections.with(dc_ci, new_conn) });
+				}
+			};
+
 			// Sarcastic/GD, rewrite connection onto this person
 			if (transfers.length === 1) {
 				logger.info('rewriting connection to transfer to', transfers[0]);
+				const reacting = state.hands.findIndex(hand => hand.includes(transfers[0]));
+				const new_conn = /** @type {const} */({ ...connections[dc_conn_index], type: 'known', reacting, order: transfers[0] });
 
-				const new_connections = connections.with(dc_conn_index,
-					{ ...connections[dc_conn_index], type: 'known', reacting: state.hands.findIndex(hand => hand.includes(transfers[0])), order: transfers[0] });
-				new_wcs.push({ ...waiting_connection, connections: new_connections });
+				new_wcs.push({ ...waiting_connection, connections: connections.with(dc_conn_index, new_conn) });
 
-				common.waiting_connections = new_wcs.concat(common.waiting_connections.slice(i + 1));
+				add_remaining_wcs(new_conn);
+
+				common.waiting_connections = new_wcs;
 				return { interp, new_game: game };
 			}
 			else if (transfers.length > 1 && transfers.every(o => state.hands[giver].includes(o))) {
-				logger.info('failed rewind, rewriting connection to transfer to', transfers);
+				logger.info('rewriting connection to transfer to', transfers);
 
-				const new_connections = connections.with(dc_conn_index, {
+				const new_conn = /** @type {const} */({
 					...connections[dc_conn_index],
 					type: 'playable',
 					reacting: state.hands.findIndex(hand => hand.includes(transfers[0])),
 					order: transfers.find(o => state.deck[o].matches(identity, { assume: true })),
 					linked: transfers
 				});
-				new_wcs.push({ ...waiting_connection, connections: new_connections });
-				common.waiting_connections = new_wcs.concat(common.waiting_connections.slice(i + 1));
+
+				new_wcs.push({ ...waiting_connection, connections: connections.with(dc_conn_index, new_conn) });
+				add_remaining_wcs(new_conn);
+
+				common.waiting_connections = new_wcs;
 				return { interp, new_game: game };
 			}
+		}
+
+		// Another waiting connection exists for this, can ignore
+		const other_waiting = new_wcs.find(wc => !wc.symmetric && action_index === wc.action_index) ??
+			common.waiting_connections.find((wc, index) => index > i && !wc.symmetric && action_index === wc.action_index);
+
+		if (other_waiting !== undefined) {
+			logger.info('other waiting connection', other_waiting.connections.map(logConnection).join(' -> '), 'exists, continuing');
+			continue;
 		}
 
 		const real_connects = getRealConnects(connections, dc_conn_index);

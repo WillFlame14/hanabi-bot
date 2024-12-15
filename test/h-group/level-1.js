@@ -303,4 +303,22 @@ describe('strategy', async () => {
 		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
 	});
+
+	it('urgently gives play clues to chop when they may discard', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p5', 'g4', 'y4', 'p1', 'p3'],
+			['b3', 'g3', 'p4', 'y4', 'b3']
+		], {
+			level: { min: 1 },
+			play_stacks: [0, 0, 0, 0, 2],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 1 to Alice (slot 1)');
+
+		// Alice should clue 3 to Bob to save p3.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, value: 3, target: 1 });
+	});
 });

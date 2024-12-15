@@ -26,7 +26,7 @@ import { logCard, logClue, logConnection } from '../../../tools/log.js';
  * @param {SaveClue} save_clue
  * @param {Clue[]} all_clues
  */
-function save_clue_value(game, hypo_game, save_clue, all_clues) {
+export function save_clue_value(game, hypo_game, save_clue, all_clues) {
 	const { common, me, state } = game;
 	const { target, result, safe } = save_clue;
 	const { chop_moved } = result;

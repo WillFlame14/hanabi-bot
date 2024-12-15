@@ -167,9 +167,8 @@ export function find_symmetric_connections(game, action, focusResult, inf_possib
 		}
 
 		const looksDirect = focused_card.identity() === undefined && (		// Focus must be unknown AND
-			clue.type === CLUE.COLOUR ||												// Colour clue always looks direct
-			common.hypo_stacks.some(stack => stack + 1 === clue.value) ||		// Looks like a play
-			inf_possibilities.some(fp => fp.save));										// Looks like a save
+			inf_possibilities.some(fp => !fp.illegal && game.players[target].thoughts[focus].possible.has(fp) &&	// looks like a possibility
+				fp.connections.every(conn => conn.type === 'known' || (conn.type === 'playable' && conn.reacting !== state.ourPlayerIndex))));
 
 		logger.off();
 

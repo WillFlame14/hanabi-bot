@@ -4,7 +4,7 @@ import { get_result } from './clue-finder/determine-clue.js';
 import { playersBetween, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
-import { find_expected_clue } from './clue-finder/clue-finder.js';
+import { find_expected_clue, save_clue_value } from './clue-finder/clue-finder.js';
 import { cardTouched } from '../../variants.js';
 import { find_sarcastics } from '../shared/sarcastic.js';
 import * as Utils from '../../tools/util.js';
@@ -230,14 +230,31 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				continue;
 		}
 
+		const save = (() => {
+			if (save_clues[target] !== undefined)
+				return save_clues[target];
+
+			// Check if a play clue focuses chop and is worth giving as a save
+			const chop_plays = play_clues[target].filter(clue => clue.result.focus === common.chop(state.hands[target]));
+			const best_chop_play = Utils.maxOn(chop_plays, clue => find_clue_value(clue.result));
+
+			if (best_chop_play === undefined)
+				return undefined;
+
+			const play_save = { ...best_chop_play, playable: true, cm: [], safe: best_chop_play.result.safe };
+			return save_clue_value(game, undefined, play_save, []) > 0 ? play_save : undefined;
+		})();
+
 		// They require a save clue
 		// Urgency: [next, unlock] [next, save only] [next, play/trash fix over save] [next, urgent fix] [other, unlock]
 		// (play) (give play if 2+ clues)
 		// [other, save only] [other, play/trash fix over save] [all other fixes]
 		// (give play if < 2 clues) [early saves]
-		if (save_clues[target] !== undefined) {
+		if (save !== undefined) {
 			const hand = state.hands[target];
-			const save = save_clues[target];
+
+			if (save_clues[target] === undefined)
+				logger.highlight('yellow', 'treating play clue', logClue(save), 'as save!');
 
 			// They already have a playable or trash (i.e. early save)
 			if (common.thinksLoaded(state, target, {assume: false})) {
@@ -262,7 +279,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				}
 			}
 
-			const list = state.clueTouched(state.hands[target], save);
+			const list = state.clueTouched(hand, save);
 
 			// Give them a fix clue with known trash if possible (TODO: Re-examine if this should only be urgent fixes)
 			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
@@ -355,7 +372,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				all_play_clues.push(Object.assign({}, save, { result: get_result(game, hypo_game, action )}));
 
 			// Try to give a play clue involving them
-			const play_over_save = find_play_over_save(game, target, all_play_clues, save_clues[target]);
+			const play_over_save = find_play_over_save(game, target, all_play_clues, save);
 			if (play_over_save !== undefined) {
 				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
 				continue;
@@ -375,7 +392,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				if (urgent)
 					logger.info('setting up double save!', logCard(state.deck[hypo_me.chop(hypo_state.hands[target], { afterClue: true })]));
 
-				urgent_actions[PRIORITY.ONLY_SAVE + (urgent ? 0 : prioritySize)].push(Utils.clueToAction(save_clues[target], tableID));
+				urgent_actions[PRIORITY.ONLY_SAVE + (urgent ? 0 : prioritySize)].push(Utils.clueToAction(save, tableID));
 				continue;
 			}
 
@@ -386,7 +403,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			}
 
 			// No alternative, have to give save
-			urgent_actions[PRIORITY.ONLY_SAVE + nextPriority].push(Utils.clueToAction(save_clues[target], tableID));
+			urgent_actions[PRIORITY.ONLY_SAVE + nextPriority].push(Utils.clueToAction(save, tableID));
 		}
 
 		// They require a fix clue
