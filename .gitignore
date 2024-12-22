@@ -2,3 +2,4 @@ node_modules/
 seeds/
 .env
 .DS_Store
+*.0x/

@@ -1,15 +1,16 @@
 import { IdentitySet } from './IdentitySet.js';
-import { Hand } from './Hand.js';
 import { Player } from './Player.js';
 import { ActualCard } from '../basics/Card.js';
+import { State } from '../basics/State.js';
 import { handle_action } from '../action-handler.js';
+import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
-import * as Utils from '../tools/util.js';
 import { logCard, logPerformAction } from '../tools/log.js';
+import { produce } from '../StateProxy.js';
+
 
 /**
- * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Identity} Identity
@@ -17,6 +18,7 @@ import { logCard, logPerformAction } from '../tools/log.js';
  * @typedef {import('../types.js').DiscardAction} DiscardAction
  * @typedef {import('../types.js').TurnAction} TurnAction
  * @typedef {import('../types.js').PlayAction} PlayAction
+ * @typedef {import('../types.js').IdentifyAction} IdentifyAction
  * @typedef {import('../types.js').PerformAction} PerformAction
  */
 
@@ -33,8 +35,8 @@ export class Game {
 	/** @type {Player} */
 	common;
 
-	last_actions = /** @type {(Action & {card?: ActualCard, lock?: boolean})[]} */ ([]);
-	handHistory = /** @type {Hand[]} */ ([]);
+	last_actions = /** @type {((ClueAction | PlayAction | DiscardAction) & {lock?: boolean})[]} */ ([]);
+	handHistory = /** @type {number[][]} */ ([]);
 
 	notes = /** @type {{turn: number, last: string, full: string}[]} */ ([]);
 
@@ -61,8 +63,6 @@ export class Game {
 	 */
 	hookAfterDraws = (_game) => {};
 
-	ephemeral_rewind = false;
-
 	/**
 	 * @param {number} tableID
 	 * @param {State} state
@@ -82,6 +82,26 @@ export class Game {
 		this.common = new Player(-1, all_possible, all_possible, Array.from({ length: state.variant.suits.length }, _ => 0));
 	}
 
+	/** @param {Game} json */
+	static fromJSON(json) {
+		const res = new Game(json.tableID, State.fromJSON(json.state), json.in_progress);
+
+		for (const property of Object.getOwnPropertyNames(res)) {
+			switch (property) {
+				case 'players':
+					res.players = json.players.map(Player.fromJSON);
+					break;
+				case 'common':
+					res.common = Player.fromJSON(json.common);
+					break;
+				default:
+					res[property] = Utils.objClone(json[property]);
+					break;
+			}
+		}
+		return res;
+	}
+
 	get me() {
 		return this.players[this.state.ourPlayerIndex];
 	}
@@ -92,53 +112,60 @@ export class Game {
 
 	get hash() {
 		const { clue_tokens, turn_count, actionList } = this.state;
+		const hands = this.state.hands.flat();
 		const player_thoughts = this.common.thoughts.flatMap(c => c.inferred.map(logCard).join()).join();
-		const deck = this.state.deck.map(c => c.identity() !== undefined ? logCard(c.identity()) : 'xx');
+		const deck = this.state.deck.map(logCard);
 
-		return `${player_thoughts},${deck},${JSON.stringify(actionList.at(-1))},${clue_tokens},${turn_count}`;
+		return `${hands},${player_thoughts},${deck},${JSON.stringify(actionList.at(-1))},${clue_tokens},${turn_count}`;
 	}
 
 	/**
 	 * Returns a blank copy of the game, as if it had restarted.
+	 * @returns {this}
 	 */
 	createBlank() {
-		const newGame = new Game(this.tableID, this.state.createBlank(), this.in_progress);
+		const newGame = new /** @type {any} */ (this.constructor)(this.tableID, this.state.createBlank(), this.in_progress);
 		newGame.notes = this.notes;
 		newGame.rewinds = this.rewinds;
 		return newGame;
 	}
 
+	/**
+	 * @returns {this}
+	 */
 	shallowCopy() {
-		const newGame = new Game(this.tableID, this.state, this.in_progress);
-		Object.assign(newGame, this);
+		const newGame = new /** @type {any} */ (this.constructor)(this.tableID, this.state.shallowCopy(), this.in_progress);
+
+		for (const key of Object.getOwnPropertyNames(this)) {
+			const val = this[key];
+
+			if (Array.isArray(val))
+				newGame[key] = val.slice();
+			else if (typeof val !== 'object')
+				newGame[key] = val;
+		}
+
+		newGame.common = this.common.shallowCopy();
 		return newGame;
 	}
 
 	/**
 	 * Returns a copy of the state with only minimal properties (cheaper than cloning).
+	 * @returns {this}
 	 */
 	minimalCopy() {
-		const newGame = new Game(this.tableID, this.state.minimalCopy(), this.in_progress);
+		const newGame = new /** @type {any} */ (this.constructor)(this.tableID, this.state.minimalCopy(), this.in_progress);
 
 		if (this.copyDepth > 100)
 			throw new Error('Maximum recursive depth reached.');
 
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory', 'ephemeral_rewind'];
+		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory'];
 
 		for (const property of minimalProps)
 			newGame[property] = Utils.objClone(this[property]);
 
-		newGame.restoreCardBindings();
-
 		newGame.copyDepth = this.copyDepth + 1;
 		return newGame;
-	}
-
-	restoreCardBindings() {
-		for (const player of this.allPlayers) {
-			for (const card of this.state.hands.flat())
-				player.thoughts[card.order].actualCard = card;
-		}
 	}
 
 	/**
@@ -154,9 +181,8 @@ export class Game {
 	 * @abstract
 	 * @param {Game} _game
 	 * @param {Omit<DiscardAction, "type">} _action
-	 * @param {ActualCard} _card
 	 */
-	interpret_discard(_game, _action, _card) {
+	interpret_discard(_game, _action) {
 		throw new Error('must be implemented by subclass!');
 	}
 
@@ -172,9 +198,9 @@ export class Game {
 	/**
 	 * @abstract
 	 * @param {Game} _game
-	 * @returns {PerformAction}
+	 * @returns {Promise<PerformAction>}
 	 */
-	take_action(_game) {
+	async take_action(_game) {
 		throw new Error('must be implemented by subclass!');
 	}
 
@@ -188,14 +214,57 @@ export class Game {
 	}
 
 	/**
+	 * Updates notes on cards.
+	 */
+	updateNotes() {
+		if (this.state.options.speedrun)
+			return;
+
+		for (const order of this.state.hands.flat()) {
+			const card = this.common.thoughts[order];
+
+			if (!card.saved && !card.called_to_discard)
+				continue;
+
+			this.notes[order] ??= { last: '', turn: 0, full: '' };
+
+			let note = card.getNote();
+
+			const links = this.common.links.filter(link => link.promised && link.orders.includes(order));
+
+			if (links.length > 0) {
+				const link_note = links.flatMap(link => link.identities).map(logCard).join('? ') + '?';
+
+				if (note.includes("]"))
+					note += link_note;
+				else
+					note = `[${note}] ${link_note}`;
+			}
+
+			// Only write a new note if it's different from the last note and is a later turn
+			if (note !== this.notes[order].last && this.state.turn_count > this.notes[order].turn) {
+				this.notes[order].last = note;
+				this.notes[order].turn = this.state.turn_count;
+
+				if (this.notes[order].full !== '')
+					this.notes[order].full += ' | ';
+
+				this.notes[order].full += `t${this.state.turn_count}: ${note}`;
+
+				if (!this.catchup && this.in_progress)
+					Utils.sendCmd('note', { tableID: this.tableID, order, note: this.notes[order].full });
+			}
+		}
+	}
+
+	/**
 	 * Rewinds the state to a particular action index, inserts the rewind actions just before it and then replays all future moves.
 	 * @param {number} action_index
 	 * @param {Action[]} rewind_actions	The rewind action to insert before the target action
 	 * @param {boolean} [mistake] 		Whether the target action was a mistake
-	 * @param {boolean} [ephemeral]		Whether the action should be saved in the action list
 	 * @returns {this | undefined}
 	 */
-	rewind(action_index, rewind_actions, mistake = false, ephemeral = false) {
+	rewind(action_index, rewind_actions, mistake = false) {
 		const actionList = this.state.actionList.map(Utils.cleanAction);
 
 		this.rewinds++;
@@ -238,13 +307,15 @@ export class Game {
 		const newGame = this.createBlank();
 		newGame.catchup = true;
 		const history = actionList.slice(0, action_index);
+
+		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: newGame });
 
 		let injected = false;
 
 		/** @param {Action} action */
 		const catchup_action = (action) => {
-			if (!injected && action.type !== 'draw') {
+			if (!injected && action.type !== 'draw' && action.type !== 'identify') {
 				newGame.hookAfterDraws(newGame);
 				injected = true;
 			}
@@ -259,19 +330,28 @@ export class Game {
 			const hypoGame = newGame.minimalCopy();
 
 			newGame.state.hands[this.state.ourPlayerIndex] = this.handHistory[newGame.state.turn_count];
-			newGame.restoreCardBindings();
 
 			newGame.handle_action(action);
 
 			// Simulate the actual hand as well for replacement
-			logger.collect();
+			logger.off();
+
 			Utils.globalModify({ game: hypoGame });
 			hypoGame.handle_action(action);
 			Utils.globalModify({ game: newGame });
-			logger.flush(false);
+
+			logger.on();
 
 			newGame.state.hands[this.state.ourPlayerIndex] = hypoGame.state.hands[this.state.ourPlayerIndex];
-			newGame.restoreCardBindings();
+		};
+
+		/** @param {Action} action */
+		const after_action = (action) => {
+			if (!injected && action.type !== 'draw' && action.type !== 'identify') {
+				newGame.hookAfterDraws(newGame);
+				injected = true;
+			}
+			newGame.handle_action(action);
 		};
 
 		logger.wrapLevel(logger.LEVELS.ERROR, () => {
@@ -280,31 +360,41 @@ export class Game {
 				catchup_action(action);
 		});
 
-		if (!injected) {
-			newGame.hookAfterDraws(newGame);
-			injected = true;
-		}
+		const remaining_id_actions = /** @type {IdentifyAction[]} */ ([]);
 
 		// Rewrite and save as a rewind action
-		for (const action of rewind_actions)
-			newGame.handle_action(action);
+		for (const action of rewind_actions) {
+			if (action.type === 'identify' && !newGame.state.hands[action.playerIndex].includes(action.order)) {
+				remaining_id_actions.push(action);
+			}
+			else {
+				after_action(action);
 
-		if (ephemeral) {
-			newGame.state.actionList.pop();
-			newGame.ephemeral_rewind = true;
+				if (action.type === 'draw' && action.order === remaining_id_actions[0]?.order)
+					after_action(remaining_id_actions.shift());
+			}
 		}
-		newGame.handle_action(pivotal_action);
+
+		after_action(pivotal_action);
 
 		// Redo all the following actions
 		const future = actionList.slice(action_index + 1, -1);
-		for (const action of future)
-			catchup_action(action);
+		for (const action of future) {
+			after_action(action);
+
+			if (action.type === 'draw' && action.order === remaining_id_actions[0]?.order)
+				after_action(remaining_id_actions.shift());
+		}
 
 		logger.highlight('green', '------- REWIND COMPLETE -------');
 
 		newGame.catchup = this.catchup;
-		newGame.handle_action(actionList.at(-1));
-		Utils.globalModify({ game: this });
+		after_action(actionList.at(-1));
+
+		for (const [order, noteObj] of this.notes.entries())
+			newGame.notes[order] = noteObj;
+
+		Utils.globalModify({ game: old_global_game });
 
 		return /** @type {this} */ (newGame);
 	}
@@ -318,6 +408,8 @@ export class Game {
 
 		const new_game = this.createBlank();
 		new_game.catchup = true;
+
+		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: new_game });
 
 		// Remove special actions from the action list (they will be added back in when rewinding)
@@ -334,10 +426,6 @@ export class Game {
 				action_index++;
 				action = actionList[action_index];
 			}
-
-			new_game.catchup = this.catchup;
-			const suggested_action = new_game.take_action(new_game);
-			logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
 		}
 		else {
 			// Don't log history
@@ -358,14 +446,13 @@ export class Game {
 		new_game.catchup = this.catchup;
 
 		if (!new_game.catchup && new_game.state.currentPlayerIndex === this.state.ourPlayerIndex) {
-			const suggested_action = new_game.take_action(new_game);
-			logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action));
+			new_game.take_action(new_game).then(suggested_action =>
+				logger.highlight('cyan', 'Suggested action:', logPerformAction(suggested_action)));
 		}
 
 		// Copy over the full game history
 		new_game.state.actionList = actionList;
-		Utils.globalModify({ game: this });
-
+		Utils.globalModify({ game: old_global_game });
 		return new_game;
 	}
 
@@ -383,13 +470,23 @@ export class Game {
 		hypo_game.catchup = true;
 		hypo_game.rewind = () => undefined;
 
+		// Remove all existing newly clued notes
+		for (const o of this.state.hands.flat()) {
+			const { deck } = hypo_game.state;
+			hypo_game.state.deck = deck.with(o, produce(deck[o], (draft) => { draft.newly_clued = false; }));
+
+			for (const player of hypo_game.allPlayers)
+				player.updateThoughts(o, (draft) => { draft.newly_clued = false; });
+		}
+
+		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: hypo_game });
 
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
 			hypo_game.interpret_clue(hypo_game, action);
 		});
 
-		Utils.globalModify({ game: this });
+		Utils.globalModify({ game: old_global_game });
 
 		hypo_game.catchup = false;
 		hypo_game.state.turn_count++;
@@ -409,6 +506,15 @@ export class Game {
 		hypo_game.catchup = true;
 		hypo_game.rewind = () => undefined;
 
+		// Remove all existing newly clued notes
+		for (const o of this.state.hands.flat()) {
+			hypo_game.state.deck[o].newly_clued = false;
+
+			for (const player of hypo_game.allPlayers)
+				player.updateThoughts(o, (draft) => { draft.newly_clued = false; });
+		}
+
+		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: hypo_game });
 
 		logger.wrapLevel(options.enableLogs ? logger.level : logger.LEVELS.ERROR, () => {
@@ -419,13 +525,13 @@ export class Game {
 
 				if (hypo_game.state.cardsLeft > 0) {
 					const order = hypo_game.state.cardOrder + 1;
-					const { suitIndex, rank } = hypo_game.state.deck[order] ?? new ActualCard(-1, -1, order, hypo_game.state.actionList.length);
+					const { suitIndex, rank } = hypo_game.state.deck[order] ?? Object.freeze(new ActualCard(-1, -1, order, hypo_game.state.actionList.length));
 					hypo_game.handle_action({ type: 'draw', playerIndex: action.playerIndex, order, suitIndex, rank });
 				}
 			}
 		});
 
-		Utils.globalModify({ game: this });
+		Utils.globalModify({ game: old_global_game });
 
 		hypo_game.catchup = false;
 		return hypo_game;

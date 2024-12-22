@@ -28,7 +28,7 @@ describe('rainbow', () => {
 	it('excludes rainbow possibilities from colour clues', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
-			['g3', 'p1', 'b3', 'b2', 'b5']
+			['g3', 'r1', 'b3', 'b2', 'b5']
 		], {
 			starting: PLAYER.BOB,
 			variant: VARIANTS.RAINBOW

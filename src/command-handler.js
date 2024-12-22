@@ -6,6 +6,7 @@ import HGroup from './conventions/h-group.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
 import { BOT_VERSION, MAX_H_LEVEL } from './constants.js';
 import { State } from './basics/State.js';
+import { logPerformAction } from './tools/log.js';
 
 /**
  * @typedef {import('./basics/Game.js').Game} Game
@@ -136,7 +137,7 @@ export const handle = {
 		}
 		// Displays or modifies the current settings (format: /settings [convention = 'HGroup'] [level = 1])
 		if (data.msg.startsWith('/settings')) {
-			assignSettings(data, true);
+			assignSettings(data, game.tableID === undefined);
 			return;
 		}
 		if (data.msg.startsWith('/terminate')) {
@@ -155,33 +156,43 @@ export const handle = {
 	 * 
 	 * Received when an action is taken in the current active game.
 	 */
-	gameAction: (data) => {
+	gameAction: async (data) => {
 		const { action } = data;
 		game.handle_action(action);
+
+		const perform = (action.type === 'turn' || (game.state.turn_count === 1 && action.type === 'draw')) &&
+			game.state.currentPlayerIndex === game.state.ourPlayerIndex &&
+			!game.catchup;
+
+		if (perform) {
+			const suggested_action = game.take_action(game);
+
+			if (game.in_progress) {
+				if (Utils.globals.manual === undefined)
+					setTimeout(async () => Utils.sendCmd('action', await suggested_action), game.state.options.speedrun ? 0 : 2000);
+			}
+			// Replaying a turn
+			else {
+				logger.highlight('cyan', 'Suggested action:', logPerformAction(await suggested_action));
+			}
+		}
 	},
 	/**
 	 * @param {{tableID: number, list: Action[]}} data
 	 * 
 	 * Received at the beginning of the game, as a list of all actions that have happened so far.
 	 */
-	gameActionList: (data) => {
+	gameActionList: async (data) => {
 		game.catchup = true;
-		for (let i = 0; i < data.list.length - 10; i++)
-			handle.gameAction({ action: data.list[i], tableID: data.tableID });
+		for (let i = 0; i < data.list.length - 1; i++)
+			await handle.gameAction({ action: data.list[i], tableID: data.tableID });
 
 		game.catchup = false;
 
-		for (let i = data.list.length - 10; i < data.list.length - 1; i++)
-			handle.gameAction({ action: data.list[i], tableID: data.tableID });
-
-		handle.gameAction({ action: data.list.at(-1), tableID: data.tableID });
+		await handle.gameAction({ action: data.list.at(-1), tableID: data.tableID });
 
 		// Send "loaded" to let server know that we have "finished loading the UI"
 		Utils.sendCmd('loaded', { tableID: data.tableID });
-
-		// If we are going first, we need to take an action now
-		if (game.state.ourPlayerIndex === 0 && game.state.turn_count === 1)
-			setTimeout(() => Utils.sendCmd('action', game.take_action(game)), 3000);
 	},
 	/**
 	 * @param {{tableID: number }} data
@@ -336,13 +347,6 @@ function assignSettings(data, priv) {
 		if (level < 1 || level > MAX_H_LEVEL) {
 			reply(`This bot can currently only play between levels 1 and ${MAX_H_LEVEL}. Currently set to level ${settings.level}.`);
 			return;
-		}
-
-		if (level > 9) {
-			reply(`This bot can currently only play up to level 9 (+ level 11). There is no support for level 10.`);
-
-			if (level < 11)
-				level = 9;
 		}
 
 		settings.level = Math.max(Math.min(level, MAX_H_LEVEL), 1);

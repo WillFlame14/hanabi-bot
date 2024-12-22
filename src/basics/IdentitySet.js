@@ -24,6 +24,11 @@ export class IdentitySet {
 		this.#length = 0;
 	}
 
+	/** @param {object} json */
+	static fromJSON(json) {
+		return new IdentitySet(json.numSuits, json.value);
+	}
+
 	/**
 	 * @param {Identity} identity
 	 * @param {number} [maxStackRank]
@@ -89,7 +94,7 @@ export class IdentitySet {
 
 		for (let i = 0; i < this.numSuits * this.maxStackRank; i++) {
 			if ((this.value & run) !== 0)
-				this.#array.push(Object.freeze(new BasicCard(Math.floor(i / this.maxStackRank), (i % this.maxStackRank) + 1)));
+				this.#array.push(new BasicCard(Math.floor(i / this.maxStackRank), (i % this.maxStackRank) + 1));
 			run <<= 1;
 		}
 

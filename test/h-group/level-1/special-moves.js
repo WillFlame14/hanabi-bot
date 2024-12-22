@@ -28,10 +28,10 @@ describe('other cases', () => {
 		const { common, state } = game;
 
 		// Alice's slot 4 should still be any 1.
-		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][3].order], ['r1', 'y1', 'g1', 'b1', 'p1']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.ALICE][3]], ['r1', 'y1', 'g1', 'b1', 'p1']);
 
 		// Donald's r1 should be finessed.
-		assert.equal(common.thoughts[state.hands[PLAYER.DONALD][0].order].finessed, true);
+		assert.equal(common.thoughts[state.hands[PLAYER.DONALD][0]].finessed, true);
 	});
 
 	it(`doesn't perform unknown self-prompts on target`, () => {
@@ -73,7 +73,7 @@ describe('other cases', () => {
 		takeTurn(game, 'Donald plays r1', 'p1');
 
 		// Common knowledge of Alice's slot 5 should be [r2,y2,g2,b2,p2] (r2 would be stomped finesse).
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r2','y2','g2','b2','p2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r2','y2','g2','b2','p2']);
 	});
 
 	it(`doesn't eliminate on missed finesses`, () => {
@@ -96,6 +96,6 @@ describe('other cases', () => {
 		takeTurn(game, 'Bob discards r1', 'p1');				// Bob misses
 
 		// Alice's 3 in slot 4 can still be any good-touch 3.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r3','y3','g3','p3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r3','y3','g3','p3']);
 	});
 });

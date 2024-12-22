@@ -23,7 +23,7 @@ describe('save clue interpretation', () => {
 
 		takeTurn(game, 'Bob clues green to Alice (slot 5)');
 
-		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard('i3')));
+		assert.ok(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard('i3')));
 	});
 
 	it(`understands prism saves aren't all ranks`, () => {
@@ -41,6 +41,6 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Bob clues blue to Alice (slot 5)');
 
 		assert.ok([1, 2, 3, 4, 5].every(rank =>
-			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has({ suitIndex: 4, rank })));
+			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has({ suitIndex: 4, rank })));
 	});
 });

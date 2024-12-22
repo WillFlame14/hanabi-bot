@@ -144,7 +144,7 @@ describe('trash chop move', () => {
 		takeTurn(game, 'Bob clues red to Cathy');
 
 		// Cathy's slot 5 should be chop moved.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4]].chop_moved, true);
 	});
 
 	it('recognizes a delayed tcm on self', () => {
@@ -162,7 +162,7 @@ describe('trash chop move', () => {
 		takeTurn(game, 'Cathy clues red to Alice (slot 4)');
 
 		// Alice's slot 5 should be chop moved.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].chop_moved, true);
 	});
 
 	it('assumes trash on the tcm focus', () => {
@@ -182,7 +182,7 @@ describe('trash chop move', () => {
 		takeTurn(game, 'Donald clues yellow to Alice (slot 3)');
 
 		// Alice's slot 4 should be chop moved, and slot 3 should not (necessarily) be playable.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]].chop_moved, true);
 		assert.equal(game.common.thinksPlayables(game.state, PLAYER.ALICE).length, 0);
 	});
 });
@@ -206,7 +206,7 @@ describe('giving order chop move', () => {
 		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
 		const urgent_actions = find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
-		ExAsserts.objHasProperties(urgent_actions[PRIORITY.ONLY_SAVE][0], { type: ACTION.PLAY, target: our_hand[2].order });
+		ExAsserts.objHasProperties(urgent_actions[PRIORITY.ONLY_SAVE][0], { type: ACTION.PLAY, target: our_hand[2] });
 	});
 
 	it('will find an ocm to cathy', () => {
@@ -228,7 +228,7 @@ describe('giving order chop move', () => {
 		const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
 		const urgent_actions = find_urgent_actions(game, play_clues, save_clues, fix_clues, stall_clues, playable_priorities);
 
-		ExAsserts.objHasProperties(urgent_actions[PRIORITY.ONLY_SAVE + Object.keys(PRIORITY).length][0], { type: ACTION.PLAY, target: our_hand[1].order });
+		ExAsserts.objHasProperties(urgent_actions[PRIORITY.ONLY_SAVE + Object.keys(PRIORITY).length][0], { type: ACTION.PLAY, target: our_hand[1] });
 	});
 
 	it('will not give an ocm putting a critical on chop', () => {
@@ -246,7 +246,7 @@ describe('giving order chop move', () => {
 		ExAsserts.objHasProperties(save_clues[PLAYER.BOB], { type: CLUE.RANK, value: 5 });
 	});
 
-	it('will not ocm trash', () => {
+	it('will not ocm trash', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g4', 'g4', 'r1']
@@ -259,11 +259,11 @@ describe('giving order chop move', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slots 3,4)');
 
 		// Alice should not OCM the trash r1.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
 
-	it('will ocm one card of an unsaved duplicate', () => {
+	it('will ocm one card of an unsaved duplicate', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g5', 'g4', 'g4']
@@ -275,11 +275,11 @@ describe('giving order chop move', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slots 3,4)');
 
 		// Alice should OCM 1 copy of g4.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 2 });
 	});
 
-	it('will not ocm one card of a saved duplicate', () => {
+	it('will not ocm one card of a saved duplicate', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g3', 'g3', 'r2'],
@@ -293,11 +293,11 @@ describe('giving order chop move', () => {
 		takeTurn(game, 'Cathy clues 1 to Alice (slots 3,4)');
 
 		// Alice should not OCM the copy of r2.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 });
 	});
 
-	it('will not ocm a playable card', () => {
+	it('will not ocm a playable card', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['r4', 'r4', 'g3', 'g3', 'r1'],
@@ -311,8 +311,28 @@ describe('giving order chop move', () => {
 		takeTurn(game, 'Cathy clues 1 to Alice (slots 3,4)');
 
 		// Alice should not OCM r1.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: 1 }, `Expected (play slot 4), suggested ${logPerformAction(action)}`);
+	});
+
+	it('plays the last 1 in the correct order when not wanting to ocm', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r4', 'b4', 'g4', 'y1', 'p4']
+		], {
+			level: { min: 3 },
+			play_stacks: [1, 1, 1, 0, 0],
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues 1 to Alice (slots 3,4,5)');
+		takeTurn(game, 'Alice plays b1 (slot 5)');
+		takeTurn(game, 'Bob discards p4', 'g3');
+
+		const action = await take_action(game);
+
+		// Alice should play the rightmost 1 to avoid OCM'ing y1.
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
 	});
 });
 
@@ -328,7 +348,7 @@ describe('interpreting order chop move', () => {
 		takeTurn(game, 'Bob plays g1', 'r1');		// OCM on Cathy
 
 		// Cathy's slot 5 should be chop moved.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4]].chop_moved, true);
 	});
 
 	it('will interpret an ocm skipping a player', () => {
@@ -346,7 +366,24 @@ describe('interpreting order chop move', () => {
 		takeTurn(game, 'Bob plays b1', 'r1');		// OCM on Alice
 
 		// Alice's slot 4 should be chop moved.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]].chop_moved, true);
+	});
+
+	it('will interpret an ocm that bombs', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'b1', 'g1', 'r1', 'r5'],
+			['y4', 'r4', 'g4', 'r4', 'b5']
+		], {
+			play_stacks: [0, 0, 1, 0, 0],
+			level: { min: 4 }
+		});
+
+		takeTurn(game, 'Alice clues 1 to Bob');
+		takeTurn(game, 'Bob bombs g1', 'r1');		// OCM on Cathy
+
+		// Cathy's slot 5 should be chop moved.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][4]].chop_moved, true);
 	});
 });
 
@@ -361,12 +398,12 @@ describe('interpreting chop moves', () => {
 		});
 
 		// Alice's slots 4 and 5 are chop moved
-		[3, 4].forEach(index => game.common.thoughts[game.state.hands[PLAYER.ALICE][index].order].chop_moved = true);
+		[3, 4].forEach(index => game.common.updateThoughts(game.state.hands[PLAYER.ALICE][index], (draft) => { draft.chop_moved = true; }));
 
 		takeTurn(game, 'Bob clues purple to Alice (slots 2,5)');
 
 		// Alice's slot 2 should be p1.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['p1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['p1']);
 	});
 
 	it('will interpret only touching cm cards correctly', () => {
@@ -379,15 +416,38 @@ describe('interpreting chop moves', () => {
 		});
 
 		// Alice's slots 4 and 5 are chop moved
-		[3, 4].forEach(index => game.common.thoughts[game.state.hands[PLAYER.ALICE][index].order].chop_moved = true);
+		[3, 4].forEach(index => game.common.updateThoughts(game.state.hands[PLAYER.ALICE][index], (draft) => { draft.chop_moved = true; }));
 
 		takeTurn(game, 'Bob clues purple to Alice (slots 4,5)');
 
 		// Alice's slot 4 should be p1.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['p1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['p1']);
 	});
 
-	it('prioritizes new cards over gt-eliminated chop moved cards', () => {
+	it('will interpret touching previously cm and clued correctly', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'b3', 'g3', 'r3', 'r5']
+		], {
+			level: { min: 4 },
+			starting: PLAYER.BOB
+		});
+
+		// Alice's slots 4 and 5 are chop moved
+		for (const index of [3,4]) {
+			for (const player of game.allPlayers)
+				player.updateThoughts(game.state.hands[PLAYER.ALICE][index], (draft) => { draft.chop_moved = true; });
+		}
+
+		takeTurn(game, 'Bob clues purple to Alice (slots 2,3,4,5)');
+		takeTurn(game, 'Alice plays p1 (slot 3)');
+		takeTurn(game, 'Bob clues purple to Alice (slots 3,4,5)');	// Focus is leftmost, not leftmost previously cm'd
+
+		// Alice's slot 3 should be p2.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['p2']);
+	});
+
+	it('prioritizes new cards over gt-eliminated chop moved cards', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b1', 'g1', 'r5', 'r2'],
@@ -406,24 +466,24 @@ describe('interpreting chop moves', () => {
 		takeTurn(game, 'Bob clues red to Cathy');			// Reverse finesse on r4
 
 		// Slot 1 should be red 2.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r2']);
 
 		takeTurn(game, 'Cathy discards y1', 'r1');
 
 		// Alice should play r2.
-		const action1 = take_action(game);
-		assert.ok(action1.type === ACTION.PLAY && action1.target === game.state.hands[PLAYER.ALICE][0].order);
+		const action1 = await take_action(game);
+		assert.ok(action1.type === ACTION.PLAY && action1.target === game.state.hands[PLAYER.ALICE][0]);
 
 		takeTurn(game, 'Alice plays r2 (slot 1)');
 		takeTurn(game, 'Bob discards r2', 'p2');
 		takeTurn(game, 'Cathy discards p3', 'y4');
 
 		// Alice should play r3.
-		const action2 = take_action(game);
-		assert.ok(action2.type === ACTION.PLAY && action2.target === game.state.hands[PLAYER.ALICE][1].order);
+		const action2 = await take_action(game);
+		assert.ok(action2.type === ACTION.PLAY && action2.target === game.state.hands[PLAYER.ALICE][1]);
 	});
 
-	it('asymmetrically eliminates against chop moved cards', () => {
+	it('asymmetrically eliminates against chop moved cards', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b4', 'b1', 'g1', 'r3', 'r2'],
@@ -439,11 +499,11 @@ describe('interpreting chop moves', () => {
 		takeTurn(game, 'Cathy clues red to Alice (slots 2,3)');
 
 		// Alice should have known r5.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r5']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r5']);
 
 		// Alice should play r5 on her turn.
-		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1].order });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][1] });
 
 		// Cathy shouldn't have any links.
 		assert.equal(game.players[PLAYER.CATHY].links.length, 0);

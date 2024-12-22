@@ -10,8 +10,8 @@ https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-
 A game played at H-Group level 5 can be seen [here](https://github.com/WillFlame14/hanabi-bot/assets/25177576/1aa4f67e-aa66-4704-ba75-fe6edf403bfa).
 
 ## Bot features
-- Can play with different conventions! Currently, Playful Sieve (2p only) and HGroup levels 1 through 9 (and 11) are supported.
-    - Note that HGroup level 10 isn't supported; the bot will play at level 9 if set to this level.
+- Can play with different conventions! Currently, Playful Sieve (2p only) and HGroup levels 1 through 11 are supported.
+- Supports No Variant, Black, White, Rainbow, Prism, Pink and Brown variants, as well as their 6-suit equivalents.
 - Takes notes during the game on what it thinks each player knows about their own hand.
 - Internally rewinds to relevant turns to understand mistakes.
 - Can create and start games on its own (i.e. for playing bot-only games).
@@ -20,9 +20,9 @@ A game played at H-Group level 5 can be seen [here](https://github.com/WillFlame
 If you're interested in understanding how the bot works, I've written [some documentation](https://docs.google.com/document/d/1JMXtNnv3Bw_4Lf6uW_KIllp-Eb7d2wqa_vFaPJzWbDw/edit?usp=sharing).
 
 ## Running locally
-- You'll need to have NodeJS v20 or above. You can download it [here](https://nodejs.org/en/download/).
+- You'll need to have NodeJS v22 or above. You can download it [here](https://nodejs.org/en/download/).
 - Clone the repository to your own computer. There are lots of tutorials online on using Git if you don't know how that works.
-- Navigate to the cloned repository in a terminal and run `npm install` to install required dependencies.
+- Navigate to the cloned repository in a terminal. This project has no required dependencies, so `npm install` is only needed if you plan to develop locally.
 - If you want to run on an alternate hanabi-live server, export the server hostname as `HANABI_HOSTNAME`.
 - Export the environment variables `HANABI_USERNAME` and `HANABI_PASSWORD` for the bot to log in.
     - You'll need to create its account on hanab.live first.

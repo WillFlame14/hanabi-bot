@@ -7,6 +7,7 @@ export const LEVEL = /** @type {const} */ ({
 	LAST_RESORTS: 7,
 	ENDGAME: 8,
 	STALLING: 9,
+	SPECIAL_DISCARDS: 10,
 	BLUFFS: 11,
 	CONTEXT: 12,
 });
@@ -20,7 +21,7 @@ export const ACTION_PRIORITY = /** @type {const} */ ({
 });
 
 export const CLUE_INTERP = /** @type {const} */ ({
-	NONE: 'none',
+	NONE: 'none (clue)',
 	MISTAKE: 'mistake',
 	PLAY: 'play',
 	SAVE: 'save',
@@ -34,20 +35,33 @@ export const CLUE_INTERP = /** @type {const} */ ({
 	FIX: 'fix',
 	CM_TRASH: 'trash cm',
 	CM_5: '5cm',
-	CM_TEMPO: 'tempo cm'
+	CM_TEMPO: 'tempo cm',
+	POSITIONAL: 'positional'
 });
 
 export const PLAY_INTERP = /** @type {const} */ ({
-	NONE: 'none',
+	NONE: 'none (play)',
 	CM_ORDER: 'order cm'
 });
 
 export const DISCARD_INTERP = /** @type {const} */ ({
-	NONE: 'none',
+	NONE: 'none (dc)',
 	SARCASTIC: 'sarcastic',
 	SCREAM: 'scream',
 	SHOUT: 'shout',
 	GENERATION: 'gen',
 	POS_DISCARD: 'pos dc',
-	POS_MISPLAY: 'pos misplay'
+	POS_MISPLAY: 'pos misplay',
+	GENTLEMANS: 'gd',
+	BATON: 'baton'
+});
+
+export const STALL_INDICES = /** @type {const} */ ({
+	[CLUE_INTERP.STALL_5]: 0,
+	[CLUE_INTERP.CM_TEMPO]: 1,
+	[CLUE_INTERP.STALL_TEMPO]: 1,
+	[CLUE_INTERP.STALL_FILLIN]: 2,
+	[CLUE_INTERP.STALL_LOCKED]: 3,
+	[CLUE_INTERP.STALL_8CLUES]: 4,
+	[CLUE_INTERP.STALL_BURN]: 5
 });

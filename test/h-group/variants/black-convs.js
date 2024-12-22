@@ -7,6 +7,7 @@ import HGroup from '../../../src/conventions/h-group.js';
 
 import logger from '../../../src/tools/logger.js';
 import { CLUE } from '../../../src/constants.js';
+import { produce } from '../../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -25,7 +26,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Bob clues black to Alice (slots 1,5)');
 
 		assert.ok(['k2', 'k5'].every(id =>
-			game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
+			game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands k2/5 save with black for filling in', () => {
@@ -44,7 +45,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Bob clues black to Alice (slots 3,5)');
 
 		assert.ok(['k2', 'k5'].every(id =>
-			game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
+			game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands not k2/5 save with black if not multiple touches', () => {
@@ -61,7 +62,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Bob clues black to Alice (slot 5)');
 
 		assert.ok(['k2', 'k5'].every(id =>
-			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
+			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands not k2/5 save with black if not filling in', () => {
@@ -72,16 +73,25 @@ describe('save clue interpretation', () => {
 			level: { min: 1 },
 			clue_tokens: 7,
 			starting: PLAYER.BOB,
-			variant: VARIANTS.BLACK
-		});
+			variant: VARIANTS.BLACK,
+			init: (game) => {
+				const update_func = (draft) => {
+					draft.clued = true;
+					draft.clues.push({ type: CLUE.COLOUR, value: 4, giver: PLAYER.BOB, turn: -1 });
+				};
 
-		game.state.hands[PLAYER.ALICE][0].clued = true;
-		game.state.hands[PLAYER.ALICE][0].clues.push({ type: CLUE.COLOUR, value: 4, giver: PLAYER.BOB, turn: -1 });
+				const a_slot1 = game.state.hands[PLAYER.ALICE][0];
+				game.state.deck = game.state.deck.with(a_slot1, produce(game.state.deck[a_slot1], update_func));
+
+				for (const player of game.allPlayers)
+					player.updateThoughts(a_slot1, update_func);
+			}
+		});
 
 		takeTurn(game, 'Bob clues black to Alice (slot 1,5)');
 
 		assert.ok(['k2', 'k5'].every(id =>
-			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].inferred.has(expandShortCard(id))));
+			!game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].inferred.has(expandShortCard(id))));
 	});
 
 	it('understands k2 save to avoid bad touch', () => {
@@ -100,7 +110,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Cathy clues black to Bob');
 
 		// Alice should not be finessed for k1.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 
 	it('finesses when k2 is saved with black without exceptions', () => {
@@ -118,7 +128,7 @@ describe('save clue interpretation', () => {
 		takeTurn(game, 'Cathy clues black to Bob');
 
 		// Alice should be finessed for k1.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['k1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['k1']);
 	});
 });

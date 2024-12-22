@@ -13,7 +13,7 @@ import logger from '../../src/tools/logger.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('sarcastic discards', () => {
-	it('sarcastic discards to chop to prevent a bomb', () => {
+	it('sarcastic discards to chop to prevent a bomb', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g2', 'b4', 'r2', 'r3', 'g5']
@@ -27,7 +27,8 @@ describe('sarcastic discards', () => {
 		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
 
 		// Alice should discard g2 as sarcastic.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][1].order });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][1] });
 	});
 
 	/*it('understands sarcastic discards to chop', () => {
@@ -44,12 +45,12 @@ describe('sarcastic discards', () => {
 		takeTurn(game, 'Bob discards g2', 'r1');
 
 		// Alice should write [g1] on slot 1, in addition to being playable.
-		const slot1 = state.common.thoughts[state.hands[PLAYER.ALICE][0].order];
+		const slot1 = state.common.thoughts[state.hands[PLAYER.ALICE][0]];
 		ExAsserts.cardHasInferences(slot1, ['g2']);
 		assert.equal(slot1.finessed, true);
 	});*/
 
-	it('sarcastic discards to a clued card', () => {
+	it('sarcastic discards to a clued card', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g5', 'b4', 'g2', 'r1', 'g5']
@@ -63,7 +64,8 @@ describe('sarcastic discards', () => {
 		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
 
 		// Alice should discard g2 as sarcastic.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][1].order });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: game.state.hands[PLAYER.ALICE][1] });
 	});
 });
 
@@ -82,7 +84,7 @@ describe('sarcastic discards', () => {
 		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
 
 		// Alice should discard g2 as a gentleman's discard.
-		ExAsserts.objHasProperties(take_action(state), { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][1].order });
+		ExAsserts.objHasProperties(take_action(state), { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][1] });
 	});
 
 	it('understands gentleman\'s discards to rightmost', () => {
@@ -100,7 +102,7 @@ describe('sarcastic discards', () => {
 		takeTurn(game, 'Alice plays p1 (slot 1)');
 
 		// Alice should expect g2 in slot 5, as a Gentleman's Discard.
-		const slot5 = state.common.thoughts[state.hands[PLAYER.ALICE][4].order];
+		const slot5 = state.common.thoughts[state.hands[PLAYER.ALICE][4]];
 		ExAsserts.cardHasInferences(slot5, ['g2']);
 		assert.equal(slot5.finessed, true);
 	});

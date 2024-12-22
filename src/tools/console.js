@@ -123,7 +123,7 @@ export function initConsole() {
 							break;
 						}
 
-						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.PLAY, target: state.ourHand[slot - 1].order });
+						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.PLAY, target: state.ourHand[slot - 1] });
 						break;
 					}
 					case 'discard': {
@@ -134,7 +134,7 @@ export function initConsole() {
 							break;
 						}
 
-						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.DISCARD, target: state.ourHand[slot - 1].order });
+						Utils.sendCmd('action', { tableID: game.tableID, type: ACTION.DISCARD, target: state.ourHand[slot - 1] });
 						break;
 					}
 					case 'clue': {

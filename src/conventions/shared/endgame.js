@@ -1,9 +1,18 @@
+import HGroup from '../h-group.js';
+import { ACTION, ENDGAME_SOLVING_FUNCS } from '../../constants.js';
 import { ActualCard } from '../../basics/Card.js';
-import { ACTION } from '../../constants.js';
-import { logCard, logClue, logObjectiveAction } from '../../tools/log.js';
-import logger from '../../tools/logger.js';
-
+import { getShortForms } from '../../variants.js';
 import * as Utils from '../../tools/util.js';
+
+import logger from '../../tools/logger.js';
+import { logCard, logObjectiveAction } from '../../tools/log.js';
+import { produce } from '../../StateProxy.js';
+
+import { isMainThread, parentPort, workerData } from 'worker_threads';
+
+const conventions = {
+	HGroup
+};
 
 /**
  * @typedef {import('../../basics/Game.js').Game} Game
@@ -24,6 +33,7 @@ export class UnsolvedGame extends Error {
 }
 
 let timeout;
+const simple_cache = new Map(), simpler_cache = new Map();
 
 /**
  * @param {Game} game
@@ -43,99 +53,107 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 	const unknown_own = [];
 
 	// Write identities on our own cards
-	for (const { order } of state.ourHand) {
+	for (const order of state.ourHand) {
 		const id = me.thoughts[order].identity({ infer: true });
 
-		if (id !== undefined) {
-			const identity = { suitIndex: id.suitIndex, rank: id.rank };
-			Object.assign(common_state.ourHand.findOrder(order), identity);
-			Object.assign(common_state.deck[order], identity);
-		}
-		else {
+		if (id !== undefined)
+			common_state.deck = common_state.deck.with(order, produce(common_state.deck[order], Utils.assignId(id)));
+		else
 			unknown_own.push(order);
-		}
 	}
 
 	timeout = new Date();
-	timeout.setSeconds(timeout.getSeconds() + 5);
+	timeout.setSeconds(timeout.getSeconds() + 10);
 
 	if (unseen_identities.length > 0) {
 		logger.debug('unseen identities', unseen_identities.map(logCard));
-
-		const best_actions = {};
-		const hash_to_actions = {};
 
 		const possible_locs = unknown_own.concat(Utils.range(0, state.cardsLeft).map(i => state.cardOrder + i + 1));
 		const arrangements = Utils.allSubsetsOfSize(possible_locs, unseen_identities.length)
 			.flatMap(subset => Utils.permutations(subset))
 			.filter(orders => orders.every((o, i) => !unknown_own.includes(o) || me.thoughts[o].possible.has(unseen_identities[i])));
 
-		for (const locs of arrangements) {
-			logger.debug('trying locs', locs);
-			const new_state = common_state.minimalCopy();
+		const decks = arrangements.map(locs => {
+			const deck = common_state.deck.slice();
 
 			// Arrange deck
 			for (let i = 0; i < locs.length; i++) {
 				const identity = unseen_identities[i];
 				const order = locs[i];
 
-				if (unknown_own.includes(order)) {
-					Object.assign(new_state.ourHand.findOrder(order), identity);
-					Object.assign(new_state.deck[order], identity);
-				}
-				else {
-					new_state.deck[order] = new ActualCard(identity.suitIndex, identity.rank, order);
-				}
+				if (unknown_own.includes(order))
+					deck[order] = produce(deck[order], Utils.assignId(identity));
+				else
+					deck[order] = Object.freeze(new ActualCard(identity.suitIndex, identity.rank, order));
 			}
 
-			let found_solution = true;
-			const solutions = [];
+			return deck;
+		});
 
-			while (found_solution) {
-				found_solution = false;
-				logger.collect();
+		const nextPlayerIndex = state.nextPlayerIndex(playerTurn);
+		const original_deck = state.deck;
 
-				const new_game = game.minimalCopy();
-				new_game.state = new_state.minimalCopy();
+		let max_deck_wins = 0, best_action;
 
-				const { actions, winrate } = winnable_simple(new_game, playerTurn, find_clues, find_discards, new Map(), solutions);
+		for (let d = 0; d < arrangements.length; d++) {
+			if (arrangements.length - d <= max_deck_wins)
+				break;		// winning all remaining decks is still worse
 
-				if (winrate === 1) {
-					const hash = logObjectiveAction(new_state, actions[0]);
-					logger.debug('cyan', 'won with', actions.map(a => logObjectiveAction(new_state, a)).join(', '));
+			const new_state = common_state.minimalCopy();
+			new_state.deck = decks[d];
 
-					if (solutions.some(sol => Utils.objEquals(actions[0], sol)))
-						continue;
+			const new_game = game.minimalCopy();
+			new_game.state = new_state;
 
-					best_actions[hash] ??= 0;
-					best_actions[hash] += 1 / arrangements.length;
-					hash_to_actions[hash] = actions[0];
+			const results = winnable(new_game, playerTurn, find_clues, find_discards);
+			const winning_actions = results.keys().filter(action => results.get(action));
 
-					found_solution = true;
-					solutions.push(actions[0]);
+			for (const action of winning_actions) {
+				let deck_wins = 1;
+
+				for (let i = d + 1; i < arrangements.length; i++) {
+					game.state.deck = decks[i];
+
+					const new_game = advance_game(game, playerTurn, action);
+					const { win: deck_win } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards);
+
+					if (deck_win)
+						deck_wins++;
+					else if (deck_wins + (arrangements.length - i) <= max_deck_wins)
+						break;		// winning all remaining decks is still worse
 				}
-				logger.flush(false);
+
+				// Wins all decks
+				if (deck_wins === arrangements.length)
+					return action;
+
+				if (deck_wins > max_deck_wins) {
+					max_deck_wins = deck_wins;
+					best_action = action;
+				}
 			}
 		}
 
-		if (Object.keys(best_actions).length === 0)
+		game.state.deck = original_deck;
+
+		if (best_action === undefined)
 			throw new UnsolvedGame(`couldn't find a winning strategy`);
 
-		const sorted_actions = Object.entries(best_actions).sort(([_, p1], [__, p2]) => p2 - p1);
-
-		logger.highlight('purple', `endgame winnable! found action ${sorted_actions[0][0]} with winrate ${sorted_actions[0][1]}`);
-		return hash_to_actions[sorted_actions[0][0]];
+		logger.on();
+		logger.highlight('purple', `endgame winnable! found action ${logObjectiveAction(common_state, best_action)} with winrate ${max_deck_wins}/${arrangements.length}`);
+		return best_action;
 	}
 
 	const new_game = game.shallowCopy();
 	new_game.state = common_state;
 
-	const { actions, winrate } = winnable_simple(new_game, playerTurn, find_clues, find_discards);
+	const { actions, win } = winnable_simple(new_game, playerTurn, find_clues, find_discards);
 
-	if (winrate === 0)
+	if (!win)
 		throw new UnsolvedGame(`couldn't find a winning strategy`);
 
-	logger.highlight('purple', `endgame solved! found actions [${actions.map(action => logObjectiveAction(common_state, action)).join(', ')}] with winrate ${winrate}`);
+	logger.on();
+	logger.highlight('purple', `endgame solved! found actions [${actions.map(action => logObjectiveAction(common_state, action)).join(', ')}]`);
 	return actions[0];
 }
 
@@ -143,16 +161,24 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
  * @param {Game} game
  * @param {boolean} [infer]
  */
-function hash_state(game, infer = true) {
+function hash_game(game, infer = true) {
 	const { common, state } = game;
 
 	const { clue_tokens, endgameTurns } = state;
-	const hands = state.hands.flatMap(hand => hand.map(c => {
-		const id = (infer ? common.thoughts[c.order]: c).identity({ infer: true });
-		return id ? logCard(id) : 'xx';
-	})).join();
+	const hands = state.hands.flatMap(hand => hand.map(o =>
+		logCard((infer ? common.thoughts[o]: state.deck[o]).identity({ infer: true })))).join();
 
-	return `${hands},${clue_tokens},${endgameTurns}`;
+	return `${state.deck.map(logCard)},${hands},${clue_tokens},${endgameTurns}`;
+}
+
+/**
+ * @param {State} state
+ */
+function hash_state(state) {
+	const { clue_tokens, endgameTurns } = state;
+	const hands = state.hands.flatMap(hand => hand.map(o => logCard(state.deck[o]))).join();
+
+	return `${state.deck.map(logCard)},${hands},${clue_tokens},${endgameTurns}`;
 }
 
 /**
@@ -164,8 +190,8 @@ function find_unseen_identities(game) {
 
 	/** @type {Record<string, number>} */
 	const seen_identities = state.hands.reduce((id_map, hand) => {
-		for (const c of hand) {
-			const id = me.thoughts[c.order].identity({ infer: true, symmetric: false });
+		for (const o of hand) {
+			const id = me.thoughts[o].identity({ infer: true, symmetric: false });
 			if (id !== undefined) {
 				id_map[logCard(id)] ??= 0;
 				id_map[logCard(id)]++;
@@ -186,19 +212,15 @@ function find_unseen_identities(game) {
 }
 
 /**
- * @param {Game} game
+ * @param {State} state
  * @param {number} playerTurn
- * @param {boolean} infer
  */
-function unwinnable_state(game, playerTurn, infer = true) {
-	const { state, me } = game;
-
+function unwinnable_state(state, playerTurn) {
 	if (state.ended || state.pace < 0)
 		return true;
 
-	const void_players = Utils.range(0, state.numPlayers).filter(i => (infer && i === state.ourPlayerIndex) ?
-		me.thinksTrash(state, i).length === state.hands[i].length :
-		state.hands[i].every(c => c.identity() === undefined || state.isBasicTrash(c)));
+	const void_players = Utils.range(0, state.numPlayers).filter(i =>
+		state.hands[i].every(o => ((c = state.deck[o]) => c.identity() === undefined || state.isBasicTrash(c))()));
 
 	if (void_players.length > state.pace)
 		return true;
@@ -212,307 +234,362 @@ function unwinnable_state(game, playerTurn, infer = true) {
 }
 
 /**
+ * @param {State} state
+ * @param {number} playerTurn
+ */
+function get_playables(state, playerTurn) {
+	return state.hands[playerTurn].filter(o => state.isPlayable(state.deck[o])).sort((a, b) => {
+		const card1 = state.deck[a].identity();
+		const card2 = state.deck[b].identity();
+
+		const connecting_other = (id) =>
+			state.hands.some((hand, i) => i !== playerTurn && hand.some(o => state.deck[o].matches({ suitIndex: id.suitIndex, rank: id.rank + 1 })));
+
+		const [conn1, conn2] = [card1, card2].map(connecting_other);
+		if (conn1 && !conn2)
+			return -1;
+
+		if (conn2 && !conn1)
+			return 1;
+
+		const connecting_self = (id) =>
+			state.hands[playerTurn].some(o => state.deck[o].matches({ suitIndex: id.suitIndex, rank: id.rank + 1 }));
+
+		const [conn1_s, conn2_s] = [card1, card2].map(connecting_self);
+		if (conn1_s && !conn2_s)
+			return -1;
+
+		if (conn2_s && !conn1_s)
+			return 1;
+
+		if (state.isCritical(card1) && state.isCritical(card2))
+			return card1.rank < card2.rank ? -1 : 1;
+
+		if (state.isCritical(card1) && !state.isCritical(card2))
+			return -1;
+
+		if (!state.isCritical(card1) && state.isCritical(card2))
+			return 1;
+
+		return card1.rank < card2.rank ? -1 : 1;
+	});
+}
+
+/**
  * Returns whether the game is winnable if everyone can look at their own cards.
  * 
- * @param {Game} game
+ * @param {State} state
  * @param {number} playerTurn
- * @param {Map<string, boolean>} [cache]
  * @returns {boolean}
  */
-export function winnable_simpler(game, playerTurn, cache = new Map()) {
-	const { state } = game;
-
+function winnable_simpler(state, playerTurn) {
 	if (state.score === state.maxScore)
 		return true;
 
-	if (Date.now() > timeout || unwinnable_state(game, playerTurn, false))
+	if (Date.now() > timeout || unwinnable_state(state, playerTurn))
 		return false;
 
-	const cached_result = cache.get(hash_state(game, false));
+	const cached_result = simpler_cache.get(hash_state(state));
 	if (cached_result !== undefined)
 		return cached_result;
 
-	const nextPlayerIndex = state.nextPlayerIndex(playerTurn);
+	for (const order of get_playables(state, playerTurn)) {
+		const action = { type: ACTION.PLAY, target: order, playerIndex: playerTurn };
 
-	for (const card of state.hands[playerTurn].filter(c => state.isPlayable(c))) {
-		const old_rank = state.play_stacks[card.suitIndex];
-		const oldEndgameTurns = state.endgameTurns;
-		const card_index = state.hands[playerTurn].findIndex(c => c.order === card.order);
-		const newCardOrder = state.cardOrder + 1;
-
-		state.play_stacks[card.suitIndex] = card.rank;
-		state.hands[playerTurn] = state.hands[playerTurn].removeOrder(card.order);
-
-		if (state.endgameTurns === -1) {
-			const newCard = game.state.deck[newCardOrder] ?? new ActualCard(-1, -1, newCardOrder, game.state.actionList.length);
-			state.hands[playerTurn].unshift(newCard);
-			state.deck[newCardOrder] = newCard;
-			state.cardOrder++;
-			state.cardsLeft--;
-
-			if (state.cardsLeft === 0)
-				state.endgameTurns = state.numPlayers;
-		}
-		else {
-			state.endgameTurns--;
-		}
-
-		const winnable = winnable_simpler(game, nextPlayerIndex, cache);
-
-		if (oldEndgameTurns === -1) {
-			state.hands[playerTurn] = state.hands[playerTurn].removeOrder(newCardOrder);
-			state.cardOrder--;
-			state.cardsLeft++;
-		}
-
-		state.play_stacks[card.suitIndex] = old_rank;
-		state.hands[playerTurn].splice(card_index, 0, card);
-		state.endgameTurns = oldEndgameTurns;
-
-		if (winnable)
+		if (predict_winnable(state, playerTurn, action))
 			return true;
 	}
 
 	if (state.clue_tokens > 0) {
-		const oldEndgameTurns = state.endgameTurns;
-		const oldClueTokens = state.clue_tokens;
+		const action = { type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn };
 
-		game.state.clue_tokens--;
-		game.state.endgameTurns = game.state.endgameTurns === -1 ? -1 : (game.state.endgameTurns - 1);
-
-		const winnable = winnable_simpler(game, nextPlayerIndex, cache);
-
-		state.endgameTurns = oldEndgameTurns;
-		state.clue_tokens = oldClueTokens;
-
-		if (winnable)
+		if (predict_winnable(state, playerTurn, action))
 			return true;
 	}
 
-	const discardable = state.hands[playerTurn].find(c => c.identity() === undefined || state.isBasicTrash(c));
+	const discardable = state.hands[playerTurn].find(o => ((c = state.deck[o]) => c.identity() === undefined || state.isBasicTrash(c))());
 
 	if (state.pace >= 0 && discardable !== undefined) {
-		const oldEndgameTurns = state.endgameTurns;
-		const oldClueTokens = state.clue_tokens;
-		const oldCardsLeft = state.cardsLeft;
-		const card_index = state.hands[playerTurn].findIndex(c => c.order === discardable.order);
-		const newCardOrder = state.cardOrder + 1;
+		const action = { type: ACTION.DISCARD, target: discardable, playerIndex: playerTurn };
 
-		state.hands[playerTurn] = state.hands[playerTurn].removeOrder(discardable.order);
-
-		if (state.endgameTurns === -1) {
-			const newCard = game.state.deck[newCardOrder] ?? new ActualCard(-1, -1, newCardOrder, game.state.actionList.length);
-			state.hands[playerTurn].unshift(newCard);
-			state.deck[newCardOrder] = newCard;
-			state.cardOrder++;
-			state.cardsLeft--;
-
-			if (state.cardsLeft === 0)
-				state.endgameTurns = state.numPlayers;
-		}
-		else {
-			state.endgameTurns--;
-		}
-		state.clue_tokens = Math.min(state.clue_tokens + 1, 8);
-
-		const winnable = winnable_simpler(game, nextPlayerIndex, cache);
-
-		if (oldEndgameTurns === -1) {
-			state.hands[playerTurn] = state.hands[playerTurn].removeOrder(newCardOrder);
-			state.cardOrder--;
-			state.cardsLeft++;
-		}
-		state.hands[playerTurn].splice(card_index, 0, discardable);
-
-		state.endgameTurns = oldEndgameTurns;
-		state.clue_tokens = oldClueTokens;
-		state.cardsLeft = oldCardsLeft;
-
-		if (winnable)
+		if (predict_winnable(state, playerTurn, action))
 			return true;
 	}
 
-	cache.set(hash_state(game, false), false);
+	simpler_cache.set(hash_state(state), false);
 	return false;
 }
 
 /**
- * @typedef {{actions: ModPerformAction[] | undefined, winrate: number}} WinnableResult
- * 
+ * @param {State} state
+ * @param {number} playerTurn
+ * @param {ModPerformAction} action
+ */
+function predict_winnable(state, playerTurn, action) {
+	return winnable_simpler(advance_state(state, playerTurn, action), state.nextPlayerIndex(playerTurn));
+}
+
+/**
+ * @param {State} state
+ * @param {number} playerTurn
+ * @param {ModPerformAction} action
+ */
+function advance_state(state, playerTurn, action) {
+	const new_state = state.shallowCopy();
+
+	/**
+	 * @param {number} playerIndex
+	 * @param {number} order
+	 */
+	const remove_and_draw_new = (playerIndex, order) => {
+		const newCardOrder = state.cardOrder + 1;
+		const index = state.hands[playerIndex].indexOf(order);
+		new_state.hands[playerIndex] = new_state.hands[playerIndex].toSpliced(index, 1);
+
+		if (state.endgameTurns === -1) {
+			const new_hands = new_state.hands.slice();
+			new_hands[playerTurn] = new_hands[playerTurn].toSpliced(0, 0, newCardOrder);
+			new_state.hands = new_hands;
+
+			new_state.cardOrder++;
+			new_state.cardsLeft--;
+
+			if (new_state.cardsLeft === 0)
+				new_state.endgameTurns = state.numPlayers;
+		}
+		else {
+			new_state.endgameTurns--;
+		}
+
+		if (state.deck[newCardOrder] === undefined) {
+			new_state.deck = new_state.deck.slice();
+			new_state.deck[newCardOrder] = Object.freeze(new ActualCard(-1, -1, newCardOrder, state.actionList.length));
+		}
+	};
+
+	/** @param {Identity} identity */
+	const update_discards = ({ suitIndex, rank }) => {
+		const { discard_stacks } = state;
+		const new_discard_stack = discard_stacks[suitIndex].with(rank - 1, discard_stacks[suitIndex][rank - 1] + 1);
+		new_state.discard_stacks = discard_stacks.with(suitIndex, new_discard_stack);
+	};
+
+	switch (action.type) {
+		case ACTION.PLAY: {
+			const { playerIndex, target } = action;
+			const identity = state.deck[target].identity();
+
+			if (identity !== undefined) {
+				const { suitIndex, rank } = identity;
+				if (state.isPlayable(identity)) {
+					new_state.play_stacks = state.play_stacks.with(suitIndex, rank);
+
+					if (rank === 5)
+						new_state.clue_tokens = Math.min(state.clue_tokens + 1, 8);
+				}
+				else {
+					update_discards(identity);
+					new_state.strikes++;
+				}
+			}
+			else {
+				new_state.strikes++;
+			}
+
+			remove_and_draw_new(playerIndex, target);
+			break;
+		}
+		case ACTION.DISCARD: {
+			const { playerIndex, target } = action;
+			const identity = state.deck[target].identity();
+
+			if (identity !== undefined)
+				update_discards(identity);
+
+			new_state.clue_tokens = Math.min(state.clue_tokens + 1, 8);
+			remove_and_draw_new(playerIndex, target);
+			break;
+		}
+		case ACTION.COLOUR:
+		case ACTION.RANK:
+			new_state.clue_tokens--;
+			new_state.endgameTurns = state.endgameTurns === -1 ? -1 : (state.endgameTurns - 1);
+			break;
+	}
+
+	return new_state;
+}
+
+/**
  * @param {Game} game
  * @param {number} playerTurn
- * @param {(game: Game, giver: number) => Clue[]} [find_clues]
- * @param {(game: Game, playerIndex: number) => { misplay: boolean, order: number }[]} [find_discards]
- * @param {Map<string, WinnableResult>} [cache]
- * @param {ModPerformAction[]} [exclude]
- * @returns {WinnableResult}
+ * @param {ModPerformAction} action
  */
-export function winnable_simple(game, playerTurn, find_clues = () => [], find_discards = () => [], cache = new Map(), exclude = []) {
+function advance_game(game, playerTurn, action) {
 	const { state } = game;
 
-	if (state.score === state.maxScore)
-		return { actions: [], winrate: 1 };
+	if (action.target !== -1)
+		return game.simulate_action(Utils.performToAction(state, action, playerTurn, state.deck));
 
-	if (Date.now() > timeout || unwinnable_state(game, playerTurn))
-		return { actions: [], winrate: 0 };
+	const new_game = game.shallowCopy();
+	new_game.state.clue_tokens--;
+	new_game.state.turn_count++;
+	new_game.state.endgameTurns = new_game.state.endgameTurns === -1 ? -1 : (new_game.state.endgameTurns - 1);
+	return new_game;
+}
 
-	const cached_result = cache.get(hash_state(game));
-	if (cached_result !== undefined)
-		return cached_result;
+/**
+ * @param {Game} game
+ * @param {number} playerTurn
+ * @param {(game: Game, giver: number) => Clue[]} find_clues
+ * @param {(game: Game, playerIndex: number) => { misplay: boolean, order: number }[]} find_discards
+ */
+function possible_actions(game, playerTurn, find_clues, find_discards) {
+	const { state } = game;
+	const actions = /** @type {ModPerformAction[]} */ ([]);
 
-	if (!winnable_simpler(game, playerTurn)) {
-		cache.set(hash_state(game), { actions: [], winrate: 0 });
-		return { actions: [], winrate: 0 };
-	}
-
-	const nextPlayerIndex = state.nextPlayerIndex(playerTurn);
 	const playables = game.players[playerTurn].thinksPlayables(state, playerTurn);
+	for (const order of playables) {
+		if (state.deck[order].identity() === undefined)
+			continue;
 
-	let best_actions = [], best_winrate = 0;
-	const not_useful = state.hands[playerTurn].find(c => state.isBasicTrash(c));
+		const action = { type: ACTION.PLAY, target: order, playerIndex: playerTurn };
 
-	const attempt_discard = () => {
-		game.state.clue_tokens++;
-		if (!winnable_simpler(game, nextPlayerIndex, new Map())) {
-			game.state.clue_tokens--;
-			return { actions: [], winrate: 0 };
-		}
-
-		game.state.clue_tokens--;
-
-		const discards = find_discards(game, playerTurn);
-
-		if (discards.length === 0 && not_useful !== undefined)
-			discards.push({ misplay: false, order: not_useful.order });
-
-		for (const { misplay, order } of discards) {
-			const perform_action = { type: ACTION.DISCARD, target: order, playerIndex: playerTurn };
-
-			if (exclude.some(action => Utils.objEquals(action, perform_action)))
-				continue;
-
-			const { suitIndex, rank } = state.hands[playerTurn].find(c => c.order === order);
-			logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to discard slot', state.hands[playerTurn].findIndex(c => c.order === order) + 1);
-
-			const new_game = game.simulate_action({ type: 'discard', order, playerIndex: playerTurn, suitIndex, rank, failed: misplay });
-			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
-
-			if (winrate > best_winrate) {
-				best_actions = actions.toSpliced(0, 0, perform_action);
-				best_winrate = winrate;
-			}
-		}
-	};
-
-	const attempt_stall = () => {
-		game.state.clue_tokens--;
-		if (!winnable_simpler(game, state.nextPlayerIndex(playerTurn))) {
-			game.state.clue_tokens++;
-			return { actions: [], winrate: 0 };
-		}
-		game.state.clue_tokens++;
-
-		const perform_action = { type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn };
-
-		if (exclude.some(action => Utils.objEquals(action, perform_action)))
-			return;
-
-		const clue_game = game.shallowCopy();
-		clue_game.state = state.minimalCopy();
-		clue_game.state.clue_tokens--;
-		clue_game.state.turn_count++;
-		clue_game.state.endgameTurns = clue_game.state.endgameTurns === -1 ? -1 : (clue_game.state.endgameTurns - 1);
-
-		logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to stall');
-		const { actions, winrate } = winnable_simple(clue_game, nextPlayerIndex, find_clues, find_discards, cache);
-
-		if (winrate > best_winrate) {
-			best_actions = actions.toSpliced(0, 0, perform_action);
-			best_winrate = winrate;
-		}
-	};
-
-	if (playables.length > 0) {
-		for (const { order } of playables) {
-			if (state.deck[order].identity() === undefined)
-				continue;
-
-			const perform_action = { type: ACTION.PLAY, target: order, playerIndex: playerTurn };
-
-			if (exclude.some(action => Utils.objEquals(action, perform_action)))
-				continue;
-
-			const { suitIndex, rank } = state.deck[order];
-			logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to play', logCard({ suitIndex, rank }));
-
-			const new_game = game.simulate_action({ type: 'play', order, suitIndex, rank, playerIndex: playerTurn });
-			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
-
-			if (winrate >= best_winrate) {
-				best_actions = actions.toSpliced(0, 0, perform_action);
-				best_winrate = winrate;
-			}
-
-			if (best_winrate === 1)
-				break;
-		}
+		if (predict_winnable(state, playerTurn, action))
+			actions.push(action);
 	}
 
+	const clue_winnable = predict_winnable(state, playerTurn, { type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn });
 	let attempted_clue = false;
 
-	if (best_winrate < 1 && state.clue_tokens > 0) {
-		game.state.clue_tokens--;
-		if (!winnable_simpler(game, state.nextPlayerIndex(playerTurn))) {
-			game.state.clue_tokens++;
-			return { actions: [], winrate: 0 };
-		}
-		game.state.clue_tokens++;
-
+	if (state.clue_tokens > 0 && clue_winnable) {
 		const clues = find_clues(game, playerTurn);
 
 		for (const clue of clues) {
 			const perform_action = Object.assign(Utils.clueToAction(clue, -1), { playerIndex: playerTurn });
-
-			if (exclude.some(action => Utils.objEquals(action, perform_action)))
-				continue;
-
-			logger.info(state.turn_count, state.playerNames[playerTurn], 'trying to clue', logClue(clue));
 			attempted_clue = true;
 
-			const list = state.hands[clue.target].clueTouched(clue, state.variant).map(c => c.order);
-			const new_game = game.simulate_clue({ type: 'clue', clue, list, giver: playerTurn, target: clue.target });
-
-			const { actions, winrate } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards, cache);
-
-			if (winrate > best_winrate) {
-				best_actions = actions.toSpliced(0, 0, perform_action);
-				best_winrate = winrate;
-			}
-
-			if (best_winrate === 1)
-				break;
+			actions.push(perform_action);
 		}
 	}
 
-	if (state.inEndgame()) {
-		if (best_winrate < 1 && state.clue_tokens > 0 && !attempted_clue)
-			attempt_stall();
+	if (state.pace >= 0) {
+		const not_useful = state.hands[playerTurn].find(o => state.isBasicTrash(state.deck[o]));
+		const discards = find_discards(game, playerTurn);
 
-		if (best_winrate < 1 && state.pace >= 0)
-			attempt_discard();
+		if (discards.length === 0 && not_useful !== undefined)
+			discards.push({ misplay: false, order: not_useful });
+
+		for (const { misplay, order } of discards) {
+			const action = { type: misplay ? ACTION.PLAY : ACTION.DISCARD, target: order, playerIndex: playerTurn };
+
+			if (predict_winnable(state, playerTurn, action))
+				actions.push(action);
+		}
 	}
-	else {
-		if (best_winrate < 1 && state.pace >= 0)
-			attempt_discard();
 
-		if (best_winrate < 1 && state.clue_tokens > 0 && !attempted_clue)
-			attempt_stall();
+	if (state.clue_tokens > 0 && clue_winnable && !attempted_clue)
+		actions.push({ type: ACTION.RANK, target: -1, value: -1, playerIndex: playerTurn });
+
+	return actions;
+}
+
+/**
+ * @typedef {{actions: ModPerformAction[] | undefined, win: boolean}} WinnableResult
+ * 
+ * @param {Game} game
+ * @param {number} playerTurn
+ * @param {(game: Game, giver: number) => Clue[]} find_clues
+ * @param {(game: Game, playerIndex: number) => { misplay: boolean, order: number }[]} find_discards
+ * @returns {WinnableResult}
+ */
+function winnable_simple(game, playerTurn, find_clues, find_discards) {
+	const { state } = game;
+
+	if (state.score === state.maxScore)
+		return { actions: [], win: true };
+
+	if (Date.now() > timeout || unwinnable_state(state, playerTurn))
+		return { actions: [], win: false };
+
+	const hash = hash_game(game);
+
+	const cached_result = simple_cache.get(hash);
+	if (cached_result !== undefined)
+		return cached_result;
+
+	if (!winnable_simpler(state, playerTurn)) {
+		simple_cache.set(hash, { actions: [], winrate: 0 });
+		return { actions: [], win: false };
 	}
 
+	const nextPlayerIndex = state.nextPlayerIndex(playerTurn);
+	const actions = possible_actions(game, playerTurn, find_clues, find_discards);
+
+	for (const action of actions) {
+		const new_game = advance_game(game, playerTurn, action);
+		const { actions, win } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards);
+
+		const result = { actions: actions.toSpliced(0, 0, action), win };
+
+		if (win) {
+			simple_cache.set(hash, result);
+			return result;
+		}
+	}
+
+	simple_cache.set(hash, { actions: [], win: false });
+	return { actions: [], win: false };
+}
+
+/**
+ * @param {Game} game
+ * @param {number} playerTurn
+ * @param {(game: Game, giver: number) => Clue[]} find_clues
+ * @param {(game: Game, playerIndex: number) => { misplay: boolean, order: number }[]} find_discards
+ * @param {ModPerformAction[]} [exclude]
+ */
+function winnable(game, playerTurn, find_clues, find_discards, exclude = []) {
+	const { state } = game;
+
+	/** @type {Map<ModPerformAction, boolean>} */
+	const results = new Map();
+
+	const nextPlayerIndex = state.nextPlayerIndex(playerTurn);
+	const actions = possible_actions(game, playerTurn, find_clues, find_discards).filter(action => !exclude.some(e => Utils.objEquals(e, action)));
+
+	for (const action of actions) {
+		const new_game = advance_game(game, playerTurn, action);
+		const { win } = winnable_simple(new_game, nextPlayerIndex, find_clues, find_discards);
+
+		results.set(action, win);
+	}
+
+	return results;
+}
+
+if (!isMainThread) {
+	const game = conventions[workerData.conv].fromJSON(workerData.game);
 	Utils.globalModify({ game });
 
-	const result = { actions: best_actions, winrate: best_winrate };
-	cache.set(hash_state(game), result);
+	await getShortForms(game.state.variant);
 
-	return result;
+	simple_cache.clear();
+	simpler_cache.clear();
+
+	logger.setLevel(workerData.logLevel);
+	logger.off();
+
+	const { find_clues, find_discards } = ENDGAME_SOLVING_FUNCS[workerData.conv];
+
+	try {
+		const action = solve_game(game, workerData.playerTurn, find_clues, find_discards);
+		parentPort.postMessage({ success: true, action });
+	}
+	catch (err) {
+		if (err instanceof UnsolvedGame)
+			parentPort.postMessage({ success: false, err });
+		else
+			throw err;
+	}
 }

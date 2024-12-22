@@ -29,7 +29,7 @@ describe('stalling', () => {
 		takeTurn(game, 'Donald clues purple to Alice (slot 4)');
 
 		// Can't be a locked hand stall, because getting b1 is available.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['p1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['p1']);
 	});
 
 	it('understands a finesse when there are better clues available', () => {
@@ -47,30 +47,30 @@ describe('stalling', () => {
 		takeTurn(game, 'Donald clues green to Bob');
 
 		// Can't be a locked hand stall, because getting b1 is available.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['g1']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['g1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
 
-	it('understands a finesse when there are better clues available', () => {
+	it('understands a finesse when there are better clues available 2', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['b3', 'g4', 'g2', 'b4'],
-			['y4', 'y4', 'r4', 'p5'],
-			['y5', 'r5', 'b5', 'g5']
+			['y4', 'y4', 'r5', 'r4'],
+			['r2', 'y2', 'b5', 'g5']
 		], {
 			level: { min: 9 },
-			play_stacks: [2, 0, 0, 0, 0],
+			play_stacks: [2, 0, 0, 0, 2],
 			discarded: ['r4'],
 		});
 
-		takeTurn(game, 'Alice clues 5 to Cathy');
+		takeTurn(game, 'Alice clues 5 to Donald');
 		takeTurn(game, 'Bob clues red to Cathy');	// r4 save
-		takeTurn(game, 'Cathy clues 5 to Donald');
+		takeTurn(game, 'Cathy clues 2 to Donald');
 		takeTurn(game, 'Donald clues red to Cathy');
 
-		// Can't be a hard burn, because filling in p5 is available.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r3']);
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		// Can't be a hard burn, because filling in r5 is available.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r3']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
 
 	it('understands a play clue when not in stalling situation', () => {
@@ -90,7 +90,7 @@ describe('stalling', () => {
 		takeTurn(game, 'Donald clues green to Alice (slot 4)');
 
 		// Can't be a locked hand stall, because Donald has a play.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['g1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['g1']);
 	});
 
 	it('correctly finds all clues in stalling situations', () => {
@@ -116,10 +116,75 @@ describe('stalling', () => {
 		// However, 2 to Cathy is not a valid Hard Burn (Cathy will play as r2).
 		assert.ok(!stall_clues[3].some(clue => clue.target === PLAYER.CATHY && clue.type === CLUE.RANK && clue.value === 2));
 	});
+
+	it('gives a bad touch save clue in stalling situations', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r1', 'r4', 'b3', 'r2', 'p2'],
+			['y5', 'y4', 'r4', 'g2', 'r3']
+		], {
+			level: { min: 9 },
+			starting: PLAYER.BOB,
+			play_stacks: [2, 2, 2, 0, 0],
+			clue_tokens: 4
+		});
+
+		takeTurn(game, 'Bob clues 5 to Cathy');			// 5 Stall
+		takeTurn(game, 'Cathy discards r3', 'p4');
+
+		// Alice is in DDA, she should clue 2 to Bob even though it bad touches.
+		const action = await take_action(game);
+
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.BOB, value: 2 });
+	});
+
+	it('gives a 5 stall on the 5 closest to chop', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r2', 'y4', 'r5', 'g2', 'r3'],
+			['y5', 'r4', 'b3', 'b4', 'b1'],
+		], {
+			level: { min: 9 },
+			starting: PLAYER.BOB
+		});
+
+		takeTurn(game, 'Bob clues blue to Cathy');
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 5)');
+
+		// Alice should 5 Stall on Cathy, since Bob's 5 is farther away from chop.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.CATHY, value: 5 }, `Expected (5 to Cathy), got ${logPerformAction(action)}`);
+
+		// 5 to Bob is not a valid 5 stall.
+		const { stall_clues } = find_clues(game);
+		assert.ok(!stall_clues[0].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 5));
+	});
+
+	it('gives a play clue to chop in stalling situations', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r2', 'y4', 'r5', 'g2', 'b1'],
+			['y3', 'r4', 'b3', 'b4', 'r3'],
+		], {
+			level: { min: 9 },
+			starting: PLAYER.CATHY,
+			clue_tokens: 7
+		});
+
+		takeTurn(game, 'Cathy discards r3', 'p4');
+
+		// Alice should clue 1 to Bob.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.BOB, value: 1 }, `Expected (1 to Bob), got ${logPerformAction(action)}`);
+
+		// 5 to Bob is not a valid 5 stall.
+		const { stall_clues } = find_clues(game);
+		assert.ok(!stall_clues[0].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 5));
+	});
 });
 
 describe('anxiety plays', () => {
-	it('plays into anxiety', () => {
+	it('plays into anxiety', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['y5', 'y2', 'b4', 'g4'],
@@ -136,11 +201,11 @@ describe('anxiety plays', () => {
 		takeTurn(game, 'Donald clues 2 to Alice (slot 1)');
 
 		// Alice should play slot 2 as r5.
-		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][1].order }, `Expected (play slot 2), got ${logPerformAction(action)} instead`);
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][1] }, `Expected (play slot 2), got ${logPerformAction(action)} instead`);
 	});
 
-	it(`doesn't assume anxiety if there are clues available`, () => {
+	it(`doesn't assume anxiety if there are clues available`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['y5', 'y2', 'b4', 'g4'],
@@ -155,11 +220,11 @@ describe('anxiety plays', () => {
 		takeTurn(game, 'Donald clues 5 to Alice (slots 1,2,3,4)');
 
 		// Alice should clue instead of playing/discarding.
-		const action = take_action(game);
+		const action = await take_action(game);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 	});
 
-	it(`doesn't play into impossible anxiety`, () => {
+	it(`doesn't play into impossible anxiety`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r5', 'y2', 'b4', 'g4'],
@@ -175,11 +240,11 @@ describe('anxiety plays', () => {
 		takeTurn(game, 'Donald clues 5 to Alice (slots 1,2,3,4)');
 
 		// Alice should discard, since it isn't possible to play any card.
-		const action = take_action(game);
+		const action = await take_action(game);
 		assert.ok(action.type === ACTION.DISCARD, `Expected discard, got ${logPerformAction(action)} instead`);
 	});
 
-	it('forces the next player into anxiety', () => {
+	it('forces the next player into anxiety', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r5', 'y5', 'b5', 'g5'],
@@ -196,13 +261,40 @@ describe('anxiety plays', () => {
 		takeTurn(game, 'Donald clues red to Alice (slot 1)');
 
 		// Alice should play slot 1 as r4.
-		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target:game.state.hands[PLAYER.ALICE][0].order });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
+
+	/*it('gives an anxiety clue to the next player', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'y5', 'b5', 'g5'],
+			['b1', 'g4', 'b4', 'b1'],
+			['y4', 'y4', 'p4', 'p3']
+		], {
+			level: { min: 9 },
+			play_stacks: [2, 0, 0, 0, 0],
+			discarded: ['r3', 'r4', 'b3'],
+			clue_tokens: 2,
+			starting: PLAYER.CATHY,
+			init: (game) => {
+				game.state.early_game = false;
+			}
+		});
+
+		takeTurn(game, 'Cathy clues 5 to Bob');
+		takeTurn(game, 'Donald clues green to Alice (slot 1)');
+
+		// Alice should clue red/3 to Bob as anxiety.
+		const action = await take_action(game);
+		const { type, target, value } = action;
+		assert.ok((type === ACTION.COLOUR && target === PLAYER.BOB && value === COLOUR.RED) ||
+			(type === ACTION.RANK && target === PLAYER.BOB && value === 3), `Expected (3/red to Bob), got ${logPerformAction(action)}`);
+	});*/
 });
 
-describe('double discard avoidance', () => {
-	it(`understands a clue from a player on double discard avoidance may be a stall`, () => {
+describe('double discard avoidance', async () => {
+	it(`understands a clue from a player on double discard avoidance may be a stall`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['y5', 'y5', 'b4', 'g4'],
@@ -218,17 +310,17 @@ describe('double discard avoidance', () => {
 
 		// A discard of a useful card means Alice is in a DDA situation.
 		ExAsserts.objHasProperties(game.state.dda, {suitIndex: COLOUR.RED, rank: 3});
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, target: PLAYER.BOB, value: 5 });
 		takeTurn(game, 'Alice clues 5 to Bob');
 
 		// No one should be finessed by this as Alice was simply stalling.
-		const finessed = state.hands.filter(hand => hand.some(c => game.common.thoughts[c.order].finessed));
+		const finessed = state.hands.filter(hand => hand.some(o => game.common.thoughts[o].finessed));
 		assert.equal(finessed.length, 0);
 		assert.equal(game.common.waiting_connections.length, 0);
 	});
 
-	it(`will discard while on double discard avoidance if it can see the card`, () => {
+	it(`will discard while on double discard avoidance if it can see the card`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r3', 'y5', 'b2', 'g4'],
@@ -247,11 +339,11 @@ describe('double discard avoidance', () => {
 		ExAsserts.objHasProperties(state.dda, {suitIndex: COLOUR.RED, rank: 3});
 
 		// However, since Alice can see the other r3, Alice can discard.
-		const action = take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][3].order });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: state.hands[PLAYER.ALICE][3] });
 	});
 
-	it(`will give a fill-in clue on double discard avoidance`, () => {
+	it(`will give a fill-in clue on double discard avoidance`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['r4', 'y4', 'b3', 'g2'],
@@ -271,12 +363,12 @@ describe('double discard avoidance', () => {
 		ExAsserts.objHasProperties(state.dda, {suitIndex: COLOUR.RED, rank: 3});
 
 		// Alice gives a fill-in clue as the highest priority stall clue.
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, target: PLAYER.BOB, value: COLOUR.GREEN });
 		takeTurn(game, 'Alice clues green to Bob');
 
 		// No one should be finessed by this as Alice was simply stalling.
-		const finessed = state.hands.filter(hand => hand.some(c => game.common.thoughts[c.order].finessed));
+		const finessed = state.hands.filter(hand => hand.some(o => game.common.thoughts[o].finessed));
 		assert.equal(finessed.length, 0);
 		assert.equal(game.common.waiting_connections.length, 0);
 	});

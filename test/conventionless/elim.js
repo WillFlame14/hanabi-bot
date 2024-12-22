@@ -30,10 +30,31 @@ describe('visible elim', () => {
 
 		const { common, state } = game;
 
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.ALICE][2].order], ['p5', 't5']);
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.ALICE][3].order], ['p5', 't5']);
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.BOB][3].order], ['g5']);
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.CATHY][3].order], ['b5']);
-		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.DONALD][3].order], ['y5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.ALICE][2]], ['p5', 't5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.ALICE][3]], ['p5', 't5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.BOB][3]], ['g5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.CATHY][3]], ['b5']);
+		ExAsserts.cardHasPossibilities(common.thoughts[state.hands[PLAYER.DONALD][3]], ['y5']);
+	});
+
+	it(`doesn't eliminate when the clue giver holds dupes`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g5', 'b1', 'g2', 'r2'],
+			['g3', 'p1', 'b3', 'b5'],
+			['r3', 'y5', 'r1', 'r2']
+		], {
+			level: { min: 1 },
+			play_stacks: [0, 2, 0, 2, 0]
+		});
+
+		takeTurn(game, 'Alice clues 2 to Bob');
+		takeTurn(game, 'Bob clues 2 to Donald');
+
+		const { common, state } = game;
+
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.BOB][2]], ['r2', 'g2', 'p2']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.BOB][3]], ['r2', 'g2', 'p2']);
+		ExAsserts.cardHasInferences(common.thoughts[state.hands[PLAYER.DONALD][3]], ['r2', 'g2', 'p2']);
 	});
 });

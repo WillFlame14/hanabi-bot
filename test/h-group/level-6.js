@@ -10,6 +10,8 @@ import { find_clues } from '../../src/conventions/h-group/clue-finder/clue-finde
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
+import { produce } from '../../src/StateProxy.js';
+import { team_elim } from '../../src/basics/helper.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -25,7 +27,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(game, 'Bob plays r1', 'y5');
 		takeTurn(game, 'Cathy clues 2 to Bob');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4].order].chop_moved, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4]].chop_moved, false);
 	});
 
 	it('understands a tccm', () => {
@@ -39,7 +41,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(game, 'Bob plays r1', 'y5');
 		takeTurn(game, 'Cathy clues 2 to Bob');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4]].chop_moved, true);
 	});
 
 	it('understands a tccm on self', () => {
@@ -56,7 +58,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(game, 'Alice plays r1 (slot 1)');
 		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].chop_moved, true);
 	});
 
 	it(`doesn't tccm if locked`, () => {
@@ -77,7 +79,7 @@ describe('tempo clue chop moves', () => {
 
 		// TODO: This should work even if Cathy clues green, as long as a higher priority clue is available (level 9, stalling).
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][3].order].chop_moved, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][3]].chop_moved, false);
 	});
 
 	it(`doesn't tccm if getting a chop moved card`, () => {
@@ -95,7 +97,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(game, 'Donald clues 1 to Bob');
 		takeTurn(game, 'Alice clues yellow to Bob');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order].chop_moved, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1]].chop_moved, false);
 	});
 
 	it(`doesn't tccm if getting a playable in other hand`, () => {
@@ -117,7 +119,7 @@ describe('tempo clue chop moves', () => {
 		// Gets p2 played, which unlocks touched g3 in Cathy's hand
 		takeTurn(game, 'Alice clues 2 to Bob');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][3].order].chop_moved, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][3]].chop_moved, false);
 	});
 
 	it(`doesn't tccm if the card was already playing`, () => {
@@ -132,7 +134,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(game, 'Bob clues purple to Cathy');
 
 		// Cathy's slot 4 should not be chop moved.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][3].order].chop_moved, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.CATHY][3]].chop_moved, false);
 	});
 
 	it(`doesn't tccm if the card was already playing asymmetrically`, () => {
@@ -165,11 +167,21 @@ describe('tempo clue chop moves', () => {
 			level: { min: 6 },
 			starting: PLAYER.BOB,
 			init: (game) => {
-				const a_slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order];
-				a_slot1.inferred = a_slot1.inferred.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
-				a_slot1.possible = a_slot1.possible.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
-				a_slot1.clues = [{ type: CLUE.COLOUR, value: COLOUR.BLUE, giver: PLAYER.BOB, turn: -1 }];
-				a_slot1.clued = true;
+				const a_slot1 = game.state.hands[PLAYER.ALICE][0];
+				const { inferred, possible } = game.common.thoughts[a_slot1];
+
+				game.state.deck = game.state.deck.with(a_slot1, produce(game.state.deck[a_slot1], (draft) => {
+					draft.clues = [{ type: CLUE.COLOUR, value: COLOUR.BLUE, giver: PLAYER.BOB, turn: -1 }];
+					draft.clued = true;
+				}));
+
+				game.common.updateThoughts(a_slot1, (draft) => {
+					draft.inferred = inferred.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
+					draft.possible = possible.intersect(['b2', 'b3', 'b4', 'b5'].map(expandShortCard));
+					draft.clues = [{ type: CLUE.COLOUR, value: COLOUR.BLUE, giver: PLAYER.BOB, turn: -1 }];
+					draft.clued = true;
+				});
+				team_elim(game);
 			}
 		});
 
@@ -177,10 +189,10 @@ describe('tempo clue chop moves', () => {
 		takeTurn(game, 'Cathy plays b1', 'g1');
 
 		// Alice's slot 5 is not TCCM'd.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order].chop_moved, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].chop_moved, false);
 	});
 
-	it(`prefers tccm to cm a useful card`, () => {
+	it(`prefers tccm to cm a useful card`, async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y4', 'r4', 'b4', 'p2', 'p1'],
@@ -193,7 +205,7 @@ describe('tempo clue chop moves', () => {
 
 		takeTurn(game, 'Cathy clues purple to Bob');
 
-		const action = take_action(game);
+		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { target: PLAYER.BOB, type: ACTION.RANK, value: 2 });
 	});
 });
@@ -211,7 +223,7 @@ describe('multiple tempo clues', () => {
 		takeTurn(game, 'Bob plays r1', 'y5');
 		takeTurn(game, 'Cathy clues red to Bob');
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][2].order], ['r3']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][2]], ['r3']);
 	});
 
 	it('understands a triple tempo clue', () => {
@@ -225,7 +237,7 @@ describe('multiple tempo clues', () => {
 		takeTurn(game, 'Bob plays r1', 'y5');
 		takeTurn(game, 'Cathy clues red to Bob');
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3].order], ['r4']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['r4']);
 	});
 
 	it('gives a triple tempo clue', () => {

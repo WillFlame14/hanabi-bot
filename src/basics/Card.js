@@ -1,10 +1,11 @@
+import { IdentitySet } from './IdentitySet.js';
+import * as Utils from '../tools/util.js';
 import { logCard } from '../tools/log.js';
 
 /**
  * @typedef {{infer?: boolean, symmetric?: boolean, assume?: boolean}} MatchOptions
  * @typedef {import('../types.js').BaseClue} BaseClue
  * @typedef {import('../types.js').Identity} Identity
- * @typedef {import('./IdentitySet.js').IdentitySet} IdentitySet
  */
 
 export class BasicCard {
@@ -17,13 +18,18 @@ export class BasicCard {
 		this.rank = rank;
 	}
 
+	/** @param {BasicCard} json */
+	static fromJSON(json) {
+		return new BasicCard(json.suitIndex, json.rank);
+	}
+
 	raw() {
 		return Object.freeze({ suitIndex: this.suitIndex, rank: this.rank });
 	}
 
 	identity() {
 		if (this.suitIndex !== -1 && this.rank !== -1)
-			return { suitIndex: this.suitIndex, rank: this.rank };
+			return new BasicCard(this.suitIndex, this.rank);
 	}
 
 	matches({ suitIndex, rank }) {
@@ -61,12 +67,17 @@ export class ActualCard extends BasicCard {
 		this.clues = clues;
 	}
 
+	/** @param {ActualCard} json */
+	static fromJSON(json) {
+		return new ActualCard(json.suitIndex, json.rank, json.order, json.drawn_index, json.clued, json.newly_clued, json.clues.slice());
+	}
+
 	clone() {
-		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues.slice());
+		return this.shallowCopy();
 	}
 
 	shallowCopy() {
-		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues);
+		return new ActualCard(this.suitIndex, this.rank, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues.slice());
 	}
 
 	/**
@@ -93,7 +104,7 @@ export class ActualCard extends BasicCard {
 /**
  * Class for a single card (i.e. a suitIndex and rank). Other attributes are optional.
  */
-export class Card extends BasicCard {
+export class Card extends ActualCard {
 	/**
 	 * All possibilities of the card (from positive/negative information).
 	 * @type {IdentitySet}
@@ -130,6 +141,12 @@ export class Card extends BasicCard {
 	 */
 	old_possible;
 
+	/**
+	 * The identities that are locked onto the card.
+	 * @type {IdentitySet | undefined}
+	 */
+	info_lock;
+
 	// Boolean flags about the state of the card
 	focused = false;
 	finessed = false;
@@ -144,6 +161,7 @@ export class Card extends BasicCard {
 	certain_finessed = false;
 	trash = false;
 	uncertain = false;
+	known = false;
 
 	finesse_index = -1;	// Action index of when the card was finessed
 	reasoning = /** @type {number[]} */ ([]);		// The action indexes of when the card's possibilities/inferences were updated
@@ -151,55 +169,90 @@ export class Card extends BasicCard {
 	rewinded = false;								// Whether the card has ever been rewinded
 
 	/**
-	 * @param {ActualCard} actualCard
-	 * @param {Identity & Partial<Card>} identity
+	 * @param {number} suitIndex	The index of the card's suit
+	 * @param {number} rank			The rank of the card
+	 * @param {IdentitySet} possible
+	 * @param {IdentitySet} inferred
+	 * @param {number} [order]		The order of the card in the deck
+	 * @param {number} [drawn_index]
+	 * @param {boolean} [clued]
+	 * @param {boolean} [newly_clued]
+	 * @param {(BaseClue & { giver: number, turn: number })[]} [clues]	List of clues that have touched this card
+	 * @param {Partial<Card>} extras
 	 */
-	constructor(actualCard, { suitIndex, rank , ...additions }) {
-		super(suitIndex, rank);
-		this.actualCard = actualCard;
-		Object.assign(this, additions);
+	constructor(suitIndex, rank, possible, inferred, order = -1, drawn_index = -1, clued = false, newly_clued = false, clues = [], extras = {}) {
+		super(suitIndex, rank, order, drawn_index, clued, newly_clued, clues);
+		this.possible = possible;
+		this.inferred = inferred;
+		this.rewind_ids = extras.rewind_ids;
+		this.finesse_ids = extras.finesse_ids;
+		this.old_inferred = extras.old_inferred;
+		this.old_possible = extras.old_possible;
+		this.focused = extras.focused ?? false;
+		this.finessed = extras.finessed ?? false;
+		this.bluffed = extras.bluffed ?? false;
+		this.possibly_bluffed = extras.possibly_bluffed ?? false;
+		this.chop_moved = extras.chop_moved ?? false;
+		this.reset = extras.reset ?? false;
+		this.chop_when_first_clued = extras.chop_when_first_clued ?? false;
+		this.superposition = extras.superposition ?? false;
+		this.hidden = extras.hidden ?? false;
+		this.called_to_discard = extras.called_to_discard ?? false;
+		this.certain_finessed = extras.certain_finessed ?? false;
+		this.trash = extras.trash ?? false;
+		this.uncertain = extras.uncertain ?? false;
+		this.known = extras.known ?? false;
+		this.info_lock = extras.info_lock ?? undefined;
+		this.finesse_index = extras.finesse_index ?? -1;
+		this.reasoning = extras.reasoning?.slice() ?? [];
+		this.reasoning_turn = extras.reasoning_turn?.slice() ?? [];
+		this.rewinded = extras.rewinded ?? false;
+	}
+
+	/** @param {Card} json */
+	static fromJSON(json) {
+		const res = new Card(json.suitIndex, json.rank, IdentitySet.fromJSON(json.possible), IdentitySet.fromJSON(json.inferred));
+
+		for (const property of Object.getOwnPropertyNames(res)) {
+			if (json[property] === undefined)
+				continue;
+
+			switch (property) {
+				case 'finesse_ids':
+				case 'old_inferred':
+				case 'old_possible':
+				case 'inferred':
+				case 'possible':
+				case 'info_lock':
+					res[property] = IdentitySet.fromJSON(json[property]);
+					break;
+
+				case 'rewind_ids':
+					res[property] = json[property].slice();
+					break;
+
+				case 'reasoning':
+				case 'reasoning_turn':
+					res[property] = json[property].slice();
+					break;
+
+				default:
+					res[property] = Utils.shallowCopy(json[property]);
+					break;
+			}
+		}
+		return res;
 	}
 
 	/**
 	 * Creates a deep copy of the card.
 	 */
 	clone() {
-		const new_card = new Card(this.actualCard.clone(), {
-			suitIndex: this.suitIndex,
-			rank: this.rank
-		});
-
-		for (const field of Object.getOwnPropertyNames(this)) {
-			if (!['actualCard', 'reasoning', 'reasoning_turn'].includes(field))
-				new_card[field] = this[field];
-		}
-
-		new_card.reasoning = this.reasoning.slice();
-		new_card.reasoning_turn = this.reasoning_turn.slice();
-
-		return new_card;
+		return this.shallowCopy();
 	}
 
 	shallowCopy() {
-		const new_card = new Card(this.actualCard, { suitIndex: this.suitIndex, rank: this.rank });
-		Object.assign(new_card, this);
-		return new_card;
-	}
-
-	get order() { return this.actualCard.order; }
-	get clued() { return this.actualCard.clued; }
-	get newly_clued() { return this.actualCard.newly_clued; }
-	get clues() { return this.actualCard.clues; }
-	get drawn_index() { return this.actualCard.drawn_index; }
-
-	set order(order) { this.actualCard.order = order; }
-	set clued(clued) { this.actualCard.clued = clued; }
-	set newly_clued(newly_clued) { this.actualCard.newly_clued = newly_clued; }
-	set clues(clues) { this.actualCard.clues = clues.slice(); }
-	set drawn_index(drawn_index) { this.actualCard.drawn_index = drawn_index; }
-
-	raw() {
-		return Object.freeze({ suitIndex: this.suitIndex, rank: this.rank });
+		return new Card(this.suitIndex, this.rank, this.possible, this.inferred, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues.slice(), this);
 	}
 
 	get possibilities() {
@@ -208,12 +261,12 @@ export class Card extends BasicCard {
 
 	/** Returns whether the card has been "touched" (i.e. clued or finessed). */
 	get touched() {
-		return this.clued || this.finessed;
+		return this.clued || this.finessed || this.known;
 	}
 
 	/** Returns whether the card has been "saved" (i.e. clued, finessed or chop moved). */
 	get saved() {
-		return this.clued || this.finessed || this.chop_moved;
+		return this.clued || this.finessed || this.chop_moved || this.known;
 	}
 
 	/**
@@ -229,7 +282,7 @@ export class Card extends BasicCard {
 			return this.possible.array[0];
 
 		else if (this.suitIndex !== -1 && this.rank !== -1 && !options.symmetric)
-			return Object.freeze(new BasicCard(this.suitIndex, this.rank));
+			return new BasicCard(this.suitIndex, this.rank);
 
 		else if (options.infer && this.inferred.length === 1)
 			return this.inferred.array[0];

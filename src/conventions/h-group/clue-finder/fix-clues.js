@@ -3,10 +3,10 @@ import { cardTouched, direct_clues, variantRegexes } from '../../../variants.js'
 import { isSaved, isTrash, knownAs, visibleFind } from '../../../basics/hanabi-util.js';
 
 import logger from '../../../tools/logger.js';
-import { logCard } from '../../../tools/log.js';
+import { logCard, logClue } from '../../../tools/log.js';
 import { get_result } from './determine-clue.js';
-import { CLUE } from '../../../constants.js';
 import { order_1s } from '../action-helper.js';
+import { unknown_1 } from '../hanabi-logic.js';
 
 /**
  * @typedef {import('../../h-group.js').default} Game
@@ -38,25 +38,27 @@ export function find_fix_clues(game, play_clues, save_clues) {
 		if (game.level < LEVEL.FIX)
 			continue;
 
-		for (const { clued, order } of state.hands[target]) {
+		for (const order of state.hands[target]) {
 			const card = me.thoughts[order];
 
-			const pink_1s = () => {
+			/** @param {number} order */
+			const pink_1s = (order) => {
 				if (!state.includesVariant(variantRegexes.pinkish))
 					return false;
 
-				const unknown_1s = state.hands[target].filter(c => c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+				const unknown_1s = state.hands[target].filter(o => unknown_1(state.deck[o]));
 				const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
 
-				return ordered_1s[0] !== undefined && state.isPlayable(ordered_1s[0]);
+				// Don't try to fix promised 1s if PPCL or this is not the 1 about to play
+				return ordered_1s[0] !== undefined && (state.isPlayable(state.deck[ordered_1s[0]]) || order !== ordered_1s[0]);
 			};
 
 			const fix_unneeded = card.possible.length === 1 ||
 				card.possible.every(p => state.isBasicTrash(p)) ||
-				(card.chop_moved && !clued) ||										// Card chop moved but not clued, don't fix
+				(card.chop_moved && !state.deck[order].clued) ||										// Card chop moved but not clued, don't fix
 				common.dependentConnections(order).some(wc => wc.symmetric)	||		// Part of a symmetric waiting connection
 				card.inferred.length === 0 ||
-				pink_1s();
+				pink_1s(order);
 
 			if (fix_unneeded)
 				continue;
@@ -66,32 +68,32 @@ export function find_fix_clues(game, play_clues, save_clues) {
 
 				// Possibility is immediately playable or 1-away and we have the connecting card
 				return away === 0 ||
-					(away === 1 && state.ourHand.some(c => me.thoughts[c.order].matches({ suitIndex: p.suitIndex, rank: p.rank - 1 }, { infer: true })));
+					(away === 1 && state.ourHand.some(o => me.thoughts[o].matches({ suitIndex: p.suitIndex, rank: p.rank - 1 }, { infer: true })));
 			});
 
 			// We don't need to fix cards where we hold one copy, since we can just sarcastic discard
-			if (state.ourHand.some(c => me.thoughts[c.order].matches(card, { infer: true })))
+			if (state.ourHand.some(o => me.thoughts[o].matches(card, { infer: true })))
 				continue;
 
 			const wrong_inference = !state.hasConsistentInferences(card) && state.playableAway(card) !== 0;
 
-			const duplicate = visibleFind(state, me, card).find(c => c.order !== order && common.thoughts[c.order].touched);
-			const unknown_duplicated = clued && card.inferred.length > 1 && duplicate !== undefined;
+			const duplicate = visibleFind(state, me, card).find(o => o !== order && common.thoughts[o].touched);
+			const unknown_duplicated = card.clued && card.inferred.length > 1 && duplicate !== undefined;
 
 			let fix_criteria;
 			if (wrong_inference) {
 				fix_criteria = inference_corrected;
-				logger.info(`card ${logCard(card)} needs fix, wrong inferences ${card.inferred.map(logCard)}`);
+				logger.highlight('yellow', `card ${logCard(card)} needs fix, wrong inferences ${card.inferred.map(logCard)} (urgent? ${seems_playable})`);
 			}
 			// We only want to give a fix clue to the player whose turn comes sooner
 			else if (unknown_duplicated && !duplicated_cards.some(c => c.matches(card))) {
 
-				const matching_connection = common.waiting_connections.find(({ connections }) => connections.some(conn => conn.card.order === duplicate.order));
+				const matching_connection = common.waiting_connections.find(({ connections }) => connections.some(conn => conn.order === duplicate));
 				let needs_fix = true;
 
 				if (matching_connection !== undefined) {
 					const { connections, conn_index } = matching_connection;
-					const connection_index = connections.findIndex(conn => conn.card.order === duplicate.order);
+					const connection_index = connections.findIndex(conn => conn.order === duplicate);
 
 					// The card is part of a finesse connection that hasn't been played yet
 					if (conn_index <= connection_index) {
@@ -103,7 +105,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 				if (needs_fix) {
 					fix_criteria = duplication_known;
 					duplicated_cards.push(card);
-					logger.info(`card ${logCard(card)} needs fix, duplicated`);
+					logger.highlight('yellow', `card ${logCard(card)} needs fix, duplicated (urgent? ${seems_playable})`);
 				}
 			}
 
@@ -120,7 +122,7 @@ export function find_fix_clues(game, play_clues, save_clues) {
 
 					const { fixed, trash, result } = check_fixed(game, target, order, clue, fix_criteria);
 
-					if (fixed)
+					if (fixed && (result.bad_touch.length === 0 || ((state.strikes === 2 || state.isCritical(card)) && seems_playable)))
 						fix_clues[target].push(Object.assign({}, clue, { trash, result, urgent: seems_playable }));
 				}
 
@@ -128,8 +130,8 @@ export function find_fix_clues(game, play_clues, save_clues) {
 				for (const clue of possible_clues) {
 					const { fixed, trash, result } = check_fixed(game, target, order, clue, fix_criteria);
 
-					if (fixed)
-						fix_clues[target].push(Object.assign(clue, { trash, result, urgent: seems_playable }));
+					if (fixed && (result.bad_touch.length === 0 || ((state.strikes === 2 || state.isCritical(card)) && seems_playable)))
+						fix_clues[target].push(Object.assign({}, clue, { trash, result, urgent: seems_playable }));
 				}
 			}
 		}
@@ -146,10 +148,9 @@ export function find_fix_clues(game, play_clues, save_clues) {
 function inference_corrected(game, order, _target) {
 	const { common, state } = game;
 	const card = common.thoughts[order];
-	const actualCard = state.hands.flat().find(c => c.order === order);
 
-	if (state.isBasicTrash(actualCard))
-		return card.possible.every(p => state.isBasicTrash(p));
+	if (state.isBasicTrash(state.deck[order]))
+		return card.possible.every(p => state.isBasicTrash(p)) || card.trash;
 
 	// Revealed to be pink
 	if (knownAs(game, order, variantRegexes.pinkish))
@@ -180,12 +181,13 @@ function duplication_known(game, order, _target) {
  */
 function check_fixed(game, target, order, clue, fix_criteria) {
 	const { state } = game;
-	const touch = state.hands[target].clueTouched(clue, state.variant);
+	const list = state.clueTouched(state.hands[target], clue);
 
-	const action = /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list: touch.map(c => c.order), clue });
+	const action = /** @type {const} */ ({ type: 'clue', giver: state.ourPlayerIndex, target, list, clue });
 
 	// Prevent outputting logs until we know that the result is correct
 	logger.collect();
+	logger.highlight('green', `------- ENTERING HYPO ${logClue(clue)} -------`);
 
 	const hypo_game = game.simulate_clue(action, { enableLogs: true });
 	const { common: hypo_common, state: hypo_state } = hypo_game;
@@ -194,8 +196,10 @@ function check_fixed(game, target, order, clue, fix_criteria) {
 	const result = {
 		fixed: fix_criteria(hypo_game, order, target),
 		trash: card_after_cluing.possible.every(p => isTrash(hypo_state, hypo_common, p, order, { infer: true })),
-		result: get_result(game, hypo_game, clue, state.ourPlayerIndex)
+		result: get_result(game, hypo_game, action)
 	};
+
+	logger.highlight('green', `------- EXITING HYPO ${logClue(clue)} -------`);
 
 	logger.flush(result.fixed);
 

@@ -1,12 +1,12 @@
 import { BasicCard, ActualCard, Card } from '../basics/Card.js';
 import { Game } from '../basics/Game.js';
-import { Hand } from '../basics/Hand.js';
 import { Player } from '../basics/Player.js';
 import { State } from '../basics/State.js';
 import { ACTION, CLUE } from '../constants.js';
 import { types } from 'node:util';
 import logger from './logger.js';
 import { IdentitySet } from '../basics/IdentitySet.js';
+import { cardTouched } from '../variants.js';
 
 /**
  * @typedef {typeof import('../constants.js').ACTION} ACTION
@@ -16,9 +16,10 @@ import { IdentitySet } from '../basics/IdentitySet.js';
  * @typedef {import('../types.js').FixClue} FixClue
  * @typedef {import('../types.js').Action} Action
  * @typedef {import('../types.js').PerformAction} PerformAction
+ * @typedef {import('../types.js').ClueResult} ClueResult
  */
 
-/** @type {Record<string, any> & {cache: Map<string, { play_clues: Clue[][], save_clues: SaveClue[], fix_clues: FixClue[][], stall_clues: Clue[][] }>}} */
+/** @type {Record<string, any> & {cache: Map<string, { hypo_game: Game, result: ClueResult }>}} */
 export const globals = { cache: new Map() };
 
 /**
@@ -102,6 +103,21 @@ export function range(start, end) {
 }
 
 /**
+ * Returns an iterator of numbers start to end, not including end.
+ * @param {number} start
+ * @param {number} end
+ * @yields {number}
+ */
+export function* rangeI(start, end) {
+	let i = start;
+
+	while (i < end) {
+		yield i;
+		i++;
+	}
+}
+
+/**
  * Deep clones an object. Does not create clones of functions.
  * @template T
  * @param {T} obj
@@ -119,7 +135,7 @@ export function objClone(obj, depth = 0) {
 	if (typeof obj !== 'object')
 		return obj;
 
-	if (obj instanceof Hand || obj instanceof Player || obj instanceof ActualCard || obj instanceof Card)
+	if (obj instanceof Player || obj instanceof ActualCard || obj instanceof Card)
 		return /** @type {T} */ (obj.clone());
 
 	if (obj instanceof BasicCard || obj instanceof IdentitySet)
@@ -150,7 +166,7 @@ export function shallowCopy (obj) {
 	if (Array.isArray(obj))
 		return /** @type {T} */ (obj.slice());
 
-	if ([ActualCard, Card, Hand, Player, State, Game].some(class_type => obj instanceof class_type))
+	if ([ActualCard, Card, Player, State, Game].some(class_type => obj instanceof class_type))
 		// @ts-ignore
 		return /** @type {T} */ (obj.shallowCopy());
 
@@ -175,6 +191,31 @@ export function objPick(obj, attributes, options = {}) {
 		new_obj[attr] = obj[attr] ?? options.default;
 
 	return new_obj;
+}
+
+/** @param {any} obj */
+export function toJSON(obj) {
+	if (obj == null || typeof obj !== 'object' || obj instanceof Map || obj instanceof Set)
+		return obj;
+
+	const res = {};
+
+	if (Array.isArray(obj))
+		return obj.map(toJSON);
+
+	for (const property of Object.getOwnPropertyNames(obj)) {
+		const val = obj[property];
+
+		if (typeof val === 'function')
+			continue;
+
+		if (Array.isArray(val))
+			res[property] = val.map(toJSON);
+		else
+			res[property] = toJSON(val);
+	}
+
+	return res;
 }
 
 /**
@@ -271,19 +312,9 @@ export function cleanAction(action) {
 }
 
 /**
- * Returns the visible hand of the owning player (since it is typically unknown).
- * @param  {State} state
- * @param  {Identity[]} deck
- */
-function get_own_hand(state, deck) {
-	const ind = state.ourPlayerIndex;
-	return new Hand(...state.hands[ind].map(c => new ActualCard(deck[c.order].suitIndex, deck[c.order].rank, c.order)));
-}
-
-/**
  * Converts a PerformAction to an Action.
  * @param  {State} state
- * @param  {PerformAction} action
+ * @param  {Omit<PerformAction, 'tableID'>} action
  * @param  {number} playerIndex
  * @param  {Identity[]} deck
  * @returns {Action}
@@ -306,15 +337,13 @@ export function performToAction(state, action, playerIndex, deck) {
 		}
 		case ACTION.RANK: {
 			const clue = { type: CLUE.RANK, value };
-			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = hand.clueTouched(clue, state.variant).map(c => c.order);
+			const list = state.hands[target].filter(o => cardTouched(deck[o], state.variant, clue)).sort();
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
 		case ACTION.COLOUR: {
 			const clue = { type: CLUE.COLOUR, value };
-			const hand = target === state.ourPlayerIndex ? get_own_hand(state, deck) : state.hands[target];
-			const list = hand.clueTouched(clue, state.variant).map(c => c.order);
+			const list = state.hands[target].filter(o => cardTouched(deck[o], state.variant, clue)).sort();
 
 			return { type: 'clue', giver: playerIndex, target, clue, list };
 		}
@@ -387,53 +416,6 @@ export function setEquals(set1, set2) {
 }
 
 /**
- * Returns the intersection of two sets.
- * @template T
- * @param {Set<T>} set1
- * @param {Set<T>} set2
- */
-export function setIntersect(set1, set2) {
-	const [smallerSet, largerSet] = set1.size < set2.size ? [set1, set2] : [set2, set1];
-
-	const result = new Set();
-
-	for (const item of smallerSet) {
-		if (largerSet.has(item))
-			result.add(item);
-	}
-}
-
-/**
- * Returns (set1 \diff set2).
- * @template T
- * @param {Set<T>} set1
- * @param {Set<T>} set2
- */
-export function setDifference(set1, set2) {
-	const result = new Set();
-
-	for (const item of set1) {
-		if (!set2.has(item))
-			result.add(item);
-	}
-}
-
-/**
- * Returns the union of two sets.
- * @template T
- * @param {Set<T>} set1
- * @param {Set<T>} set2
- */
-export function setUnion(set1, set2) {
-	const [smallerSet, largerSet] = set1.size < set2.size ? [set1, set2] : [set2, set1];
-
-	const result = new Set(largerSet);
-
-	for (const item of smallerSet)
-		result.add(item);
-}
-
-/**
  * Groups the items in the array by the function provided.
  * @template T1
  * @template {string | number} T2
@@ -494,4 +476,15 @@ export function permutations(arr) {
  */
 export function clampBetween(num, min, max) {
 	return Math.min(max, Math.max(num, min));
+}
+
+/**
+ * @param {Identity} identity
+ */
+export function assignId({ suitIndex, rank }) {
+	/** @param {import('../types.js').Writable<ActualCard>} draft */
+	return (draft) => {
+		draft.suitIndex = suitIndex;
+		draft.rank = rank;
+	};
 }

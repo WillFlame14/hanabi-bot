@@ -26,11 +26,11 @@ describe('loaded play clues', () => {
 		takeTurn(game, 'Bob clues 3 to Alice (slot 5)');
 
 		// Since Alice is loaded, this finesses slot 1.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 
 		takeTurn(game, 'Alice plays r1 (slot 2)');
 
 		// SLot 2 (used to be slot 1) should now be r2.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1].order], ['r2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r2']);
 	});
 });

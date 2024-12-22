@@ -4,7 +4,7 @@
     "checkJs": true,
     "noEmit": true,
     "target": "esnext",
-    "module": "commonjs",
+    "module": "nodenext",
     "resolveJsonModule": true,
     "strict": false
   },

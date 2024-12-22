@@ -12,7 +12,7 @@ import logger from '../../src/tools/logger.js';
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('fix clues', () => {
-	it('gives a fix clue after playing a duplicated card', () => {
+	it('gives a fix clue after playing a duplicated card', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['b1', 'p4', 'r5', 'r3', 'g3']
@@ -25,7 +25,8 @@ describe('fix clues', () => {
 		takeTurn(game, 'Bob clues 5 to Alice (slot 1)');
 
 		// Alice should give 1 or blue to Bob to fix.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.RANK, value: 1 });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, value: 1 });
 	});
 
 	it('understands a fix clue after playing a duplicated card', () => {
@@ -40,7 +41,7 @@ describe('fix clues', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slot 1)');
 
 		// Slot 1 is exactly b1.
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['b1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['b1']);
 	});
 
 	it('understands a fix clue revealing trash', () => {
@@ -57,7 +58,7 @@ describe('fix clues', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slot 3)');
 
 		// Alice's slot 1 should not be called to play.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 
 	it('understands a fix clue revealing trash touching new cards', () => {
@@ -74,7 +75,7 @@ describe('fix clues', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slots 1,3)');
 
 		// Alice's slot 1 should not be called to play.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 
 	it('understands a fix clue revealing duplicates', () => {
@@ -90,6 +91,6 @@ describe('fix clues', () => {
 		takeTurn(game, 'Bob clues 4 to Alice (slots 2,3)');
 
 		// Alice's slot 1 should not be called to play.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 });

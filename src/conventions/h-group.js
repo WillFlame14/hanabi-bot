@@ -1,18 +1,19 @@
+import { ActualCard } from '../basics/Card.js';
+import { HGroup_Player } from './h-player.js';
 import { Game } from '../basics/Game.js';
+import { State } from '../basics/State.js';
 import { interpret_clue } from './h-group/clue-interpretation/interpret-clue.js';
 import { interpret_discard } from './h-group/interpret-discard.js';
 import { interpret_play } from './h-group/interpret-play.js';
 import { take_action } from './h-group/take-action.js';
 import { update_turn } from './h-group/update-turn.js';
 
-import { HGroup_Player } from './h-player.js';
 import * as Utils from '../tools/util.js';
+import { CLUE_INTERP } from './h-group/h-constants.js';
 
 /**
- * @typedef {import('../basics/State.js').State} State
  * @typedef {import('../variants.js').Variant} Variant
  * @typedef {import('../types-live.js').TableOptions} TableOptions
- * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {typeof import('./h-group/h-constants.js').CLUE_INTERP} CLUE_INTERP
  * @typedef {typeof import('./h-group/h-constants.js').PLAY_INTERP} PLAY_INTERP
  * @typedef {typeof import('./h-group/h-constants.js').DISCARD_INTERP} DISCARD_INTERP
@@ -59,44 +60,67 @@ export default class HGroup extends Game {
 		this.moveHistory = [];
 	}
 
+	/** @param {HGroup} json */
+	static fromJSON(json) {
+		const res = new HGroup(json.tableID, State.fromJSON(json.state), json.in_progress);
+
+		for (const property of Object.getOwnPropertyNames(res)) {
+			if (typeof res[property] === 'function')
+				continue;
+
+			switch (property) {
+				case 'state':
+					continue;
+
+				case 'players':
+					res.players = json.players.map(HGroup_Player.fromJSON);
+					break;
+
+				case 'common':
+					res.common = HGroup_Player.fromJSON(json.common);
+					break;
+
+				default:
+					res[property] = Utils.objClone(json[property]);
+					break;
+			}
+		}
+
+		res.level = json.level;
+		res.moveHistory = json.moveHistory.slice();
+		res.finesses_while_finessed = json.finesses_while_finessed.map(arr => arr.map(ActualCard.fromJSON));
+		res.stalled_5 = json.stalled_5;
+		return res;
+	}
+
 	get me() {
 		return this.players[this.state.ourPlayerIndex];
 	}
 
 	get lastMove() {
-		return this.moveHistory.at(-1).move;
+		return this.moveHistory.at(-1)?.move ?? CLUE_INTERP.NONE;
 	}
 
 	createBlank() {
-		const blank = new HGroup(this.tableID, this.state.createBlank(), this.in_progress, this.level);
+		const blank = super.createBlank();
+		blank.level = this.level;
 		blank.notes = this.notes;
 		blank.rewinds = this.rewinds;
 		return blank;
 	}
 
 	shallowCopy() {
-		const newGame = new HGroup(this.tableID, this.state, this.in_progress, this.level);
-		Object.assign(newGame, this);
+		const newGame = super.shallowCopy();
+		newGame.level = this.level;
 		return newGame;
 	}
 
 	minimalCopy() {
-		const newGame = new HGroup(this.tableID, this.state.minimalCopy(), this.in_progress, this.level);
-
-		if (this.copyDepth > 100)
-			throw new Error('Maximum recursive depth reached.');
-
-		const minimalProps = ['players', 'common', 'last_actions', 'rewindDepth', 'next_ignore', 'next_finesse', 'handHistory',
-			'screamed_at', 'generated', 'dda', 'moveHistory', 'finesses_while_finessed', 'stalled_5', 'ephemeral_rewind'];
-
-		for (const property of minimalProps)
-			newGame[property] = Utils.objClone(this[property]);
-
-		for (const player of newGame.players.concat([newGame.common])) {
-			for (const c of newGame.state.hands.flat())
-				player.thoughts[c.order].actualCard = c;
-		}
-
+		const newGame = super.minimalCopy();
+		newGame.level = this.level;
+		newGame.moveHistory = Utils.objClone(this.moveHistory);
+		newGame.finesses_while_finessed = Utils.objClone(this.finesses_while_finessed);
+		newGame.stalled_5 = this.stalled_5;
 		newGame.copyDepth = this.copyDepth + 1;
 		return newGame;
 	}

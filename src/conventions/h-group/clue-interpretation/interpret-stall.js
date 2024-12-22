@@ -1,10 +1,12 @@
 import { CLUE } from '../../../constants.js';
-import { LEVEL } from '../h-constants.js';
+import { LEVEL, STALL_INDICES } from '../h-constants.js';
 import { CLUE_INTERP } from '../h-constants.js';
 import { find_clue_value } from '../action-helper.js';
 import { get_result } from '../clue-finder/determine-clue.js';
-import { determine_focus, minimum_clue_value, stall_severity } from '../hanabi-logic.js';
-import { find_clues } from '../clue-finder/clue-finder.js';
+import { colour_save, rank_save } from './focus-possible.js';
+import { minimum_clue_value, stall_severity } from '../hanabi-logic.js';
+import { find_expected_clue } from '../clue-finder/clue-finder.js';
+import * as Utils from '../../../tools/util.js';
 
 import logger from '../../../tools/logger.js';
 import { logClue } from '../../../tools/log.js';
@@ -12,8 +14,11 @@ import { logClue } from '../../../tools/log.js';
 /**
  * @typedef {import('../../h-group.js').default} Game
  * @typedef {import('../../../types.js').ClueAction} ClueAction
+ * @typedef {import('../../../types.js').BaseClue} BaseClue
  * @typedef {import('../../../types.js').Clue} Clue
+ * @typedef {import('../../../types.js').ClueResult} ClueResult
  * @typedef {import('../../../types.js').SaveClue} SaveClue
+ * @typedef {import('../../../types.js').FocusResult} FocusResult
  */
 
 const stall_to_severity = {
@@ -29,23 +34,31 @@ const stall_to_severity = {
  * Returns whether a clue could be a stall or not, given the severity level.
  * @param {Game} game
  * @param {ClueAction} action
- * @param {number} giver
+ * @param {FocusResult} focusResult
  * @param {number} severity
  * @param {Game} prev_game
  */
-function isStall(game, action, giver, severity, prev_game) {
+function isStall(game, action, focusResult, severity, prev_game) {
 	const { common, me, state } = game;
-	const { clue, list, target } = action;
-	const { focused_card, chop } = determine_focus(game, state.hands[target], common, list, clue);
-	const focus_thoughts = common.thoughts[focused_card.order];
-	const hand = state.hands[target];
+	const { clue, giver, list, target } = action;
+	const { focus, chop } = focusResult;
+	const focus_thoughts = common.thoughts[focus];
+	const focused_card = state.deck[focus];
 
 	if (severity === 0)
 		return;
 
+	// We are giving a save clue, not a stall
+	if (chop && giver === state.ourPlayerIndex && (clue.type === CLUE.COLOUR ? colour_save : rank_save)(game, state.deck[focus], action, focus))
+		return;
+
+	// Play clue, not a stall
+	if (common.thoughts[focus].inferred.every(i => state.isPlayable(i)))
+		return;
+
 	const trash = target !== state.ourPlayerIndex ?
 		state.isBasicTrash(focused_card) :
-		me.thoughts[focused_card.order].possible.every(c => state.isBasicTrash(c));
+		me.thoughts[focus].possible.every(c => state.isBasicTrash(c));
 
 	if (trash && focused_card.newly_clued)
 		return;
@@ -56,33 +69,32 @@ function isStall(game, action, giver, severity, prev_game) {
 		return CLUE_INTERP.STALL_5;
 	}
 
-	const provisions = { touch: list.map(order => hand.findOrder(order)), list };
-	const clue_result = get_result(prev_game, game, Object.assign({}, action.clue, { target }), giver, provisions);
+	const clue_result = get_result(prev_game, game, Object.assign({}, action, { clue: Object.assign({}, clue, { target }), hypothetical: true }), { list });
 	const { new_touched, playables, elim } = clue_result;
 
 	if (severity >= 2) {
+		// Tempo clue given
+		if (new_touched.length === 0 && playables.length > 0 && find_clue_value(clue_result) < minimum_clue_value(state)) {
+			logger.info('tempo clue stall! value', find_clue_value(clue_result), playables.map(p => p.card.order));
+			return CLUE_INTERP.STALL_TEMPO;
+		}
+
 		// Fill-in given
 		if (new_touched.length === 0 && elim > 0) {
 			logger.info('fill in stall!');
 			return CLUE_INTERP.STALL_FILLIN;
 		}
 
-		// Tempo clue given
-		if (playables.length > 0 && find_clue_value(clue_result) < minimum_clue_value(state)) {
-			logger.info('tempo clue stall! value', find_clue_value(clue_result), playables.map(p => p.card.order));
-			return CLUE_INTERP.STALL_TEMPO;
-		}
-
 		if (severity >= 3) {
 			// Locked hand stall given, not touching slot 1 and not locked
-			if (chop && state.hands[target].findIndex(c => c.order === focused_card.order) !== 0 && !common.thinksLocked(state, target)) {
+			if (chop && !list.includes(state.hands[target][0]) && !common.thinksLocked(state, target)) {
 				logger.info('locked hand stall!');
 				return CLUE_INTERP.STALL_LOCKED;
 			}
 
 			if (severity === 4) {
 				// 8 clue save given
-				if (state.clue_tokens === 7 && focused_card.newly_clued && !list.includes(state.hands[target][0].order)) {
+				if (state.clue_tokens === 7 && focused_card.newly_clued && !list.includes(state.hands[target][0])) {
 					logger.info('8 clue stall!');
 					return CLUE_INTERP.STALL_8CLUES;
 				}
@@ -101,81 +113,89 @@ function isStall(game, action, giver, severity, prev_game) {
 }
 
 /**
- * @param {Game} _game
- * @param {Clue} clue
- * @param {typeof CLUE_INTERP[keyof typeof CLUE_INTERP]} interp
+ * @param {Game} game
+ * @param {Game} prev_game
+ * @param {number} giver
+ * @param {number} max_stall
+ * @param {Clue} original_clue
  */
-function expected_clue(_game, clue, interp) {
-	switch(interp) {
-		case CLUE_INTERP.PLAY:
-			return clue.result.playables.some(({ card }) => card.newly_clued) && clue.result.bad_touch === 0;
+function other_expected_clue(game, prev_game, giver, max_stall, original_clue) {
+	const { state } = prev_game;
+	const thinks_stall = new Set(Utils.range(0, state.numPlayers));
 
-		case CLUE_INTERP.SAVE: {
-			const save_clue = /** @type {SaveClue} */(clue);
-			return save_clue.cm === undefined || save_clue.cm.length === 0;
+	/**
+	 * @param {Game} _game
+	 * @param {Clue} _clue
+	 * @param {{interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]}} res
+	 */
+	const satisfied = (_game, _clue, { interp }) => {
+		switch (interp) {
+			case CLUE_INTERP.CM_TEMPO:
+			case CLUE_INTERP.STALL_TEMPO:
+			case CLUE_INTERP.STALL_FILLIN:
+			case CLUE_INTERP.STALL_LOCKED:
+			case CLUE_INTERP.STALL_8CLUES:
+			case CLUE_INTERP.STALL_BURN:
+				return STALL_INDICES[interp] < max_stall;
+
+			default:
+				return false;
 		}
+	};
 
-		default:
-			return false;
+	/** @param {Clue} clue */
+	const excludeClue = (clue) =>
+		thinks_stall.size === 0 || (clue.target === original_clue.target && clue.type === original_clue.type && clue.value === original_clue.value);
+
+	for (const { clue, res } of find_expected_clue(prev_game, giver, satisfied, excludeClue)) {
+		logger.highlight('yellow', `expected ${logClue(clue)}, not interpreting stall`);
+
+		const new_wcs = res.hypo_game.common.waiting_connections.filter(wc => wc.turn === state.turn_count && wc.connections.every(conn =>
+			conn.identities.some(i => game.common.thoughts[conn.order].possible.has(i))));	// Only count valid wcs based on the new info we have
+
+		// Everyone not the target (or with an unknown connection) can see this clue
+		for (let i = 0; i < state.numPlayers; i++) {
+			if (i === clue.target || new_wcs.some(wc => wc.connections.some(conn => conn.type !== 'known' && state.hands[i].includes(conn.order))))
+				continue;
+
+			thinks_stall.delete(i);
+		}
 	}
+	return thinks_stall;
 }
 
 /**
  * Returns whether the clue was given in a valid stalling situation.
  * @param {Game} game
  * @param {ClueAction} action
+ * @param {FocusResult} focusResult
  * @param {Game} prev_game
  */
-export function stalling_situation(game, action, prev_game) {
-	const { common, state, me } = game;
-	const { clue, giver, list, target, noRecurse } = action;
+export function stalling_situation(game, action, focusResult, prev_game) {
+	const { common, state } = game;
+	const { giver, clue, target, noRecurse } = action;
 
-	const { focused_card } = determine_focus(game, state.hands[target], common, list, clue);
 	const severity = stall_severity(prev_game.state, prev_game.common, giver);
 
 	logger.info('severity', severity);
 
-	const stall = isStall(game, action, giver, severity, prev_game);
+	const stall = isStall(game, action, focusResult, severity, prev_game);
 
-	if (stall === undefined)
-		return;
+	if (stall === undefined || common.thinksLoaded(state, giver, { assume: false }))
+		return { stall, thinks_stall: new Set() };
 
 	if (noRecurse)
-		return stall;
+		return { stall, thinks_stall: new Set(Utils.range(0, state.numPlayers)) };
 
-	const options = { giver, hypothetical: true, no_fix: true, noRecurse: true, early_exits: expected_clue };
-
-	logger.collect();
-	const { play_clues, save_clues, stall_clues } = find_clues(prev_game, options);
-	logger.flush(false);
-
-	const expected_play = () => play_clues.flat().find(cl =>
-		cl.result.playables.some(({ card }) => card.newly_clued) && cl.result.bad_touch === 0 && focused_card.order !== cl.result.focus);
-
-	const expected_save = () => save_clues.find((cl, target) => {
-		if (cl === undefined || cl.cm?.length > 0 || focused_card.order === cl.result.focus)
-			return false;
-
-		const chop = common.chop(state.hands[target]);
-
-		// Not a 2 save that could be duplicated in our hand
-		return !(cl.type === CLUE.RANK && cl.value === 2 && state.ourHand.some(c => me.thoughts[c.order].possible.has(chop)));
-	});
-
-	const expected_stall = () => stall_clues.slice(0, stall_to_severity[stall]).find(clues => clues.some(cl => focused_card.order !== cl.result.focus))?.[0];
-
-	const expected = expected_play() ?? expected_save() ?? expected_stall();
-
-	if (expected !== undefined) {
-		logger.highlight('yellow', `expected ${logClue(expected)}, not interpreting stall`);
-		return;
-	}
+	const thinks_stall = other_expected_clue(game, prev_game, giver, stall_to_severity[stall], { ...clue, target });
 
 	// Only early game 5 stall exists before level 9
 	if (game.level < LEVEL.STALLING && severity !== 1)
 		logger.warn('stall found before level 9');
-	else
+	else if (thinks_stall.size === state.numPlayers)
 		logger.highlight('yellow', 'valid stall!');
+	else
+		logger.highlight('yellow', `looks stall to ${Array.from(thinks_stall).map(i => state.playerNames[i]).join()}`);
 
-	return stall;
+	return { stall, thinks_stall };
 }

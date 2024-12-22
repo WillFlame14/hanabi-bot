@@ -6,7 +6,6 @@ import { globals } from './util.js';
 /**
  * @typedef {import('../basics/Game.js').Game} Game
  * @typedef {import('../basics/State.js').State} State
- * @typedef {import('../basics/Hand.js').Hand} Hand
  * @typedef {import('../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../basics/Player.js').Player} Player
  * @typedef {import('../types.js').Clue} Clue
@@ -19,9 +18,12 @@ import { globals } from './util.js';
 
 /**
  * Returns a log-friendly representation of a card.
- * @param {{suitIndex: number, rank: number} | ActualCard | Card} card
+ * @param {{suitIndex: number, rank: number} | ActualCard | Card | undefined} card
  */
 export function logCard(card) {
+	if (card === undefined)
+		return undefined;
+
 	let suitIndex, rank, append;
 
 	if (card.suitIndex !== -1) {
@@ -43,19 +45,19 @@ export function logCard(card) {
 
 /**
  * Returns a log-friendly representation of a hand.
- * @param {{ order: number }[]} hand
+ * @param {number[]} hand
  * @param {Player} [player]
  */
 export function logHand(hand, player = globals.game.common) {
 	const new_hand = [];
 
-	for (const { order } of hand) {
+	for (const order of hand) {
 		const card = player.thoughts[order];
 		const new_card = {};
 		new_card.visible = (card.suitIndex === -1 ? 'unknown' : logCard(card));
-		new_card.order = card.order;
+		new_card.order = order;
 
-		new_card.flags = ['clued', 'newly_clued', 'prompted', 'finessed', 'bluffed', 'certain_finessed', 'chop_moved', 'rewinded', 'hidden', 'trash', 'called_to_discard'].filter(flag => card[flag]);
+		new_card.flags = ['clued', 'newly_clued', 'focused', 'finessed', 'bluffed', 'certain_finessed', 'chop_moved', 'rewinded', 'hidden', 'trash', 'called_to_discard', 'info_lock'].filter(flag => card[flag]);
 
 		new_card.possible = card.possible.map(logCard).join();
 		new_card.inferred = card.inferred.map(logCard).join();
@@ -95,14 +97,14 @@ export function logPerformAction(action) {
 
 	switch(type) {
 		case ACTION.PLAY: {
-			const slot = state.ourHand.findIndex(card => card.order === target) + 1;
-			const card = common.thoughts[state.ourHand[slot - 1].order];
+			const slot = state.ourHand.findIndex(o => o === target) + 1;
+			const card = common.thoughts[state.ourHand[slot - 1]];
 
 			return `Play slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}
 		case ACTION.DISCARD: {
-			const slot = state.ourHand.findIndex(card => card.order === target) + 1;
-			const card = common.thoughts[state.ourHand[slot - 1].order];
+			const slot = state.ourHand.findIndex(o => o === target) + 1;
+			const card = common.thoughts[state.ourHand[slot - 1]];
 
 			return `Discard slot ${slot}, inferences [${card.inferred.map(logCard)}]`;
 		}
@@ -179,7 +181,7 @@ export function logAction(action) {
 			return `${state.playerNames[playerIndex]} draws ${logCard({ suitIndex, rank })}`;
 		}
 		case 'gameOver': {
-			const { endCondition, playerIndex } = action;
+			const { endCondition, playerIndex, votes } = action;
 
 			switch(endCondition) {
 				case END_CONDITION.NORMAL:
@@ -188,6 +190,8 @@ export function logAction(action) {
 					return `Players lose!`;
 				case END_CONDITION.TERMINATED:
 					return `${state.playerNames[playerIndex]} terminated the game!`;
+				case END_CONDITION.TERMINATED_BY_VOTE:
+					return `${votes.map(v => state.playerNames[v]).join(', ')} voted to terminate the game!`;
 				case END_CONDITION.IDLE_TIMEOUT:
 					return 'Players were idle for too long.';
 				default:
@@ -213,11 +217,11 @@ export function logAction(action) {
  * @param {Connection} connection
  */
 export function logConnection(connection) {
-	const { type, reacting, identities, card } = connection;
+	const { type, reacting, identities, order } = connection;
 	const identity = identities.length === 1 ? logCard(identities[0]) : `[${identities.map(logCard)}]`;
 	const logType = type === 'finesse' ? (connection.bluff ? 'bluff' : 'finesse') : type;
 
-	return `${card.order} ${identity} ${logType} (${globals.game.state.playerNames[reacting]})${connection.certain ? ' (certain)' : connection.hidden ? ' (hidden)' : ''}`;
+	return `${order} ${identity} ${logType} (${globals.game.state.playerNames[reacting]})${connection.certain ? ' (certain)' : connection.hidden ? ' (hidden)' : ''}`;
 }
 
 /**
@@ -236,10 +240,10 @@ export function logConnections(connections, nextIdentity) {
  */
 export function logLinks(links) {
 	return links.map(link => {
-		const { cards, identities, promised } = link;
+		const { orders, identities, promised } = link;
 
 		return {
-			cards: cards.map(c => c.order),
+			orders,
 			identities: identities.map(logCard),
 			promised
 		};

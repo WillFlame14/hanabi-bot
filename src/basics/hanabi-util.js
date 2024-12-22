@@ -3,7 +3,6 @@ import { cardCount } from '../variants.js';
 /**
  * @typedef {import('./Game.js').Game} Game
  * @typedef {import('./State.js').State} State
- * @typedef {import('./Hand.js').Hand} Hand
  * @typedef {import('./Player.js').Player} Player
  * @typedef {import('./Card.js').ActualCard} ActualCard
  * @typedef {import('../types.js').BaseClue} BaseClue
@@ -23,21 +22,19 @@ import { cardCount } from '../variants.js';
  * @param {Player} player     The inferring player.
  * @param {Identity} identity
  * @param {MatchOptions & {ignore?: number[]}} [options]
- * @returns {ActualCard[]}
+ * @returns {number[]}
  */
 export function visibleFind(state, player, identity, options = {}) {
 	if (player.playerIndex === state.ourPlayerIndex)
-		options.infer = options.infer ?? true;
+		options.infer ??= true;
 
-	return Array.from(state.hands.flatMap((hand, index) => {
+	return state.hands.flatMap((hand, index) => {
 		if (options.ignore?.includes(index))
 			return [];
 
 		const symmetric = options.symmetric ?? index === player.playerIndex;
-
-		return hand.filter(c =>
-			player.thoughts[c.order].matches(identity, Object.assign({}, options, { symmetric } )));
-	}));
+		return hand.filter(o => player.thoughts[o].matches(identity, Object.assign({}, options, { symmetric } )));
+	});
 }
 
 /**
@@ -47,7 +44,7 @@ export function visibleFind(state, player, identity, options = {}) {
  * @param {Identity} identity
  */
 export function unknownIdentities(state, player, identity) {
-	const visibleCount = state.hands.flat().filter(c => player.thoughts[c.order].matches(identity)).length;
+	const visibleCount = state.hands.flat().filter(o => player.thoughts[o].matches(identity)).length;
 	return cardCount(state.variant, identity) - state.baseCount(identity) - visibleCount;
 }
 
@@ -61,12 +58,12 @@ export function unknownIdentities(state, player, identity) {
  * @param {MatchOptions & {ignoreCM?: boolean}} [options]
  */
 export function isSaved(state, player, identity, order = -1, options = {}) {
-	return state.hands.flat().some(c => {
-		const card = player.thoughts[c.order];
+	return state.hands.flat().some(o => {
+		const card = player.thoughts[o];
 
-		return card.matches(identity, options) && c.order !== order &&
+		return card.matches(identity, options) && o !== order &&
 			!player.links.some(link => link.identities.some(i =>		// This card is linked for the identity
-				i.suitIndex === identity.suitIndex && i.rank === identity.rank && link.cards.some(lc => lc.order === order))) &&
+				i.suitIndex === identity.suitIndex && i.rank === identity.rank && link.orders.includes(order))) &&
 			(card.touched || (options.ignoreCM ? false : card.chop_moved));
 	});
 }
@@ -117,7 +114,7 @@ export function cardValue(state, player, identity, order = -1) {
 	}
 
 	// Basic trash, saved already, duplicate visible
-	if (isTrash(state, player, identity, order) || visibleFind(state, player, identity).length > 1)
+	if (isTrash(state, player, identity, order, { infer: true }) || visibleFind(state, player, identity, { infer: true }).length > 1)
 		return 0;
 
 	if (state.isCritical(identity))
@@ -132,7 +129,7 @@ export function cardValue(state, player, identity, order = -1) {
 
 /**
  * Finds the index to the right referred to by the given index.
- * @param  {Hand} hand
+ * @param  {ActualCard[]} hand
  * @param  {number} index
  */
 export function refer_right(hand, index) {

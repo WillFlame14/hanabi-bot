@@ -11,11 +11,12 @@ import { team_elim } from '../../src/basics/helper.js';
 
 import logger from '../../src/tools/logger.js';
 import { logPerformAction } from '../../src/tools/log.js';
+import { produce } from '../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
 describe('giving clues while locked', () => {
-	it('gives colour clues to playable slot 1', () => {
+	it('gives colour clues to playable slot 1', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p1', 'b4', 'r5', 'r3', 'r3']
@@ -25,14 +26,15 @@ describe('giving clues while locked', () => {
 		takeTurn(game, 'Bob clues red to Alice (slot 5)');
 
 		// Alice should clue purple to Bob to tell him about p1.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.COLOUR, value: COLOUR.PURPLE, target: PLAYER.BOB });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.COLOUR, value: COLOUR.PURPLE, target: PLAYER.BOB });
 
 		takeTurn(game, 'Alice clues purple to Bob');
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order], ['p1']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0]], ['p1']);
 	});
 
-	it('gives referential discards', () => {
+	it('gives referential discards', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p5', 'b4', 'r5', 'r3', 'r1']
@@ -42,11 +44,12 @@ describe('giving clues while locked', () => {
 		takeTurn(game, 'Bob clues red to Alice (slot 5)');
 
 		// Alice should clue 5 to prevent Bob from discarding slot 1.
-		ExAsserts.objHasProperties(take_action(game), { type: ACTION.RANK, value: 5, target: PLAYER.BOB });
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.RANK, value: 5, target: PLAYER.BOB });
 
 		takeTurn(game, 'Alice clues 5 to Bob');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1].order].called_to_discard, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1]].called_to_discard, true);
 	});
 
 	it('understands colour stalls', () => {
@@ -62,10 +65,10 @@ describe('giving clues while locked', () => {
 		takeTurn(game, 'Alice clues red to Bob');
 
 		// Bob should not be called to play slot 5.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4].order].finessed, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][4]].finessed, false);
 
 		// Slot 1 should have permission to discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].called_to_discard, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].called_to_discard, true);
 	});
 
 	it('doesn\'t take locked hand ptd on a known playable', () => {
@@ -79,7 +82,7 @@ describe('giving clues while locked', () => {
 		takeTurn(game, 'Alice clues blue to Bob');
 
 		// Bob's slot 1 should not have permission to discard.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].called_to_discard, false);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].called_to_discard, false);
 	});
 });
 
@@ -95,7 +98,7 @@ describe('unlock promise', () => {
 		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r1', 'p1');
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order], ['r2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]], ['r2']);
 	});
 
 	it('unlocks from an unknown card', () => {
@@ -109,7 +112,7 @@ describe('unlock promise', () => {
 		takeTurn(game, 'Alice clues red to Bob');
 		takeTurn(game, 'Bob plays r1', 'p1');
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r2']);
 	});
 
 	it('unlocks from a shifted directly connecting card', () => {
@@ -129,7 +132,7 @@ describe('unlock promise', () => {
 		takeTurn(game, 'Alice clues blue to Bob');
 		takeTurn(game, 'Bob plays r1', 'p1');			// Bob plays r1 after shifting once
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order], ['r2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r2']);
 	});
 
 	it('unlocks from a new directly connecting card after a shift', () => {
@@ -149,7 +152,7 @@ describe('unlock promise', () => {
 		takeTurn(game, 'Alice clues blue to Bob');
 		takeTurn(game, 'Bob plays b1', 'p1');			// Bob plays b1 (after shifting once for r1)
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][4].order], ['b2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]], ['b2']);
 	});
 
 	it('unlocks from a shift past all directly connecting cards', () => {
@@ -171,10 +174,10 @@ describe('unlock promise', () => {
 		takeTurn(game, 'Alice clues blue to Bob');
 		takeTurn(game, 'Bob plays r1', 'p1');			// Bob plays r1 after shifting once
 
-		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0].order], ['r2']);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r2']);
 	});
 
-	it('prefers unlocking over discarding trash', () => {
+	it('prefers unlocking over discarding trash', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g5', 'p2', 'r2', 'g4', 'r5']
@@ -188,14 +191,14 @@ describe('unlock promise', () => {
 		takeTurn(game, 'Alice clues red to Bob');				// Bob's hand is [xx, xx, 2, [r2], [r]5]
 		takeTurn(game, 'Bob clues red to Alice (slots 3,4)');	// Alice's hand is [xx, xx, r1, r1, xx]
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should play r1 instead of discarding.
 		assert.equal(action.type, ACTION.PLAY, `Actual action was (${logPerformAction(action)})`);
-		assert.ok([2,3].map(index => game.state.hands[PLAYER.ALICE][index].order).includes(action.target));
+		assert.ok([2,3].map(index => game.state.hands[PLAYER.ALICE][index]).includes(action.target));
 	});
 
-	it('plays the closest card when none will unlock', () => {
+	it('plays the closest card when none will unlock', async () => {
 		const game = setup(PlayfulSieve, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['g5', 'y5', 'r3', 'p3', 'p5']
@@ -205,13 +208,23 @@ describe('unlock promise', () => {
 			discarded: ['r3']
 		});
 
-		for (const card of game.state.hands[PLAYER.BOB]) {
-			card.clued = true;
-			card.clues.push({ type: CLUE.RANK, value: card.rank, giver: PLAYER.ALICE, turn: -1 });
-			for (const poss of /** @type {const} */ (['inferred', 'possible'])) {
-				const c = game.common.thoughts[card.order];
-				c[poss] = c[poss].intersect(game.state.variant.suits.map((_, suitIndex) => ({ suitIndex, rank: card.rank })));
-			}
+		for (const order of game.state.hands[PLAYER.BOB]) {
+			const card = game.state.deck[order];
+			const clue = { type: CLUE.RANK, value: card.rank, giver: PLAYER.ALICE, turn: -1 };
+
+			game.state.deck = game.state.deck.with(order, produce(card, (draft) => {
+				draft.clued = true;
+				draft.clues.push(clue);
+			}));
+
+			const { possible, inferred } = game.common.thoughts[order];
+			const ids = game.state.variant.suits.map((_, suitIndex) => ({ suitIndex, rank: card.rank }));
+			game.common.updateThoughts(order, (draft) => {
+				draft.clued = true;
+				draft.clues.push(clue);
+				draft.possible = possible.intersect(ids);
+				draft.inferred = inferred.intersect(ids);
+			});
 		}
 
 		team_elim(game);
@@ -222,9 +235,9 @@ describe('unlock promise', () => {
 		takeTurn(game, 'Alice discards b4 (slot 1)');
 		takeTurn(game, 'Bob clues purple to Alice (slots 1,2)');	// Alice's hand is [p1, p, y2, 2, y]
 
-		const action = take_action(game);
+		const action = await take_action(game);
 
 		// Alice should play p1 instead of y2.
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0].order });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 });

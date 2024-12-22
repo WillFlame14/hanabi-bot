@@ -1,7 +1,10 @@
+import { CLUE } from '../constants.js';
+import { variantRegexes } from '../variants.js';
 import { visibleFind } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
+import { applyPatches } from '../StateProxy.js';
 
 /**
  * @typedef {import('./Game.js').Game} Game
@@ -21,34 +24,27 @@ import { logCard } from '../tools/log.js';
  * @param {Game} game
  */
 export function team_elim(game) {
-	const { state } = game;
+	const { common, state } = game;
 
 	for (const player of game.players) {
-		for (let i = 0; i < game.common.thoughts.length; i++) {
-			const card = player.thoughts[i];
-			const ccard = game.common.thoughts[i];
+		for (const [order, patches] of common.patches) {
+			const { possible, inferred } = common.thoughts[order];
+			const { possible: player_possible } = player.thoughts[order];
 
-			card.possible = ccard.possible.intersect(card.possible);
-			card.inferred = ccard.inferred.intersect(card.possible);
-
-			// Reset to GTP if common interpretation doesn't make sense
-			if (card.inferred.length === 0 && !card.chop_moved)
-				card.inferred = card.possible;
-
-			for (const property of Object.getOwnPropertyNames(ccard)) {
-				if (!['suitIndex', 'rank', 'possible', 'inferred', 'reasoning', 'reasoning_turn'].includes(property))
-					card[property] = ccard[property];
-			}
-
-			card.reasoning = ccard.reasoning.slice();
-			card.reasoning_turn = ccard.reasoning_turn.slice();
+			player.updateThoughts(order, (draft) => {
+				applyPatches(draft, patches.filter(p => p.path[0] !== 'possible' && p.path[0] !== 'inferred'));
+				draft.possible = possible.intersect(player_possible);
+				draft.inferred = inferred.intersect(player_possible);
+			}, false);
 		}
 
-		player.waiting_connections = game.common.waiting_connections.slice();
+		player.waiting_connections = common.waiting_connections.slice();
 		player.good_touch_elim(state, state.numPlayers === 2);
 		player.refresh_links(state);
 		player.update_hypo_stacks(state);
 	}
+
+	common.patches = new Map();
 }
 
 /**
@@ -57,14 +53,19 @@ export function team_elim(game) {
  * @param {ClueAction} clueAction
  */
 export function checkFix(game, oldThoughts, clueAction) {
-	const { giver, list, target } = clueAction;
+	const { clue, giver, list, target } = clueAction;
 	const { common, state } = game;
 
 	/** @type {Set<number>} */
 	const clue_resets = new Set();
-	for (const { order } of state.hands[target]) {
-		if (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) {
-			common.reset_card(order);
+	for (const order of state.hands[target]) {
+		const clued_reset = (oldThoughts[order].inferred.length > 0 && common.thoughts[order].inferred.length === 0) ||
+			(list.includes(order) && state.includesVariant(variantRegexes.pinkish) &&
+				!oldThoughts[order].focused &&		// Do not allow pink fix on focused cards
+				oldThoughts[order].inferred.every(i => i.rank === 1) && clue.type === CLUE.RANK && clue.value !== 1);
+
+		if (clued_reset) {
+			common.thoughts = common.thoughts.with(order, common.reset_card(order));
 			clue_resets.add(order);
 		}
 	}
@@ -77,14 +78,18 @@ export function checkFix(game, oldThoughts, clueAction) {
 
 	if (all_resets.size > 0) {
 		const reset_order = Array.from(all_resets).find(order =>
+			!common.thoughts[order].rewinded &&
 			common.thoughts[order].possible.length === 1 && common.dependentConnections(order).length > 0);
 
 		// There is a waiting connection that depends on this card
 		if (reset_order !== undefined) {
 			const reset_card = common.thoughts[reset_order];
-			const new_game = game.rewind(reset_card.drawn_index, [{ type: 'identify', order: reset_card.order, playerIndex: target, identities: [reset_card.possible.array[0].raw()] }]);
-			Object.assign(game, new_game);
-			return { rewinded: true };
+			const new_game = game.rewind(reset_card.drawn_index, [{ type: 'identify', order: reset_order, playerIndex: target, identities: [reset_card.possible.array[0].raw()] }]);
+			if (new_game !== undefined) {
+				new_game.updateNotes();
+				Object.assign(game, new_game);
+				return { rewinded: true };
+			}
 		}
 
 		// TODO: Support undoing recursive eliminations by keeping track of which elims triggered which other elims
@@ -113,12 +118,12 @@ export function checkFix(game, oldThoughts, clueAction) {
 	}
 
 	// Any clued cards that lost all inferences
-	const clued_reset = list.find(order => all_resets.has(order) && !state.hands[target].findOrder(order).newly_clued);
+	const clued_reset = list.find(order => all_resets.has(order) && !state.deck[order].newly_clued);
 
 	if (clued_reset)
 		logger.info('clued card', clued_reset, 'was newly reset!');
 
-	const duplicate_reveal = state.hands[target].find(({ order }) => {
+	const duplicate_reveal = state.hands[target].find(order => {
 		const card = common.thoughts[order];
 
 		if (!list.includes(order) || game.common.thoughts[order].identity() === undefined)
@@ -126,10 +131,10 @@ export function checkFix(game, oldThoughts, clueAction) {
 
 		// The fix can be in anyone's hand except the giver's
 		const copy = visibleFind(state, common, card.identity(), { ignore: [giver], infer: true })
-			.find(c => common.thoughts[c.order].touched && c.order !== order);// && !c.newly_clued);
+			.find(o => common.thoughts[o].touched && o !== order);// && !c.newly_clued);
 
 		if (copy)
-			logger.info('duplicate', logCard(card.identity()), 'revealed! copy of order', copy.order, card.possible.map(logCard));
+			logger.info('duplicate', logCard(card.identity()), 'revealed! copy of order', copy, card.possible.map(logCard));
 
 		return copy !== undefined;
 	});
@@ -152,8 +157,8 @@ export function undo_hypo_stacks(game, { suitIndex, rank }) {
  * @param {Game} game
  */
 export function reset_superpositions(game) {
-	for (const { order } of game.state.hands.flat())
-		game.common.thoughts[order].superposition = false;
+	for (const order of game.state.hands.flat())
+		game.common.updateThoughts(order, (draft) => { draft.superposition = false; });
 }
 
 /**
@@ -172,7 +177,7 @@ export function connectable_simple(game, start, target, identity) {
 
 	const playables = game.players[start].thinksPlayables(game.state, start, { assume: false });
 
-	for (const { order } of playables) {
+	for (const order of playables) {
 		const id = game.players[start].thoughts[order].identity({ infer: true });
 
 		if (id === undefined)

@@ -1,11 +1,10 @@
 import { CLUE } from '../../constants.js';
-import { cardCount, colourableSuits, variantRegexes } from '../../variants.js';
-import { Hand } from '../../basics/Hand.js';
+import { cardCount, variantRegexes } from '../../variants.js';
 import { knownAs, visibleFind } from '../../basics/hanabi-util.js';
+import { order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
 
-import { logHand } from '../../tools/log.js';
-import { order_1s } from './action-helper.js';
+import { logClue } from '../../tools/log.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -15,8 +14,10 @@ import { order_1s } from './action-helper.js';
  * @typedef {import('../../basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../../types.js').BaseClue} BaseClue
  * @typedef {import('../../types.js').Clue} Clue
+ * @typedef {import('../../types.js').ClueAction} ClueAction
  * @typedef {import('../../types.js').Connection} Connection
  * @typedef {import('../../types.js').Identity} Identity
+ * @typedef {import('../../types.js').FocusResult} FocusResult
  */
 
 /**
@@ -25,48 +26,55 @@ import { order_1s } from './action-helper.js';
  * The 'beforeClue' option is needed if this is called before the clue has been interpreted
  * to prevent focusing a previously clued card.
  * @param {Game} game
- * @param {Hand} hand
+ * @param {number[]} hand
  * @param {Player} player
  * @param {number[]} list 	The orders of all cards that were just clued.
  * @param {BaseClue} clue
- * @param {{beforeClue?: boolean}} options
+ * @returns {FocusResult}
  */
-export function determine_focus(game, hand, player, list, clue, options = {}) {
+export function determine_focus(game, hand, player, list, clue) {
 	const { common, state } = game;
 	const chop = player.chop(hand);
-	const touch = hand.filter(c => list.includes(c.order));
 
 	// Chop card exists, check for chop focus
-	if (chop && list.includes(chop.order))
-		return { focused_card: chop, chop: true, positional: false };
+	if (chop !== undefined && list.includes(chop))
+		return { focus: chop, chop: true, positional: false };
 
 	const pink_choice_tempo = clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) &&
-		touch.every(c => c.clues.some(cl =>
-			(cl.type === CLUE.RANK ? cl.value !== clue.value : colourableSuits(state.variant)[cl.value]?.match(variantRegexes.pinkish)))) &&
-		clue.value <= hand.length && list.includes(hand[clue.value - 1].order);
+		list.every(o => state.deck[o].clued) &&
+		clue.value <= hand.length &&
+		list.includes(hand[clue.value - 1]) &&
+		common.thoughts[hand[clue.value - 1]].possible.some(p => state.variant.suits[p.suitIndex].match(variantRegexes.pinkish));
 
 	if (pink_choice_tempo)
-		return { focused_card: hand[clue.value - 1], chop: false, positional: true };
+		return { focus: hand[clue.value - 1], chop: false, positional: true };
+
+	const brown_tempo = clue.type === CLUE.COLOUR && state.variant.suits[clue.value] === 'Brown' &&
+		list.every(o => state.deck[o].clued);
+
+	if (brown_tempo)
+		return { focus: hand.findLast(o => list.includes(o)), chop: false, positional: true };
 
 	if (clue.type === CLUE.RANK && clue.value === 1) {
-		const unknown_1s = touch.filter(c => c.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1));
+		const unknown_1s = list.filter(o => unknown_1(state.deck[o], true));
 		const ordered_1s = order_1s(state, common, unknown_1s, { no_filter: true });
 
 		if (ordered_1s.length > 0)
-			return { focused_card: ordered_1s[0], chop: false, positional: false };
+			return { focus: ordered_1s[0], chop: false, positional: false };
 	}
 
-	const focused_card =
-		touch.find(c => (options.beforeClue ? !c.clued : c.newly_clued)) ??		// leftmost newly clued
-		touch.find(c => player.thoughts[c.order].chop_moved) ??					// leftmost chop moved
-		touch[0];																// leftmost reclued
+	const sorted_list = list.toSorted((a, b) => b - a);
+	const focus =
+		sorted_list.find(o => !player.thoughts[o].known && !state.deck[o].clued) ??	// leftmost newly clued
+		sorted_list.find(o => player.thoughts[o].chop_moved) ??					// leftmost chop moved
+		sorted_list[0];															// leftmost reclued
 
-	if (focused_card === undefined) {
-		console.log('list', list, 'hand', logHand(hand));
+	if (focus === undefined) {
+		console.log('list', list, 'hand', hand.map(o => state.deck[o]), logClue(/** @type {Clue} */ (clue)));
 		throw new Error('No focus found!');
 	}
 
-	return { focused_card, chop: false, positional: false };
+	return { focus, chop: false, positional: false };
 }
 
 /**
@@ -83,7 +91,7 @@ export function stall_severity(state, player, giver) {
 		return 3;
 
 	const chop = player.chop(state.hands[giver]);
-	if (state.screamed_at || (state.dda !== undefined && !player.thinksLoaded(state, giver, { assume: false }) && chop !== undefined && player.thoughts[chop.order].possible.has(state.dda)))
+	if (state.screamed_at || (state.dda !== undefined && !player.thinksLoaded(state, giver, { assume: false }) && chop !== undefined && player.thoughts[chop].possible.has(state.dda)))
 		return 2;
 
 	if (state.early_game)
@@ -117,11 +125,11 @@ export function rankLooksPlayable(game, rank, giver, target, order) {
 	// Update the hypo stacks to everything the giver thinks the target knows
 	for (const order of common.unknown_plays) {
 		// Target can't resolve unknown plays in their own hand
-		if (state.hands[target].findOrder(order))
+		if (state.hands[target].includes(order))
 			continue;
 
 		// Giver can't use private info in their hand
-		if (state.hands[giver].findOrder(order) && common.thoughts[order].identity({ infer: true }) === undefined)
+		if (state.hands[giver].includes(order) && common.thoughts[order].identity({ infer: true }) === undefined)
 			continue;
 
 		const card = game.players[giver].thoughts[order];
@@ -136,7 +144,7 @@ export function rankLooksPlayable(game, rank, giver, target, order) {
 
 		const playable_identity = stack + 1 === rank;
 		const other_visibles = state.baseCount(identity) +
-			visibleFind(state, common, identity).filter(c => c.order !== order).length;
+			visibleFind(state, common, identity).filter(o => o !== order).length;
 		const matching_inference = game.players[target].thoughts[order].inferred.has(identity);
 
 		return playable_identity && other_visibles < cardCount(state.variant, identity) && matching_inference;
@@ -147,24 +155,24 @@ export function rankLooksPlayable(game, rank, giver, target, order) {
  * @param {Game} game
  * @param {Clue} clue
  * @param {{playerIndex: number, card: Card}[]} playables
- * @param {ActualCard} focused_card
+ * @param {number} focus
  * 
  * Returns whether a clue is a tempo clue, and if so, whether it's valuable.
  */
-export function valuable_tempo_clue(game, clue, playables, focused_card) {
+export function valuable_tempo_clue(game, clue, playables, focus) {
 	const { state, common } = game;
 	const { target } = clue;
 
-	const touch = state.hands[target].clueTouched(clue, state.variant);
+	const list = state.clueTouched(state.hands[target], clue);
 
-	if (touch.some(card => !card.clued))
+	if (list.some(o => !state.deck[o].clued))
 		return { tempo: false, valuable: false };
 
 	// Brown/pink tempo clues are always valuable
-	if ([variantRegexes.pinkish, variantRegexes.brownish].some(v => state.includesVariant(v) && touch.every(card => knownAs(game, card.order, v))))
+	if ([variantRegexes.pinkish, variantRegexes.brownish].some(v => state.includesVariant(v) && list.every(o => knownAs(game, o, v))))
 		return { tempo: true, valuable: true };
 
-	const prompt = common.find_prompt(state.hands[target], focused_card, state.variant);
+	const prompt = common.find_prompt(state, target, state.deck[focus]);
 
 	// No prompt exists for this card (i.e. it is a hard burn)
 	if (prompt === undefined)
@@ -173,7 +181,7 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 	const previously_playables = game.players[target].thinksPlayables(game.state, target);
 
 	const previously_playing = playables.every(p =>
-		previously_playables.some(c => c.order === p.card.order) ||
+		previously_playables.some(o => o === p.card.order) ||
 		game.players[target].thoughts[p.card.order].identity({ infer: true })?.matches(state.deck[p.card.order]));
 
 	// Target was already going to play these cards; not a tempo clue
@@ -181,8 +189,8 @@ export function valuable_tempo_clue(game, clue, playables, focused_card) {
 		return { tempo: false, valuable: false };
 
 	const valuable = playables.length > 1 ||
-		(focused_card.rank !== 5 && prompt.order !== focused_card.order) ||
-		playables.some(({ card }) => card.chop_moved && card.newly_clued);
+		(state.deck[focus].rank !== 5 && prompt !== focus) ||
+		playables.some(p => ((card = common.thoughts[p.card.order]) => card.chop_moved && card.newly_clued)());
 
 	return { tempo: true, valuable };
 }
@@ -212,17 +220,18 @@ export function playersBetween(numPlayers, start, end) {
 
 /**
  * Returns an earlier queued finesse, if it exists.
- * @param {Hand} hand
+ * @param {State} state
+ * @param {number} playerIndex
  * @param {Player} player
  * @param {number} new_finesse_order
  */
-export function older_queued_finesse(hand, player, new_finesse_order) {
-	return hand.find((c, index) => {
+export function older_queued_finesse(state, playerIndex, player, new_finesse_order) {
+	return state.hands[playerIndex].find((o, index) => {
 		// Can't be layered finesse if every card to the right is clued
-		if (c.clued || hand.every((c1, index1) => index1 <= index || c1.clued))
+		if (state.deck[o].clued || state.hands[playerIndex].every((c1, index1) => index1 <= index || state.deck[c1].clued))
 			return false;
 
-		const { finessed, finesse_index } = player.thoughts[c.order];
+		const { finessed, finesse_index } = player.thoughts[o];
 		return finessed &&
 			finesse_index < player.thoughts[new_finesse_order].finesse_index;		// The finesse must have been older
 	});
@@ -245,4 +254,52 @@ export function getIgnoreOrders(game, index, suitIndex) {
  */
 export function getRealConnects(connections, conn_index) {
 	return connections.filter((conn, index) => index < conn_index && !conn.hidden).length;
+}
+
+/**
+ * @param {ActualCard} card
+ * @param {boolean} [beforeClue]
+ */
+export function unknown_1(card, beforeClue = false) {
+	return (beforeClue || card.clues.length > 0) && card.clues.every(clue => clue.type === CLUE.RANK && clue.value === 1);
+}
+
+/**
+ * @param {Game} hypo_game
+ * @param {number} focus
+ */
+export function clueUncertain(hypo_game, focus) {
+	const { state } = hypo_game;
+
+	return Array.from(hypo_game.common.hypo_plays).some(o =>
+		hypo_game.common.thoughts[o].uncertain &&
+		state.deck[o].playedBefore(state.deck[focus]));
+}
+
+/**
+ * @param {Game} game
+ * @param {ClueAction} action
+ * @param {Identity} identity
+ * @param {number} prompt
+ */
+export function rainbowMismatch(game, action, identity, prompt) {
+	const { common, me, state } = game;
+	const { clue, list, target } = action;
+
+	if (clue.type !== CLUE.COLOUR || !state.variant.suits[identity.suitIndex].match(variantRegexes.rainbowish))
+		return false;
+
+	// Prompt is known rainbow
+	if (common.thoughts[prompt].possible.every(i => state.variant.suits[i.suitIndex].match(variantRegexes.rainbowish)))
+		return false;
+
+	const free_choice_clues = state.allValidClues(target).filter(clue => Utils.objEquals(state.clueTouched(state.hands[target], clue), list));
+	const matching_clues = free_choice_clues.filter(cl => state.deck[prompt].clues.some(clu =>
+		cl.type === CLUE.COLOUR && clu.type === CLUE.COLOUR && cl.value === clu.value));
+
+	// There was free choice to clue a matching colour, but didn't
+	return list.every(o => target === state.ourPlayerIndex ?
+		me.thoughts[o].possible.every(c => state.variant.suits[c.suitIndex].match(variantRegexes.rainbowish)) :
+		state.variant.suits[state.deck[o].suitIndex].match(variantRegexes.rainbowish)) &&
+		matching_clues.length > 0 && !matching_clues.some(cl => cl.value === clue.value);
 }

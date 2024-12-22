@@ -26,7 +26,7 @@ describe('unknowing partner actions', () => {
 		takeTurn(game, 'Alice plays g2 (slot 1)');
 
 		// Bob's slot 1 should still have ptp.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0].order].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].finessed, true);
 	});
 
 	it('still takes call to discard when partner unknowingly reveals a playable card', () => {
@@ -43,6 +43,6 @@ describe('unknowing partner actions', () => {
 		takeTurn(game, 'Bob clues 4 to Alice (slot 3)');
 
 		// Alice's slot 5 is [g3,g5], but Bob unknowingly has g5 in his hand. Alice should still take ctd on slot 4.
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3].order].called_to_discard, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]].called_to_discard, true);
 	});
 });

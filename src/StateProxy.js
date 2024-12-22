@@ -1,7 +1,9 @@
 import { types } from 'node:util';
-import { ActualCard } from './basics/Card.js';
 import * as Utils from './tools/util.js';
-import { Game } from './basics/Game.js';
+
+/**
+ * @typedef {{op: 'add' | 'replace', path: string[], value: unknown }} Patch
+ */
 
 const PROXY_STATE = Symbol();
 
@@ -46,6 +48,7 @@ const objectTraps = {
 			state.markChanged();
 		}
 
+		state.assigned[prop] = true;
 		state.copy[prop] = value;
 		return true;
 	},
@@ -78,6 +81,9 @@ class StateProxy {
 	/** @type {T} */
 	copy;
 
+	/** @type {Record<string, boolean>} */
+	assigned = {};
+
 	/** @type {Record<string, StateProxy>} */
 	proxies = {};
 
@@ -87,6 +93,8 @@ class StateProxy {
 	 */
 	constructor(parent, base) {
 		this.parent = parent;
+
+		/** @type {T} */
 		this.base = base;
 	}
 
@@ -103,9 +111,6 @@ class StateProxy {
 
 		Object.assign(this.copy, this.proxies);
 
-		if (this.base instanceof ActualCard)
-			changed_cards[this.base.order] = this.copy;
-
 		// Propagate modified status to parents
 		if (this.parent)
 			this.parent.markChanged();
@@ -113,12 +118,12 @@ class StateProxy {
 }
 
 let revokes = [];
-let changed_cards = {};
 
 /**
  * @template T
  * @param {StateProxy} parent
  * @param {T} base
+ * @returns {StateProxy<T>}
  */
 function createProxy(parent, base) {
 	const state = new StateProxy(parent, base);
@@ -128,34 +133,58 @@ function createProxy(parent, base) {
 	return proxy;
 }
 
+/** @param {unknown} value */
+export function original(value) {
+	return (value && value[PROXY_STATE]) ? value[PROXY_STATE].base : undefined;
+}
+
+/**
+ * @template T
+ * @param {(draft: { -readonly [P in keyof T]: T[P] }) => void} func
+ */
+export function produceC(func) {
+	/** @type {(state: T, ...args: unknown[]) => T} */
+	return (state, ...args) =>
+		produce(state, draft =>
+			func.call(draft, draft, ...args)
+		);
+}
+
 /**
  * @template T
  * @param {T} base
- * @param {(draft: T) => undefined} producer
+ * @param {(draft: { -readonly [P in keyof T]: T[P] }) => void} producer
+ * @param {(patches: Patch[]) => void} [patchListener]
  */
-export function produce(base, producer) {
+export function produce(base, producer, patchListener) {
 	// Save old revokes/cards in case we're nesting produce() calls
 	const old_revokes = revokes;
-	const old_changed_cards = changed_cards;
 	revokes = [];
-	changed_cards = {};
 
 	const rootClone = createProxy(undefined, base);
-	producer(rootClone);
-	const res = finalize(rootClone);
+	producer(/** @type {{ -readonly [P in keyof T]: T[P] }} */ (/** @type {unknown} */ (rootClone)));
+	const patches = /** @type {Patch[]} */ ([]);
+	const res = patchListener ? finalize(rootClone, [], patches) : finalize(rootClone);
 
 	// Revoke all proxies created
 	for (const revoke of revokes)
 		revoke();
-
 	revokes = old_revokes;
-	changed_cards = old_changed_cards;
+
+	if (patchListener)
+		patchListener(patches);
 
 	return res;
 }
 
-/** @param {StateProxy} base */
-function finalize(base) {
+/**
+ * @template T
+ * @param {StateProxy<T> | T} base
+ * @param {string[]} [path]
+ * @param {object[] | undefined} [patches]
+ * @returns {T}
+ */
+function finalize(base, path, patches) {
 	if (types.isProxy(base)) {
 		const state = base[PROXY_STATE];
 		if (!state.modified)
@@ -165,26 +194,37 @@ function finalize(base) {
 			return state.copy;
 
 		state.finalized = true;
-		return finalizeObject(state);
+		const result = finalizeObject(state, path, patches);
+
+		if (patches)
+			generatePatches(state, path, patches, state.base, result);
+
+		return result;
 	}
 
 	finalizeNonProxiedObject(base);
-	return base;
+	return /** @type {T} */ (base);
 }
 
-/** @param {StateProxy} state */
-function finalizeObject(state) {
+/**
+ * @template T
+ * @param {StateProxy<T>} state
+ * @param {string[]} path
+ * @param {Patch[] | undefined} patches
+ */
+function finalizeObject(state, path, patches) {
 	const { base, copy } = state;
 
 	for (const [key, value] of Object.entries(copy)) {
-		if (value !== base[key])
-			copy[key] = finalize(value);
+		if (value !== base[key]) {
+			if (patches && state.assigned[key] === undefined)
+				copy[key] = finalize(value, path.concat(key), patches);
+			else
+				copy[key] = finalize(value);
+		}
 	}
 
-	// At least one ActualCard changed -- we need to update players
-	if (copy instanceof Game && Object.keys(changed_cards).length !== 0)
-		finalizeState(copy);
-
+	// return copy;
 	return Object.freeze(copy);
 }
 
@@ -207,21 +247,91 @@ function finalizeNonProxiedObject(state) {
 	Object.freeze(state);
 }
 
-/** @param {Game} game */
-function finalizeState(game) {
-	game.players = game.players.map(p => {
-		const player = p.shallowCopy();
+/**
+ * @template T
+ * @param {StateProxy<T>} state
+ * @param {string[]} basepath
+ * @param {Patch[]} patches
+ * @param {T} baseValue
+ * @param {T} resultValue
+ */
+function generatePatches(state, basepath, patches, baseValue, resultValue) {
+	if (Array.isArray(baseValue))
+		return generateArrayPatches(/** @type {StateProxy<unknown[]>} */(state), basepath, patches, baseValue, /** @type {unknown[]} */(resultValue));
+	else
+		return generateObjectPatches(state, basepath, patches, baseValue, resultValue);
+}
 
-		// If any ActualCards were changed, re-link all the associated Cards
-		for (const [order, copy] of Object.entries(changed_cards)) {
-			const card_copy = player.thoughts[order].shallowCopy();
-			card_copy.actualCard = copy;
+/**
+ * @template {Array} T
+ * @param {StateProxy<T>} state
+ * @param {string[]} basepath
+ * @param {Patch[]} patches
+ * @param {T} baseValue
+ * @param {T} resultValue
+ */
+function generateArrayPatches(state, basepath, patches, baseValue, resultValue) {
+	const shared = Math.min(baseValue.length, resultValue.length);
 
-			const thoughts_copy = Utils.shallowCopy(player.thoughts);
-			thoughts_copy[order] = card_copy;
+	for (let i = 0; i < shared; i++) {
+		if (state.assigned[i] && baseValue[i] !== resultValue[i])
+			patches.push({ op: 'replace', path: basepath.concat(`${i}`), value: resultValue[i] });
+	}
 
-			player.thoughts = thoughts_copy;
+	if (shared < resultValue.length) {
+		// stuff was added
+		for (let i = shared; i < resultValue.length; i++)
+			patches.push({ op: 'add', path: basepath.concat(`${i}`), value: resultValue[i] });
+	}
+	else if (shared < baseValue.length) {
+		// stuff was removed
+		patches.push({ op: 'replace', path: basepath.concat('length'), value: resultValue.length });
+	}
+}
+
+/**
+ * @template {Record<string, any>} T
+ * @param {StateProxy<T>} state
+ * @param {string[]} basepath
+ * @param {Patch[]} patches
+ * @param {T} baseValue
+ * @param {T} resultValue
+ */
+function generateObjectPatches(state, basepath, patches, baseValue, resultValue) {
+	for (const key of Object.keys(state.assigned)) {
+		const origValue = baseValue[key];
+		const value = resultValue[key];
+		const op = key in baseValue ? 'replace' : 'add';
+
+		if (origValue === baseValue && op === 'replace')
+			continue;
+
+		patches.push({ op, path: basepath.concat(key), value });
+	}
+}
+
+/**
+ * @param {unknown} draft
+ * @param {Patch[]} patches
+ */
+export function applyPatches(draft, patches) {
+	for (const patch of patches) {
+		const { path } = patch;
+
+		if (path.length === 0 && patch.op === 'replace') {
+			draft = patch.value;
+			continue;
 		}
-		return player;
-	});
+
+		let base = draft;
+		for (const route of path.slice(0, -1)) {
+			base = base[route];
+
+			if (!base || typeof base !== 'object')
+				throw new Error(`Cannot apply patch, path doesn't resolve: ${path.join('/')}`);
+		}
+
+		base[path.at(-1)] = patch.value;
+	}
+	return draft;
 }
