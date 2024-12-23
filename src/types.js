@@ -98,11 +98,12 @@
  */
 /**
  * @typedef Connection
- * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'terminate' | 'positional'} type
+ * @property {'known' | 'playable' | 'prompt' | 'finesse' | 'waiting' | 'terminate' | 'positional'} type
  * @property {number} reacting
  * @property {number} order
  * @property {Identity[]} identities	The possible identities this card could be playing as (can be multiple, if we're playing into a layered finesse or known bluff).
  * @property {boolean} [self]
+ * @property {boolean} [ambiguous]
  * @property {boolean} [hidden]
  * @property {boolean} [bluff]
  * @property {boolean} [possibly_bluff]

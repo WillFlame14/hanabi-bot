@@ -209,7 +209,13 @@ export class Player {
 				return wc !== undefined;
 			};
 
-			return card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
+			// We are waiting for a play to prove this connection
+			const waiting_proof = this.waiting_connections.some(wc =>
+				wc.connections.some((conn, ci) => ci >= wc.conn_index && conn.order === o &&
+					wc.connections.some((conn2, ci2) => ci2 >= wc.conn_index && ci > ci2 && conn2.type == 'waiting'))
+			);
+
+			return !waiting_proof && card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
 				((options?.assume ?? true) || known_playable() || ((!card.uncertain || playerIndex === state.ourPlayerIndex) && !conflicting_conn())) &&
 				state.hasConsistentInferences(card);

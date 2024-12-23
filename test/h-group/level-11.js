@@ -1161,4 +1161,95 @@ describe('guide principle', () => {
 		takeTurn(game, 'Cathy clues purple to Bob'); // Cathy did not play and clued another bluff or finesse.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r1']);
 	});
+
+	it(`understands a bluff on an ambiguous false finesse`, async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b3', 'y3', 'y2', 'g2'],
+			['r3', 'b3', 'p5', 'p4'],
+			['b1', 'r4', 'b2', 'y4']
+		], {
+			level: { min: 11 },
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.BOB
+		});
+		takeTurn(game, 'Bob clues 2 to Alice (slot 3)');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['b2', 'r2']);
+
+		// Cathy could be bluffing out b1 or finessing a g1 in our hand.
+		takeTurn(game, 'Cathy clues green to Bob');
+
+		// Donald could be playing into the b1 > b2 finesse or a g2 bluff from Cathy.
+		takeTurn(game, 'Donald plays b1', 'r4');
+
+		// Alice can't know whether the g1 > g2 finesse is real until she knows whether Donald was bluffed.
+		// She should play the 2 first to find out.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, {type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2]});
+		takeTurn(game, 'Alice plays r2 (slot 3)');
+
+		// Recognizing that Donald played b1 for the bluff, Alice is not finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['g2']);
+	});
+
+	it(`understands an ambiguous bluff delaying a finesse`, async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['b3', 'y3', 'y2', 'g2'],
+			['r3', 'b3', 'p5', 'p4'],
+			['b1', 'r4', 'b2', 'y4']
+		], {
+			level: { min: 11 },
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.BOB
+		});
+		takeTurn(game, 'Bob clues 2 to Alice (slot 3)');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['b2', 'r2']);
+
+		// Cathy could be bluffing out b1 or finessing a g1 in our hand.
+		takeTurn(game, 'Cathy clues green to Bob');
+
+		// Donald could be playing into the b1 > b2 finesse or a g2 bluff from Cathy.
+		takeTurn(game, 'Donald plays b1', 'r4');
+
+		// Alice can't know whether the g1 > g2 finesse is real until she knows whether Donald was bluffed.
+		// She should play the 2 first to find out.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, {type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][2]});
+		takeTurn(game, 'Alice plays b2 (slot 3)');
+
+		// Recognizing that Donald played b1 for the finesse, Alice is finessed.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['g1']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
+	});
+
+	it(`understands delaying on an ambiguous bluff`, () => {
+		const game = setup(HGroup, [
+			['g1', 'r5', 'b2', 'g3'],
+			['xx', 'xx', 'xx', 'xx'],
+			['r3', 'b3', 'p5', 'p4'],
+			['b1', 'r4', 'b2', 'y4']
+		], {
+			level: { min: 11 },
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.BOB
+		});
+		game.state.ourPlayerIndex = 1;
+		takeTurn(game, 'Bob clues 2 to Alice');
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['b2', 'r2']);
+
+		// Cathy finessing out g1 in our hand.
+		takeTurn(game, 'Cathy clues green to Bob (slot 4)');
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['g1', 'g2']);
+
+		takeTurn(game, 'Donald plays b1', 'r4');
+		takeTurn(game, 'Alice plays b2', 'b4');
+
+		// Alice is still finessed.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]].finessed, true);
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['g1', 'g2']);
+	});
+
 });
