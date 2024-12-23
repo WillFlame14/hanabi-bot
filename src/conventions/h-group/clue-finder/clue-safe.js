@@ -58,11 +58,9 @@ function connectable(game, start, target) {
 		if (id === undefined)
 			continue;
 
-		const new_state = state.shallowCopy();
-		new_state.play_stacks = new_state.play_stacks.with(id.suitIndex, state.play_stacks[id.suitIndex] + 1);
-
-		const new_game = game.shallowCopy();
-		new_game.state = new_state;
+		const new_game = produce(game, (draft) => {
+			draft.state.play_stacks[id.suitIndex]++;
+		});
 
 		return connectable(new_game, state.nextPlayerIndex(start), target);
 	}

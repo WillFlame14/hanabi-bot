@@ -185,6 +185,7 @@ export function interpret_discard(game, action) {
 	const { interp } = check_transfer(game, action);
 	if (interp !== DISCARD_INTERP.NONE) {
 		resolve_discard(game, action, interp);
+		action.intentional = true;
 		return;
 	}
 
@@ -240,6 +241,7 @@ export function interpret_discard(game, action) {
 				if (transferred) {
 					logger.info('interpreted', interp);
 					resolve_discard(game, action, interp);
+					action.intentional = true;
 					return;
 				}
 			}

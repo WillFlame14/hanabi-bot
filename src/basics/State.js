@@ -167,16 +167,9 @@ export class State {
 	shallowCopy() {
 		const newState = new State(this.playerNames, this.ourPlayerIndex, this.variant, this.options);
 
-		for (const key of Object.getOwnPropertyNames(this)) {
-			const val = this[key];
+		for (const key of Object.getOwnPropertyNames(this))
+			newState[key] = this[key];
 
-			if (Array.isArray(val))
-				newState[key] = val.slice();
-			else if (typeof val !== 'object')
-				newState[key] = val;
-		}
-
-		newState.dda = this.dda;
 		return newState;
 	}
 

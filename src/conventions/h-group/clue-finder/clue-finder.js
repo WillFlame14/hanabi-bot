@@ -82,14 +82,14 @@ export function save_clue_value(game, hypo_game, save_clue, all_clues) {
  * @param {Clue} clue
  * @param {{ hypo_game: Game, result: ClueResult, interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP], save_clue: SaveClue }} res
  */
-function basic_expectations(game, clue, { hypo_game, result, interp, save_clue}) {
+function basic_expectations(game, clue, { hypo_game, result, interp, save_clue }) {
 	const { me, state } = game;
 	const { target } = clue;
 
 	switch (interp) {
 		case CLUE_INTERP.PLAY: {
 			// Clue depends on an uncertain connection
-			if (clueUncertain(hypo_game, result.focus))
+			if (clueUncertain(game, hypo_game, result.focus))
 				return false;
 
 			return result.playables.some(({ card }) => card.newly_clued) && result.bad_touch.length === 0;

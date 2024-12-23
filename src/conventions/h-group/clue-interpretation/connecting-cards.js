@@ -186,7 +186,7 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 		const prompt_c = state.deck[prompt_order];
 
 		// Prompt takes priority over finesse
-		if (prompt_c?.identity() === undefined || rainbowMismatch(game, action, identity, prompt))
+		if (prompt_c?.identity() === undefined || (prompt_order !== undefined && rainbowMismatch(game, action, identity, prompt_order)))
 			return { tried: false };
 
 		if (prompt_c.matches(identity))

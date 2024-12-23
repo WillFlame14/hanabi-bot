@@ -13,7 +13,7 @@ import { order_1s } from '../action-helper.js';
 import { find_impossible_conn } from '../update-turn.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { early_game_clue } from '../urgent-actions.js';
-import { isTrash } from '../../../basics/hanabi-util.js';
+import { isTrash, knownAs } from '../../../basics/hanabi-util.js';
 import * as Basics from '../../../basics.js';
 import * as Utils from '../../../tools/util.js';
 
@@ -219,7 +219,7 @@ function resolve_clue(game, old_game, action, focusResult, inf_possibilities, fo
 	game.interpretMove(interp);
 
 	// If a save clue was given to the next player after a scream, then the discard was actually for generation.
-	if (interp === CLUE_INTERP.SAVE && target === state.nextPlayerIndex(giver) && state.screamed_at && state.numPlayers > 2) {
+	if (interp === CLUE_INTERP.SAVE && giver !== state.ourPlayerIndex && target === state.nextPlayerIndex(giver) && state.screamed_at && state.numPlayers > 2) {
 		const old_chop = state.hands[giver].find(o => common.thoughts[o].chop_moved);
 		common.thoughts.splice(old_chop, 1, produce(common.thoughts[old_chop], (draft) => { draft.chop_moved = false; }));
 
@@ -609,7 +609,7 @@ export function interpret_clue(game, action) {
 
 	const pink_trash_fix = state.includesVariant(variantRegexes.pinkish) &&
 		!positional && clue.type === CLUE.RANK &&
-		list.every(o => !state.deck[o].newly_clued) &&
+		list.every(o => !state.deck[o].newly_clued && knownAs(game, o, variantRegexes.pinkish)) &&
 		state.variant.suits.every((suit, i) =>
 			!suit.match(variantRegexes.pinkish) || state.isBasicTrash({ suitIndex: i, rank: clue.value }));
 

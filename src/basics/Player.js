@@ -106,13 +106,13 @@ export class Player {
 		return new /** @type {any} */ (this.constructor)(this.playerIndex,
 			this.all_possible,
 			this.all_inferred,
-			this.hypo_stacks.slice(),
-			this.thoughts.slice(),
-			this.links.slice(),
-			this.play_links.slice(),
-			new Set(this.unknown_plays),
-			this.waiting_connections.slice(),
-			Utils.objClone(this.elims));
+			this.hypo_stacks,
+			this.thoughts,
+			this.links,
+			this.play_links,
+			this.unknown_plays,
+			this.waiting_connections,
+			this.elims);
 	}
 
 	/**
@@ -194,8 +194,8 @@ export class Player {
 			const known_playable = () =>
 				card.possible.every(p => state.isBasicTrash(p) || state.isPlayable(p)) && card.possible.some(p => state.isPlayable(p));
 
-			const conflicting_conn = () =>
-				this.waiting_connections.some((wc, i1) =>
+			const conflicting_conn = () => {
+				const wc = this.waiting_connections.find((wc, i1) =>
 					(playerIndex !== state.ourPlayerIndex || !wc.symmetric) &&
 					// Unplayable target of possible waiting connection
 					(wc.focus === o && !state.isPlayable(wc.inference) && card.possible.has(wc.inference)) ||
@@ -206,10 +206,12 @@ export class Player {
 						this.waiting_connections.some((wc2, i2) =>
 							i1 !== i2 && wc2.focus === wc.focus && wc2.connections.every(conn2 => conn2.order !== o))))
 				);
+				return wc !== undefined;
+			};
 
 			return card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
-				((options?.assume ?? true) || known_playable() || (!card.uncertain || playerIndex === state.ourPlayerIndex) && !conflicting_conn()) &&
+				((options?.assume ?? true) || known_playable() || ((!card.uncertain || playerIndex === state.ourPlayerIndex) && !conflicting_conn())) &&
 				state.hasConsistentInferences(card);
 		});
 	}

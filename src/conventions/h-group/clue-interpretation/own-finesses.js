@@ -8,7 +8,6 @@ import { valid_bluff } from './connection-helper.js';
 import logger from '../../../tools/logger.js';
 import { logCard, logConnection } from '../../../tools/log.js';
 
-
 export class IllegalInterpretation extends Error {
 	/** @param {string} message */
 	constructor(message) {
@@ -228,6 +227,7 @@ export function find_own_finesses(game, action, focus, identity, looksDirect, ig
 
 	// Create hypothetical state where we have the missing cards (and others can elim from them)
 	const hypo_game = game.shallowCopy();
+	hypo_game.state = state.shallowCopy();
 	hypo_game.state.play_stacks = state.play_stacks.slice();
 	hypo_game.common = common.clone();
 

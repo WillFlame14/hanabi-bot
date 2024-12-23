@@ -292,16 +292,25 @@ export function assign_all_connections(game, inf_possibilities, action, focused_
 				if (!bluff && !hidden)
 					draft.superposition = true;
 
-				const uncertain = !card.uncertain && giver !== state.ourPlayerIndex && ((reacting === state.ourPlayerIndex) ?
-					// If we're reacting, we are uncertain if the card is not known and there is some other card in our hand that allows for a swap
-					type !== 'known' && identities.some(i => state.ourHand.some(o => o !== order && me.thoughts[o].possible.has(i))) :
-					// If we're not reacting, we are uncertain if the connection is a finesse that could be ambiguous
-					(type === 'finesse' || type === 'prompt') &&
-						(!(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)) ||
+				const uncertain = (() => {
+					if (card.uncertain || giver === state.ourPlayerIndex)
+						return false;
+
+					if (reacting === state.ourPlayerIndex)
+						// We are uncertain if the card isn't known and there's some other card in our hand that allows for a swap
+						return type !== 'known' && identities.some(i => state.ourHand.some(o => o !== order && me.thoughts[o].possible.has(i)));
+
+					// We are uncertain if the connection is a finesse that could be ambiguous
+					const uncertain_conn = type === 'finesse' ||
+						(type === 'prompt' && me.thoughts[focus].possible.some(p => p.suitIndex !== identities[0].suitIndex));
+
+					return uncertain_conn && (!(identities.every(i => state.isCritical(i)) && focused_card.matches(inference)) ||
 						// Colour finesses are guaranteed if the focus cannot be a finessed identity
-						(clue.type === CLUE.COLOUR && identities.every(i => !me.thoughts[focused_card.order].possible.has(i)))));
+						(clue.type === CLUE.COLOUR && identities.every(i => !me.thoughts[focused_card.order].possible.has(i))));
+				})();
 
 				if (uncertain) {
+					logger.info('writing uncertain', order, identities.map(logCard));
 					const self_playable_identities = state.ourHand.reduce((stacks, order) => {
 						const card = common.thoughts[order];
 						const id = card.identity({ infer: true });

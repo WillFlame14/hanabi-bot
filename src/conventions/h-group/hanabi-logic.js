@@ -265,14 +265,15 @@ export function unknown_1(card, beforeClue = false) {
 }
 
 /**
+ * @param {Game} game
  * @param {Game} hypo_game
  * @param {number} focus
  */
-export function clueUncertain(hypo_game, focus) {
+export function clueUncertain(game, hypo_game, focus) {
 	const { state } = hypo_game;
 
 	return Array.from(hypo_game.common.hypo_plays).some(o =>
-		hypo_game.common.thoughts[o].uncertain &&
+		game.common.thoughts[o].uncertain &&			// The card was uncertain before this clue
 		state.deck[o].playedBefore(state.deck[focus]));
 }
 

@@ -134,18 +134,11 @@ export class Game {
 	 * @returns {this}
 	 */
 	shallowCopy() {
-		const newGame = new /** @type {any} */ (this.constructor)(this.tableID, this.state.shallowCopy(), this.in_progress);
+		const newGame = new /** @type {any} */ (this.constructor)(this.tableID, this.state, this.in_progress);
 
-		for (const key of Object.getOwnPropertyNames(this)) {
-			const val = this[key];
+		for (const key of Object.getOwnPropertyNames(this))
+			newGame[key] = this[key];
 
-			if (Array.isArray(val))
-				newGame[key] = val.slice();
-			else if (typeof val !== 'object')
-				newGame[key] = val;
-		}
-
-		newGame.common = this.common.shallowCopy();
 		return newGame;
 	}
 
@@ -285,7 +278,7 @@ export class Game {
 		logger.highlight('cyan', `Rewinding to insert ${rewind_actions.map(a => JSON.stringify(a))}`);
 
 		let offset = 0;
-		let action = actionList[action_index - offset];
+		let action = actionList[action_index];
 
 		while (action.type === 'ignore' || action.type === 'finesse' || action.type === 'identify' || offset === 0) {
 			const double_rewinded = rewind_actions.find(a => Utils.objEquals(action, a));

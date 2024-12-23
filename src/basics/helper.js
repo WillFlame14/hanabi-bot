@@ -4,7 +4,7 @@ import { visibleFind } from './hanabi-util.js';
 
 import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
-import { applyPatches } from '../StateProxy.js';
+import { applyPatches, produce } from '../StateProxy.js';
 
 /**
  * @typedef {import('./Game.js').Game} Game
@@ -84,7 +84,13 @@ export function checkFix(game, oldThoughts, clueAction) {
 		// There is a waiting connection that depends on this card
 		if (reset_order !== undefined) {
 			const reset_card = common.thoughts[reset_order];
-			const new_game = game.rewind(reset_card.drawn_index, [{ type: 'identify', order: reset_order, playerIndex: target, identities: [reset_card.possible.array[0].raw()] }]);
+			const new_game = game.rewind(reset_card.drawn_index, [{
+				type: 'identify',
+				order: reset_order,
+				playerIndex: state.hands.findIndex(hand => hand.includes(reset_order)),
+				identities: [reset_card.possible.array[0].raw()]
+			}]);
+
 			if (new_game !== undefined) {
 				new_game.updateNotes();
 				Object.assign(game, new_game);
@@ -183,12 +189,9 @@ export function connectable_simple(game, start, target, identity) {
 		if (id === undefined)
 			continue;
 
-		const new_state = game.state.shallowCopy();
-		new_state.play_stacks = new_state.play_stacks.slice();
-		new_state.play_stacks[id.suitIndex]++;
-
-		const new_game = game.shallowCopy();
-		new_game.state = new_state;
+		const new_game = produce(game, (draft) => {
+			draft.state.play_stacks[id.suitIndex]++;
+		});
 
 		if (connectable_simple(new_game, game.state.nextPlayerIndex(start), target, identity))
 			return true;

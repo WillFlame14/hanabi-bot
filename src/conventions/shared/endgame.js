@@ -124,8 +124,11 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 				}
 
 				// Wins all decks
-				if (deck_wins === arrangements.length)
+				if (deck_wins === arrangements.length) {
+					logger.on();
+					logger.highlight('purple', `endgame winnable! found action ${logObjectiveAction(common_state, action)} with winrate ${deck_wins}/${arrangements.length}`);
 					return action;
+				}
 
 				if (deck_wins > max_deck_wins) {
 					max_deck_wins = deck_wins;
@@ -289,7 +292,7 @@ function winnable_simpler(state, playerTurn) {
 	if (Date.now() > timeout || unwinnable_state(state, playerTurn))
 		return false;
 
-	const cached_result = simpler_cache.get(hash_state(state));
+	const cached_result = simpler_cache.get(hash_state(state) + `,${playerTurn}`);
 	if (cached_result !== undefined)
 		return cached_result;
 
@@ -316,7 +319,7 @@ function winnable_simpler(state, playerTurn) {
 			return true;
 	}
 
-	simpler_cache.set(hash_state(state), false);
+	simpler_cache.set(hash_state(state) + `,${playerTurn}`, false);
 	return false;
 }
 
@@ -336,6 +339,8 @@ function predict_winnable(state, playerTurn, action) {
  */
 function advance_state(state, playerTurn, action) {
 	const new_state = state.shallowCopy();
+	new_state.hands = state.hands.slice();
+	new_state.turn_count++;
 
 	/**
 	 * @param {number} playerIndex
@@ -347,9 +352,7 @@ function advance_state(state, playerTurn, action) {
 		new_state.hands[playerIndex] = new_state.hands[playerIndex].toSpliced(index, 1);
 
 		if (state.endgameTurns === -1) {
-			const new_hands = new_state.hands.slice();
-			new_hands[playerTurn] = new_hands[playerTurn].toSpliced(0, 0, newCardOrder);
-			new_state.hands = new_hands;
+			new_state.hands[playerIndex] = new_state.hands[playerIndex].toSpliced(0, 0, newCardOrder);
 
 			new_state.cardOrder++;
 			new_state.cardsLeft--;
@@ -431,11 +434,11 @@ function advance_game(game, playerTurn, action) {
 	if (action.target !== -1)
 		return game.simulate_action(Utils.performToAction(state, action, playerTurn, state.deck));
 
-	const new_game = game.shallowCopy();
-	new_game.state.clue_tokens--;
-	new_game.state.turn_count++;
-	new_game.state.endgameTurns = new_game.state.endgameTurns === -1 ? -1 : (new_game.state.endgameTurns - 1);
-	return new_game;
+	return produce(game, (draft) => {
+		draft.state.clue_tokens--;
+		draft.state.turn_count++;
+		draft.state.endgameTurns = state.endgameTurns === -1 ? -1 : (state.endgameTurns - 1);
+	});
 }
 
 /**

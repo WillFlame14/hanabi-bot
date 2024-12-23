@@ -11,6 +11,7 @@ import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
 import { logCard, logClue } from '../../tools/log.js';
+import { produce } from '../../StateProxy.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -199,7 +200,12 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 	for (let i = 1; i < state.numPlayers; i++) {
 		const target = (state.ourPlayerIndex + i) % state.numPlayers;
 
-		const early_expected_clue = state.early_game && early_game_clue(game, target);
+		const newGame = produce(game, (draft) => {
+			draft.state.screamed_at = false;
+			draft.state.generated = false;
+		});
+
+		const early_expected_clue = state.early_game && early_game_clue(newGame, target);
 		const potential_cluers = playersBetween(state.numPlayers, state.ourPlayerIndex, target).filter(i =>
 			i !== target && !state.hands[i].some(o => common.thoughts[o].finessed && state.isPlayable(state.deck[o]))).length;
 

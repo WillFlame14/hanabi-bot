@@ -109,7 +109,7 @@ export function interpret_5cm(game, target, focus_order, clue) {
 			return [];
 		}
 
-		logger.info(`5cm, saving ${logCard(saved_card)}`);
+		logger.info(`5cm, saving ${logCard(state.deck[order])}`);
 		return [order];
 	}
 

@@ -142,8 +142,10 @@ function find_colour_focus(game, suitIndex, action, focusResult, thinks_stall) {
 			focus_possible.push({ suitIndex, rank: next_rank, save: false, connections: connections.slice(), interp: CLUE_INTERP.PLAY });
 		}
 
-		for (const { order } of connecting)
-			state.play_stacks[state.deck[order].suitIndex]++;
+		for (const { order, identities } of connecting) {
+			const { suitIndex: si } = state.deck[order];
+			state.play_stacks[si !== -1 ? si : identities[0].suitIndex]++;
+		}
 
 		next_rank++;
 		connections = connections.concat(connecting);

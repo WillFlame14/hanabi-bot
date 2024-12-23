@@ -170,6 +170,24 @@ describe('layered finesse', () => {
 		assert.equal(play_clues[PLAYER.CATHY].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.PURPLE), false);
 	});
 
+	it('does not try giving selfish finesses on the same card', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y2', 'y2', 'y3', 'r5', 'b4'],
+			['r2', 'y4', 'p2', 'g3', 'r3']
+		], {
+			level: { min: 5, max: 10 },
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues yellow to Alice (slot 2)');		// y1
+
+		const { play_clues } = find_clues(game);
+
+		// Yellow does not work.
+		assert.equal(play_clues[PLAYER.CATHY].some(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.YELLOW), false);
+	});
+
 	it('gracefully handles clues that reveal layered finesses (non-matching)', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],

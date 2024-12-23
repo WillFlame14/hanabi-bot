@@ -832,4 +832,23 @@ describe('early game', () => {
 		const action = await take_action(game);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR);
 	});
+
+	it('gives a clue in early game when next player can finesse', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p2', 'y4', 'p4', 'r5'],
+			['b4', 'r1', 'y1', 'b3'],
+			['y2', 'y2', 'y3', 'y4']
+		], {
+			level: { min: 2 },
+			starting: PLAYER.CATHY
+		});
+
+		// 1 to Cathy is safe, because Bob can clue 3/4 to Donald.
+		const { safe } = clue_safe(game, game.me, { type: CLUE.RANK, value: 1, target: PLAYER.CATHY });
+		assert.equal(safe, true);
+
+		const action = await take_action(game);
+		assert.ok(action.type === ACTION.RANK && action.value === 1 && action.target === PLAYER.CATHY);
+	});
 });
