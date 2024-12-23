@@ -52,7 +52,7 @@ export function interpret_gd(game, discardAction, find_finesse) {
 	};
 
 	// Discarder cannot gd to themselves, and we always try to assume on others before self.
-	const player_precedence = Utils.range(0, state.numPlayers).filter(i => i !== playerIndex && i !== state.ourPlayerIndex).concat(state.ourPlayerIndex);
+	const player_precedence = Utils.range(0, state.numPlayers).filter(i => i !== state.ourPlayerIndex).concat(state.ourPlayerIndex).filter(i => i !== playerIndex);
 	const orders = player_precedence.map(gd_target).find(orders => orders.length > 0) ?? [];
 
 	if (orders.length === 0) {
@@ -93,7 +93,7 @@ export function interpret_baton(game, discardAction, baton_targets) {
 			(index === state.ourPlayerIndex && state.deck[order].identity() === undefined && common.thoughts[order].possible.has(identity)));
 
 	// Discarder cannot baton to themselves, and we always try to assume on others before self.
-	const player_precedence = Utils.range(0, state.numPlayers).filter(i => i !== playerIndex && i !== state.ourPlayerIndex).concat(state.ourPlayerIndex);
+	const player_precedence = Utils.range(0, state.numPlayers).filter(i => i !== state.ourPlayerIndex).concat(state.ourPlayerIndex).filter(i => i !== playerIndex);
 	const orders = player_precedence.map(baton_target).find(orders => orders.length > 0) ?? [];
 
 	if (orders.length === 0) {

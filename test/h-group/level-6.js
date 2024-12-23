@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import * as ExAsserts from '../extra-asserts.js';
 
 import { ACTION, CLUE } from '../../src/constants.js';
@@ -156,6 +156,45 @@ describe('tempo clue chop moves', () => {
 
 		// 4 to Bob is not a valid TCCM (p4 will play naturally).
 		assert.ok(!stall_clues[1].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 4));
+	});
+
+	it(`doesn't tccm if the card was already playing asymmetrically 2`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['m1', 'r5', 'm4', 'y3'],
+			['m2', 'y5', 'g3', 'y3'],
+			['b4', 'm4', 'g1', 'g1']
+		], {
+			level: { min: 6 },
+			play_stacks: [1, 0, 0, 0, 0],
+			starting: PLAYER.DONALD,
+			variant: VARIANTS.RAINBOW,
+			init: (game) => {
+				const c_slot1 = game.state.hands[PLAYER.CATHY][0];
+				const { inferred, possible } = game.common.thoughts[c_slot1];
+
+				// Cathy's slot 1 is clued red and inferred to be [r2,m2].
+				game.state.deck = game.state.deck.with(c_slot1, produce(game.state.deck[c_slot1], (draft) => {
+					draft.clues = [{ type: CLUE.COLOUR, value: COLOUR.RED, giver: PLAYER.ALICE, turn: -1 }];
+					draft.clued = true;
+				}));
+
+				game.common.updateThoughts(c_slot1, (draft) => {
+					draft.inferred = inferred.intersect(['r2', 'm2'].map(expandShortCard));
+					draft.possible = possible.intersect(['r1', 'r2', 'r3', 'r4', 'r5', 'm1', 'm2', 'm3', 'm4', 'm5'].map(expandShortCard));
+					draft.clues = [{ type: CLUE.COLOUR, value: COLOUR.RED, giver: PLAYER.ALICE, turn: -1 }];
+					draft.clued = true;
+				});
+				team_elim(game);
+			}
+		});
+
+		takeTurn(game, 'Donald clues green to Bob');
+
+		const { stall_clues } = find_clues(game);
+
+		// 2 to Cathy is not a valid TCCM (p4 will play naturally).
+		assert.ok(!stall_clues[1].some(clue => clue.target === PLAYER.CATHY && clue.type === CLUE.RANK && clue.value === 2));
 	});
 
 	it(`doesn't tccm for a finesse touching no new cards`, () => {

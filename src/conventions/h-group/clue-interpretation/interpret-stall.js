@@ -130,6 +130,9 @@ function other_expected_clue(game, prev_game, giver, max_stall, original_clue) {
 	 */
 	const satisfied = (_game, _clue, { interp }) => {
 		switch (interp) {
+			case CLUE_INTERP.STALL_5:
+				return game.level >= 2 && !game.stalled_5 && STALL_INDICES[interp] < max_stall;
+
 			case CLUE_INTERP.CM_TEMPO:
 			case CLUE_INTERP.STALL_TEMPO:
 			case CLUE_INTERP.STALL_FILLIN:
@@ -172,16 +175,19 @@ function other_expected_clue(game, prev_game, giver, max_stall, original_clue) {
  * @param {Game} prev_game
  */
 export function stalling_situation(game, action, focusResult, prev_game) {
-	const { common, state } = game;
+	const { common: prev_common, state: prev_state } = prev_game;
+	const { state } = game;
 	const { giver, clue, target, noRecurse } = action;
 
-	const severity = stall_severity(prev_game.state, prev_game.common, giver);
+	const severity = stall_severity(prev_state, prev_common, giver);
 
 	logger.info('severity', severity);
 
 	const stall = isStall(game, action, focusResult, severity, prev_game);
+	const loaded = prev_common.thinksPlayables(prev_state, giver, { assume: false }).length > 0 ||
+		(prev_common.thinksTrash(prev_state, giver).length > 0 && prev_state.clue_tokens < 8);
 
-	if (stall === undefined || common.thinksLoaded(state, giver, { assume: false }))
+	if (stall === undefined || loaded)
 		return { stall, thinks_stall: new Set() };
 
 	if (noRecurse)

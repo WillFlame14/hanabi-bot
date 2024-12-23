@@ -451,7 +451,7 @@ export function interpret_clue(game, action) {
 		if (wc_target === giver)
 			continue;
 
-		if (focus_id !== undefined && !common.thoughts[focus].finessed) {
+		if (focus_id !== undefined) {
 			const stomped_conn_index = connections.findIndex((conn, index) =>
 				index >= conn_index &&
 				!(conn.hidden && conn.reacting === giver) &&		// Allow a hidden player to stomp, since they don't know
@@ -667,10 +667,10 @@ export function interpret_clue(game, action) {
 
 		// We are the clue target, so we need to consider all the (sensible) possibilities of the card
 		if (target === state.ourPlayerIndex) {
-			all_connections = all_connections.concat(focus_possible.filter(fp => !isTrash(state, game.players[giver], fp, focus, { ignoreCM: true })));
+			all_connections = all_connections.concat(focus_possible.filter(fp => !isTrash(state, game.players[giver], fp, focus, { infer: true, ignoreCM: true })));
 
 			for (const id of common.thoughts[focus].inferred) {
-				if (isTrash(state, game.players[giver], id, focus, { ignoreCM: true }) ||
+				if (isTrash(state, game.players[giver], id, focus, { infer: true, ignoreCM: true }) ||
 					(clue.type === CLUE.RANK && state.includesVariant(variantRegexes.pinkish) && id.rank !== clue.value) ||		// Pink promise
 					all_connections.some(fp => id.matches(fp)))					// Focus possibility, skip
 					continue;

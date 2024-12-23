@@ -180,7 +180,7 @@ export function evaluate_clue(game, action) {
  * @returns {ClueResult}
  */
 export function get_result(game, hypo_game, action, provisions = {}) {
-	const { common, state } = game;
+	const { common, me, state } = game;
 	const { common: hypo_common, state: hypo_state } = hypo_game;
 	const { clue, giver, hypothetical } = action;
 
@@ -192,7 +192,7 @@ export function get_result(game, hypo_game, action, provisions = {}) {
 
 	const { new_touched, fill } = elim_result(hypo_state, common, hypo_common, hand, list);
 	const { bad_touch, cm_dupe, trash, avoidable_dupe } = bad_touch_result(game, hypo_game, hypo_common, giver, target);
-	const { finesses, playables } = playables_result(hypo_state, common, hypo_common);
+	const { finesses, playables } = playables_result(hypo_state, common, hypo_common, giver === state.ourPlayerIndex ? me : undefined);
 	const chop_moved = cm_result(common, hypo_common, hand);
 
 	const { safe, discard } = hypothetical ? { safe: true, discard: undefined } : clue_safe(game, game.players[giver], clue);

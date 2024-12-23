@@ -190,6 +190,12 @@ export function determine_playable_card(game, playable_orders) {
 	// Speed-up clues first, then oldest finesse to newest
 	priorities[0].sort((o1, o2) => {
 		const [c1, c2] = [o1, o2].map(o => me.thoughts[o]);
+		if (c1.finessed && !c2.finessed)
+			return -1;
+
+		if (c2.finessed && !c1.finessed)
+			return 1;
+
 		if (c1.clued && !c2.clued)
 			return 1;
 

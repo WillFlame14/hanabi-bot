@@ -97,8 +97,8 @@ export function handle_action(action) {
 				this.notes[0] = { last: note, turn: 0, full: note };
 			}
 
-			this.updateNotes();
 			this.update_turn(this, action);
+			this.updateNotes();
 			break;
 		}
 		case 'play': {

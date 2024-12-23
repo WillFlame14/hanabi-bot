@@ -107,9 +107,6 @@ function basic_expectations(game, clue, { hypo_game, result, interp, save_clue }
 				!isSaved(state, me, state.deck[save_focus], save_focus, { infer: true });
 		}
 
-		case CLUE_INTERP.STALL_5:
-			return game.level >= 2 && !game.stalled_5;
-
 		default:
 			return false;
 	}
@@ -176,7 +173,7 @@ export function get_clue_interp(game, clue, giver, options) {
 	}
 
 	// Do not expect others to clue cards that could be clued in our hand
-	if (hypothetical && state.ourHand.some(o => ((card = game.me.thoughts[o]) => card.touched && card.inferred.has(focused_card))()))
+	if ((hypothetical && giver !== state.ourPlayerIndex) && state.ourHand.some(o => ((card = game.me.thoughts[o]) => card.touched && card.inferred.has(focused_card))()))
 		return;
 
 	// Simulate clue from receiver's POV to see if they have the right interpretation

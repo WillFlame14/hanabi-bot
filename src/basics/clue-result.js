@@ -114,8 +114,9 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
  * @param  {State} state
  * @param  {Player} player
  * @param  {Player} hypo_player
+ * @param  {Player} me 		Provided if we are giving the clue, so that we don't count already playing cards that we know about.
  */
-export function playables_result(state, player, hypo_player) {
+export function playables_result(state, player, hypo_player, me = player) {
 	const finesses = [];
 	const playables = [];
 
@@ -124,9 +125,9 @@ export function playables_result(state, player, hypo_player) {
 		const old_card = player.thoughts[order];
 		const hypo_card = hypo_player.thoughts[order];
 
-		const already_playing = player.hypo_plays.has(order) ||
-			Array.from(player.hypo_plays).some(o => state.deck[o].matches(state.deck[order])) ||
-			player.links.some(link => link.identities.every(i => state.deck[order].matches(i)) && link.orders.every(o => player.hypo_plays.has(o)));
+		const already_playing = me.hypo_plays.has(order) ||
+			Array.from(me.hypo_plays).some(o => state.deck[o].matches(state.deck[order])) ||
+			me.links.some(link => link.identities.every(i => state.deck[order].matches(i)) && link.orders.every(o => me.hypo_plays.has(o)));
 
 		// Only counts as a playable if it wasn't already playing
 		if (already_playing)

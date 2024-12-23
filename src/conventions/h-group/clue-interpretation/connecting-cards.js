@@ -111,7 +111,7 @@ export function find_known_connecting(game, giver, identity, ignoreOrders = [], 
 			return !ignoreOrders.includes(order) &&
 				card.touched &&
 				card.inferred.has(identity) &&
-				(card.inferred.every(c => state.isPlayable(c)) || card.finessed) &&
+				(card.inferred.every(c => state.isPlayable(c)) || common.hypo_plays.has(order) || card.finessed) &&
 				!possibly_fake(order);
 		});
 		const match = playables.find(o => state.deck[o].matches(identity));

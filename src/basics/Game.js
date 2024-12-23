@@ -299,6 +299,7 @@ export class Game {
 
 		const newGame = this.createBlank();
 		newGame.catchup = true;
+		newGame.notes = [];
 		const history = actionList.slice(0, action_index);
 
 		const old_global_game = Utils.globals.game;
@@ -401,6 +402,7 @@ export class Game {
 
 		const new_game = this.createBlank();
 		new_game.catchup = true;
+		new_game.notes = [];
 
 		const old_global_game = Utils.globals.game;
 		Utils.globalModify({ game: new_game });

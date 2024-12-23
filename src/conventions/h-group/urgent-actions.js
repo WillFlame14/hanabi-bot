@@ -1,7 +1,7 @@
 import { ACTION } from '../../constants.js';
 import { ACTION_PRIORITY as PRIORITY, LEVEL, CLUE_INTERP } from './h-constants.js';
 import { get_result } from './clue-finder/determine-clue.js';
-import { playersBetween, valuable_tempo_clue } from './hanabi-logic.js';
+import { playersBetween, unknown_1, valuable_tempo_clue } from './hanabi-logic.js';
 import { cardValue } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
 import { find_expected_clue, save_clue_value } from './clue-finder/clue-finder.js';
@@ -51,8 +51,16 @@ export function find_unlock(game, target) {
 				state.clue_tokens === 0 &&
 				game.players[target].anxietyPlay(state, state.hands[target]) === order);
 
-		if (known)
+		if (known) {
+			// Reorder if unknown 1 (e.g. we have a good touch link for the last remaining 1)
+			if (unknown_1(state.deck[our_connecting])) {
+				const ordered_1s = order_1s(state, common, state.ourHand.filter(o => me.thoughts[o].matches({ suitIndex, rank: rank - 1 }, { infer: true })));
+
+				if (ordered_1s.length > 0)
+					return ordered_1s[0];
+			}
 			return our_connecting;
+		}
 	}
 	return;
 }
@@ -148,7 +156,14 @@ export function early_game_clue(game, giver, exceptTarget = -1) {
 		return false;
 
 	const { state } = game;
-	const result = find_expected_clue(game, giver, () => false, (clue) => clue.target === exceptTarget).next();
+	/**
+	 * @param {Game} _game
+	 * @param {Clue} _clue
+	 * @param {{interp: typeof CLUE_INTERP[keyof typeof CLUE_INTERP]}} res
+	 */
+	const satisfied = (_game, _clue, { interp }) => interp === CLUE_INTERP.STALL_5 && game.level >= 2 && !game.stalled_5;
+
+	const result = find_expected_clue(game, giver, satisfied, (clue) => clue.target === exceptTarget).next();
 
 	if (result.done === false) {
 		const { clue } = result.value;

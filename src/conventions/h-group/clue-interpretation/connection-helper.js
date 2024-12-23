@@ -142,7 +142,7 @@ export function find_symmetric_connections(game, action, focusResult, inf_possib
 
 	for (const id of focused_card.inferred) {
 		// Receiver won't consider trash possibilities or ones that are subsumed by real possibilities
-		if (isTrash(state, common, id, focus) || inf_possibilities.some(fp => fp.suitIndex === id.suitIndex && fp.rank >= id.rank))
+		if (isTrash(state, common, id, focus, { infer: true }) || inf_possibilities.some(fp => fp.suitIndex === id.suitIndex && fp.rank >= id.rank))
 			continue;
 
 		// Pink promise

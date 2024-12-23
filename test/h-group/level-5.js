@@ -271,6 +271,27 @@ describe('ambiguous clues', () => {
 
 		assert.equal(game.common.waiting_connections.length, 0);
 	});
+
+	it('can interpret a delayed play through possible rainbow identities', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g2', 'r1', 'b2', 'm4'],
+			['r2', 'y4', 'b3', 'r3'],
+			['m4', 'm2', 'r4', 'g1']
+		], {
+			level: { min: 1 },
+			play_stacks: [0, 0, 0, 0, 1],
+			variant: VARIANTS.RAINBOW
+		});
+
+		takeTurn(game, 'Alice clues 2 to Donald');		// getting m2
+		takeTurn(game, 'Bob clues green to Donald');	// getting g1 (with note [g1, m3])
+		takeTurn(game, 'Cathy clues green to Bob');		// getting g2
+
+		// Alice's slot 1 should not be finessed for g1.
+		const a_slot1 = game.state.hands[PLAYER.ALICE][0];
+		assert.equal(game.common.thoughts[a_slot1].finessed, false);
+	});
 });
 
 describe('hidden prompts', () => {

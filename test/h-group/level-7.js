@@ -8,6 +8,7 @@ import HGroup from '../../src/conventions/h-group.js';
 import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
+import { logPerformAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -274,6 +275,6 @@ describe('generation discards', () => {
 		const action = await take_action(game);
 
 		// Alice should play slot 5 (r4 -> r5) rather than generating for Cathy.
-		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] }, `Expected (Play slot 5), got (${logPerformAction(action)}).`);
 	});
 });
