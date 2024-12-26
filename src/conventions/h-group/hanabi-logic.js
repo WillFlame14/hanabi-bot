@@ -1,5 +1,5 @@
 import { CLUE } from '../../constants.js';
-import { cardCount, variantRegexes } from '../../variants.js';
+import { cardCount, colourableSuits, variantRegexes } from '../../variants.js';
 import { knownAs, visibleFind } from '../../basics/hanabi-util.js';
 import { order_1s } from './action-helper.js';
 import * as Utils from '../../tools/util.js';
@@ -49,7 +49,7 @@ export function determine_focus(game, hand, player, list, clue) {
 	if (pink_choice_tempo)
 		return { focus: hand[clue.value - 1], chop: false, positional: true };
 
-	const brown_tempo = clue.type === CLUE.COLOUR && state.variant.suits[clue.value] === 'Brown' &&
+	const brown_tempo = clue.type === CLUE.COLOUR && colourableSuits(state.variant)[clue.value] === 'Brown' &&
 		list.every(o => state.deck[o].clued);
 
 	if (brown_tempo)
@@ -82,8 +82,9 @@ export function determine_focus(game, hand, player, list, clue) {
  * @param {State} state
  * @param {Player} player
  * @param {number} giver
+ * @param {Player} [new_player]		Optionally, a player that has more info about dd risk.
  */
-export function stall_severity(state, player, giver) {
+export function stall_severity(state, player, giver, new_player = player) {
 	if (state.clue_tokens === 8 && state.turn_count !== 1)
 		return 4;
 
@@ -91,7 +92,8 @@ export function stall_severity(state, player, giver) {
 		return 3;
 
 	const chop = player.chop(state.hands[giver]);
-	if (state.screamed_at || (state.dda !== undefined && !player.thinksLoaded(state, giver, { assume: false }) && chop !== undefined && player.thoughts[chop].possible.has(state.dda)))
+	// Use player after clue, because the clue may have given information about the dd card.
+	if (state.screamed_at || (state.dda !== undefined && chop !== undefined && new_player.thoughts[chop].possible.has(state.dda)))
 		return 2;
 
 	if (state.early_game)

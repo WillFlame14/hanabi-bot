@@ -176,6 +176,11 @@ export function get_clue_interp(game, clue, giver, options) {
 	if ((hypothetical && giver !== state.ourPlayerIndex) && state.ourHand.some(o => ((card = game.me.thoughts[o]) => card.touched && card.inferred.has(focused_card))()))
 		return;
 
+	if (giver === state.ourPlayerIndex && me.links.some(link => link.identities.some(i => state.deck[focus].matches(i)))) {
+		logger.info('skipping clue', logClue(clue), 'linked');
+		return;
+	}
+
 	// Simulate clue from receiver's POV to see if they have the right interpretation
 	const action =  /** @type {const} */ ({ type: 'clue', giver, target, list, clue, hypothetical, noRecurse });
 	const { hypo_game, result } = evaluate_clue(game, action);

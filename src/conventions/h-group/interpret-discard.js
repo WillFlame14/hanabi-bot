@@ -260,7 +260,7 @@ export function interpret_discard(game, action) {
 	if (game.level >= LEVEL.LAST_RESORTS && !action.failed && !state.inEndgame()) {
 		let interp = check_sdcm(game, action, before_trash, old_chop);
 
-		if (interp !== undefined) {
+		if (interp !== DISCARD_INTERP.NONE) {
 			const nextPlayerIndex = state.nextPlayerIndex(playerIndex);
 			const chop = common.chop(state.hands[nextPlayerIndex]);
 
@@ -281,12 +281,14 @@ export function interpret_discard(game, action) {
 				state.generated = true;
 			}
 
-			resolve_discard(game, action, interp);
-			return;
+			if (interp !== DISCARD_INTERP.NONE) {
+				resolve_discard(game, action, interp);
+				return;
+			}
 		}
 	}
 
-	if (!state.screamed_at && !state.generated && game.level >= LEVEL.ENDGAME && state.inEndgame()) {
+	if (!state.screamed_at && !state.generated && game.level >= LEVEL.ENDGAME && (state.inEndgame() || state.maxScore - state.score < 4)) {
 		const targets = check_positional_discard(game, action, before_trash, old_chop, slot);
 
 		if (targets.length > 0) {

@@ -12,6 +12,7 @@ import { take_action } from '../../src/conventions/h-group/take-action.js';
 import logger from '../../src/tools/logger.js';
 import { produce } from '../../src/StateProxy.js';
 import { team_elim } from '../../src/basics/helper.js';
+import { logPerformAction } from '../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -235,7 +236,7 @@ describe('tempo clue chop moves', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['y4', 'r4', 'b4', 'p2', 'p1'],
-			['b2', 'y5', 'g4', 'y1', 'p4'],
+			['b2', 'y5', 'g4', 'y2', 'p4'],
 		], {
 			level: { min: 6 },
 			play_stacks: [5, 2, 2, 2, 0],
@@ -245,7 +246,7 @@ describe('tempo clue chop moves', () => {
 		takeTurn(game, 'Cathy clues purple to Bob');
 
 		const action = await take_action(game);
-		ExAsserts.objHasProperties(action, { target: PLAYER.BOB, type: ACTION.RANK, value: 2 });
+		ExAsserts.objHasProperties(action, { target: PLAYER.BOB, type: ACTION.RANK, value: 2 }, `Expected (2 to Bob), got ${logPerformAction(action)}`);
 	});
 });
 

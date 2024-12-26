@@ -109,6 +109,7 @@ describe('good touch principle', () => {
 		// There should be a link between slots 4 and 5 (previously 3 and 4) for p5.
 		const expected_links = [{ orders: [2, 1], identities: ['p5'].map(expandShortCard), promised: false }];
 		assert.deepEqual(game.players[PLAYER.ALICE].links, expected_links);
+		assert.deepEqual(game.common.links, expected_links);
 
 		const playables = game.common.thinksPlayables(game.state, PLAYER.ALICE);
 		assert.deepEqual(playables, []);

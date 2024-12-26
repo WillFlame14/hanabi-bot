@@ -247,6 +247,31 @@ describe('pink prompts', () => {
 	});
 });
 
+describe('pink trash', () => {
+	it('interprets a pink trash chop move', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'i3', 'i1', 'r4', 'g5'],
+			['g4', 'y3', 'r2', 'i4', 'i2']
+		], {
+			level: { min: 4 },
+			clue_tokens: 7,
+			play_stacks: [1, 1, 1, 1, 1],
+			starting: PLAYER.CATHY,
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Cathy clues 1 to Alice (slot 3)');
+
+		// Alice's slots 3 and 4 should be chop moved.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]].chop_moved, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]].chop_moved, true);
+
+		// Alice's slot 2 should be known trash.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['r1', 'y1', 'g1', 'b1', 'i1']);
+	});
+});
+
 describe('pink choice tempo clues', () => {
 	it('gives a pink choice tempo clue', () => {
 		const game = setup(HGroup, [

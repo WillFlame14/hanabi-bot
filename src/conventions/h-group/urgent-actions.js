@@ -68,15 +68,15 @@ export function find_unlock(game, target) {
 /**
  * Looks for a play clue that can be given to avoid giving a save clue to the target.
  * @param {Game} game
- * @param {number} target 				The index of the player that needs a save clue.
- * @param {Clue[]} all_play_clues 		An array of all valid play clues that can be currently given.
- * @param {SaveClue} [save_clue]		The save clue that may need to be given (undefined if the target is simply locked).
- * @returns {PerformAction | undefined}	The play clue to give if it exists, otherwise undefined.
+ * @param {number} target 			The index of the player that needs a save clue.
+ * @param {Clue[]} all_play_clues 	An array of all valid play clues that can be currently given.
+ * @param {SaveClue} [save_clue]	The save clue that may need to be given (undefined if the target is simply locked).
+ * @returns {Clue[]}				Possible plays over saves.
  */
 function find_play_over_save(game, target, all_play_clues, save_clue) {
-	const { common, state, tableID } = game;
+	const { common, state } = game;
 
-	const play_clues = all_play_clues.filter(clue => {
+	return all_play_clues.filter(clue => {
 		// Unsafe play clue
 		if (!clue.result.safe)
 			return false;
@@ -131,19 +131,6 @@ function find_play_over_save(game, target, all_play_clues, save_clue) {
 		}
 		return false;
 	});
-
-	if (play_clues.length === 0)
-		return;
-
-	// If there are clues that make the save target playable, we should prioritize those
-	// TODO: Consider adding this back?
-	// const save_target = state.hands[target].chop();
-	// const playable_saves = play_clues.filter(({ playables }) => playables.some(c => c.matches(save_target.suitIndex, save_target.rank)));
-
-	const clue = Utils.maxOn(play_clues, (clue) => find_clue_value(clue.result));
-
-	// Convert CLUE to ACTION
-	return Utils.clueToAction(clue, tableID);
 }
 
 /**
@@ -210,6 +197,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 	const { common, me, state, tableID } = game;
 	const prioritySize = Object.keys(PRIORITY).length;
 	const urgent_actions = /** @type {PerformAction[][]} */ (Array.from({ length: prioritySize * 2 + 1 }, _ => []));
+	const urgent_clues = /** @type {Clue[][]} */ (Array.from({ length: prioritySize * 2 + 1 }, _ => []));
 	const finessed_card = state.deck[finessed_order];
 
 	for (let i = 1; i < state.numPlayers; i++) {
@@ -225,26 +213,31 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			i !== target && !state.hands[i].some(o => common.thoughts[o].finessed && state.isPlayable(state.deck[o]))).length;
 
 		const nextPriority = (potential_cluers === 0 && !early_expected_clue) ? 0 : prioritySize;
+		const locked = state.hands[target].every(o => common.thoughts[o].saved || state.isCritical(state.deck[o])) && !common.thinksLoaded(state, target);
 
 		// They are locked (or will be locked), we should try to unlock
-		if (common.thinksLocked(state, target) || state.hands[target].every(o => common.thoughts[o].saved || state.isCritical(state.deck[o]))) {
+		if (locked) {
 			const unlock_order = find_unlock(game, target);
 			if (unlock_order !== undefined && (finessed_order === -1 || finessed_order == unlock_order)) {
 				urgent_actions[PRIORITY.UNLOCK + nextPriority].push({ tableID, type: ACTION.PLAY, target: unlock_order });
 				continue;
 			}
 
-			const play_over_save = find_play_over_save(game, target, play_clues.flat());
-			if (!finessed_card && play_over_save !== undefined) {
-				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
-				continue;
-			}
+			if (!finessed_card) {
+				const play_over_save = find_play_over_save(game, target, play_clues.flat());
+				if (play_over_save.length > 0) {
+					for (const clue of play_over_save)
+						urgent_clues[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(clue);
 
-			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
-			if (!finessed_card && trash_fixes.length > 0) {
-				const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
-				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, tableID));
-				continue;
+					continue;
+				}
+
+				const trash_fixes = fix_clues[target].filter(clue => clue.trash);
+				if (!finessed_card && trash_fixes.length > 0) {
+					const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
+					urgent_clues[PRIORITY.TRASH_FIX + nextPriority].push(trash_fix);
+					continue;
+				}
 			}
 
 			if (common.thinksLocked(state, target))
@@ -279,7 +272,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			// They already have a playable or trash (i.e. early save)
 			if (common.thinksLoaded(state, target, {assume: false})) {
-				urgent_actions[prioritySize * 2].push(Utils.clueToAction(save, tableID));
+				urgent_clues[prioritySize * 2].push(save);
 				continue;
 			}
 
@@ -306,7 +299,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
 			if (!finessed_card && trash_fixes.length > 0) {
 				const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
-				urgent_actions[PRIORITY.TRASH_FIX + nextPriority].push(Utils.clueToAction(trash_fix, tableID));
+				urgent_clues[PRIORITY.TRASH_FIX + nextPriority].push(trash_fix);
 				continue;
 			}
 
@@ -377,7 +370,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				}, 0);
 
 				if (tccm) {
-					urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(Utils.clueToAction(tccm, tableID));
+					urgent_clues[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(tccm);
 					continue;
 				}
 			}
@@ -394,8 +387,10 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			// Try to give a play clue involving them
 			const play_over_save = find_play_over_save(game, target, all_play_clues, save);
-			if (play_over_save !== undefined) {
-				urgent_actions[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(play_over_save);
+			if (play_over_save.length > 0) {
+				for (const clue of play_over_save)
+					urgent_clues[PRIORITY.PLAY_OVER_SAVE + nextPriority].push(clue);
+
 				continue;
 			}
 
@@ -413,7 +408,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				if (urgent)
 					logger.info('setting up double save!', logCard(state.deck[hypo_me.chop(hypo_state.hands[target], { afterClue: true })]));
 
-				urgent_actions[PRIORITY.ONLY_SAVE + (urgent ? 0 : prioritySize)].push(Utils.clueToAction(save, tableID));
+				urgent_clues[PRIORITY.ONLY_SAVE + (urgent ? 0 : prioritySize)].push(save);
 				continue;
 			}
 
@@ -424,7 +419,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			}
 
 			// No alternative, have to give save
-			urgent_actions[PRIORITY.ONLY_SAVE + nextPriority].push(Utils.clueToAction(save, tableID));
+			urgent_clues[PRIORITY.ONLY_SAVE + nextPriority].push(save);
 		}
 
 		// They require a fix clue
@@ -436,15 +431,25 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				const urgent_fix = Utils.maxOn(urgent_fixes, ({ result }) => find_clue_value(result));
 				const fixPriority = potential_cluers === 0 ? 0 : prioritySize;
 
-				urgent_actions[PRIORITY.URGENT_FIX + fixPriority].push(Utils.clueToAction(urgent_fix, tableID));
+				urgent_clues[PRIORITY.URGENT_FIX + fixPriority].push(urgent_fix);
 				continue;
 			}
 
 			const best_fix = Utils.maxOn(fix_clues[target], ({ result }) => find_clue_value(result));
 
 			// No urgent fixes required
-			urgent_actions[PRIORITY.URGENT_FIX + prioritySize].push(Utils.clueToAction(best_fix, tableID));
+			urgent_clues[PRIORITY.URGENT_FIX + prioritySize].push(best_fix);
 		}
 	}
+
+	for (let i = 0; i < urgent_actions.length; i++) {
+		// Sort clues in decreasing order of value
+		const clues = urgent_clues[i].sort((a, b) => find_clue_value(b.result) - find_clue_value(a.result));
+
+		// Prefer other actions over clues
+		for (const clue of clues)
+			urgent_actions[i].push(Utils.clueToAction(clue, tableID));
+	}
+
 	return urgent_actions;
 }

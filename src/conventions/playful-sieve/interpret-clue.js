@@ -167,7 +167,7 @@ export function interpret_clue(game, action) {
 	const new_trash = !trash_push && common.thinksTrash(state, target).some(o => state.deck[o].clued && !old_trash.includes(o));
 
 	// Revealing a playable never is additionally referential, except colour clues where only new cards are touched
-	if (!(clue.type === CLUE.COLOUR && touch.every(o => state.deck[o].newly_clued)) && (new_playable || new_trash)) {
+	if (!touch.every(o => state.deck[o].newly_clued) && (new_playable || new_trash)) {
 		logger.info('new safe action', (new_playable ? 'playable' : (new_trash ? 'trash' : '')) ,'provided, not continuing', );
 	}
 	else if (fix) {
@@ -264,6 +264,7 @@ export function interpret_clue(game, action) {
 				// Directly playable rank, eliminate from focus if a link was formed
 				if (common.thoughts[hand[newly_touched[0]]].inferred.every(i => state.isPlayable(i))) {
 					common.updateThoughts(hand[newly_touched[0]], (draft) => { draft.focused = true; });
+					logger.info('direct rank play');
 				}
 				else {
 					const referred = newly_touched.map(index => Math.max(0, Utils.nextIndex(hand, o => !state.deck[o].clued, index)));

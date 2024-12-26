@@ -3,7 +3,7 @@ import { CLUE_INTERP, LEVEL } from '../h-constants.js';
 import { IdentitySet } from '../../../basics/IdentitySet.js';
 import { interpret_tcm, interpret_5cm, interpret_tccm, perform_cm } from './interpret-cm.js';
 import { stalling_situation } from './interpret-stall.js';
-import { determine_focus, getRealConnects, rankLooksPlayable, unknown_1 } from '../hanabi-logic.js';
+import { determine_focus, getRealConnects, rankLooksPlayable, stall_severity, unknown_1 } from '../hanabi-logic.js';
 import { find_focus_possible } from './focus-possible.js';
 import { IllegalInterpretation, find_own_finesses } from './own-finesses.js';
 import { assign_all_connections, inference_rank, find_symmetric_connections, generate_symmetric_connections, occams_razor, connection_score } from './connection-helper.js';
@@ -588,8 +588,22 @@ export function interpret_clue(game, action) {
 		const tcm_orders = interpret_tcm(game, action, focus);
 
 		if (tcm_orders.length > 0) {
+			// All newly clued cards are trash
+			for (const order of list) {
+				if (!state.deck[order].newly_clued)
+					continue;
+
+				const { possible } = common.thoughts[order];
+				const new_inferred = possible.intersect(possible.filter(i => state.isBasicTrash(i)));
+
+				common.updateThoughts(focus, (draft) => {
+					draft.inferred = new_inferred;
+					draft.info_lock = new_inferred;
+					draft.trash = true;
+				});
+			}
+
 			perform_cm(state, common, tcm_orders);
-			common.updateThoughts(focus, (draft) => { draft.trash = true; });
 
 			game.interpretMove(CLUE_INTERP.CM_TRASH);
 			team_elim(game);
@@ -810,9 +824,20 @@ export function interpret_clue(game, action) {
 		const cm_orders = interpret_tccm(game, oldCommon, target, list, focused_card);
 
 		if (cm_orders.length > 0) {
-			perform_cm(state, common, cm_orders);
 			game.moveHistory.pop();
-			game.interpretMove(CLUE_INTERP.CM_TEMPO);
+
+			if (cm_orders[0] === undefined) {
+				logger.warn('not valuable tempo clue but no chop!');
+				game.interpretMove(CLUE_INTERP.NONE);
+			}
+			else if (stall_severity(state, common, giver) <= 1) {
+				perform_cm(state, common, cm_orders);
+				game.interpretMove(CLUE_INTERP.CM_TEMPO);
+			}
+			else {
+				logger.info('stalling situation, tempo clue stall!');
+				game.interpretMove(CLUE_INTERP.STALL_TEMPO);
+			}
 		}
 	}
 

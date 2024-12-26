@@ -144,6 +144,9 @@ export function onDraw(game, action) {
 	});
 
 	game.common.thoughts[order] = Object.freeze(new Card(-1, -1, game.common.all_possible, game.common.all_possible, order, state.actionList.length));
+	game.common.card_elim(state);
+	game.common.refresh_links(state);
+
 	state.cardOrder = order;
 	state.cardsLeft--;
 

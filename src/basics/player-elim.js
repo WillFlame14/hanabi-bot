@@ -1,6 +1,5 @@
 import { cardCount } from '../variants.js';
 import { IdentitySet } from './IdentitySet.js';
-import { unknownIdentities } from './hanabi-util.js';
 import * as Utils from '../tools/util.js';
 
 import logger from '../tools/logger.js';
@@ -513,7 +512,7 @@ export function find_links(state, hand = state.hands[this.playerIndex]) {
 
 		// We have enough inferred cards to eliminate elsewhere
 		// TODO: Sudoku elim from this
-		if (orders.length > identities.reduce((sum, inf) => sum += unknownIdentities(state, this, inf), 0)) {
+		if (orders.length >= identities.length) {
 			logger.info('adding link', orders, 'inferences', identities.map(logCard), state.playerNames[this.playerIndex]);
 
 			links.push({ orders, identities: identities.map(c => c.raw()), promised: false });
@@ -587,7 +586,7 @@ export function refresh_links(state) {
 				remove_indices.push(i);
 			}
 
-			const lost_inference = identities.find(i => orders.every(o => !this.thoughts[o].inferred.has(i)));
+			const lost_inference = identities.find(i => orders.some(o => !this.thoughts[o].inferred.has(i)));
 			if (lost_inference !== undefined) {
 				logger.info('linked orders', orders, 'lost inference', logCard(lost_inference));
 				remove_indices.push(i);

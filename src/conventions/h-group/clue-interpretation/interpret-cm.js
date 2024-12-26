@@ -139,7 +139,7 @@ export function interpret_tccm(game, oldCommon, target, list, focused_card) {
 
 	const chop = common.chop(state.hands[target], { afterClue: true });
 
-	if (chop === undefined) {
+	if (oldCommon.thinksLocked(state, target)) {
 		logger.info('target was locked, not tccm');
 		return [];
 	}

@@ -176,10 +176,10 @@ function other_expected_clue(game, prev_game, giver, max_stall, original_clue) {
  */
 export function stalling_situation(game, action, focusResult, prev_game) {
 	const { common: prev_common, state: prev_state } = prev_game;
-	const { state } = game;
+	const { common, state } = game;
 	const { giver, clue, target, noRecurse } = action;
 
-	const severity = stall_severity(prev_state, prev_common, giver);
+	const severity = stall_severity(prev_state, prev_common, giver, common);
 
 	logger.info('severity', severity);
 
@@ -201,7 +201,7 @@ export function stalling_situation(game, action, focusResult, prev_game) {
 	else if (thinks_stall.size === state.numPlayers)
 		logger.highlight('yellow', 'valid stall!');
 	else
-		logger.highlight('yellow', `looks stall to ${Array.from(thinks_stall).map(i => state.playerNames[i]).join()}`);
+		logger.highlight('yellow', `looks stall to ${thinks_stall.size > 0 ? Array.from(thinks_stall).map(i => state.playerNames[i]).join() : 'no one'}`);
 
 	return { stall, thinks_stall };
 }

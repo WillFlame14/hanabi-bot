@@ -181,6 +181,29 @@ describe('stalling', () => {
 		const { stall_clues } = find_clues(game);
 		assert.ok(!stall_clues[0].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.RANK && clue.value === 5));
 	});
+
+	it(`doesn't give non-valuable tempo clues to a fully-clued player that is loaded`, async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['b4', 'b5', 'b2', 'b4', 'b1'],
+			['y3', 'r4', 'g3', 'r1', 'r4']
+		], {
+			level: { min: 9 },
+			play_stacks: [1, 0, 0, 0, 0]
+		});
+
+		takeTurn(game, 'Alice clues blue to Bob');		// getting b1
+		takeTurn(game, 'Bob plays b1', 'r2');
+		takeTurn(game, 'Cathy clues 2 to Bob');			// saving r2, revealing b2
+
+		// Alice should discard rather than cluing red to Bob.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD }, `Expected (discard), got ${logPerformAction(action)}`);
+
+		// Red to Bob is not a valid tempo clue.
+		const { stall_clues } = find_clues(game);
+		assert.ok(!stall_clues[1].some(clue => clue.target === PLAYER.BOB && clue.type === CLUE.COLOUR && clue.value === COLOUR.RED));
+	});
 });
 
 describe('anxiety plays', () => {

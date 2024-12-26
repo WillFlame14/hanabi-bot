@@ -321,4 +321,22 @@ describe('strategy', async () => {
 		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { type: ACTION.RANK, value: 3, target: 1 });
 	});
+
+	it(`doesn't clue cards that are linked in its hand`, async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p5', 'g4', 'y4', 'p3', 'p1'],
+			['b3', 'g3', 'p4', 'y4', 'b3']
+		], {
+			level: { min: 1 },
+			play_stacks: [1, 1, 1, 0, 0],
+			starting: PLAYER.CATHY
+		});
+
+		takeTurn(game, 'Cathy clues 1 to Alice (slots 4,5)');
+
+		// Alice should just play, not try to clue Bob's p1.
+		const action = await take_action(game);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY });
+	});
 });
