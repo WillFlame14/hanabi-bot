@@ -317,6 +317,32 @@ function urgent_save(game, action, focus, oldCommon, old_game) {
 }
 
 /**
+ * Connects on the play that will disprove a potential ambiguous bluff.
+ * @param {Game} game
+ * @param {FocusPossibility} ambiguous_bluff
+ * @param {Connection[]} connections
+ * @returns {Connection[]}
+ */
+export function connect_after(game, ambiguous_bluff, connections) {
+	const { common } = game;
+	if (!ambiguous_bluff || connections.length == 0)
+		return connections;
+	// Bluffs couldn't be resolved on time with an ambiguous finesse possibility.
+	if (connections[0].bluff)
+		return [];
+	logger.warn(`Adding connection on bluff disproving card`);
+	const ambiguous_play = ambiguous_bluff.connections[0].order;
+	const waiting_connection = common.waiting_connections.find(wc => wc.connections.some(c => c.order == ambiguous_play));
+	connections.splice(0, 0, {
+		type: 'waiting',
+		reacting: waiting_connection.target,
+		order: waiting_connection.focus,
+		identities: [waiting_connection.inference]
+	});
+	return connections;
+}
+
+/**
  * Returns whether a clue was a distribution clue.
  * @param {Game} game
  * @param {ClueAction} action
@@ -642,7 +668,8 @@ export function interpret_clue(game, action) {
 	const focus_possible = find_focus_possible(game, action, focusResult, thinks_stall);
 	logger.info('focus possible:', focus_possible.map(({ suitIndex, rank, save, illegal }) => logCard({suitIndex, rank}) + (save ? ' (save)' : ''  + (illegal ? ' (illegal)' : ''))));
 
-	const matched_inferences = focus_possible.filter(p => !p.illegal && common.thoughts[focus].inferred.has(p));
+	const ambiguous_bluff = focus_possible.find(fp => common.thoughts[focus].inferred.has(fp) && focused_card.matches(fp) && fp.connections[0]?.type == 'finesse' && fp.connections[0].bluff && fp.connections[0].ambiguous);
+	const matched_inferences = focus_possible.filter(p => p != ambiguous_bluff && !p.illegal && common.thoughts[focus].inferred.has(p));
 	const old_game = game.minimalCopy();
 
 	// Card matches an inference and not a save/stall
@@ -690,7 +717,7 @@ export function interpret_clue(game, action) {
 					continue;
 
 				try {
-					const connections = find_own_finesses(game, action, focus, id, looksDirect);
+					const connections = connect_after(game, ambiguous_bluff, find_own_finesses(game, action, focus, id, looksDirect));
 					logger.info('found connections:', logConnections(connections, id));
 
 					const rank = inference_rank(state, id.suitIndex, connections);
@@ -743,7 +770,7 @@ export function interpret_clue(game, action) {
 
 			const { suitIndex } = focused_card;
 			try {
-				const connections = find_own_finesses(game, action, focus, focused_card, looksDirect);
+				const connections = connect_after(game, ambiguous_bluff, find_own_finesses(game, action, focus, focused_card, looksDirect));
 				logger.info('found connections:', logConnections(connections, focused_card));
 
 				// Add in all the potential non-finesse possibilities

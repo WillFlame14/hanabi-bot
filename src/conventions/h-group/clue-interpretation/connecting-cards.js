@@ -173,6 +173,8 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 		return;
 	}
 
+	const hand = state.hands[reacting];
+	const finesses = common.find_ambiguous_finesses(hand, connected, ignoreOrders);
 	const prompt = common.find_prompt(state, reacting, identity, connected, ignoreOrders);
 	const finesse = common.find_finesse(state, reacting, connected, ignoreOrders);
 
@@ -222,14 +224,17 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 		}
 	}
 
-	const finesse_card = state.deck[finesse];
 
-	if (finesse_card?.identity() !== undefined) {
+	for (const finesse of finesses) {
+		const finesse_card = state.deck[finesse];
+		if (finesse_card.identity() === undefined)
+			continue;
+
 		/** @param {number} order */
 		const order_touched = (order) => {
 			const card = common.thoughts[order];
 
-			return card.touched && !card.newly_clued &&
+			return (!card.uncertain || common.dependentConnections(order).some(wc => common.thoughts[wc.focus].rewinded)) && card.touched && !card.newly_clued &&
 				(state.deck[order].identity() !== undefined || common.dependentConnections(order).every(wc =>
 					!wc.symmetric && state.deck[wc.focus].matches(wc.inference, { assume: true })));
 		};
@@ -278,7 +283,8 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 				}
 			}
 
-			return { type: 'finesse', reacting, order: finesse, hidden: !bluff, bluff, identities: [finesse_card.raw()] };
+			const ambiguous = bluff && common.thoughts[finesse].touched;
+			return { type: 'finesse', reacting, order: finesse, ambiguous, hidden: !bluff, bluff, identities: [finesse_card.raw()] };
 		}
 	}
 }

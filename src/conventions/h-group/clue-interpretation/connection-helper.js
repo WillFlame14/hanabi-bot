@@ -41,7 +41,7 @@ export function inference_known(all_connections) {
  * @param {Connection[]} connections
  */
 export function inference_rank(state, suitIndex, connections) {
-	return state.play_stacks[suitIndex] + 1 + connections.filter(conn => !conn.hidden || conn.bluff).length;
+	return state.play_stacks[suitIndex] + 1 + connections.filter(conn => conn.type != 'waiting' && (!conn.hidden || conn.bluff)).length;
 }
 
 /**
@@ -66,7 +66,7 @@ export function valid_bluff(game, action, identity, reacting, connected) {
 		!(clue.type === CLUE.COLOUR && reacting === target) &&				// must not be self-colour bluff
 		!state.hands[reacting].some(o => {								// must not be confused with an existing finesse
 			const card = game.players[reacting].thoughts[o];
-			return card.finessed && card.possible.has(identity);
+			return !card.uncertain && card.finessed && card.possible.has(identity);
 		});
 }
 

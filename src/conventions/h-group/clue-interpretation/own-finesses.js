@@ -75,7 +75,7 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
 	// First, see if someone else has the connecting card
 	const conn_options = { ...options, knownOnly: [ignorePlayer] };
 	const other_connecting = find_connecting(game, action, identity, looksDirect, new Set(), connected, ignoreOrders, conn_options);
-	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate')
+	if (other_connecting.length > 0 && other_connecting[0].type !== 'terminate' && !other_connecting[0].ambiguous)
 		return other_connecting;
 
 	// See if the giver knows about their own card
