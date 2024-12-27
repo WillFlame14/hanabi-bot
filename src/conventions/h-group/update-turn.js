@@ -163,7 +163,8 @@ export function update_turn(game, action) {
 
 		/** @type {(c_order: number, ids: Identity[]) => ((draft: import('../../types.js').Writable<Card>) => void)} */
 		const update_card = (c_order, ids) => (draft) => {
-			const new_inferred = common.thoughts[c_order].inferred[common.thoughts[c_order].superposition ? 'union' : 'intersect'](ids);
+			const card = common.thoughts[c_order];
+			const new_inferred = card.inferred[card.superposition ? 'union' : 'intersect'](ids).union(state.deck[c_order].identity() ?? state.base_ids);
 			draft.inferred = new_inferred;
 			draft.superposition = true;
 			draft.uncertain = false;

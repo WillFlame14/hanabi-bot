@@ -79,6 +79,15 @@ export function order_1s(state, player, orders, options = { no_filter: false }) 
 		if (c2.finessed)
 			return 1;
 
+		if (c1.was_cm && c2.was_cm)
+			return order2 - order1;
+
+		if (c1.was_cm)
+			return 1;
+
+		if (c2.was_cm)
+			return -1;
+
 		if (c1.chop_when_first_clued && c2.chop_when_first_clued)
 			return order2 - order1;
 
@@ -143,7 +152,7 @@ export function determine_playable_card(game, playable_orders) {
 			// Start at next player so that connecting in our hand has lowest priority
 			for (let i = 1; i < state.numPlayers + 1; i++) {
 				const target = (state.ourPlayerIndex + i) % state.numPlayers;
-				if (state.hands[target].find(o => game.me.thoughts[o].matches({ suitIndex, rank: rank + 1 }, { infer: true }))) {
+				if (state.hands[target].some(o => me.thoughts[o].matches({ suitIndex, rank: rank + 1 }, { infer: true }))) {
 					connected = true;
 
 					// Connecting in own hand, demote priority to 2

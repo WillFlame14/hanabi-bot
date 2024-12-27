@@ -9,6 +9,7 @@ import HGroup from '../../../src/conventions/h-group.js';
 import logger from '../../../src/tools/logger.js';
 import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
 import { take_action } from '../../../src/conventions/h-group/take-action.js';
+import { logClue } from '../../../src/tools/log.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -63,6 +64,27 @@ describe('pink promise', () => {
 
 		// Alice's slots 4 and 5 should be chop moved.
 		assert.ok([3, 4].every(i => game.common.thoughts[game.state.hands[PLAYER.ALICE][i]].chop_moved, true));
+	});
+
+	it(`doesn't give illegal 5cms`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['i5', 'b1', 'r2', 'i1', 'g2'],
+		], {
+			level: { min: 4 },
+			play_stacks: [0, 0, 0, 0, 2],
+			clue_tokens: 4,
+			variant: VARIANTS.PINK,
+			init: (game) => {
+				game.state.early_game = false;
+			}
+		});
+
+		const { save_clues } = find_clues(game);
+
+		// 5 to Bob is not a legal clue.
+		assert.ok(save_clues[PLAYER.BOB] === undefined || !(save_clues[PLAYER.BOB].type === CLUE.RANK && save_clues[PLAYER.BOB].value === 5),
+			`Expected not to 5cm, got ${logClue(save_clues[PLAYER.BOB])}`);
 	});
 });
 
@@ -194,6 +216,29 @@ describe('pink prompts', () => {
 		// Alice should finesse slot 1 as i2.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['i2']);
 		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
+	});
+
+	it('prompts when two rank mismatches', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['r3', 'i2', 'r4', 'r4', 'g5'],
+			['g4', 'y3', 'r2', 'b3', 'b1']
+		], {
+			level: { min: 1 },
+			clue_tokens: 7,
+			starting: PLAYER.BOB,
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Bob clues 2 to Alice (slots 3,4,5)');
+		takeTurn(game, 'Cathy clues 5 to Alice (slots 2,3)');	// Slot 3 is revealed pink: Alice's hand is [xx _5 i_ _2 _2]
+		takeTurn(game, 'Alice discards b3 (slot 1)');
+
+		takeTurn(game, 'Bob clues blue to Cathy');
+		takeTurn(game, 'Cathy clues pink to Bob');
+
+		// Alice should prompt slot 3 as i1.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['i1']);
 	});
 
 	it('prompts even when rank mismatches if no finesse position', () => {

@@ -323,31 +323,32 @@ function urgent_save(game, action, focus, oldCommon, old_game) {
  * @param {number} focus
  */
 function distribution_clue(game, action, focus) {
-	const { common, state } = game;
+	const { common, me, state } = game;
 	const { list, target } = action;
 	const focus_thoughts = common.thoughts[focus];
 
-	if (state.maxScore - state.score > state.variant.suits.length || !state.hands[target].some(o => state.deck[o].newly_clued && list.includes(o)))
+	if (state.maxScore - state.score > state.variant.suits.length || !list.some(o => state.deck[o].newly_clued))
 		return false;
 
 	const id = focus_thoughts.identity({ infer: true });
 	if (id !== undefined && state.isBasicTrash(id))
 		return false;
 
-	return focus_thoughts.possible.some(p => !state.isBasicTrash(p) && state.hands.some(hand => {
-		let duplicated = false, other_useful = false;
-		for (const o of hand) {
-			const id = common.thoughts[o].identity({ infer: true });
-			if (id === undefined)
-				continue;
+	let all_trash = true, possibly_useful = false;
 
-			if (id.matches(p))
-				duplicated = true;
-			else if (!state.isBasicTrash(id))
-				other_useful = true;
-		}
-		return duplicated && other_useful;
-	}));
+	for (const p of focus_thoughts.possible) {
+		if (state.isBasicTrash(p))
+			continue;
+
+		const duplicated = state.hands.some((hand, i) => i !== target && hand.some(o => me.thoughts[o].matches(p), { infer: true }));
+
+		if (duplicated)
+			possibly_useful = true;
+		else
+			all_trash = false;
+	}
+
+	return all_trash && possibly_useful;
 }
 
 /**
@@ -859,8 +860,12 @@ export function interpret_clue(game, action) {
 	// Remove chop move on clued cards
 	for (const player of game.allPlayers) {
 		for (const order of list) {
-			if (player.thoughts[order].chop_moved)
-				player.updateThoughts(order, (draft) => { draft.chop_moved = false; });
+			if (player.thoughts[order].chop_moved) {
+				player.updateThoughts(order, (draft) => {
+					draft.chop_moved = false;
+					draft.was_cm = true;
+				});
+			}
 		}
 	}
 

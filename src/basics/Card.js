@@ -155,6 +155,7 @@ export class Card extends ActualCard {
 	chop_moved = false;
 	reset = false;			// Whether the card has previously lost all inferences
 	chop_when_first_clued = false;
+	was_cm = false;
 	superposition = false;	// Whether the card is currently in a superposition
 	hidden = false;
 	called_to_discard = false;
@@ -195,6 +196,7 @@ export class Card extends ActualCard {
 		this.chop_moved = extras.chop_moved ?? false;
 		this.reset = extras.reset ?? false;
 		this.chop_when_first_clued = extras.chop_when_first_clued ?? false;
+		this.was_cm = extras.was_cm ?? false;
 		this.superposition = extras.superposition ?? false;
 		this.hidden = extras.hidden ?? false;
 		this.called_to_discard = extras.called_to_discard ?? false;

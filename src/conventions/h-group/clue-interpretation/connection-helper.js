@@ -51,8 +51,9 @@ export function inference_rank(state, suitIndex, connections) {
  * @param {Identity} identity
  * @param {number} reacting
  * @param {number[]} connected
+ * @param {boolean} symmetric
  */
-export function valid_bluff(game, action, identity, reacting, connected) {
+export function valid_bluff(game, action, identity, reacting, connected, symmetric = false) {
 	const { state } = game;
 	const nextCard = { suitIndex: identity.suitIndex, rank: identity.rank + 1 };
 	const { giver, target, clue } = action;
@@ -60,7 +61,7 @@ export function valid_bluff(game, action, identity, reacting, connected) {
 	return game.level >= LEVEL.BLUFFS &&
 		state.nextPlayerIndex(giver) === reacting &&					// must be bluff seat
 		connected.length === 1 &&											// must not be delayed
-		((clue.type === CLUE.RANK && clue.value !== nextCard.rank) ||
+		(symmetric || (clue.type === CLUE.RANK && clue.value !== nextCard.rank) ||
 			identity.rank === state.base_ids.maxStackRank ||
 			!game.common.thoughts[connected[0]].possible.has(nextCard)) &&	// must disconnect
 		!(clue.type === CLUE.COLOUR && reacting === target) &&				// must not be self-colour bluff

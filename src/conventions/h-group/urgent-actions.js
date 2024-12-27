@@ -2,7 +2,7 @@ import { ACTION } from '../../constants.js';
 import { ACTION_PRIORITY as PRIORITY, LEVEL, CLUE_INTERP } from './h-constants.js';
 import { get_result } from './clue-finder/determine-clue.js';
 import { playersBetween, unknown_1, valuable_tempo_clue } from './hanabi-logic.js';
-import { cardValue } from '../../basics/hanabi-util.js';
+import { cardValue, save2 } from '../../basics/hanabi-util.js';
 import { find_clue_value, order_1s } from './action-helper.js';
 import { find_expected_clue, save_clue_value } from './clue-finder/clue-finder.js';
 import { cardTouched } from '../../variants.js';
@@ -402,7 +402,14 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 			if (state.clue_tokens === 1 && save.cm.length === 0 && bad_save)
 				continue;
 
-			if (save.result.interp !== CLUE_INTERP.CM_TRASH && hypo_me.chopValue(hypo_state, target, { afterClue: true }) >= 4 && !hypo_me.thinksLocked(hypo_state, target) && potential_cluers > 0 && state.clue_tokens > 1) {
+			const hypo_chop = state.deck[hypo_me.chop(hypo_state.hands[target], { afterClue: true })];
+
+			const only_save = save.result.interp !== CLUE_INTERP.CM_TRASH &&
+				!hypo_me.thinksLocked(hypo_state, target) &&
+				(hypo_chop !== undefined && (state.isCritical(hypo_chop) || save2(state, hypo_me, hypo_chop))) &&
+				potential_cluers > 0 && state.clue_tokens > 1;
+
+			if (only_save) {
 				const urgent = !early_expected_clue && potential_cluers === 1;
 
 				if (urgent)

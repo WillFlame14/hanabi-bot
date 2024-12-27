@@ -39,7 +39,11 @@ export function save_clue_value(game, hypo_game, save_clue, all_clues) {
 			return -10;
 
 		// Chop can be clued later
-		if (state.hands.some((hand, i) => i === target && hand.some(o => o !== old_chop && state.deck[o].matches(old_chop_card))))
+		const visible_elsewhere = state.hands.some(hand =>
+			hand.some(o => o !== old_chop && state.deck[o].matches(old_chop_card) &&
+				!(save_clue.type === CLUE.RANK && save_clue.value === 2 && o === common.chop(hand))));	// Not double chop 2s
+
+		if (visible_elsewhere)
 			return -10;
 
 		return safe ? Math.max(find_clue_value(result), state.isCritical(old_chop_card) ? 0.1 : -Infinity) : 0.01;
@@ -218,20 +222,33 @@ export function get_clue_interp(game, clue, giver, options) {
 	let save_clue, new_interp;
 
 	switch (interp) {
-		case CLUE_INTERP.SAVE:
-		case CLUE_INTERP.CM_5:
+		case CLUE_INTERP.CM_5: {
+			const chopIndex = hypo_game.common.chopIndex(hand);
+			const oldest_5 = hand.findLast((o, i) => ((card = hypo_game.state.deck[o]) =>
+				i <= chopIndex && card.newly_clued && card.clues.some(clue => clue.type === CLUE.RANK && clue.value === 5))());
+
+			if (state.deck[oldest_5].identity() !== undefined && state.deck[oldest_5].rank !== 5) {
+				logger.warn('illegal 5cm!');
+				return;
+			}
+
+			save_clue = Object.assign(clue, { game: hypo_game, result, playable: playables.length > 0, cm: chop_moved, safe });
+			break;
+		}
 		case CLUE_INTERP.CM_TRASH:
+			save_clue = Object.assign(clue, { game: hypo_game, result, playable: playables.length > 0, cm: chop_moved, safe });
+			break;
+		case CLUE_INTERP.SAVE:
 			if (chop && focused_card.rank === 2) {
 				const copies = visibleFind(state, giver_player, focused_card);
 				const chops = state.hands.map(hand => common.chop(hand));
 
 				if (copies.some(o => !chops.includes(o) && !state.deck[o].newly_clued)) {
-					logger.warn('illegal 2 save');
+					logger.warn('illegal 2 save!');
 					return;
 				}
 			}
 
-			// if (game.level < LEVEL.CONTEXT || avoidable_dupe == 0) {
 			save_clue = Object.assign(clue, { game: hypo_game, result, playable: playables.length > 0, cm: chop_moved, safe });
 			break;
 

@@ -85,7 +85,11 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
 		return [{ type: 'known', reacting: giver, order: duplicated_in_own, identities: [identity] }];
 	}
 
-	if (giver !== state.ourPlayerIndex && !(target === state.ourPlayerIndex && looksDirect)) {
+	const focus = connected[0];
+
+	const self_allowed = giver !== state.ourPlayerIndex && !(target === state.ourPlayerIndex && looksDirect);
+
+	if (self_allowed) {
 		if (options.bluffed) {
 			const orders = me.find_clued(state, state.ourPlayerIndex, identity, connected, ignoreOrders);
 
@@ -102,7 +106,8 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
 		const prompt = common.find_prompt(state, state.ourPlayerIndex, identity, connected, ignoreOrders);
 		logger.debug('prompt in slot', prompt ? our_hand.findIndex(o => o === prompt) + 1 : '-1');
 
-		if (prompt !== undefined && !rainbowMismatch(game, action, identity, prompt)) {
+		// Don't prompt for the same identity as the focus, since giver would be bad touching
+		if (prompt !== undefined && !rainbowMismatch(game, action, identity, prompt) && !state.deck[focus].identity()?.matches(identity)) {
 			const connections = own_prompt(game, finesses, prompt, identity);
 
 			if (connections.length > 0)
@@ -174,7 +179,7 @@ function connect(game, action, identity, looksDirect, connected, ignoreOrders, i
 		}
 
 		// Try finesse in our hand again (if we skipped it earlier to prefer ignoring player)
-		if (giver !== state.ourPlayerIndex && !(target === state.ourPlayerIndex && looksDirect) && selfRanks.includes(identity.rank)) {
+		if (self_allowed && selfRanks.includes(identity.rank)) {
 			try {
 				return find_self_finesse(game, action, identity, connected, ignoreOrders, finesses, options.assumeTruth);
 			}

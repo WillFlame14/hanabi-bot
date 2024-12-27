@@ -51,7 +51,8 @@ function check_transfer(game, action) {
 
 		logger.info(`discarded connecting card ${logCard({ suitIndex, rank })}, cancelling waiting connection for inference ${logCard(inference)}`);
 
-		const replaceable = (state.deck[order].clued || (game.level >= LEVEL.SPECIAL_DISCARDS && common.thoughts[order].touched)) &&
+		const replaceable = !common.thoughts[order].bluffed &&
+			(state.deck[order].clued || (game.level >= LEVEL.SPECIAL_DISCARDS && common.thoughts[order].touched)) &&
 			rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] &&
 			!failed;
 
@@ -222,7 +223,7 @@ export function interpret_discard(game, action) {
 			if (failed) {
 				undo_hypo_stacks(game, identity);
 			}
-			else {
+			else if (!common.thoughts[order].bluffed) {
 				/** @type {typeof DISCARD_INTERP[keyof typeof DISCARD_INTERP]} */
 				let interp = DISCARD_INTERP.SARCASTIC;
 				let transferred = interpret_sarcastic(game, action).length > 0;

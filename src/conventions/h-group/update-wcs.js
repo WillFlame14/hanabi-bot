@@ -100,7 +100,7 @@ function stomped_finesse(game, reacting, order, waiting_connection, options) {
 export function resolve_card_retained(game, waiting_connection) {
 	const { common, state } = game;
 	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback, focus } = waiting_connection;
-	const { type, reacting, bluff, identities } = connections[conn_index];
+	const { type, reacting, bluff, possibly_bluff, identities } = connections[conn_index];
 	const { order } = connections[conn_index];
 
 	// Card may have been updated, so need to find it again
@@ -146,7 +146,7 @@ export function resolve_card_retained(game, waiting_connection) {
 			}
 
 			if (game.level >= LEVEL.INTERMEDIATE_FINESSES && last_reacting_action.important) {
-				if (bluff) {
+				if (bluff || possibly_bluff) {
 					logger.warn(`${state.playerNames[reacting]} not allowed to defer a potential bluff`);
 				} else {
 					logger.warn(`allowing ${state.playerNames[reacting]} to defer a finesse for an important clue`);

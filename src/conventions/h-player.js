@@ -147,7 +147,7 @@ export class HGroup_Player extends Player {
 				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 		// must not be information-locked on a different identity
 				clues.some(clue => cardTouched(identity, state.variant, clue)) &&				// at least one clue matches
 				(!state.variant.suits[identity.suitIndex].match(variantRegexes.pinkish) || forcePink ||	// pink rank match
-					clues.some(clue => clue.type === CLUE.RANK && clue.value === identity.rank) ||
+					!(clues.every(c1 => clues.every(c2 => c1.type === c2.type && c1.value === c2.value)) && clues[0].type === CLUE.RANK && clues[0].value !== identity.rank) ||
 					clues.some(clue => clue.type === CLUE.COLOUR && colourableSuits(state.variant)[clue.value]?.match(variantRegexes.pinkish)));
 		});
 

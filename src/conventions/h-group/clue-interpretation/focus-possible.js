@@ -333,9 +333,11 @@ function find_rank_focus(game, rank, action, focusResult, thinks_stall) {
 
 		// Connected cards can stack up to this rank
 		if (rank === next_rank || positional) {
-			const self_clandestine = connections.some(conn =>
+			const self_clandestine = connections.some((conn, i) =>
 				conn.reacting === target && conn.type === 'finesse' && conn.hidden &&
-				focus_thoughts.possible.has({ suitIndex: conn.identities[0].suitIndex, rank: conn.identities[0].rank + 1}));
+				focus_thoughts.possible.has({ suitIndex: conn.identities[0].suitIndex, rank: conn.identities[0].rank + 1}) &&
+				// Someone else finessing will prove this is a clandestine self.
+				!connections.some((conn2, i2) => i2 < i && conn2.type === 'finesse' && conn2.reacting !== target));
 
 			const illegal = self_clandestine || connections.some(conn => conn.reacting === target && conn.type === 'finesse' && wrong_prompts.has(target));
 

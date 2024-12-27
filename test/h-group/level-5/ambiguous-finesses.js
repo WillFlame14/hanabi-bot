@@ -148,6 +148,27 @@ describe('ambiguous finesse', () => {
 
 		takeTurn(game, 'Alice plays r1 (slot 1)');
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][1]], ['r2']);
+	});
 
+	it('understands an ambiguous reverse finesse where the finessed card is discarded', async () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['p4', 'r4', 'r4', 'g1', 'y3'],
+			['b5', 'y5', 'y5', 'r3', 'r1']
+		], {
+			level: { min: 5 }
+		});
+
+		takeTurn(game, 'Alice clues red to Cathy');		// getting r1
+		takeTurn(game, 'Bob clues 5 to Cathy');			// Cathy is now fully clued.
+		takeTurn(game, 'Cathy plays r1', 'r2');
+
+		takeTurn(game, 'Alice clues green to Bob');		// getting g1
+		takeTurn(game, 'Bob clues 3 to Cathy');			// looks like r2 self-finesse
+		takeTurn(game, 'Cathy discards r2', 'p3');		// Cathy shows that it is ambiguous on us.
+
+		// ALice's slot 1 should be finessed as r2.
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['r2']);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
 	});
 });

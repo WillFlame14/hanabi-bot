@@ -239,13 +239,16 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 			return;
 		}
 
+		const possibly_bluff = !options.assumeTruth && valid_bluff(game, action, finesse_card, reacting, connected, true);
+
 		if (finesse_card.matches(identity)) {
 			// At level 1, only forward finesses are allowed.
 			if (game.level === 1 && !inBetween(state.numPlayers, reacting, giver, target)) {
 				logger.warn(`found finesse ${logCard(finesse_card)} in ${state.playerNames[reacting]}'s hand, but not between giver and target`);
 				return;
 			}
-			return { type: 'finesse', reacting, order: finesse, bluff: false, identities: [identity] };
+
+			return { type: 'finesse', reacting, order: finesse, bluff: false, possibly_bluff, identities: [identity] };
 		}
 
 		// Finessed card is delayed playable
@@ -278,7 +281,7 @@ function find_unknown_connecting(game, action, reacting, identity, connected = [
 				}
 			}
 
-			return { type: 'finesse', reacting, order: finesse, hidden: !bluff, bluff, identities: [finesse_card.raw()] };
+			return { type: 'finesse', reacting, order: finesse, hidden: !bluff, bluff, possibly_bluff, identities: [finesse_card.raw()] };
 		}
 	}
 }
@@ -329,7 +332,7 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 			if (prompt === match)
 				return false;
 
-			// Can't layered prompt
+			// Layered prompt is not possible
 			if (!state.isPlayable(state.deck[prompt]))
 				return true;
 
