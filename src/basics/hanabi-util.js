@@ -148,5 +148,5 @@ export function refer_right(hand, index) {
  * @param {RegExp} regex
  */
 export function knownAs(game, order, regex) {
-	return game.common.thoughts[order].possible.every(i => game.state.variant.suits[i.suitIndex].match(regex));
+	return game.common.thoughts[order].possible.every(i => regex.test(game.state.variant.suits[i.suitIndex]));
 }

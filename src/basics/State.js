@@ -278,7 +278,7 @@ export class State {
 	 * @param {RegExp} variantRegex
 	 */
 	includesVariant(variantRegex) {
-		return this.variant.suits.some(suit => suit.match(variantRegex));
+		return this.variant.suits.some(suit => variantRegex.test(suit));
 	}
 
 	/**

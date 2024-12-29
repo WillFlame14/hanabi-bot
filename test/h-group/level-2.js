@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, VARIANTS, setup, takeTurn } from '../test-utils.js';
+import { COLOUR, PLAYER, VARIANTS, expandShortCard, setup, takeTurn } from '../test-utils.js';
 import { ACTION, CLUE } from '../../src/constants.js';
 import * as ExAsserts from '../extra-asserts.js';
 import HGroup from '../../src/conventions/h-group.js';
@@ -11,6 +11,7 @@ import { take_action } from '../../src/conventions/h-group/take-action.js';
 
 import logger from '../../src/tools/logger.js';
 import { logPerformAction } from '../../src/tools/log.js';
+import { produce } from '../../src/StateProxy.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -91,6 +92,29 @@ describe('reverse finesse', () => {
 		// We must clue Bob or g1 may be discarded. Cluing Donald isn't safe if we have r1.
 		const action = await take_action(game);
 		ExAsserts.objHasProperties(action, { target: PLAYER.BOB });
+	});
+
+	it(`still doesn't try to self-prompt from a colour clue`, () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p4', 'g1', 'y2', 'g4'],
+			['p3', 'y3', 'y4', 'b4'],
+			['i2', 'i3', 'b2', 'b3'],
+			['i1', 'b5', 'b1', 'g3']
+		], {
+			level: { min: 2 },
+			play_stacks: [1, 3, 0, 0, 0],
+			starting: PLAYER.EMILY,
+			variant: VARIANTS.PINK
+		});
+
+		takeTurn(game, 'Emily clues 4 to Alice (slots 1,2)');
+		takeTurn(game, 'Alice plays y4 (slot 1)');
+		takeTurn(game, 'Bob clues pink to Donald');					// Finessing i1
+		takeTurn(game, 'Cathy clues pink to Alice (slots 1,2)');
+
+		// Alice's slot 1 should be i4, not [i4,i5].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['i4']);
 	});
 });
 
@@ -850,5 +874,47 @@ describe('early game', () => {
 
 		const action = await take_action(game);
 		assert.ok(action.type === ACTION.RANK && action.value === 1 && action.target === PLAYER.CATHY);
+	});
+
+	it('understands ambiguity when giving a 5 stall', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['p5', 'g2', 'r4', 'r3'],
+			['b2', 'b3', 'b4', 'g3'],
+			['y5', 'g4', 'p3', 'y2']
+		], {
+			level: { min: 2 },
+			play_stacks: [0, 1, 1, 0, 0],
+			starting: PLAYER.DONALD,
+			init: (game) => {
+				const { state } = game;
+				const d_slot4 = state.hands[PLAYER.DONALD][3];
+
+				// Donald's slot 4 is known y.
+				state.deck = state.deck.with(d_slot4, produce(state.deck[d_slot4], (draft) => {
+					draft.clued = true;
+					draft.clues = [{ type: CLUE.COLOUR, value: COLOUR.YELLOW, giver: PLAYER.ALICE, turn: -1}];
+				}));
+
+				for (const player of game.allPlayers) {
+					player.updateThoughts(d_slot4, (draft) => {
+						draft.clued = true;
+						draft.clues = [{ type: CLUE.COLOUR, value: COLOUR.YELLOW, giver: PLAYER.ALICE, turn: -1}];
+						draft.inferred = state.all_ids.intersect(['y2', 'y3', 'y4', 'y5'].map(expandShortCard));
+						draft.possible = state.all_ids.intersect(['y2', 'y3', 'y4', 'y5'].map(expandShortCard));
+					});
+				}
+			}
+		});
+
+		takeTurn(game, 'Donald clues green to Bob');		// getting g2
+		takeTurn(game, 'Alice clues 3 to Cathy');			// [y3,g3] (waiting on Donald to prompt y2)
+		takeTurn(game, 'Bob plays g2', 'p2');
+		takeTurn(game, 'Cathy clues 5 to Alice (slot 2)');	// 5 Stall, since nothing else to do
+
+		takeTurn(game, 'Donald clues 5 to Bob');			// Donald 5 stalls, showing that he is not prompting y2
+
+		// We should not rewind and think Cathy finessed us with 5.
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, false);
 	});
 });

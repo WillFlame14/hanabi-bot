@@ -89,6 +89,29 @@ describe('ambiguous finesse', () => {
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['b1']);
 	});
 
+	// it('understands a really ambiguous finesse', () => {
+	// 	const game = setup(HGroup, [
+	// 		['xx', 'xx', 'xx', 'xx', 'xx'],		// Alice's hand is g1 r4 r5 b4 g3
+	// 		['r1', 'r2', 'g2', 'g4', 'p4'],
+	// 		['r4', 'b2', 'g4', 'r5', 'b1']
+	// 	], {
+	// 		level: { min: 5 },
+	// 		starting: PLAYER.CATHY
+	// 	});
+
+	// 	takeTurn(game, 'Cathy clues 3 to Alice (slot 5)');	// looks r3 to Alice
+	// 	takeTurn(game, 'Alice clues blue to Cathy');		// Alice passes to Bob. Bob knows he has a 1 on finesse.
+	// 	takeTurn(game, 'Bob clues 5 to Cathy');				// Bob can't play because he might have 1 of the wrong colour. Alice now knows she has 13 matching.
+
+	// 	takeTurn(game, 'Cathy plays b1', 'y1');
+	// 	takeTurn(game, 'Alice clues yellow to Cathy');		// Alice can't play because her 13 might be red. Bob now knows he can fulfill the entire finesse.
+	// 	takeTurn(game, 'Bob discards p4', 'p1');			// Bob can't play because he might have the finesse of the wrong colour (the actual situation).
+
+	// 	// Alice now knows that she has to play into it.
+	// 	assert.equal(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]].finessed, true);
+	// 	ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][0]], ['g1']);
+	// });
+
 	it('prefers hidden prompt over ambiguous', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],

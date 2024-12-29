@@ -9,7 +9,6 @@ import logger from '../tools/logger.js';
 import { logCard } from '../tools/log.js';
 import { produce } from '../StateProxy.js';
 
-
 /**
  * @typedef {import('./State.js').State} State
  * @typedef {import('./Card.js').BasicCard} BasicCard
@@ -44,6 +43,7 @@ export class Player {
 	 * @param {IdentitySet} all_possible
 	 * @param {IdentitySet} all_inferred
 	 * @param {number[]} hypo_stacks
+	 * @param {Set<number>} [hypo_plays]
 	 * @param {Card[]} [thoughts]
 	 * @param {Link[]} [links]
 	 * @param {{ orders: number[], prereqs: Identity[], connected: number}[]} [play_links]
@@ -51,7 +51,7 @@ export class Player {
 	 * @param {WaitingConnection[]} [waiting_connections]
 	 * @param {Record<string, number[]>} [elims]
 	 */
-	constructor(playerIndex, all_possible, all_inferred, hypo_stacks, thoughts = [], links = [], play_links = [], unknown_plays = new Set(), waiting_connections = [], elims = {}) {
+	constructor(playerIndex, all_possible, all_inferred, hypo_stacks, hypo_plays = new Set(), thoughts = [], links = [], play_links = [], unknown_plays = new Set(), waiting_connections = [], elims = {}) {
 		this.playerIndex = playerIndex;
 
 		this.thoughts = thoughts;
@@ -59,6 +59,7 @@ export class Player {
 		this.play_links = play_links;
 
 		this.hypo_stacks = hypo_stacks;
+		this.hypo_plays = hypo_plays;
 		this.all_possible = all_possible;
 		this.all_inferred = all_inferred;
 
@@ -66,8 +67,6 @@ export class Player {
 		 * The orders of playable cards whose identities are not known, according to each player. Used for identifying TCCMs.
 		 */
 		this.unknown_plays = unknown_plays;
-
-		this.hypo_plays = new Set();
 
 		this.waiting_connections = waiting_connections;
 		this.elims = elims;
@@ -79,6 +78,7 @@ export class Player {
 			IdentitySet.fromJSON(json.all_possible),
 			IdentitySet.fromJSON(json.all_inferred),
 			json.hypo_stacks.slice(),
+			new Set(json.hypo_plays),
 			json.thoughts.map(Card.fromJSON),
 			json.links.map(Utils.objClone),
 			json.play_links.map(Utils.objClone),
@@ -93,6 +93,7 @@ export class Player {
 			this.all_possible,
 			this.all_inferred,
 			this.hypo_stacks.slice(),
+			new Set(this.hypo_plays),
 			this.thoughts.map(infs => infs.clone()),
 			this.links.map(link => Utils.objClone(link)),
 			this.play_links.map(link => Utils.objClone(link)),
@@ -107,6 +108,7 @@ export class Player {
 			this.all_possible,
 			this.all_inferred,
 			this.hypo_stacks,
+			this.hypo_plays,
 			this.thoughts,
 			this.links,
 			this.play_links,

@@ -223,7 +223,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 				continue;
 			}
 
-			if (!finessed_card) {
+			if (state.clue_tokens > 0 && !finessed_card) {
 				const play_over_save = find_play_over_save(game, target, play_clues.flat());
 				if (play_over_save.length > 0) {
 					for (const clue of play_over_save)
@@ -297,7 +297,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 
 			// Give them a fix clue with known trash if possible (TODO: Re-examine if this should only be urgent fixes)
 			const trash_fixes = fix_clues[target].filter(clue => clue.trash);
-			if (!finessed_card && trash_fixes.length > 0) {
+			if (state.clue_tokens > 0 && !finessed_card && trash_fixes.length > 0) {
 				const trash_fix = Utils.maxOn(trash_fixes, ({ result }) => find_clue_value(result));
 				urgent_clues[PRIORITY.TRASH_FIX + nextPriority].push(trash_fix);
 				continue;
@@ -358,6 +358,9 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 					continue;
 				}
 			}
+
+			if (state.clue_tokens === 0)
+				continue;
 
 			// Check if TCCM is available
 			if (game.level >= LEVEL.TEMPO_CLUES && state.numPlayers > 2 && (!save.playable || state.clue_tokens === 1)) {
@@ -430,7 +433,7 @@ export function find_urgent_actions(game, play_clues, save_clues, fix_clues, sta
 		}
 
 		// They require a fix clue
-		if (!finessed_card && fix_clues[target].length > 0) {
+		if (state.clue_tokens > 0 && !finessed_card && fix_clues[target].length > 0) {
 			const urgent_fixes = fix_clues[target].filter(clue => clue.urgent);
 
 			// Urgent fix on the next player is particularly urgent, but we should prioritize urgent fixes for others too

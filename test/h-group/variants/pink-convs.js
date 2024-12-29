@@ -399,7 +399,7 @@ describe('pink choice tempo clues', () => {
 			variant: VARIANTS.PINK
 		});
 
-		takeTurn(game, 'Cathy clues 2 to Alice (slots 1,5)');
+		takeTurn(game, 'Cathy clues pink to Alice (slots 1,5)');
 		takeTurn(game, 'Alice plays i2 (slot 5)');
 		takeTurn(game, 'Bob clues 2 to Alice (slot 2)');
 

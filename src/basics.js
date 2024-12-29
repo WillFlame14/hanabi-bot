@@ -138,14 +138,12 @@ export function onDraw(game, action) {
 			state.actionList.length));
 	}
 
-	game.players.forEach(player => {
+	game.common.thoughts[order] = Object.freeze(new Card(-1, -1, game.common.all_possible, game.common.all_possible, order, state.actionList.length));
+
+	for (const player of game.allPlayers) {
 		player.card_elim(state);
 		player.refresh_links(state);
-	});
-
-	game.common.thoughts[order] = Object.freeze(new Card(-1, -1, game.common.all_possible, game.common.all_possible, order, state.actionList.length));
-	game.common.card_elim(state);
-	game.common.refresh_links(state);
+	}
 
 	state.cardOrder = order;
 	state.cardsLeft--;

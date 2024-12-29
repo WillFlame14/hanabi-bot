@@ -4,6 +4,7 @@ import { Player } from '../basics/Player.js';
 import { cardValue } from '../basics/hanabi-util.js';
 import { CLUE } from '../constants.js';
 import { cardTouched, colourableSuits, variantRegexes } from '../variants.js';
+import { older_queued_finesse } from './h-group/hanabi-logic.js';
 
 import * as Utils from '../tools/util.js';
 
@@ -21,6 +22,7 @@ export class HGroup_Player extends Player {
 			IdentitySet.fromJSON(json.all_possible),
 			IdentitySet.fromJSON(json.all_inferred),
 			json.hypo_stacks.slice(),
+			new Set(json.hypo_plays),
 			json.thoughts.map(Card.fromJSON),
 			json.links.map(Utils.objClone),
 			json.play_links.map(Utils.objClone),
@@ -102,6 +104,24 @@ export class HGroup_Player extends Player {
 		throw new Error(`distance from ${order} to chop ${chop} in hand ${hand} was negative!`);
 	}
 
+	/**
+	 * Returns playables in the given player's hand, according to this player.
+	 * @param {State} state
+	 * @param {number} playerIndex
+	 * @param {{assume?: boolean}} options
+	 */
+	thinksPlayables(state, playerIndex, options = {}) {
+		const playables = super.thinksPlayables(state, playerIndex, options);
+
+		return playables.filter(o => {
+			if (!this.thoughts[o].finessed)
+				return true;
+
+			// Playables that are queued behind a finesse aren't playable
+			const queued_behind = older_queued_finesse(state, playerIndex, this, o);
+			return queued_behind === undefined;
+		});
+	}
 
 	/**
 	 * Returns all clued card in the hand for the given suitIndex and rank (used for bluffs through clued cards.
@@ -146,9 +166,9 @@ export class HGroup_Player extends Player {
 				(info_lock === undefined || info_lock.has(identity)) &&
 				(inferred.length !== 1 || inferred.array[0]?.matches(identity)) && 		// must not be information-locked on a different identity
 				clues.some(clue => cardTouched(identity, state.variant, clue)) &&				// at least one clue matches
-				(!state.variant.suits[identity.suitIndex].match(variantRegexes.pinkish) || forcePink ||	// pink rank match
-					!(clues.every(c1 => clues.every(c2 => c1.type === c2.type && c1.value === c2.value)) && clues[0].type === CLUE.RANK && clues[0].value !== identity.rank) ||
-					clues.some(clue => clue.type === CLUE.COLOUR && colourableSuits(state.variant)[clue.value]?.match(variantRegexes.pinkish)));
+				(!variantRegexes.pinkish.test(state.variant.suits[identity.suitIndex]) || forcePink ||	// pink rank match
+					!(clues.every(c1 => clues.every(c2 => c1.type === c2.type && c1.value === c2.value)) && clues.length > 0 && clues[0].type === CLUE.RANK && clues[0].value !== identity.rank) ||
+					clues.some(clue => clue.type === CLUE.COLOUR && variantRegexes.pinkish.test(colourableSuits(state.variant)[clue.value])));
 		});
 
 		return (order !== undefined && !ignoreOrders.includes(order)) ? order : undefined;

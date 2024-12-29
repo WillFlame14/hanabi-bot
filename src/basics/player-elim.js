@@ -353,12 +353,10 @@ export function good_touch_elim(state, only_self = false) {
 				new_identities = new_identities.subtract(identity);
 				changed = true;
 
-				if (this.playerIndex === -1) {
-					this.elims[id_hash] ??= [];
+				this.elims[id_hash] ??= [];
 
-					if (!this.elims[id_hash].includes(order))
-						this.elims[id_hash].push(order);
-				}
+				if (!this.elims[id_hash].includes(order))
+					this.elims[id_hash].push(order);
 
 				if (!cm) {
 					if (new_card.inferred.length === 0 && !new_card.reset) {
@@ -446,16 +444,17 @@ export function good_touch_elim(state, only_self = false) {
 export function reset_card(order) {
 	const { possible, old_inferred, info_lock } = this.thoughts[order];
 
-	if (info_lock)
-		return produce(this.thoughts[order], (draft) => { draft.inferred = info_lock; });
-
 	return produce(this.thoughts[order], (draft) => {
 		draft.reset = true;
+		draft.known = false;
 
 		if (draft.finessed) {
 			draft.finessed = false;
 			draft.hidden = false;
-			if (draft.old_inferred !== undefined) {
+			if (info_lock) {
+				draft.inferred = info_lock;
+			}
+			else if (draft.old_inferred !== undefined) {
 				draft.inferred = old_inferred.intersect(possible);
 			}
 			else {
@@ -464,7 +463,7 @@ export function reset_card(order) {
 			}
 		}
 		else {
-			draft.inferred = possible;
+			draft.inferred = info_lock ?? possible;
 		}
 	});
 }
@@ -595,7 +594,8 @@ export function refresh_links(state) {
 	}
 
 	// Clear links that we're removing
-	this.links = this.links.filter((_, index) => !remove_indices.includes(index)).concat(this.find_links(state));
+	this.links = this.links.filter((_, index) => !remove_indices.includes(index));
+	this.links = this.links.concat(this.find_links(state));
 }
 
 /**
@@ -609,7 +609,7 @@ export function restore_elim(identity) {
 		possible.has(identity) && (info_lock === undefined || info_lock.has(identity))));
 
 	if (elims?.length > 0) {
-		logger.warn('adding back inference', id, 'which was falsely eliminated from', elims);
+		logger.warn(`adding back inference ${id} which was falsely eliminated from ${elims} in player ${this.playerIndex}'s view`);
 
 		for (const order of elims)
 			this.updateThoughts(order, (draft) => { draft.inferred = this.thoughts[order].inferred.union(identity); });

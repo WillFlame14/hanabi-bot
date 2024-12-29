@@ -37,7 +37,7 @@ export function colour_save(game, identity, action, focus) {
 
 	// Skip 5 possibility if the focused card does not include a brownish variant. (ex. No Variant games or a negative Brown card)
 	// OR if the clue given is not black.
-	if (rank === 5 && state.variant.suits[suitIndex] !== 'Black' && state.variant.suits[suitIndex] !== 'Brown')
+	if (rank === 5 && state.variant.suits[suitIndex] !== 'Black' && !/Brown/.test(state.variant.suits[suitIndex]))
 		return false;
 
 	// Determine if possible save on k2, k5 with colour
@@ -55,20 +55,20 @@ export function colour_save(game, identity, action, focus) {
 	}
 
 	// Don't consider loaded save with brown
-	if (state.variant.suits[suitIndex] === 'Brown' && common.thinksLoaded(state, target))
+	if (/Brown/.test(state.variant.suits[suitIndex]) && common.thinksLoaded(state, target))
 		return false;
 
-	if (state.includesVariant(/Dark Rainbow|Dark Prism/) && state.variant.suits[suitIndex].match(/Dark Rainbow|Dark Prism/)) {
+	if (state.includesVariant(/Dark Rainbow|Dark Prism/) && /Dark Rainbow|Dark Prism/.test(state.variant.suits[suitIndex])) {
 		const completed_suit = common.hypo_stacks[suitIndex] === state.max_ranks[suitIndex];
 		const saved_crit = state.hands[target].some(o => ((c = state.deck[o]) =>
-			state.isCritical(c) && c.newly_clued && c.rank !== 5 && !state.variant.suits[c.suitIndex].match(/Dark Rainbow|Dark Prism/))());
+			state.isCritical(c) && c.newly_clued && c.rank !== 5 && !/Dark Rainbow|Dark Prism/.test(state.variant.suits[c.suitIndex]))());
 
 		if (!completed_suit && !saved_crit)
 			return false;
 	}
 
 	// Check if identity is critical or a brown 2
-	return state.isCritical({ suitIndex, rank }) || (state.variant.suits[suitIndex] === 'Brown' && rank === 2);
+	return state.isCritical({ suitIndex, rank }) || (/Brown/.test(state.variant.suits[suitIndex]) && rank === 2);
 }
 
 /**
@@ -233,11 +233,11 @@ function find_rank_focus(game, rank, action, focusResult, thinks_stall) {
 		}
 	}
 
-	const wrong_prompts = new Set();
 	const old_play_stacks = state.play_stacks;
 
 	// Play clue
 	for (let suitIndex = 0; suitIndex < state.variant.suits.length; suitIndex++) {
+		const wrong_prompts = new Set();
 		let next_rank = state.play_stacks[suitIndex] + 1;
 
 		if (!focus_thoughts.possible.has({ suitIndex, rank }) ||
@@ -368,7 +368,7 @@ export function find_focus_possible(game, action, focusResult, thinks_stall) {
 
 	const focus_possible = clue.type === CLUE.COLOUR ?
 		state.variant.suits
-			.filter(s => s.match(Utils.combineRegex(variantRegexes.rainbowish, variantRegexes.prism)))
+			.filter(s => Utils.combineRegex(variantRegexes.rainbowish, variantRegexes.prism).test(s))
 			.concat(colourableSuits(state.variant)[clue.value])
 			.flatMap(s => find_colour_focus(game, state.variant.suits.indexOf(s), action, focusResult, thinks_stall)) :
 		find_rank_focus(game, clue.value, action, focusResult, thinks_stall);

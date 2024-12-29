@@ -308,6 +308,31 @@ describe('sarcastic discard', () => {
 		// ALice's slot 4 should be known r2 now.
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][3]], ['r2']);
 	});
+
+	it('correctly interprets a sarcastic discard against gtp', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['g1', 'g4', 'p5', 'y4'],
+			['y3', 'p3', 'r2', 'p2'],
+			['p4', 'r3', 'r5', 'r1']
+		], {
+			level: { min: 3 },
+			play_stacks: [0, 1, 1, 0, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues green to Alice (slots 1,2)');		// getting g2 (and g4)
+		takeTurn(game, 'Alice plays g2 (slot 1)');
+		takeTurn(game, 'Bob clues 5 to Alice (slot 1)');
+		takeTurn(game, 'Cathy clues 4 to Bob');						// Finessing Alice's y1, y2. Alice's g card is g3 by gtp.
+
+		takeTurn(game, 'Donald clues 5 to Bob');
+		takeTurn(game, 'Alice plays y2 (slot 3)');					// Playing into the finesse
+		takeTurn(game, 'Bob discards g4', 'y1');
+
+		// Alice's slot 3 is g4, not [g3,g4].
+		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][2]], ['g4']);
+	});
 });
 
 describe('fix clues', () => {

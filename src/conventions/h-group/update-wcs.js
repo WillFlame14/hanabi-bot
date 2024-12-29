@@ -99,7 +99,7 @@ function stomped_finesse(game, reacting, order, waiting_connection, options) {
  */
 export function resolve_card_retained(game, waiting_connection) {
 	const { common, state } = game;
-	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback, focus } = waiting_connection;
+	const { connections, conn_index, giver, target, inference, action_index, ambiguousPassback, selfPassback, focus, symmetric } = waiting_connection;
 	const { type, reacting, bluff, possibly_bluff, identities } = connections[conn_index];
 	const { order } = connections[conn_index];
 
@@ -266,9 +266,15 @@ export function resolve_card_retained(game, waiting_connection) {
 			return { remove: false, remove_finesse: false };
 		}
 
+		if (type === 'prompt' && last_reacting_action?.type === 'discard' && last_reacting_action.intentional) {
+			logger.highlight('cyan', 'allowing delaying a prompt for an intentional discard');
+			return { remove: false };
+		}
+
 		logger.warn(`${state.playerNames[reacting]} didn't play into ${type}, removing inference ${logCard(inference)}`);
 
-		if (reacting !== state.ourPlayerIndex) {
+		// Don't rewind if this is a symmetric connection that doesn't involve us
+		if (reacting !== state.ourPlayerIndex && !(symmetric && connections.every((conn, i) => i < conn_index || conn.reacting !== state.ourPlayerIndex))) {
 			const real_connects = getRealConnects(connections, conn_index);
 			const new_game = game.rewind(action_index, [{ type: 'ignore', conn_index: real_connects, order, inference }]);
 			if (new_game) {

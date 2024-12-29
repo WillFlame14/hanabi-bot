@@ -13,7 +13,7 @@ import { order_1s } from '../action-helper.js';
 import { find_impossible_conn } from '../update-turn.js';
 import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
 import { early_game_clue } from '../urgent-actions.js';
-import { isTrash, knownAs } from '../../../basics/hanabi-util.js';
+import { isTrash, knownAs, visibleFind } from '../../../basics/hanabi-util.js';
 import * as Basics from '../../../basics.js';
 import * as Utils from '../../../tools/util.js';
 
@@ -525,7 +525,7 @@ export function interpret_clue(game, action) {
 				const order = old_ordered_1s[0];
 				const { inferred, possible } = common.thoughts[order];
 				if (!(chop && (clue.value === 2 || clue.value === 5))) {
-					common.updateThoughts(order, (draft) => { draft.inferred = inferred.intersect(inferred.filter(i => i.rank === clue.value)); });
+					common.updateThoughts(order, (draft) => { draft.inferred = inferred.intersect(inferred.filter(i => i.rank === clue.value && !state.isPlayable(i))); });
 					logger.info('pink fix promise!', common.thoughts[order].inferred.map(logCard), order);
 				}
 				else {
@@ -626,7 +626,7 @@ export function interpret_clue(game, action) {
 		!positional && clue.type === CLUE.RANK &&
 		list.every(o => !state.deck[o].newly_clued && knownAs(game, o, variantRegexes.pinkish)) &&
 		state.variant.suits.every((suit, i) =>
-			!suit.match(variantRegexes.pinkish) || state.isBasicTrash({ suitIndex: i, rank: clue.value }));
+			!variantRegexes.pinkish.test(suit) || state.isBasicTrash({ suitIndex: i, rank: clue.value }));
 
 	if (pink_trash_fix) {
 		logger.info('pink trash fix!');
@@ -676,6 +676,7 @@ export function interpret_clue(game, action) {
 		let all_connections = [];
 
 		const looksDirect = common.thoughts[focus].identity() === undefined && (					// Focused card must be unknown AND
+			clue.type === CLUE.COLOUR ||
 			rankLooksPlayable(game, clue.value, giver, target, focus) ||		// Looks like a play
 			focus_possible.some(fp => !fp.illegal && game.players[target].thoughts[focus].possible.has(fp) &&
 				fp.connections.every(conn => conn.type === 'known' || (conn.type === 'playable' && conn.reacting !== state.ourPlayerIndex))));	// Looks like an existing possibility
@@ -804,7 +805,7 @@ export function interpret_clue(game, action) {
 		if (ordered_1s.length > 0) {
 			const missing_1s = Utils.range(0, state.variant.suits.length)
 				.map(suitIndex => ({ suitIndex, rank: 1 }))
-				.filter(i => !isTrash(state, common, i, ordered_1s[0], { infer: true }));
+				.filter(i => !visibleFind(state, common, i, { infer: true }).some(o => !ordered_1s.includes(o)));
 
 			if (missing_1s.length > 0) {
 				for (const order of ordered_1s.slice(0, missing_1s.length))

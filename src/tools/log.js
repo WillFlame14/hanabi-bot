@@ -57,7 +57,7 @@ export function logHand(hand, player = globals.game.common) {
 		new_card.visible = (card.suitIndex === -1 ? 'unknown' : logCard(card));
 		new_card.order = order;
 
-		new_card.flags = ['clued', 'newly_clued', 'focused', 'finessed', 'bluffed', 'certain_finessed', 'chop_moved', 'rewinded', 'hidden', 'trash', 'called_to_discard', 'info_lock', 'uncertain'].filter(flag => card[flag]);
+		new_card.flags = ['clued', 'newly_clued', 'known', 'focused', 'finessed', 'bluffed', 'certain_finessed', 'chop_moved', 'rewinded', 'hidden', 'trash', 'called_to_discard', 'info_lock', 'uncertain'].filter(flag => card[flag]);
 
 		new_card.possible = card.possible.map(logCard).join();
 		new_card.inferred = card.inferred.map(logCard).join();
@@ -163,7 +163,7 @@ export function logAction(action) {
 			let clue_value;
 
 			if (clue.type === CLUE.COLOUR)
-				clue_value = state.variant.suits.filter(suit => !suit.match(variantRegexes.noColour))[clue.value].toLowerCase();
+				clue_value = state.variant.suits.filter(suit => !variantRegexes.noColour.test(suit))[clue.value].toLowerCase();
 			else
 				clue_value = clue.value;
 

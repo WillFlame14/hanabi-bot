@@ -217,7 +217,9 @@ export function interpret_discard(game, action) {
 	if (rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex] && !state.hands.flat().some(o => common.thoughts[o].matches(identity, { infer: true }))) {
 		if (state.deck[order].clued) {
 			logger.warn('discarded useful clued card!');
-			common.restore_elim(state.deck[order]);
+
+			for (const player of game.allPlayers)
+				player.restore_elim(state.deck[order]);
 
 			// Card was bombed
 			if (failed) {

@@ -244,10 +244,23 @@ export async function take_action(game) {
 	playable_orders = playable_orders.filter(o => !trash_orders.includes(o) || playable_trash.includes(o));
 	trash_orders = trash_orders.filter(o => !discards.includes(o) && !playable_trash.includes(o));
 
+	if (playable_orders.length > 0)
+		logger.info('playable cards', logHand(playable_orders));
+
+	if (trash_orders.length > 0)
+		logger.info('trash cards', logHand(trash_orders));
+
+	if (discards.length > 0)
+		logger.info('discards', logHand(discards));
+
 	if (playable_orders.length > 0 && state.endgameTurns > 0) {
 		const best_connector = Utils.maxOn(playable_orders, order => {
-			const card = me.thoughts[order];
-			const play_stacks = state.play_stacks.slice();
+			const card_id = me.thoughts[order].identity({ infer: true });
+
+			if (card_id === undefined)
+				return -Infinity;
+
+			const play_stacks = state.play_stacks.with(card_id.suitIndex, card_id.rank);
 			let connectables = 0;
 
 			for (let i = 1; i < state.endgameTurns; i++) {
@@ -259,12 +272,12 @@ export async function take_action(game) {
 
 				if (connectable) {
 					connectables++;
-					play_stacks[card.suitIndex]++;
+					play_stacks[card_id.suitIndex]++;
 				}
 			}
 
 			return connectables;
-		}, 1);
+		}, 0);
 
 		const best_playable = best_connector ??
 			playable_orders.find(o => me.thoughts[o].inferred.every(i => i.rank === 5)) ??
@@ -273,17 +286,6 @@ export async function take_action(game) {
 
 		return { tableID, type: ACTION.PLAY, target: best_playable };
 	}
-
-	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
-
-	if (playable_orders.length > 0)
-		logger.info('playable cards', logHand(playable_orders));
-
-	if (trash_orders.length > 0)
-		logger.info('trash cards', logHand(trash_orders));
-
-	if (discards.length > 0)
-		logger.info('discards', logHand(discards));
 
 	const playable_priorities = determine_playable_card(game, playable_orders);
 
@@ -312,6 +314,8 @@ export async function take_action(game) {
 		logger.info('must play into hidden component that may be discarded!');
 		return { tableID, type: ACTION.PLAY, target: best_playable_order };
 	}
+
+	const { play_clues, save_clues, fix_clues, stall_clues } = find_clues(game);
 
 	// ALways give a save clue after a Generation Discard to avoid desync
 	if (state.generated && save_clues[nextPlayerIndex]?.safe) {
@@ -550,8 +554,10 @@ export async function take_action(game) {
 		return urgent_actions[ACTION_PRIORITY.UNLOCK + actionPrioritySize][0];
 
 	// Forced discard if next player is locked
-	if ((state.clue_tokens === 0 || (state.clue_tokens === 1 && playable_orders.length === 0)) && common.thinksLocked(state, nextPlayerIndex))
+	if ((state.clue_tokens === 0 || (state.clue_tokens === 1 && playable_orders.length === 0)) && common.thinksLocked(state, nextPlayerIndex)) {
+		logger.info('next player is locked, forcing discard');
 		return take_discard(game, state.ourPlayerIndex, trash_orders);
+	}
 
 	// Attempt a Gentleman's Discard
 	if (game.level >= LEVEL.SPECIAL_DISCARDS && state.pace >= 2 * state.numPlayers) {

@@ -23,8 +23,7 @@ import { logClue } from '../../tools/log.js';
 /**
  * Finds the focused card and whether it was on chop before the clue.
  * 
- * The 'beforeClue' option is needed if this is called before the clue has been interpreted
- * to prevent focusing a previously clued card.
+ * This function must be called before the clue has been given.
  * @param {Game} game
  * @param {number[]} hand
  * @param {Player} player
@@ -44,12 +43,14 @@ export function determine_focus(game, hand, player, list, clue) {
 		list.every(o => state.deck[o].clued) &&
 		clue.value <= hand.length &&
 		list.includes(hand[clue.value - 1]) &&
-		common.thoughts[hand[clue.value - 1]].possible.some(p => state.variant.suits[p.suitIndex].match(variantRegexes.pinkish));
+		[Math.max(...list), hand[clue.value - 1]].every(o => state.deck[o].clues.some(cl =>		// leftmost and target must both be pink
+			(cl.type === CLUE.COLOUR && variantRegexes.pinkish.test(colourableSuits(state.variant)[cl.value])) ||
+			(cl.type === CLUE.RANK && cl.value !== clue.value)));
 
 	if (pink_choice_tempo)
 		return { focus: hand[clue.value - 1], chop: false, positional: true };
 
-	const brown_tempo = clue.type === CLUE.COLOUR && colourableSuits(state.variant)[clue.value] === 'Brown' &&
+	const brown_tempo = clue.type === CLUE.COLOUR && /Brown/.test(colourableSuits(state.variant)[clue.value]) &&
 		list.every(o => state.deck[o].clued);
 
 	if (brown_tempo)
@@ -286,14 +287,14 @@ export function clueUncertain(game, hypo_game, focus) {
  * @param {number} prompt
  */
 export function rainbowMismatch(game, action, identity, prompt) {
-	const { common, me, state } = game;
+	const { me, state } = game;
 	const { clue, list, target } = action;
 
-	if (clue.type !== CLUE.COLOUR || !state.variant.suits[identity.suitIndex].match(variantRegexes.rainbowish))
+	if (clue.type !== CLUE.COLOUR || !variantRegexes.rainbowish.test(state.variant.suits[identity.suitIndex]))
 		return false;
 
 	// Prompt is known rainbow
-	if (common.thoughts[prompt].possible.every(i => state.variant.suits[i.suitIndex].match(variantRegexes.rainbowish)))
+	if (knownAs(game, prompt, variantRegexes.rainbowish))
 		return false;
 
 	const free_choice_clues = state.allValidClues(target).filter(clue => Utils.objEquals(state.clueTouched(state.hands[target], clue), list));
@@ -302,7 +303,7 @@ export function rainbowMismatch(game, action, identity, prompt) {
 
 	// There was free choice to clue a matching colour, but didn't
 	return list.every(o => target === state.ourPlayerIndex ?
-		me.thoughts[o].possible.every(c => state.variant.suits[c.suitIndex].match(variantRegexes.rainbowish)) :
-		state.variant.suits[state.deck[o].suitIndex].match(variantRegexes.rainbowish)) &&
-		matching_clues.length > 0 && !matching_clues.some(cl => cl.value === clue.value);
+		me.thoughts[o].possible.every(c => variantRegexes.rainbowish.test(state.variant.suits[c.suitIndex])) :
+		variantRegexes.rainbowish.test(state.variant.suits[state.deck[o].suitIndex])) &&
+	matching_clues.length > 0 && !matching_clues.some(cl => cl.value === clue.value);
 }

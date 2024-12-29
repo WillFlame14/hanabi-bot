@@ -53,9 +53,6 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 	const card = state.deck[order];
 	logger.info(`waiting for connecting ${logCard(card)} ${type} ${order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}${waiting_connection.symmetric ? ' (symmetric)' : ''}`);
 
-	if (other_play(game, waiting_connection, lastPlayerIndex))
-		return resolve_other_play(game, lastPlayerIndex, waiting_connection);
-
 	const impossible_conn = find_impossible_conn(game, connections.slice(conn_index));
 	if (impossible_conn !== undefined) {
 		logger.warn(`future connection depends on revealed card having identities ${impossible_conn.identities.map(logCard)}, removing`);
@@ -66,6 +63,9 @@ function update_wc(game, waiting_connection, lastPlayerIndex) {
 		logger.warn(`connection depends on focused card having identity ${logCard(inference)}, removing`);
 		return { remove: true, remove_finesse: true };
 	}
+
+	if (other_play(game, waiting_connection, lastPlayerIndex))
+		return resolve_other_play(game, lastPlayerIndex, waiting_connection);
 
 	const last_reacting_action = game.last_actions[reacting];
 

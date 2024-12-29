@@ -86,8 +86,8 @@ function isStall(game, action, focusResult, severity, prev_game) {
 		}
 
 		if (severity >= 3) {
-			// Locked hand stall given, not touching slot 1 and not locked
-			if (chop && !list.includes(state.hands[target][0]) && !common.thinksLocked(state, target)) {
+			// Locked hand stall given, not locked
+			if (chop && !common.thinksLocked(state, target)) {
 				logger.info('locked hand stall!');
 				return CLUE_INTERP.STALL_LOCKED;
 			}

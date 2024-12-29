@@ -1,12 +1,14 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, expandShortCard, setup, takeTurn } from '../../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, setup, takeTurn } from '../../test-utils.js';
 import * as ExAsserts from '../../extra-asserts.js';
 import HGroup from '../../../src/conventions/h-group.js';
 
 import logger from '../../../src/tools/logger.js';
 import { logCard } from '../../../src/tools/log.js';
+import { find_clues } from '../../../src/conventions/h-group/clue-finder/clue-finder.js';
+import { CLUE } from '../../../src/constants.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -264,5 +266,27 @@ describe('good touch principle', () => {
 		takeTurn(game, 'Bob plays p1', 'p4');
 
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.ALICE][4]], ['r1', 'y1', 'g1', 'b1']);
+	});
+
+	it('counts bad touch correctly', () => {
+		const game =  setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx'],
+			['y3', 'p2', 'g3', 'p1'],
+			['g4', 'g3', 'r1', 'g4'],
+			['r2', 'r5', 'p1', 'r3']
+		], {
+			level: { min: 1 },
+			play_stacks: [0, 0, 2, 0, 0],
+			starting: PLAYER.DONALD
+		});
+
+		takeTurn(game, 'Donald clues green to Bob');
+
+		const { play_clues } = find_clues(game);
+
+		// Green to Cathy has 2 bad touch.
+		const green_cathy = play_clues[PLAYER.CATHY].find(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.GREEN);
+		assert.ok(green_cathy !== undefined);
+		assert.deepEqual(green_cathy.result.bad_touch, [0, 1].map(i => game.state.hands[PLAYER.CATHY][i]));
 	});
 });

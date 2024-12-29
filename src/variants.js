@@ -127,7 +127,7 @@ export async function getShortForms(variant) {
 
 /** @param {Variant} variant */
 export function colourableSuits(variant) {
-	return variant.suits.filter(suit => !suit.match(variantRegexes.noColour));
+	return variant.suits.filter(suit => !variantRegexes.noColour.test(suit));
 }
 
 /**
@@ -141,16 +141,16 @@ export function cardTouched(card, variant, clue) {
 	const { suitIndex, rank } = card;
 	const suit = variant.suits[suitIndex];
 
-	const colourableSuits = variant.suits.filter(suit => !suit.match(variantRegexes.noColour));
+	const colourableSuits = variant.suits.filter(suit => !variantRegexes.noColour.test(suit));
 
 	if (type === CLUE.COLOUR) {
-		if (suitIndex === -1 || suit.match(variantRegexes.whitish))
+		if (suitIndex === -1 || variantRegexes.whitish.test(suit))
 			return false;
 
-		if (suit.match(variantRegexes.rainbowish))
+		if (variantRegexes.rainbowish.test(suit))
 			return true;
 
-		if (suit.match(variantRegexes.prism))
+		if (variantRegexes.prism.test(suit))
 			return ((rank - 1) % colourableSuits.length) === value;
 
 		if (rank === variant.specialRank) {
@@ -163,10 +163,10 @@ export function cardTouched(card, variant, clue) {
 		return variant.suits[suitIndex] === colourableSuits[value];
 	}
 	else if (type === CLUE.RANK) {
-		if (rank === -1 || suit.match(variantRegexes.brownish))
+		if (rank === -1 || variantRegexes.brownish.test(suit))
 			return false;
 
-		if (suit.match(variantRegexes.pinkish))
+		if (variantRegexes.pinkish.test(suit))
 			return true;
 
 		if (rank === variant.specialRank) {
@@ -250,7 +250,7 @@ export function cardCount(variant, { suitIndex, rank }) {
 	if (suitIndex === -1 || rank === -1)
 		return 4;
 
-	if (variant.suits[suitIndex].match(variantRegexes.dark))
+	if (variantRegexes.dark.test(variant.suits[suitIndex]))
 		return 1;
 
 	if (variant.criticalRank === rank)

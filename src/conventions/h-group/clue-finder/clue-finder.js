@@ -308,33 +308,6 @@ export function get_clue_interp(game, clue, giver, options) {
 			}
 			break;
 		}
-		case CLUE_INTERP.STALL_5: {
-			if (game.level >= LEVEL.STALLING && giver === state.ourPlayerIndex) {
-				const chopIndex = common.chopIndex(hand);
-				const oldest_5 = hand.findLast((o, i) => ((card = state.deck[o]) =>
-					i < chopIndex && card.rank === 5 && !card.clued)());
-
-				const distance_from_chop = common.chopDistance(hand, oldest_5);
-
-				for (let i = 0; i < state.numPlayers; i++) {
-					if (i === state.ourPlayerIndex)
-						continue;
-
-					const hand2 = state.hands[i];
-
-					const closer5 = hand2.find(o => ((card = me.thoughts[o]) =>
-						card.rank === 5 && !card.saved && common.chopDistance(hand2, o) < distance_from_chop)());
-
-					// There is a 5 closer to chop that we could stall on.
-					if (closer5 !== undefined) {
-						logger.warn('closer 5 to chop', closer5, state.playerNames[i]);
-						new_interp = CLUE_INTERP.NONE;
-						break;
-					}
-				}
-			}
-			break;
-		}
 	}
 
 	const new_result = { ...result, interp: new_interp };
@@ -357,7 +330,7 @@ export function get_clue_interp(game, clue, giver, options) {
  * @property {boolean} [noRecurse]
  */
 export function find_clues(game, options = {}) {
-	const { state } = game;
+	const { common, state } = game;
 	const { giver = state.ourPlayerIndex, noFix = false } = options;
 
 	logger.highlight('whiteb', `------- FINDING CLUES ${giver !== state.ourPlayerIndex ? `(${state.playerNames[giver]}) ` : ''}-------`);
@@ -423,6 +396,25 @@ export function find_clues(game, options = {}) {
 			logger.debug('save clue', logClue(save_clue), 'has value', value);
 			return value;
 		}, -9);
+	}
+
+	// Make sure we clue the closest 5 to chop.
+	if (giver === state.ourPlayerIndex && game.level >= LEVEL.STALLING && stall_clues[STALL_INDICES[CLUE_INTERP.STALL_5]].length > 1) {
+		const dists = stall_clues[STALL_INDICES[CLUE_INTERP.STALL_5]].map(clue => {
+			const hand = state.hands[clue.target];
+			const chopIndex = common.chopIndex(hand);
+			const oldest_5 = hand.findLast((o, i) => ((card = state.deck[o]) =>
+				i < chopIndex && card.rank === 5 && !card.clued)());
+
+			return common.chopDistance(hand, oldest_5);
+		});
+
+		const closest_5_dist = Math.min(...dists);
+		const closest_5_stalls = stall_clues[STALL_INDICES[CLUE_INTERP.STALL_5]].filter((_, i) => dists[i] === closest_5_dist);
+
+		stall_clues[STALL_INDICES[CLUE_INTERP.STALL_5]] = closest_5_stalls;
+
+		logger.highlight('green', `closest 5 to chop is ${closest_5_dist}-away, keeping ${closest_5_stalls.map(logClue)}`);
 	}
 
 	const all_clues = [...save_clues.filter(c => c !== undefined), ...play_clues.flat(), ...stall_clues.flat()];

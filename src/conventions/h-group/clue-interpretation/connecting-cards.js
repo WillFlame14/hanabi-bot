@@ -363,7 +363,7 @@ export function find_connecting(game, action, identity, looksDirect, thinks_stal
 			thinks_stall.has(playerIndex) ||
 			(giver === state.ourPlayerIndex && common.waiting_connections.some(wc =>
 				wc.target === state.ourPlayerIndex && wc.connections.some((conn, index) =>
-					index >= wc.conn_index && conn.type === 'finesse' && conn.reacting === playerIndex))))
+					index >= wc.conn_index && conn.type === 'finesse' && conn.reacting === playerIndex && common.thoughts[conn.order].uncertain))))
 			continue;
 
 		const connections = /** @type {Connection[]} */ ([]);

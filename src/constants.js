@@ -1,7 +1,7 @@
 import { find_all_clues, find_all_discards } from './conventions/h-group/take-action.js';
 
 export const MAX_H_LEVEL = 11;
-export const BOT_VERSION = '1.8.18';
+export const BOT_VERSION = '1.8.19';
 
 export const ACTION =  /** @type {const} */ ({
 	PLAY: 0,
