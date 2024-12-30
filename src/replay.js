@@ -49,6 +49,9 @@ function fetchReplay(id) {
 }
 
 async function main() {
+	if (Number(process.versions.node.split('.')[0]) < 22)
+		throw new Error(`This program requires Node v22 or above! Currently using Node v${process.versions.node}.`);
+
 	const { id, file, level, index, convention = 'HGroup' } = Utils.parse_args();
 	initConsole();
 

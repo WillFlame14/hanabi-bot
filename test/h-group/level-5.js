@@ -275,11 +275,11 @@ describe('ambiguous clues', () => {
 	it('can interpret a delayed play through possible rainbow identities', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['g2', 'r1', 'b2', 'm4'],
+			['g2', 'r1', 'b2', 'y3'],
 			['r2', 'y4', 'b3', 'r3'],
 			['m4', 'm2', 'r4', 'g1']
 		], {
-			level: { min: 1 },
+			level: { min: 5 },
 			play_stacks: [0, 0, 0, 0, 1],
 			variant: VARIANTS.RAINBOW
 		});

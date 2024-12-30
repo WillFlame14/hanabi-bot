@@ -289,7 +289,7 @@ describe('strategy', async () => {
 	it('does not give clues that may be better given by someone else', async () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['b3', 'g3', 'y3', 'b4'],
+			['b3', 'g3', 'y4', 'b4'],
 			['p5', 'g3', 'p4', 'p3'],
 			['r3', 'p4', 'b3', 'y4']
 		], {
@@ -298,10 +298,11 @@ describe('strategy', async () => {
 			starting: PLAYER.DONALD,
 			clue_tokens: 0
 		});
+
 		takeTurn(game, 'Donald discards y4', 'r1');
 
 		const action = await take_action(game);
-		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 });
+		ExAsserts.objHasProperties(action, { type: ACTION.DISCARD, target: 0 }, `Expected (discard slot 4), got ${logPerformAction(action)}`);
 	});
 
 	it('urgently gives play clues to chop when they may discard', async () => {

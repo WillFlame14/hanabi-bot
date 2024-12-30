@@ -25,6 +25,9 @@ const conventions = /** @type {const} */ ({
 const playerNames = ['Alice', 'Bob', 'Cathy', 'Donald', 'Emily', 'Fred'];
 
 async function main() {
+	if (Number(process.versions.node.split('.')[0]) < 22)
+		throw new Error(`This program requires Node v22 or above! Currently using Node v${process.versions.node}.`);
+
 	const { convention = 'HGroup', level: lStr = '1', games: gStr = '10', players: pStr = '2', seed = '0', variant: vStr = 'No Variant' } = Utils.parse_args();
 	const variant = await getVariant(vStr);
 

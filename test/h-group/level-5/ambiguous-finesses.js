@@ -177,7 +177,7 @@ describe('ambiguous finesse', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx', 'xx'],
 			['p4', 'r4', 'r4', 'g1', 'y3'],
-			['b5', 'y5', 'y5', 'r3', 'r1']
+			['b5', 'p5', 'y5', 'r3', 'r1']
 		], {
 			level: { min: 5 }
 		});

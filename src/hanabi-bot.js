@@ -15,9 +15,6 @@ function connect(bot_index = '') {
 	if (process.env[u_field] === undefined || process.env[p_field] === undefined)
 		throw new Error(`Missing ${u_field} and ${p_field} environment variables.`);
 
-	if (Number(process.versions.node.split('.')[0]) < 22)
-		throw new Error(`This program requires Node v22 or above! Currently using Node v${process.versions.node}.`);
-
 	const username = encodeURIComponent(process.env[u_field]);
 	const password = encodeURIComponent(process.env[p_field]);
 	const data = `username=${username}&password=${password}&version=bot`;
@@ -62,9 +59,12 @@ function connect(bot_index = '') {
 }
 
 async function main() {
-	const args = Utils.parse_args();
+	if (Number(process.versions.node.split('.')[0]) < 22)
+		throw new Error(`This program requires Node v22 or above! Currently using Node v${process.versions.node}.`);
 
-	let cookie = connect(args.index);
+	const { index, manual } = Utils.parse_args();
+
+	let cookie = connect(index);
 
 	// Connect to server using credentials
 	try {
@@ -82,7 +82,7 @@ async function main() {
 	Utils.globalModify({ ws });
 	initConsole();
 
-	if (args.manual)
+	if (manual)
 		Utils.globalModify({ manual: true });
 
 	ws.addEventListener('open', () => console.log('Established websocket connection!'));

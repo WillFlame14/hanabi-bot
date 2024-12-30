@@ -161,7 +161,7 @@ describe('play clue', () => {
 	it('can interpret a delayed play through possible rainbow identities', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
-			['g2', 'r1', 'b2', 'm4'],
+			['g2', 'r1', 'b2', 'y3'],
 			['r2', 'y4', 'b3', 'r3'],
 			['y4', 'm2', 'r4', 'g1']
 		], {
@@ -172,7 +172,7 @@ describe('play clue', () => {
 
 		takeTurn(game, 'Alice clues 2 to Donald');		// getting m2
 		takeTurn(game, 'Bob clues green to Donald');	// getting g1 (with note [g1, m3])
-		takeTurn(game, 'Cathy clues green to Bob');	// getting g2
+		takeTurn(game, 'Cathy clues green to Bob');		// getting g2
 
 		// Alice's slot 1 should not be finessed for g1.
 		const a_slot1 = game.state.hands[PLAYER.ALICE][0];
