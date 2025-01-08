@@ -10,7 +10,7 @@ https://user-images.githubusercontent.com/25177576/190633432-57b527da-786e-4c24-
 A game played at H-Group level 5 can be seen [here](https://github.com/WillFlame14/hanabi-bot/assets/25177576/1aa4f67e-aa66-4704-ba75-fe6edf403bfa).
 
 ## Bot features
-- Can play with different conventions! Currently, Playful Sieve (2p only) and HGroup levels 1 through 11 are supported.
+- Can play with different conventions! Currently, Playful Sieve (2p only), Referential Sieve and HGroup levels 1 through 11 are supported.
 - Supports No Variant, Black, White, Rainbow, Prism, Pink and Brown variants, as well as their 6-suit equivalents.
 - Takes notes during the game on what it thinks each player knows about their own hand.
 - Internally rewinds to relevant turns to understand mistakes.

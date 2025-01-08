@@ -352,6 +352,9 @@ function assignSettings(data, priv) {
 
 		settings.level = Math.max(Math.min(level, MAX_H_LEVEL), 1);
 	}
+	else if (settings.convention === 'RefSieve') {
+		reply('Note that this bot plays with loaded rank play clues that are right-referential rather than direct (as in the doc).');
+	}
 
 	reply(`Currently playing with ${settingsString()} conventions.`);
 }
