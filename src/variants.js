@@ -125,6 +125,14 @@ export async function getShortForms(variant) {
 	shortForms = abbreviations;
 }
 
+/**
+ * Sets shortForms to contain the specified acryonyms.
+ * @param {string[]} abbreviations
+ */
+export function setShortForms(abbreviations) {
+	shortForms = abbreviations;
+}
+
 /** @param {Variant} variant */
 export function colourableSuits(variant) {
 	return variant.suits.filter(suit => !variantRegexes.noColour.test(suit));

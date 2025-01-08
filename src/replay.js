@@ -2,6 +2,7 @@ import * as https from 'https';
 import * as fs from 'fs';
 
 import HGroup from './conventions/h-group.js';
+import RefSieve from './conventions/ref-sieve.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
 
 import { ACTION, END_CONDITION } from './constants.js';
@@ -14,6 +15,7 @@ import { HANABI_HOSTNAME } from './constants.js';
 
 const conventions = {
 	HGroup,
+	RefSieve,
 	PlayfulSieve
 };
 

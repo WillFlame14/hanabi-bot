@@ -224,8 +224,8 @@ function finalizeObject(state, path, patches) {
 		}
 	}
 
-	// return copy;
-	return Object.freeze(copy);
+	return copy;
+	// return Object.freeze(copy);
 }
 
 /**
@@ -244,7 +244,7 @@ function finalizeNonProxiedObject(state) {
 			finalizeNonProxiedObject(value);
 
 	}
-	Object.freeze(state);
+	// Object.freeze(state);
 }
 
 /**

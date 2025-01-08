@@ -287,6 +287,7 @@ describe('good touch principle', () => {
 		// Green to Cathy has 2 bad touch.
 		const green_cathy = play_clues[PLAYER.CATHY].find(clue => clue.type === CLUE.COLOUR && clue.value === COLOUR.GREEN);
 		assert.ok(green_cathy !== undefined);
+
 		assert.deepEqual(green_cathy.result.bad_touch, [0, 1].map(i => game.state.hands[PLAYER.CATHY][i]));
 	});
 });

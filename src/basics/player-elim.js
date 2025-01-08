@@ -330,7 +330,7 @@ export function good_touch_elim(state, only_self = false) {
 				if (asymmetric_gt)
 					continue;
 
-				const self_elim = this.playerIndex !== -1 && matches_arr.every(o =>
+				const self_elim = this.playerIndex !== -1 && matches_arr.length > 0 && matches_arr.every(o =>
 					state.hands[playerIndex].includes(o) && this.thoughts[o].identity({ infer: true, symmetric: true}) === undefined);
 				if (self_elim)
 					continue;

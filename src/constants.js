@@ -1,7 +1,8 @@
-import { find_all_clues, find_all_discards } from './conventions/h-group/take-action.js';
+import { find_all_clues as h_find, find_all_discards as h_dc } from './conventions/h-group/take-action.js';
+import { find_all_clues as rs_find, find_all_discards as rs_dc } from './conventions/ref-sieve/take-action.js';
 
 export const MAX_H_LEVEL = 11;
-export const BOT_VERSION = '1.8.19';
+export const BOT_VERSION = '1.9.0';
 
 export const ACTION =  /** @type {const} */ ({
 	PLAY: 0,
@@ -31,8 +32,12 @@ export const HAND_SIZE = [-1, -1, 5, 5, 4, 4, 3];
 
 export const ENDGAME_SOLVING_FUNCS = {
 	HGroup: {
-		find_clues: find_all_clues,
-		find_discards: find_all_discards
+		find_clues: h_find,
+		find_discards: h_dc
+	},
+	RefSieve: {
+		find_clues: rs_find,
+		find_discards: rs_dc
 	}
 };
 

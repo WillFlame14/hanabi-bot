@@ -3,6 +3,7 @@ import logger from './tools/logger.js';
 import * as Utils from './tools/util.js';
 
 import HGroup from './conventions/h-group.js';
+import RefSieve from './conventions/ref-sieve.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
 import { BOT_VERSION, MAX_H_LEVEL } from './constants.js';
 import { State } from './basics/State.js';
@@ -17,7 +18,7 @@ import { logPerformAction } from './tools/log.js';
  * @typedef {import('./types-live.js').Table} Table
  */
 
-const conventions = { HGroup, PlayfulSieve };
+const conventions = { HGroup, RefSieve, PlayfulSieve };
 const settings = {
 	convention: 'HGroup',
 	level: parseInt(process.env['HANABI_LEVEL'] ?? '1')
@@ -218,7 +219,7 @@ export const handle = {
 		const state = new State(playerNames, ourPlayerIndex, variant, options);
 
 		// Initialize game state using convention set
-		game = new conventions[/** @type {'HGroup' | 'PlayfulSieve'} */ (settings.convention)](tableID, state, true, settings.level);
+		game = new conventions[/** @type {'HGroup' | 'RefSieve' | 'PlayfulSieve'} */ (settings.convention)](tableID, state, true, settings.level);
 
 		Utils.globalModify({ game, cache: new Map() });
 

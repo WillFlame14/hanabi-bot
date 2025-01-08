@@ -1,11 +1,12 @@
 import * as fs from 'fs';
 
 import HGroup from './conventions/h-group.js';
+import RefSieve from './conventions/ref-sieve.js';
 import PlayfulSieve from './conventions/playful-sieve.js';
 
 import { ACTION, END_CONDITION, MAX_H_LEVEL } from './constants.js';
 import { State } from './basics/State.js';
-import { cardCount, getVariant } from './variants.js';
+import { cardCount, getShortForms, getVariant } from './variants.js';
 import * as Utils from './tools/util.js';
 
 import logger from './tools/logger.js';
@@ -19,6 +20,7 @@ import logger from './tools/logger.js';
 
 const conventions = /** @type {const} */ ({
 	HGroup,
+	RefSieve,
 	PlayfulSieve
 });
 
@@ -30,6 +32,11 @@ async function main() {
 
 	const { convention = 'HGroup', level: lStr = '1', games: gStr = '10', players: pStr = '2', seed = '0', variant: vStr = 'No Variant' } = Utils.parse_args();
 	const variant = await getVariant(vStr);
+
+	if (variant === undefined)
+		throw new Error(`Undefined variant ${vStr}.`);
+
+	await getShortForms(variant);
 
 	if (conventions[convention] === undefined)
 		throw new Error(`Convention ${convention} is not supported.`);

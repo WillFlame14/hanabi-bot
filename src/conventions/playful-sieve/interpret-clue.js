@@ -1,6 +1,6 @@
 import { CLUE } from '../../constants.js';
 import { IdentitySet } from '../../basics/IdentitySet.js';
-import { isTrash, refer_right } from '../../basics/hanabi-util.js';
+import { isTrash } from '../../basics/hanabi-util.js';
 import { checkFix, team_elim } from '../../basics/helper.js';
 import * as Basics from '../../basics.js';
 import * as Utils from '../../tools/util.js';
@@ -111,7 +111,9 @@ export function interpret_clue(game, action) {
 
 	Basics.onClue(game, action);
 
-	let { fix } = checkFix(game, oldCommon.thoughts, action);
+	const { clued_resets, duplicate_reveal } = checkFix(game, oldCommon.thoughts, action);
+
+	let fix = clued_resets.length > 0 || duplicate_reveal.length > 0;
 
 	for (const order of hand) {
 		const card = common.thoughts[order];
@@ -187,7 +189,7 @@ export function interpret_clue(game, action) {
 		// Referential play (right)
 		if (clue.type === CLUE.COLOUR || trash_push) {
 			if (newly_touched.length > 0) {
-				const referred = newly_touched.map(index => refer_right(hand.map(o => state.deck[o]), index));
+				const referred = newly_touched.map(index => hand.indexOf(common.refer('right', hand, hand[index])));
 				const target_index = referred.reduce((max, curr) => Math.max(max, curr));
 
 				// Telling chop to play while not loaded, lock

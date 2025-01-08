@@ -145,6 +145,25 @@ export class Player {
 	}
 
 	/**
+	 * Finds the order referred to by the given order.
+	 * @param {'left' | 'right'} direction
+	 * @param {number[]} hand
+	 * @param {number} order
+	 */
+	refer(direction, hand, order) {
+		const offset = direction === 'right' ? 1 : -1;
+		const index = hand.indexOf(order);
+
+		let target_index = (index + offset + hand.length) % hand.length;
+
+		while (this.thoughts[hand[target_index]].touched && !this.thoughts[hand[target_index]].newly_clued)
+			target_index = (target_index + offset + hand.length) % hand.length;
+
+		return hand[target_index];
+	}
+
+
+	/**
 	 * Returns whether they think the given player is locked (i.e. every card is clued, chop moved, or finessed AND not loaded).
 	 * @param {State} state
 	 * @param {number} playerIndex
@@ -163,7 +182,7 @@ export class Player {
 	 * Returns whether they they think the given player is loaded (i.e. has a known playable or trash).
 	 * @param {State} state
 	 * @param {number} playerIndex
-	 * @param {{assume?: boolean}} options
+	 * @param {{assume?: boolean, symmetric?: boolean}} options
 	 */
 	thinksLoaded(state, playerIndex, options = {}) {
 		return this.thinksPlayables(state, playerIndex, options).length > 0 || this.thinksTrash(state, playerIndex).length > 0;
@@ -173,7 +192,7 @@ export class Player {
 	 * Returns playables in the given player's hand, according to this player.
 	 * @param {State} state
 	 * @param {number} playerIndex
-	 * @param {{assume?: boolean}} options
+	 * @param {{assume?: boolean, symmetric?: boolean}} options
 	 */
 	thinksPlayables(state, playerIndex, options = {}) {
 		const linked_orders = this.linkedOrders(state);
@@ -213,8 +232,8 @@ export class Player {
 
 			return card.possibilities.every(p => (card.chop_moved ? state.isBasicTrash(p) : false) || state.isPlayable(p)) &&	// cm cards can ignore trash ids
 				card.possibilities.some(p => state.isPlayable(p)) &&	// Exclude empty case
-				((options?.assume ?? true) || known_playable() || ((!card.uncertain || playerIndex === state.ourPlayerIndex) && !conflicting_conn())) &&
-				state.hasConsistentInferences(card);
+				((options.assume ?? true) || known_playable() || ((!card.uncertain || playerIndex === state.ourPlayerIndex) && !conflicting_conn())) &&
+				(options.symmetric || state.hasConsistentInferences(card));
 		});
 	}
 

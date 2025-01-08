@@ -76,8 +76,13 @@ function acceptable_clue(game, hypo_game, action, result) {
 		if (card.reset)
 			return `card ${logCard(state.deck[order])} ${order} lost all inferences and was reset`;
 
-		if (id !== undefined && !visible_card.matches(id))
-			return `card ${logCard(visible_card)} incorrectly inferred to be ${logCard(id)}`;
+		const linked = hypo_game.common.linkedOrders(hypo_game.state).has(order);
+
+		if (linked)
+			continue;
+
+		if (id !== undefined && linked && !visible_card.matches(id))
+			return `card ${logCard(visible_card)} ${order} incorrectly inferred to be ${logCard(id)}`;
 
 		const looks_playable = hypo_game.common.unknown_plays.has(order) ||
 			hypo_game.common.hypo_stacks[visible_card.suitIndex] >= visible_card.rank ||

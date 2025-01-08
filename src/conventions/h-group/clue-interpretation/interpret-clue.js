@@ -73,7 +73,8 @@ function apply_good_touch(game, action, oldThoughts) {
 		}
 	}
 
-	return checkFix(game, oldThoughts, action);
+	const { clued_resets, duplicate_reveal } = checkFix(game, oldThoughts, action);
+	return { fix: clued_resets.length > 0 || duplicate_reveal.length > 0 };
 }
 
 /**

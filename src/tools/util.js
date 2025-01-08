@@ -170,7 +170,7 @@ export function shallowCopy (obj) {
 		// @ts-ignore
 		return /** @type {T} */ (obj.shallowCopy());
 
-	if (types.isProxy(obj) || typeof obj !== 'object' || obj instanceof BasicCard)
+	if (types.isProxy(obj) || typeof obj !== 'object' || obj instanceof BasicCard || obj instanceof IdentitySet)
 		return obj;
 
 	return Object.assign({}, obj);

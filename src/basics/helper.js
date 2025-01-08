@@ -124,15 +124,15 @@ export function checkFix(game, oldThoughts, clueAction) {
 	}
 
 	// Any clued cards that lost all inferences
-	const clued_reset = list.find(order => all_resets.has(order) && !state.deck[order].newly_clued);
+	const clued_resets = list.filter(order => all_resets.has(order) && !state.deck[order].newly_clued);
 
-	if (clued_reset)
-		logger.info('clued card', clued_reset, 'was newly reset!');
+	if (clued_resets.length > 0)
+		logger.info('clued cards', clued_resets, 'were newly reset!');
 
-	const duplicate_reveal = state.hands[target].find(order => {
+	const duplicate_reveal = list.filter(order => {
 		const card = common.thoughts[order];
 
-		if (!list.includes(order) || game.common.thoughts[order].identity() === undefined)
+		if (game.common.thoughts[order].identity() === undefined || card.clues.filter(clue => clue.type === card.clues.at(-1).type && clue.value === card.clues.at(-1).value ).length > 1)
 			return false;
 
 		// The fix can be in anyone's hand except the giver's
@@ -145,7 +145,7 @@ export function checkFix(game, oldThoughts, clueAction) {
 		return copy !== undefined;
 	});
 
-	return { fix: clued_reset !== undefined || duplicate_reveal !== undefined };
+	return { clued_resets, duplicate_reveal };
 }
 
 /**

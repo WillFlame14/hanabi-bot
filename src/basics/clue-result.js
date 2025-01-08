@@ -43,7 +43,6 @@ export function elim_result(state, player, hypo_player, hand, list) {
  * @param  {number} target
  */
 export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
-	const { me: old_me } = game;
 	const { me, state } = hypo_game;
 
 	const dupe_scores = game.players.map((player, pi) => {
@@ -94,16 +93,18 @@ export function bad_touch_result(game, hypo_game, hypo_player, giver, target) {
 			cm_dupe.push(order);
 			continue;
 		}
+	}
 
-		const duplicates = state.hands.flatMap(hand => hand.filter(o => {
-			const old_thoughts = old_me.thoughts[o];
-			const thoughts = me.thoughts[o];
+	for (const order of state.hands[target]) {
+		const card = state.deck[order];
 
-			// We need to check old thoughts, since the clue may cause good touch elim that removes earlier notes
-			return o !== order && old_thoughts.matches(card, { infer: true }) && (old_thoughts.touched || thoughts.touched);
-		}));
+		if (!card.newly_clued || bad_touch.includes(order) || trash.includes(order) || cm_dupe.includes(order))
+			continue;
 
-		if (duplicates.length > 0 && !(duplicates.every(o => state.deck[o].newly_clued) && order < Math.min(...duplicates)))
+		const duplicates = state.hands.flatMap((hand, i) => hand.filter(o =>
+			((c = me.thoughts[o]) => c.touched && c.matches(card, { infer: true }) && !trash.includes(order) && (i !== target || o < order))()));
+
+		if (duplicates.length > 0)
 			bad_touch.push(order);
 	}
 

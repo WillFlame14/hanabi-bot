@@ -1,7 +1,7 @@
 # hanabi-bot
 A deterministic NodeJS bot that plays on the [hanab.live](https://hanab.live/) interface. Basic structure and ideas were taken from [Zamiell's example bot](https://github.com/Zamiell/hanabi-live-bot) (Python). You can play with it by inviting any of the `will-bot`'s to your table.
 
-It can play with [H-Group](https://hanabi.github.io/) and [Playful Sieve](https://hackmd.io/@sodiumdebt/playful_sieve) conventions. The goal of the bot is to play with humans, so it can handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning" during a game.
+It can play with [H-Group](https://hanabi.github.io/), [Referential Sieve](https://hackmd.io/Ui6LXAK3TdC7AKSDcN20PQ?view) and [Playful Sieve](https://hackmd.io/@sodiumdebt/playful_sieve) conventions. The goal of the bot is to play with humans, so it can handle suboptimal play within reason. However, it still expects that the conventions are followed (in terms of focus, chop, etc.) and does not perform any "learning" during a game.
 
 A demo game at H-Group level 3:
 
@@ -40,12 +40,12 @@ Send a PM to the bot on hanab.live (`/pm <HANABI_USERNAME> <message>`) to intera
 - `/leave` to kick the bot from your table.
 - `/create <name> <maxPlayers> <password>` to have the bot create a table. The name can't have spaces.
 - `/start` to have the bot start the game (only works if it is the table leader).
-- `/settings [conventions=HGroup,PlayfulSieve] [level]` to set the bot's conventions. To view the current settings, provide no parameters. The bot remembers its settings between games, but plays with H-Group conventions at level 1 on first boot.
+- `/settings [conventions=HGroup,RefSieve,PlayfulSieve] [level]` to set the bot's conventions. To view the current settings, provide no parameters. The bot remembers its settings between games, but plays with H-Group conventions at level 1 on first boot.
     - If only a level is provided (without a convention set), H-Group is assumed.
 - `/restart` and `/remake` to have the bot perform the corresponding room actions after the game has finished (only works if it is the table leader).
 
 Some commands can be sent inside a room to affect all bots that have joined.
-- `/setall [conventions=HGroup, PlayfulSieve] [level]` to set conventions and level for all bots.
+- `/setall [conventions=HGroup,RefSieve,PlayfulSieve] [level]` to set conventions and level for all bots.
 - `/leaveall` to kick all bots from the table.
 
 ## Watching replays
@@ -53,7 +53,7 @@ A replay from hanab.live or from a file (in JSON) can be simulated using `npm ru
 - `id=<id>` indicates the ID of the hanab.live replay to load
 - `file=<filePath>` indicates the path to the JSON replay to load (relative from the root directory)
 - `index=<index>` sets the index of the player the bot will simulate as (defaults to 0)
-- `convention=<HGroup, PlayfulSieve>` sets the conventions for the bot (defaults to HGroup)
+- `convention=<HGroup,RefSieve,PlayfulSieve>` sets the conventions for the bot (defaults to HGroup)
 - `level=<level>` sets the HGroup level for the bot (defaults to 1)
 
 In a replay, the following commands are also supported (in addition to `hand` and `state`):
@@ -68,7 +68,7 @@ The bot can play games with copies of itself using `npm run self-play [-- <optio
 - `seed=<seed>` sets the seed of the first game to be played (defaults to 0)
     - The seeding algorithm is different from the one used on hanab.live.
 - `variant=<variantName>` sets the variant to be played for all games (defaults to No Variant)
-- `convention=<HGroup, PlayfulSieve>` sets the conventions for the bot (defaults to HGroup)
+- `convention=<HGroup,RefSieve,PlayfulSieve>` sets the conventions for the bot (defaults to HGroup)
 - `level=<level>` sets the HGroup level for the bot (defaults to 1)
 
 The final score for each seed as well as how each game terminated are logged to the console. JSON replays of each game are saved to a `seeds` folder, which can be loaded into hanab.live for viewing.

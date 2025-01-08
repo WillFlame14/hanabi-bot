@@ -1,7 +1,8 @@
 import HGroup from '../h-group.js';
+import RefSieve from '../ref-sieve.js';
 import { ACTION, ENDGAME_SOLVING_FUNCS } from '../../constants.js';
 import { ActualCard } from '../../basics/Card.js';
-import { getShortForms } from '../../variants.js';
+import { setShortForms } from '../../variants.js';
 import * as Utils from '../../tools/util.js';
 
 import logger from '../../tools/logger.js';
@@ -11,7 +12,8 @@ import { produce } from '../../StateProxy.js';
 import { isMainThread, parentPort, workerData } from 'worker_threads';
 
 const conventions = {
-	HGroup
+	HGroup,
+	RefSieve
 };
 
 /**
@@ -575,7 +577,7 @@ if (!isMainThread) {
 	const game = conventions[workerData.conv].fromJSON(workerData.game);
 	Utils.globalModify({ game });
 
-	await getShortForms(game.state.variant);
+	setShortForms(workerData.shortForms);
 
 	simple_cache.clear();
 	simpler_cache.clear();

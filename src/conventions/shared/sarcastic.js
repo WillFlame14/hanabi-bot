@@ -1,4 +1,3 @@
-import { IdentitySet } from '../../basics/IdentitySet.js';
 import { visibleFind } from '../../basics/hanabi-util.js';
 import { undo_hypo_stacks } from '../../basics/helper.js';
 
@@ -135,10 +134,10 @@ export function interpret_sarcastic(game, discardAction) {
 
 		const sarcastics = find_sarcastics(state, receiver, common, identity);
 
-		if (sarcastics.some(o => me.thoughts[o].matches(identity, { infer: receiver === state.ourPlayerIndex }) && state.deck[o].clued)) {
+		if (sarcastics.some(o => me.thoughts[o].matches(identity, { infer: receiver === state.ourPlayerIndex }))) {
 			// The matching card must be the only possible option in the hand to be known sarcastic
 			if (sarcastics.length === 1) {
-				common.updateThoughts(sarcastics[0], (draft) => { draft.inferred = IdentitySet.create(state.variant.suits.length, identity); });
+				common.updateThoughts(sarcastics[0], (draft) => { draft.inferred = state.base_ids.union(identity); });
 				logger.info(`writing ${logCard(identity)} from sarcastic discard`);
 			}
 			else {

@@ -128,20 +128,6 @@ export function cardValue(state, player, identity, order = -1) {
 }
 
 /**
- * Finds the index to the right referred to by the given index.
- * @param  {ActualCard[]} hand
- * @param  {number} index
- */
-export function refer_right(hand, index) {
-	let target_index = (index + 1) % hand.length;
-
-	while (hand[target_index].clued && !hand[target_index].newly_clued)
-		target_index = (target_index + 1) % hand.length;
-
-	return target_index;
-}
-
-/**
  * Returns whether the order is known to be a particular special suit from empathy.
  * @param {Game} game
  * @param {number} order

@@ -159,6 +159,7 @@ export class Card extends ActualCard {
 	superposition = false;	// Whether the card is currently in a superposition
 	hidden = false;
 	called_to_discard = false;
+	permission_to_discard = false;
 	certain_finessed = false;
 	trash = false;
 	uncertain = false;
@@ -179,36 +180,11 @@ export class Card extends ActualCard {
 	 * @param {boolean} [clued]
 	 * @param {boolean} [newly_clued]
 	 * @param {(BaseClue & { giver: number, turn: number })[]} [clues]	List of clues that have touched this card
-	 * @param {Partial<Card>} extras
 	 */
-	constructor(suitIndex, rank, possible, inferred, order = -1, drawn_index = -1, clued = false, newly_clued = false, clues = [], extras = {}) {
+	constructor(suitIndex, rank, possible, inferred, order = -1, drawn_index = -1, clued = false, newly_clued = false, clues = []) {
 		super(suitIndex, rank, order, drawn_index, clued, newly_clued, clues);
 		this.possible = possible;
 		this.inferred = inferred;
-		this.rewind_ids = extras.rewind_ids;
-		this.finesse_ids = extras.finesse_ids;
-		this.old_inferred = extras.old_inferred;
-		this.old_possible = extras.old_possible;
-		this.focused = extras.focused ?? false;
-		this.finessed = extras.finessed ?? false;
-		this.bluffed = extras.bluffed ?? false;
-		this.possibly_bluffed = extras.possibly_bluffed ?? false;
-		this.chop_moved = extras.chop_moved ?? false;
-		this.reset = extras.reset ?? false;
-		this.chop_when_first_clued = extras.chop_when_first_clued ?? false;
-		this.was_cm = extras.was_cm ?? false;
-		this.superposition = extras.superposition ?? false;
-		this.hidden = extras.hidden ?? false;
-		this.called_to_discard = extras.called_to_discard ?? false;
-		this.certain_finessed = extras.certain_finessed ?? false;
-		this.trash = extras.trash ?? false;
-		this.uncertain = extras.uncertain ?? false;
-		this.known = extras.known ?? false;
-		this.info_lock = extras.info_lock ?? undefined;
-		this.finesse_index = extras.finesse_index ?? -1;
-		this.reasoning = extras.reasoning?.slice() ?? [];
-		this.reasoning_turn = extras.reasoning_turn?.slice() ?? [];
-		this.rewinded = extras.rewinded ?? false;
 	}
 
 	/** @param {Card} json */
@@ -254,7 +230,12 @@ export class Card extends ActualCard {
 	}
 
 	shallowCopy() {
-		return new Card(this.suitIndex, this.rank, this.possible, this.inferred, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues.slice(), this);
+		const copy = new Card(this.suitIndex, this.rank, this.possible, this.inferred, this.order, this.drawn_index, this.clued, this.newly_clued, this.clues);
+
+		for (const property of Object.getOwnPropertyNames(this))
+			copy[property] = this[property];
+
+		return copy;
 	}
 
 	get possibilities() {

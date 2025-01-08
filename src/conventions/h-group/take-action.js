@@ -13,6 +13,7 @@ import * as Utils from '../../tools/util.js';
 
 import { Worker } from 'worker_threads';
 import * as path from 'path';
+import { shortForms } from '../../variants.js';
 
 /**
  * @typedef {import('../h-group.js').default} Game
@@ -456,7 +457,7 @@ export async function take_action(game) {
 	if (state.inEndgame()) {
 		logger.highlight('purple', 'Attempting to solve endgame...');
 
-		const workerData = { game: Utils.toJSON(game), playerTurn: state.ourPlayerIndex, conv: 'HGroup', logLevel: logger.level };
+		const workerData = { game: Utils.toJSON(game), playerTurn: state.ourPlayerIndex, conv: 'HGroup', logLevel: logger.level, shortForms };
 		const worker = new Worker(path.resolve(import.meta.dirname, '../', 'shared', 'endgame.js'), { workerData });
 
 		const result = await new Promise((resolve, reject) => {
