@@ -1,14 +1,16 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { PLAYER, expandShortCard, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import * as ExAsserts from '../extra-asserts.js';
 
-import { ACTION } from '../../src/constants.js';
+import { ACTION, CLUE, ENDGAME_SOLVING_FUNCS } from '../../src/constants.js';
 import { solve_game } from '../../src/conventions/shared/endgame.js';
 import logger from '../../src/tools/logger.js';
 import { logObjectiveAction } from '../../src/tools/log.js';
+import { produce } from '../../src/StateProxy.js';
+import { Fraction } from '../../src/tools/fraction.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
 
@@ -23,7 +25,7 @@ const update_func = (common, order, id_hash) => (draft) => {
 };
 
 describe('simple endgames with 1 card left', () => {
-	it('clues to start b4 -> b5 endgame', async () => {
+	it('clues to start b4 -> b5 endgame', () => {
 		const game = setup(HGroup, [
 			['y5', 'xx', 'xx', 'xx'],
 			['b4', 'y1', 'g1', 'b5'],
@@ -51,11 +53,11 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const action = await solve_game(game, PLAYER.ALICE);
+		const { action } = solve_game(game, PLAYER.ALICE);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR, `expected clue, selected ${logObjectiveAction(game.state, action)}`);
 	});
 
-	it('clues to start endgame on a double player with different suits', async () => {
+	it('clues to start endgame on a double player with different suits', () => {
 		const game = setup(HGroup, [
 			['xx', 'xx', 'xx', 'xx'],
 			['g5', 'y4', 'g1', 'r1'],
@@ -77,11 +79,11 @@ describe('simple endgames with 1 card left', () => {
 			}
 		});
 
-		const action = await solve_game(game, PLAYER.ALICE);
+		const { action } = solve_game(game, PLAYER.ALICE);
 		assert.ok(action.type === ACTION.RANK || action.type === ACTION.COLOUR, `expected clue, selected ${logObjectiveAction(game.state, action)}`);
 	});
 
-	it('plays to start endgame', async () => {
+	it('plays to start endgame', () => {
 		const game = setup(HGroup, [
 			['r4', 'r4', 'xx', 'xx'],
 			['b2', 'y1', 'g1', 'b5'],
@@ -106,11 +108,11 @@ describe('simple endgames with 1 card left', () => {
 		});
 
 		// Alice should play r4.
-		const action = await solve_game(game, PLAYER.ALICE);
+		const { action } = solve_game(game, PLAYER.ALICE);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 
-	it('plays to start endgame when other has dupes', async () => {
+	it('plays to start endgame when other has dupes', () => {
 		const game = setup(HGroup, [
 			['p3', 'xx', 'xx', 'xx'],
 			['b1', 'p4', 'g1', 'p4'],
@@ -136,19 +138,20 @@ describe('simple endgames with 1 card left', () => {
 		});
 
 		// Alice should play p3.
-		const action = await solve_game(game, PLAYER.ALICE);
+		const { action } = solve_game(game, PLAYER.ALICE);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][0] });
 	});
 });
 
 describe('more complex endgames where all cards are seen', () => {
-	it('plays to start endgame 1', async () => {
+	it('plays to start endgame 1', () => {
 		const game = setup(HGroup, [
 			['xx', 'p3', 'p4', 'r5', 'r4'],
 			['b1', 'r1', 'g1', 'p5', 'p2'],
 			['g1', 'b1', 'r4', 'r1', 'g5']
 		], {
 			play_stacks: [3, 5, 4, 5, 1],
+			discarded: [],
 			init: (game) => {
 				const { common, state } = game;
 				['p3', 'p4', 'r5', 'r4'].forEach((id, i) => {
@@ -168,7 +171,68 @@ describe('more complex endgames where all cards are seen', () => {
 		});
 
 		// Alice should play r4.
-		const action = await solve_game(game, PLAYER.ALICE);
+		const { action } = solve_game(game, PLAYER.ALICE);
 		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
+	});
+});
+
+describe('partial endgames', () => {
+	it('calculates basic winrate correctly', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'r3'],
+			['b1', 'r1', 'g1', 'y1', 'r4'],
+			['b1', 'r1', 'g1', 'y1', 'r5']
+		], {
+			play_stacks: [2, 4, 5, 5, 5],
+			discarded: ['r3', 'r4'],
+			clue_tokens: 0,
+			init: (game) => {
+				const { common, state } = game;
+				const update = (giver, rank) => (draft) => {
+					draft.clued = true;
+					draft.clues.push({ giver, type: CLUE.RANK, value: rank, turn: -1 });
+					draft.clues.push({ giver, type: CLUE.COLOUR, value: COLOUR.RED, turn: -1 });
+				};
+
+				const a_slot5 = state.hands[PLAYER.ALICE][4];
+				state.deck = state.deck.with(a_slot5, produce(state.deck[a_slot5], update(PLAYER.BOB, 3)));
+
+				let { inferred, possible } = common.thoughts[a_slot5];
+				common.updateThoughts(a_slot5, (draft) => {
+					draft.inferred = inferred.intersect(expandShortCard('r3'));
+					draft.possible = possible.intersect(expandShortCard('r3'));
+					update(PLAYER.BOB, 3)(draft);
+				});
+
+				const b_slot5 = state.hands[PLAYER.BOB][4];
+				state.deck = state.deck.with(b_slot5, produce(state.deck[b_slot5], update(PLAYER.CATHY, 4)));
+
+				({ inferred, possible } = common.thoughts[b_slot5]);
+				common.updateThoughts(b_slot5, (draft) => {
+					draft.inferred = inferred.intersect(expandShortCard('r4'));
+					draft.possible = possible.intersect(expandShortCard('r4'));
+					update(PLAYER.CATHY, 4)(draft);
+				});
+
+				const c_slot5 = state.hands[PLAYER.CATHY][4];
+				state.deck = state.deck.with(c_slot5, produce(state.deck[c_slot5], update(PLAYER.ALICE, 5)));
+
+				({ inferred, possible } = common.thoughts[c_slot5]);
+				common.updateThoughts(c_slot5, (draft) => {
+					draft.inferred = inferred.intersect(expandShortCard('r5'));
+					draft.possible = possible.intersect(expandShortCard('r5'));
+					update(PLAYER.ALICE, 5)(draft);
+				});
+
+				game.state.cardsLeft = 2;
+			}
+		});
+
+		// Alice should play r3.
+		const { action, winrate } = solve_game(game, PLAYER.ALICE, ENDGAME_SOLVING_FUNCS.HGroup.find_clues);
+		ExAsserts.objHasProperties(action, { type: ACTION.PLAY, target: game.state.hands[PLAYER.ALICE][4] });
+
+		// We win if Bob draws y5, and lose if Bob doesn't. There are 6 locations that y5 could be.
+		assert.ok(winrate.equals(new Fraction(1, 6)));
 	});
 });

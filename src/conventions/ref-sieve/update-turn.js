@@ -16,12 +16,10 @@ import logger from '../../tools/logger.js';
  * 
  * Impure!
  * @param {Game} game
- * @param {TurnAction} action
+ * @param {TurnAction} _action
  */
-export function update_turn(game, action) {
+export function update_turn(game, _action) {
 	const { common, state } = game;
-	const { currentPlayerIndex } = action;
-	const otherPlayerIndex = state.nextPlayerIndex(currentPlayerIndex);
 
 	/** @type {number[]} */
 	const to_remove = [];
@@ -33,11 +31,23 @@ export function update_turn(game, action) {
 		logger.info(`waiting for connecting ${logCard(state.deck[order])} ${order} as ${identities.map(logCard)} (${state.playerNames[reacting]}) for inference ${logCard(inference)} ${focus}`);
 
 		// After the turn we were waiting for, the card was played and matches expectation
-		if (reacting === otherPlayerIndex && !state.hands[reacting].includes(order) && last_action.type === 'play') {
+		if (!state.hands[reacting].includes(order) && last_action.type === 'play') {
 			if (!identities.some(identity => state.deck[last_action.order].matches(identity))) {
 				logger.info('card revealed to not be', identities.map(logCard).join(), 'removing connection as', logCard(inference));
 
-				common.updateThoughts(focus, (draft) => { draft.inferred = common.thoughts[focus].inferred.subtract(inference); });
+				let new_inferred = common.thoughts[focus].inferred.subtract(inference);
+
+				const card_reset = new_inferred.length === 0;
+
+				if (card_reset)
+					new_inferred = common.thoughts[focus].old_inferred.intersect(common.thoughts[focus].possible);
+
+				common.updateThoughts(focus, (draft) => {
+					draft.inferred = new_inferred;
+					if (card_reset)
+						draft.old_inferred = undefined;
+				});
+
 				to_remove.push(i);
 			}
 			else {

@@ -1,5 +1,5 @@
 import { CLUE } from '../../constants.js';
-import { checkFix } from '../../basics/helper.js';
+import { checkFix, distribution_clue } from '../../basics/helper.js';
 import * as Basics from '../../basics.js';
 
 import logger from '../../tools/logger.js';
@@ -17,6 +17,34 @@ import { CLUE_INTERP } from './rs-constants.js';
  */
 
 /**
+ * Finds the focus of a clue.
+ * @param {Game} game
+ * @param {ClueAction} action
+ * @param {{ push: boolean, right?: boolean}} options
+ */
+function determine_focus(game, action, options) {
+	const { state } = game;
+	const { list, target } = action;
+	const newly_touched = list.filter(o => state.deck[o].newly_clued);
+
+	if (options.push) {
+		const hand = state.hands[target];
+		const least_priority = options.right ? hand.findLast(o => state.deck[o].clued && !state.deck[o].newly_clued) : hand[0];
+
+		return newly_touched.sort((a, b) => {
+			if (a === least_priority)
+				return 1;
+			else if (b === least_priority)
+				return -1;
+			else
+				return options.right ? a - b : b - a;
+		})[0];
+	}
+
+	return Math.max(...newly_touched);
+}
+
+/**
  * Interprets a referential play clue.
  * @param {Game} game
  * @param {ClueAction} action
@@ -28,14 +56,7 @@ function ref_play(game, action, right = false) {
 	const hand = state.hands[clue_target];
 	const newly_touched = list.filter(o => state.deck[o].newly_clued);
 
-	const focus = newly_touched.sort((a, b) => {
-		if (a === hand[0])
-			return 1;
-		else if (b === hand[0])
-			return -1;
-		else
-			return b - a;
-	})[0];
+	const focus = determine_focus(game, action, { push: true, right });
 	const target = right ?
 		Math.min(...newly_touched.map(o => common.refer('right', hand, o))) :
 		Math.max(...newly_touched.map(o => common.refer('left', hand, o)));
@@ -89,8 +110,10 @@ function ref_play(game, action, right = false) {
 	const { inferred } = common.thoughts[target];
 	const final_inferences = inferred.intersect(playable_possibilities);
 
-	if (final_inferences.length === 0)
+	if (final_inferences.length === 0) {
+		logger.info('targeting a known unplayable!');
 		return { new_common: common, patches: [], interp: CLUE_INTERP.NONE };
+	}
 
 	logger.info(`ref play on ${state.playerNames[clue_target]}'s slot ${hand.indexOf(target) + 1} (focus ${focus}) inferences ${final_inferences.map(logCard).join()}`);
 
@@ -118,11 +141,10 @@ function ref_play(game, action, right = false) {
  */
 function ref_discard(game, action) {
 	const { common, state } = game;
-	const { list, target: clue_target } = action;
+	const { target: clue_target } = action;
 	const hand = state.hands[clue_target];
-	const newly_touched = list.filter(o => state.deck[o].newly_clued);
 
-	const focus = Math.max(...newly_touched);
+	const focus = determine_focus(game, action, { push: false });
 	const target_index = hand.findIndex((o, i) => i > hand.indexOf(focus) && !state.deck[o].clued);
 
 	let patches = [];
@@ -165,6 +187,7 @@ export function interpret_clue(game, action) {
 	const { common, state } = game;
 	const { clue, list, target } = action;
 
+	const hand = state.hands[target];
 	const newly_touched = list.filter(o => !state.deck[o].clued);
 	const { common: prev_common, state: prev_state } = game.minimalCopy();
 
@@ -176,9 +199,28 @@ export function interpret_clue(game, action) {
 
 	const fixed = new Set(clued_resets.concat(duplicate_reveal));
 	const fix = fixed.size > 0;
-	const trash_push = newly_touched.every(o => common.thoughts[o].possible.every(p => state.isBasicTrash(p)));
+	const trash_push = !fix && newly_touched.every(o => common.thoughts[o].possible.every(p => state.isBasicTrash(p)));
 
 	const { new_common, patches, interp } = (() => {
+		if (!fix && !trash_push) {
+			const intent = clue.type === CLUE.COLOUR ?
+				Math.max(...newly_touched.map(o => common.refer('left', hand, o))) :
+				determine_focus(game, action, { push: false });
+
+			if (distribution_clue(game, action, common.thoughts[intent].order)) {
+				const { inferred } = common.thoughts[intent];
+
+				let patches;
+				const new_common = produce(common, (draft) => {
+					draft.thoughts[intent].inferred = inferred.intersect(inferred.filter(i => !state.isBasicTrash(i)));
+					draft.thoughts[intent].certain_finessed = true;
+					draft.thoughts[intent].reset = false;
+				}, (p) => { patches = p; });
+
+				return { new_common, patches, interp: CLUE_INTERP.REVEAL };
+			}
+		}
+
 		const prev_playables = prev_common.thinksPlayables(prev_state, target, { symmetric: true });
 		const prev_trash = prev_common.thinksTrash(prev_state, target);
 		const prev_loaded = prev_trash.length > 0 ||
@@ -195,8 +237,7 @@ export function interpret_clue(game, action) {
 			return { new_common: common, patches: [], interp: CLUE_INTERP.NONE };
 		}
 
-		const old_playables = prev_common.thinksPlayables(prev_state, target);
-		const new_playables = common.thinksPlayables(state, target).filter(p => !old_playables.includes(p));
+		const new_playables = common.thinksPlayables(state, target).filter(p => !prev_playables.includes(p));
 		const loaded = common.thinksLoaded(state, target);
 
 		if (newly_touched.length === 0) {
@@ -204,6 +245,8 @@ export function interpret_clue(game, action) {
 				logger.info('revealed a safe action, not continuing');
 				return { new_common: common, patches: [], interp: CLUE_INTERP.REVEAL };
 			}
+
+			// attempt finesse
 			return { new_common: common, patches: [], interp: CLUE_INTERP.NONE };
 		}
 

@@ -1,4 +1,4 @@
-import { CLUE_INTERP, DISCARD_INTERP, PLAY_INTERP } from './rs-constants.js';
+import { CLUE_INTERP } from './rs-constants.js';
 import { bad_touch_result, elim_result, playables_result } from '../../basics/clue-result.js';
 import * as Utils from '../../tools/util.js';
 
@@ -21,29 +21,7 @@ import { cardValue } from '../../basics/hanabi-util.js';
  * @param {Action} action
  */
 function advance_game(game, action) {
-	if (action.type === 'clue')
-		return game.simulate_clue(action);
-
-	const hypo_game = game.minimalCopy();
-	const new_state = game.state.shallowCopy();
-
-	if (action.type === 'play') {
-		const { suitIndex, rank } = action;
-		if (suitIndex !== -1 && rank !== -1)
-			new_state.play_stacks = game.state.play_stacks.with(suitIndex, rank);
-
-		if (rank === 5)
-			new_state.clue_tokens++;
-		hypo_game.interpretMove(PLAY_INTERP.NONE);
-	}
-	else {
-		new_state.clue_tokens++;
-		hypo_game.interpretMove(DISCARD_INTERP.NONE);
-	}
-
-	hypo_game.state = new_state;
-	hypo_game.common.good_touch_elim(new_state);
-	return hypo_game;
+	return action.type === 'clue' ? game.simulate_clue(action) : game.simulate_action(action);
 }
 
 /**
@@ -84,7 +62,7 @@ function best_value(new_game, i, value) {
 		});
 
 		const next_games = play_actions.map(action => {
-			const diff = (state.isPlayable(action) ? (action.rank === 5 ? 1.75 : 1.5) : -1) + (sieving_trash() ? -10 : 0);
+			const diff = (state.isPlayable(action) ? (action.rank === 5 ? 1.75 : 1.5) : -10) + (sieving_trash() ? -10 : 0);
 			const new_value = value + mult(diff);
 
 			logger.info(state.playerNames[playerIndex], 'playing', logCard(action), mult(diff).toFixed(2));
@@ -192,6 +170,19 @@ export function get_result(game, hypo_game, action) {
 		return -100;
 	}
 
+	const bad_inferences = state.hands[target].find(o =>
+		!bad_touch.includes(o) && !trash.includes(o) && !hypo_state.hasConsistentInferences(hypo_common.thoughts[o]));
+
+	if (bad_inferences !== undefined) {
+		logger.info(clue_str, 'gives wrong inferences to', bad_inferences, hypo_common.thoughts[bad_inferences].inferred.map(logCard).join());
+		return -100;
+	}
+
+	if (hypo_game.lastMove === CLUE_INTERP.REVEAL && playables.length === 0 && trash.every(o => hypo_state.deck[o].newly_clued)) {
+		logger.info(clue_str, `only reveals new trash but isn't a trash push!`);
+		return -100;
+	}
+
 	const duped_playables = Array.from(hypo_me.hypo_plays).filter(p => state.hands.some(hand =>
 		hand.some(o => o !== p && common.thoughts[o].touched && state.deck[o].matches(state.deck[p]))));
 
@@ -201,7 +192,7 @@ export function get_result(game, hypo_game, action) {
 
 	const value_log = {
 		good_touch,
-		playables: playables.map(p => logCard(state.deck[p.card.order])),
+		playables: playables.map(p => `${logCard(state.deck[p.card.order])} ${p.card.order}`),
 		duped: duped_playables,
 		trash: revealed_trash,
 		fill,

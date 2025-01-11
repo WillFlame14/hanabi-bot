@@ -136,10 +136,13 @@ export async function take_action(game) {
 	const cant_discard = state.clue_tokens === 8 || (state.pace === 0 && (all_clues.length > 0 || all_plays.length > 0));
 
 	/** @type {{ perform: PerformAction, action: Action }[]} */
-	const all_discards = cant_discard ? [] : trash_orders.concat(discards).map(order => ({
-		perform: { type: ACTION.DISCARD, target: order, tableID },
-		action: { type: 'discard', suitIndex: -1, rank: -1, order, playerIndex: state.ourPlayerIndex, intentional: discards.includes(order), failed: false }
-	}));
+	const all_discards = cant_discard ? [] : trash_orders.concat(discards).map(order => {
+		const { suitIndex = -1, rank = -1 } = me.thoughts[order].identity({ infer: true }) ?? {};
+		return {
+			perform: { type: ACTION.DISCARD, target: order, tableID },
+			action: { type: 'discard', suitIndex, rank, order, playerIndex: state.ourPlayerIndex, intentional: discards.includes(order), failed: false }
+		};
+	});
 
 	const all_actions = all_clues.concat(all_plays).concat(all_discards);
 
@@ -182,11 +185,12 @@ export async function take_action(game) {
 			const { action } = result;
 
 			if (action.type === ACTION.COLOUR || action.type === ACTION.RANK) {
-				const { perform: stall_clue } = Utils.maxOn(all_clues, ({ action }) => predict_value(game, action));
-				return stall_clue;
+				if (action.target === -1) {
+					const { perform: stall_clue } = Utils.maxOn(all_clues, ({ action }) => predict_value(game, action));
+					return stall_clue;
+				}
 			}
-
-			return { tableID, type: action.type, target: action.target };
+			return { ...action, tableID };
 		}
 	}
 

@@ -38,7 +38,7 @@ export function logCard(card) {
 		append = '(inferred)';
 	}
 	else {
-		return '(unknown)';
+		return 'xx';
 	}
 	return shortForms[suitIndex] + rank + (append !== undefined ? ' ' + append : '');
 }
@@ -114,7 +114,7 @@ export function logPerformAction(action) {
 		case ACTION.END_GAME:
 			return JSON.stringify(action);
 		default:
-			throw new Error('Attempted to log invalid action');
+			throw new Error(`Attempted to log invalid action ${JSON.stringify(action)}`);
 	}
 }
 

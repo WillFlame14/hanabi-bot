@@ -11,7 +11,7 @@ import { variantRegexes } from '../../../variants.js';
 import { remove_finesse } from '../update-wcs.js';
 import { order_1s } from '../action-helper.js';
 import { find_impossible_conn } from '../update-turn.js';
-import { team_elim, checkFix, reset_superpositions } from '../../../basics/helper.js';
+import { team_elim, checkFix, reset_superpositions, distribution_clue } from '../../../basics/helper.js';
 import { early_game_clue } from '../urgent-actions.js';
 import { isTrash, knownAs, visibleFind } from '../../../basics/hanabi-util.js';
 import * as Basics from '../../../basics.js';
@@ -74,7 +74,7 @@ function apply_good_touch(game, action, oldThoughts) {
 	}
 
 	const { clued_resets, duplicate_reveal } = checkFix(game, oldThoughts, action);
-	return { fix: clued_resets.length > 0 || duplicate_reveal.length > 0 };
+	return { fix: clued_resets?.length > 0 || duplicate_reveal?.length > 0 };
 }
 
 /**
@@ -315,41 +315,6 @@ function urgent_save(game, action, focus, oldCommon, old_game) {
 		playerIndex = state.nextPlayerIndex(playerIndex);
 	}
 	return urgent;
-}
-
-/**
- * Returns whether a clue was a distribution clue.
- * @param {Game} game
- * @param {ClueAction} action
- * @param {number} focus
- */
-function distribution_clue(game, action, focus) {
-	const { common, me, state } = game;
-	const { list, target } = action;
-	const focus_thoughts = common.thoughts[focus];
-
-	if (state.maxScore - state.score > state.variant.suits.length || !list.some(o => state.deck[o].newly_clued))
-		return false;
-
-	const id = focus_thoughts.identity({ infer: true });
-	if (id !== undefined && state.isBasicTrash(id))
-		return false;
-
-	let all_trash = true, possibly_useful = false;
-
-	for (const p of focus_thoughts.possible) {
-		if (state.isBasicTrash(p))
-			continue;
-
-		const duplicated = state.hands.some((hand, i) => i !== target && hand.some(o => me.thoughts[o].matches(p), { infer: true }));
-
-		if (duplicated)
-			possibly_useful = true;
-		else
-			all_trash = false;
-	}
-
-	return all_trash && possibly_useful;
 }
 
 /**

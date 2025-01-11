@@ -244,6 +244,31 @@ export function maxOn(arr, valueFunc, minValue = -Infinity) {
 }
 
 /**
+ * Returns the "maximum" object in an array based on a value function, along with its value.
+ * @template T
+ * @param  {T[]} arr 						The array of objects.
+ * @param  {(obj: T) => number} valueFunc	A function that takes in an object and returns its value.
+ * @param  {number} minValue 				The minimum value that the maximum object must satisfy.
+ */
+export function maxWith(arr, valueFunc, minValue = -Infinity) {
+	if (arr.length === 0)
+		return undefined;
+
+	let max_value = minValue, max;
+
+	for (let i = 0; i < arr.length; i++) {
+		const curr = valueFunc(arr[i]);
+
+		if (curr > max_value) {
+			max_value = curr;
+			max = arr[i];
+		}
+	}
+
+	return { max, max_value };
+}
+
+/**
  * Checks if two objects look the same (i.e. have the same properties).
  * @param {unknown} obj1
  * @param {unknown} obj2

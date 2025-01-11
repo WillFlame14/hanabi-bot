@@ -113,7 +113,7 @@ export class Game {
 	get hash() {
 		const { clue_tokens, turn_count, actionList } = this.state;
 		const hands = this.state.hands.flat();
-		const player_thoughts = this.common.thoughts.flatMap(c => c.inferred.map(logCard).join()).join();
+		const player_thoughts = this.allPlayers.flatMap(player => player.thoughts.flatMap(c => c.inferred.map(logCard).join()).join()).join();
 		const deck = this.state.deck.map(logCard);
 
 		return `${hands},${player_thoughts},${deck},${JSON.stringify(actionList.at(-1))},${clue_tokens},${turn_count}`;

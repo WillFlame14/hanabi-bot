@@ -202,10 +202,10 @@ export function good_touch_elim(state, only_self = false) {
 	const hard_match_map = /** @type {Map<string, Set<number>>} */ (new Map());
 	const cross_map = /** @type {Map<number, Set<number>>} */ (new Map());
 
-	/** @type {(order: number) => void} */
-	const addToMaps = (order) => {
+	/** @type {(order: number, playerIndex: number) => void} */
+	const addToMaps = (order, playerIndex) => {
 		const card = this.thoughts[order];
-		const id = card.identity({ infer: true, symmetric: this.playerIndex === -1 });
+		const id = card.identity({ infer: true, symmetric: this.playerIndex === -1 || this.playerIndex === playerIndex });
 
 		if (!card.touched || card.uncertain)
 			return;
@@ -256,7 +256,7 @@ export function good_touch_elim(state, only_self = false) {
 			continue;
 
 		for (const order of state.hands[i]) {
-			addToMaps(order);
+			addToMaps(order, i);
 
 			if (this.thoughts[order].trash)
 				continue;
@@ -298,7 +298,7 @@ export function good_touch_elim(state, only_self = false) {
 			const matches = hard_matches ?? soft_matches ?? new Set();
 			const matches_arr = Array.from(matches);
 
-			const bad_elim = matches_arr.length > 0 && matches_arr.every(order =>
+			const bad_elim = !state.isBasicTrash(identity) && matches_arr.length > 0 && matches_arr.every(order =>
 				(state.deck[order].identity() !== undefined && !state.deck[order].matches(identity)) ||		// Card is visible and doesn't match
 				(state.baseCount(identity) + state.hands.flat().filter(o => state.deck[o].matches(identity) && o !== order).length === cardCount(state.variant, identity)));	// Card cannot match
 
@@ -331,7 +331,7 @@ export function good_touch_elim(state, only_self = false) {
 					continue;
 
 				const self_elim = this.playerIndex !== -1 && matches_arr.length > 0 && matches_arr.every(o =>
-					state.hands[playerIndex].includes(o) && this.thoughts[o].identity({ infer: true, symmetric: true}) === undefined);
+					state.hands[playerIndex].includes(o) && this.thoughts[o].identity({ infer: true, symmetric: true }) !== identity);
 				if (self_elim)
 					continue;
 
@@ -369,7 +369,7 @@ export function good_touch_elim(state, only_self = false) {
 					}
 				}
 
-				addToMaps(order);
+				addToMaps(order, playerIndex);
 			}
 		}
 		identities = new_identities;
@@ -418,7 +418,7 @@ export function good_touch_elim(state, only_self = false) {
 				cross_map.delete(idens);
 
 				for (const order of orders)
-					addToMaps(order);
+					addToMaps(order, state.hands.findIndex(hand => hand.includes(order)));
 			}
 		}
 		return changed;

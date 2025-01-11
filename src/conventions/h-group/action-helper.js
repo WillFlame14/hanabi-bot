@@ -231,10 +231,14 @@ export function determine_playable_card(game, playable_orders) {
  */
 export function find_positional_discard(game, discarder, expected_discard) {
 	const { state, me } = game;
-	const trash = game.players[discarder].thinksTrash(state, discarder);
 
 	if (!state.inEndgame())
 		return;
+
+	const trash = state.hands[discarder].filter(o =>
+		game.players[discarder].thoughts[o].possible.every(p =>
+			state.isBasicTrash(p) ||
+			state.hands.flat().some(o2 => o !== o2 && game.players[discarder].thoughts[o2].matches(p, { infer: true }))));
 
 	/**
 	 * @param {number} playerIndex

@@ -198,3 +198,38 @@ export function connectable_simple(game, start, target, identity) {
 	}
 	return connectable_simple(game, game.state.nextPlayerIndex(start), target, identity);
 }
+
+/**
+ * Returns whether a clue was a distribution clue.
+ * @param {Game} game
+ * @param {ClueAction} action
+ * @param {number} focus
+ */
+export function distribution_clue(game, action, focus) {
+	const { common, me, state } = game;
+	const { list, target } = action;
+	const focus_thoughts = common.thoughts[focus];
+
+	if ((!state.inEndgame() && state.maxScore - state.score > state.variant.suits.length) || !list.some(o => state.deck[o].newly_clued))
+		return false;
+
+	const id = focus_thoughts.identity({ infer: true });
+	if (id !== undefined && state.isBasicTrash(id))
+		return false;
+
+	let all_trash = true, possibly_useful = false;
+
+	for (const p of focus_thoughts.possible) {
+		if (state.isBasicTrash(p))
+			continue;
+
+		const duplicated = state.hands.some((hand, i) => i !== target && hand.some(o => me.thoughts[o].matches(p), { infer: true }));
+
+		if (duplicated)
+			possibly_useful = true;
+		else
+			all_trash = false;
+	}
+
+	return all_trash && possibly_useful;
+}

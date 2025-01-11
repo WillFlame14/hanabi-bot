@@ -458,6 +458,7 @@ export async function take_action(game) {
 		logger.highlight('purple', 'Attempting to solve endgame...');
 
 		const workerData = { game: Utils.toJSON(game), playerTurn: state.ourPlayerIndex, conv: 'HGroup', logLevel: logger.level, shortForms };
+		// const resourceLimits = { maxOldGenerationSizeMb: 4096, maxYoungGenerationSizeMb: 4096, stackSizeMb: 2048 };
 		const worker = new Worker(path.resolve(import.meta.dirname, '../', 'shared', 'endgame.js'), { workerData });
 
 		const result = await new Promise((resolve, reject) => {
@@ -683,7 +684,9 @@ export async function take_action(game) {
 
 		if (positional !== undefined) {
 			const { misplay, order } = positional;
-			return { tableID, type: misplay ? ACTION.PLAY : ACTION.DISCARD, target: order };
+
+			if (misplay || state.clue_tokens < 8)
+				return { tableID, type: misplay ? ACTION.PLAY : ACTION.DISCARD, target: order };
 		}
 	}
 

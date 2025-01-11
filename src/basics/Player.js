@@ -139,7 +139,7 @@ export class Player {
 		const copy = this.shallowCopy();
 		copy.thoughts = copy.thoughts.with(order, produce(this.thoughts[order], func, (patches) => {
 			if (listenPatches && patches.length > 0)
-				this.patches.set(order, (this.patches.get(order) ?? []).concat(patches));
+				copy.patches.set(order, (this.patches.get(order) ?? []).concat(patches));
 		}));
 		return copy;
 	}
