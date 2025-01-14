@@ -1,5 +1,4 @@
 import * as https from 'https';
-import WebSocket from 'ws'
 
 import { handle } from './command-handler.js';
 import { initConsole } from './tools/console.js';
@@ -57,6 +56,8 @@ function connect(bot_index = '') {
 		req.end();
 	});
 }
+
+declare var WebSocket: typeof import("undici-types").WebSocket;
 
 async function main() {
 	if (Number(process.versions.node.split('.')[0]) < 22)
