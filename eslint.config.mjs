@@ -13,9 +13,7 @@ const compat = new FlatCompat({
 	allConfig: js.configs.all
 });
 
-export default [{
-	ignores: ["src/hanabi-bot.js"],
-}, ...compat.extends("eslint:recommended", "plugin:jsdoc/recommended"), {
+export default [...compat.extends("eslint:recommended", "plugin:jsdoc/recommended"), {
 	// plugins: {
 	// 	jsdoc,
 	// },
