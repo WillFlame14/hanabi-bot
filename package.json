@@ -15,5 +15,8 @@
     "self-play": "node --env-file=.env src/self-play.js",
     "lint": "eslint .",
     "test": "node --test"
+  },
+  "engines": {
+    "node": "^22.6.0"
   }
 }
