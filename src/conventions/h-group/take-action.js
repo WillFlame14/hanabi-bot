@@ -453,8 +453,8 @@ export async function take_action(game) {
 		logger.info('best play clue', logClue(best_play_clue));
 	}
 
-	// Attempt to solve endgame
-	if (state.inEndgame()) {
+	// Attempt to solve endgame, but only if it's not early game
+	if (state.inEndgame() && !state.early_game) {
 		logger.highlight('purple', 'Attempting to solve endgame...');
 
 		const workerData = { game: Utils.toJSON(game), playerTurn: state.ourPlayerIndex, conv: 'HGroup', logLevel: logger.level, shortForms };
