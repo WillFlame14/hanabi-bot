@@ -184,7 +184,7 @@ export function cardTouched(card, variant, clue) {
 				return false;
 
 			if (variant.specialRankDeceptive)
-				return (suitIndex % 4) + (variant.specialRank === 1 ? 2 : 1) === value;
+				return (suitIndex % 4) + (variant.specialRank === 1 ? 2 : 1) === value && rank != value;
 		}
 
 		if (variant.chimneys)
