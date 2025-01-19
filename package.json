@@ -10,10 +10,13 @@
     "typescript": "^5.6.3"
   },
   "scripts": {
-    "start": "node --env-file=.env src/hanabi-bot.js",
+    "start": "node --experimental-strip-types --env-file=.env src/hanabi-bot.ts",
     "replay": "node --env-file=.env src/replay.js",
     "self-play": "node --env-file=.env src/self-play.js",
     "lint": "eslint .",
     "test": "node --test"
+  },
+  "engines": {
+    "node": "^22.6.0"
   }
 }
