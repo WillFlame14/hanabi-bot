@@ -135,7 +135,7 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 		prob: prob.divide(sum_prob).toString
 	})));
 
-	const arranged_games = arrangements.map(({ ids, prob, new_remaining }) => {
+	const arranged_games = arrangements.length === 0 ? [{ hypo_game: game, prob: 1, remaining: [] }] : arrangements.map(({ ids, prob, new_remaining }) => {
 		const new_deck = state.deck.slice();
 
 		for (let i = 0; i < ids.length; i++) {
@@ -151,17 +151,10 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 		return { hypo_game, prob: prob.divide(sum_prob), remaining: new_remaining };
 	});
 
-	/** @type {ModPerformAction[]} */
-	const all_actions = [];
+	const all_actions = possible_actions(arranged_games[0].hypo_game, playerTurn, find_clues, find_discards);
 
-	for (const { hypo_game } of arranged_games) {
-		const actions = possible_actions(hypo_game, playerTurn, find_clues, find_discards);
-
-		for (const action of actions) {
-			if (!all_actions.some(a => Utils.objEquals(a, action)))
-				all_actions.push(action);
-		}
-	}
+	if (all_actions.length === 0)
+		throw new UnsolvedGame(`couldn't find any valid actions`);
 
 	logger.highlight('green', `possible actions [${all_actions.map(a => logObjectiveAction(state, a))}] ${state.hands[playerTurn].map(o => logCard(state.deck[o]))} ${state.hands[playerTurn]} ${state.endgameTurns}`);
 
@@ -169,6 +162,9 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 	const hypo_games = { drawn: [], undrawn: [] };
 
 	for (const { hypo_game, prob, remaining } of arranged_games) {
+		if (Date.now() > timeout)
+			throw new UnsolvedGame(`timed out`);
+
 		const { drawn, undrawn } = gen_hypo_games(hypo_game, all_actions, remaining);
 
 		/** @param {HypoGame} hg */
@@ -180,9 +176,6 @@ export function solve_game(game, playerTurn, find_clues = () => [], find_discard
 		for (const hg of undrawn)
 			hypo_games.undrawn.push(transform(hg));
 	}
-
-	if (all_actions.length === 0)
-		throw new UnsolvedGame(`couldn't find any valid actions`);
 
 	// if (all_actions.length === 1) {
 	// 	logger.error('only found 1 action');
@@ -269,6 +262,9 @@ function advance_game(game, playerTurn, action) {
 function possible_actions(game, playerTurn, find_clues, find_discards) {
 	const { state } = game;
 	const actions = /** @type {ModPerformAction[]} */ ([]);
+
+	if (Date.now() > timeout)
+		return [];
 
 	const playables = game.players[playerTurn].thinksPlayables(state, playerTurn);
 	for (const order of playables) {
@@ -424,6 +420,7 @@ function optimize({ undrawn, drawn }, actions, playerTurn, find_clues, find_disc
 	let best_winrate = new Fraction(0, 1), best_actions = [];
 
 	for (const action of actions) {
+
 		let all_winrate = new Fraction(0, 1);
 		let rem_prob = new Fraction(1, 1);
 
@@ -433,13 +430,16 @@ function optimize({ undrawn, drawn }, actions, playerTurn, find_clues, find_disc
 			const new_game = advance_game(hypo_game, playerTurn, action);
 
 			if (action.type === ACTION.PLAY || action.type === ACTION.DISCARD)
-				logger.info(Array.from({ length: depth }, _ => '  ').join(''), 'drawing', logCard(new_game.state.deck[new_game.state.cardOrder]), 'after', logObjectiveAction(new_game.state, action), new_game.state.hands[playerTurn].map(o => logCard(new_game.state.deck[o])).join(), new_game.state.cardsLeft, new_game.state.endgameTurns, '{');
+				logger.info(`${Array.from({ length: depth }, _ => '  ').join('')} drawing ${logCard(new_game.state.deck[new_game.state.cardOrder])} after ${logObjectiveAction(new_game.state, action)} ${new_game.state.hands[playerTurn].map(o => logCard(new_game.state.deck[o]))} ${new_game.state.cardsLeft} ${new_game.state.endgameTurns} {`);
 			else
-				logger.info(Array.from({ length: depth }, _ => '  ').join(''), logObjectiveAction(new_game.state, action), 'cardsLeft', new_game.state.cardsLeft, 'endgameTurns', new_game.state.endgameTurns, '{');
+				logger.info(`${Array.from({ length: depth }, _ => '  ').join('')} ${logObjectiveAction(new_game.state, action)} cardsLeft ${new_game.state.cardsLeft} endgameTurns ${new_game.state.endgameTurns} {`);
 
-			const { action: best_action, winrate } = winnable(new_game, nextPlayerIndex, find_clues, find_discards, remaining, depth + 1)[0];
+			const { action: best_action, winrate } = winnable(new_game, nextPlayerIndex, find_clues, find_discards, remaining, depth + 1)[0] ?? {};
 
-			logger.info(Array.from({ length: depth }, _ => '  ').join(''), '}', best_action && logObjectiveAction(new_game.state, best_action), 'prob', prob.toString, 'winrate', winrate.toString);
+			if (Date.now() > timeout)
+				return { best_winrate, best_actions: [] };
+
+			logger.info(`${Array.from({ length: depth }, _ => '  ').join('')}} ${best_action && logObjectiveAction(new_game.state, best_action)} prob ${prob.toString} winrate ${winrate.toString}`);
 
 			all_winrate = all_winrate.plus(prob.multiply(winrate));
 			rem_prob = rem_prob.subtract(prob);

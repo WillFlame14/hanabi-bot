@@ -38,7 +38,9 @@ export class RS_Player extends Player {
 	thinksPlayables(state, playerIndex, options = {}) {
 		const linked_orders = this.linkedOrders(state);
 
-		return super.thinksPlayables(state, playerIndex, options).filter(o => !linked_orders.has(o));
+		return super.thinksPlayables(state, playerIndex, options).filter(o =>
+			!linked_orders.has(o) &&
+			this.thoughts[o].possibilities.every(p => state.isPlayable(p)));	// Don't allow chop moved cards to be considered playables
 	}
 
 	/**

@@ -199,7 +199,7 @@ export function valuable_tempo_clue(game, clue, playables, focus) {
 }
 
 /**
- * Returns whether the playerIndex is "in between" the giver and target (in play order).
+ * Returns whether the playerIndex is "in between" the giver (exclusive) and target (inclusive), in play order.
  * @param {number} numPlayers
  * @param {number} playerIndex
  * @param {number} giver
@@ -238,17 +238,6 @@ export function older_queued_finesse(state, playerIndex, player, new_finesse_ord
 		return finessed &&
 			finesse_index < player.thoughts[new_finesse_order].finesse_index;		// The finesse must have been older
 	});
-}
-
-/**
- * @param {Game} game
- * @param {number} index
- * @param {number} suitIndex
- */
-export function getIgnoreOrders(game, index, suitIndex) {
-	return (game.next_ignore[index] ?? [])
-		.filter(i => i.inference === undefined || i.inference.suitIndex === suitIndex)
-		.map(i => i.order);
 }
 
 /**

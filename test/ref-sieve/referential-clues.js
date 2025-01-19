@@ -18,7 +18,7 @@ describe('ref play', () => {
 
 		takeTurn(game, 'Alice clues green to Bob');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][0]].called_to_play, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][0]], ['r1', 'y1', 'b1', 'p1']);
 	});
 
@@ -30,7 +30,7 @@ describe('ref play', () => {
 
 		takeTurn(game, 'Alice clues purple to Bob');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1]].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][1]].called_to_play, true);
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][1]], ['r1', 'y1', 'g1', 'b1']);
 	});
 
@@ -54,7 +54,7 @@ describe('ref play', () => {
 		takeTurn(game, 'Bob clues 1 to Alice (slot 5)');
 		takeTurn(game, 'Alice clues red to Bob');
 
-		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][3]].finessed, true);
+		assert.equal(game.common.thoughts[game.state.hands[PLAYER.BOB][3]].called_to_play, true);
 
 		takeTurn(game, 'Bob plays b1', 'p1');
 		ExAsserts.cardHasInferences(game.common.thoughts[game.state.hands[PLAYER.BOB][3]], ['y1', 'b2', 'p1']);
@@ -72,7 +72,7 @@ describe('ref play', () => {
 		takeTurn(game, 'Bob clues red to Alice (slot 2)');
 
 		const slot1 = game.common.thoughts[game.state.hands[PLAYER.ALICE][0]];
-		assert.equal(slot1.finessed, true);
+		assert.equal(slot1.called_to_play, true);
 	});
 });
 
@@ -166,7 +166,7 @@ describe('trash push', () => {
 		const slot2 = game.common.thoughts[game.state.hands[PLAYER.ALICE][1]];
 		const playables = game.common.thinksPlayables(game.state, PLAYER.ALICE);
 
-		assert.equal(slot2.finessed, true);
+		assert.equal(slot2.called_to_play, true);
 		assert.ok(playables.includes(slot2.order));
 	});
 
@@ -186,7 +186,7 @@ describe('trash push', () => {
 		const slot5 = game.common.thoughts[game.state.hands[PLAYER.ALICE][4]];
 		const playables = game.common.thinksPlayables(game.state, PLAYER.ALICE);
 
-		assert.equal(slot5.finessed, true);
+		assert.equal(slot5.called_to_play, true);
 		assert.ok(playables.includes(slot5.order));
 	});
 
@@ -206,7 +206,7 @@ describe('trash push', () => {
 		const slot5 = game.common.thoughts[game.state.hands[PLAYER.ALICE][4]];
 		const playables = game.common.thinksPlayables(game.state, PLAYER.ALICE);
 
-		assert.equal(slot5.finessed, true);
+		assert.equal(slot5.called_to_play, true);
 		assert.ok(playables.includes(slot5.order));
 	});
 });

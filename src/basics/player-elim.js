@@ -21,7 +21,7 @@ import { produce } from '../StateProxy.js';
  * @param {State} state
  */
 export function card_elim(state) {
-	const certain_map = /** @type {Map<string, Set<number>>} */ (new Map());
+	const certain_map = /** @type {Map<string, { order: number, unknown_to: number[] }[]>} */ (new Map());
 	let uncertain_ids = state.base_ids;
 	let uncertain_map = /** @type {Map<number, IdentitySet>} */ (new Map());
 
@@ -35,22 +35,25 @@ export function card_elim(state) {
 			break;
 	}
 
-	/** @type {(order: number) => void} */
-	const addToMap = (order) => {
+	/** @type {(order: number, playerIndex: number) => void} */
+	const addToMap = (order, playerIndex) => {
 		const card = this.thoughts[order];
 		const id = card.identity({ symmetric: this.playerIndex === -1 });
+		const unknown_to = card.identity({ symmetric: true }) === undefined ? [playerIndex] : [];
 
 		if (id !== undefined) {
 			const id_hash = logCard(id);
-			certain_map.set(id_hash, (certain_map.get(id_hash) ?? new Set()).add(order));
+			certain_map.set(id_hash, (certain_map.get(id_hash) ?? []).concat({ order, unknown_to }));
 
 			if (card.possible.length === 1)
 				candidates.splice(candidates.findIndex(c => c.order === order), 1);
 		}
 	};
 
-	for (const order of state.hands.flat())
-		addToMap(order);
+	for (let i = 0; i < state.numPlayers; i++) {
+		for (const order of state.hands[i])
+			addToMap(order, i);
+	}
 
 	/**
 	 * The "typical" empathy operation. If there are enough known instances of an identity, it is removed from every card (including future cards).
@@ -65,7 +68,7 @@ export function card_elim(state) {
 			const identity = curr_identities[i];
 			const id_hash = logCard(identity);
 
-			const known_count = state.baseCount(identity) + (certain_map.get(id_hash)?.size ?? 0) + (uncertain_ids.has(identity) ? 1 : 0);
+			const known_count = state.baseCount(identity) + (certain_map.get(id_hash)?.length ?? 0) + (uncertain_ids.has(identity) ? 1 : 0);
 			const total_count = cardCount(state.variant, identity);
 
 			if (known_count !== total_count)
@@ -76,10 +79,14 @@ export function card_elim(state) {
 			this.all_inferred = this.all_inferred.subtract(identity);
 			new_identities = new_identities.subtract(identity);
 
-			for (const { order } of candidates) {
+			for (const { order, playerIndex } of candidates) {
 				const { possible, inferred } = this.thoughts[order];
 
-				if (!possible.has(identity) || certain_map.get(id_hash)?.has(order) || uncertain_map.get(order)?.has(identity))
+				const no_elim = !possible.has(identity) ||
+					certain_map.get(id_hash)?.some(c => c.order === order || c.unknown_to.includes(playerIndex)) ||
+					uncertain_map.get(order)?.has(identity);
+
+				if (no_elim)
 					continue;
 
 				changed = true;
@@ -97,7 +104,7 @@ export function card_elim(state) {
 				// Card can be further eliminated
 				else if (updated_card.possible.length === 1) {
 					curr_identities.push(updated_card.identity());
-					addToMap(order);
+					addToMap(order, playerIndex);
 				}
 			}
 			// logger.debug(`removing ${id_hash} from ${state.playerNames[this.playerIndex]} possibilities, now ${this.all_possible.map(logCard)}`);
@@ -123,25 +130,35 @@ export function card_elim(state) {
 			return card.possible.length <= 5 || card.clued;
 		});
 
+		/** @param {IdentitySet} identities */
+		const total_multiplicity = (identities) => identities.reduce((acc, id) => acc += cardCount(state.variant, id) - state.baseCount(id), 0);
+
 		/**
 		 * @param {{ order: number, playerIndex: number }[]} entries
 		 * @param {IdentitySet} identities
 		 */
 		const perform_elim = (entries, identities) => {
 			// There are N cards for N identities - everyone knows they are holding what they cannot see
-			for (const { playerIndex: p1, order: o1 } of entries) {
-				const elim_id = state.deck[o1].identity();
-				if (elim_id === undefined)
+			const groups = Utils.groupBy(entries, ({ order }) => JSON.stringify(state.deck[order].identity()));
+
+			for (const [id_hash, group] of Object.entries(groups)) {
+				if (id_hash === 'undefined')
 					continue;
 
-				for (const { playerIndex: p2, order: o2 } of entries) {
-					// Players still cannot elim from themselves
-					if (p1 === p2 || !this.thoughts[o2].possible.has(elim_id))
+				/** @type {Identity} */
+				const id = JSON.parse(id_hash);
+
+				if (group.length < total_multiplicity(state.base_ids.union(id)))
+					continue;
+
+				for (const { order } of entries) {
+					// Players can't elim if one of their cards is part of it
+					if (group.some(e => e.order === order) || !this.thoughts[order].possible.has(id))
 						continue;
 
-					const { possible, inferred } = this.thoughts[o2];
-					this.updateThoughts(o2, (draft) => {
-						draft.possible = possible.subtract(elim_id);
+					const { possible, inferred } = this.thoughts[order];
+					this.updateThoughts(order, (draft) => {
+						draft.possible = possible.subtract(id);
 						draft.inferred = inferred.intersect(possible);
 					});
 					changed = true;
@@ -158,9 +175,6 @@ export function card_elim(state) {
 			for (const e of entries)
 				cross_elim_candidates.splice(cross_elim_candidates.findIndex(({ order }) => order === e.order), 1);
 		};
-
-		/** @param {IdentitySet} identities */
-		const total_multiplicity = (identities) => identities.reduce((acc, id) => acc += cardCount(state.variant, id) - state.baseCount(id), 0);
 
 		for (let i = 2; i <= cross_elim_candidates.length; i++) {
 			const subsets = Utils.allSubsetsOfSize(cross_elim_candidates.filter(({ order }) => this.thoughts[order].possible.length <= i), i);
@@ -207,7 +221,7 @@ export function good_touch_elim(state, only_self = false) {
 		const card = this.thoughts[order];
 		const id = card.identity({ infer: true, symmetric: this.playerIndex === -1 || this.playerIndex === playerIndex });
 
-		if (!card.touched || card.uncertain)
+		if (!card.touched || card.uncertain || card.possibly_finessed)
 			return;
 
 		if (id === undefined) {
@@ -314,16 +328,16 @@ export function good_touch_elim(state, only_self = false) {
 				const visible_elim = state.hands.some(hand => hand.some(o => matches.has(o) && state.deck[o].matches(identity, { assume: true }))) &&
 					state.baseCount(identity) + matches.size >= cardCount(state.variant, identity);
 
-				const original_clue = old_card.clues[0];
+				const { firstTouch } = old_card ?? {};
 
 				// Check if every match was from the clue giver (or vice versa)
 				const asymmetric_gt = !state.isCritical(identity) && !(cm && visible_elim) && matches.size > 0 &&
 					(matches_arr.every(o => {
-						const match_orig_clue = this.thoughts[o].clues[0];
-						return match_orig_clue?.giver === playerIndex && match_orig_clue.turn > (original_clue?.turn ?? 0);
+						const { giver, turn } = this.thoughts[o].firstTouch ?? {};
+						return giver === playerIndex && turn > (firstTouch?.turn ?? 0);
 					}) ||
-					(original_clue?.giver && matches_arr.every(o =>
-						state.hands[original_clue?.giver].includes(o) &&
+					(firstTouch !== undefined && matches_arr.every(o =>
+						state.hands[firstTouch.giver].includes(o) &&
 						this.thoughts[o].possibilities.length > 1
 					)));
 

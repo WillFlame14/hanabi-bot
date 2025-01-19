@@ -287,7 +287,7 @@ export function assign_all_connections(game, inf_possibilities, action, focused_
 				}
 
 				if (connections.some(conn => conn.type === 'finesse'))
-					draft.finesse_index ??= state.actionList.length;
+					draft.finesse_index = draft.finesse_index === -1 ? state.actionList.length : draft.finesse_index;
 
 				draft.inferred = new_inferred;
 				if (!bluff && !hidden)

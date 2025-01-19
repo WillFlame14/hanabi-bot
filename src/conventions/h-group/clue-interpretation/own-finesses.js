@@ -1,6 +1,7 @@
 import { CLUE } from '../../../constants.js';
 import { LEVEL } from '../h-constants.js';
-import { getIgnoreOrders, rainbowMismatch } from '../hanabi-logic.js';
+import { getIgnoreOrders } from '../../../basics/hanabi-util.js';
+import { rainbowMismatch } from '../hanabi-logic.js';
 import { find_connecting, find_known_connecting } from './connecting-cards.js';
 import { cardTouched, find_possibilities } from '../../../variants.js';
 import { valid_bluff } from './connection-helper.js';

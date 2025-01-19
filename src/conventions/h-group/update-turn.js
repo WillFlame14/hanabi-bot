@@ -115,7 +115,7 @@ function other_play(game, waiting_connection, lastPlayerIndex) {
 export function update_turn(game, action) {
 	const { common, state, me } = game;
 	const { currentPlayerIndex } = action;
-	const lastPlayerIndex = (currentPlayerIndex + state.numPlayers - 1) % state.numPlayers;
+	const lastPlayerIndex = state.lastPlayerIndex(currentPlayerIndex);
 
 	/** @type {Set<number>} */
 	const to_remove = new Set();

@@ -17,6 +17,7 @@ import { shortForms } from '../../variants.js';
  * @typedef {import('../../basics/Card.js').Card} Card
  * @typedef {import('../../types.js').Clue} Clue
  * @typedef {import('../../types.js').Action} Action
+ * @typedef {import('../../types.js').ClueAction} ClueAction
  * @typedef {import('../../types.js').PerformAction} PerformAction
  */
 
@@ -28,9 +29,19 @@ import { shortForms } from '../../variants.js';
 export function find_all_clues(game, giver) {
 	const { state } = game;
 
-	return state.clue_tokens === 0 ? [] : Array.from(Utils.rangeI(0, state.numPlayers)
+	const all_clues = state.clue_tokens === 0 ? [] : Array.from(Utils.rangeI(0, state.numPlayers)
 		.filter(i => i !== giver)
 		.flatMap(i => state.allValidClues(i)));
+
+	logger.off();
+
+	/** @type {(clue: Clue) => ClueAction} */
+	const clueToAction = (clue) => ({ type: 'clue', clue, giver, target: clue.target, list: state.clueTouched(state.hands[clue.target], clue) });
+	const all_clue_values = all_clues.map(clue => ({ clue, value: predict_value(game, clueToAction(clue)) }));
+
+	logger.on();
+
+	return all_clue_values.sort((c1, c2) => c2.value - c1.value).map(({ clue }) => clue);
 }
 
 /**
@@ -43,12 +54,12 @@ export function find_all_discards(game, playerIndex) {
 	const trash = common.thinksTrash(state, playerIndex).filter(o => common.thoughts[o].saved);
 
 	if (trash.length > 0)
-		return trash.map(o => ({ order: o }));
+		return trash.map(o => ({ order: o, misplay: false }));
 
 	const discardable = state.hands[playerIndex].find(o => common.thoughts[o].called_to_discard) ??
 		state.hands[playerIndex][0];
 
-	return [{ order: discardable }];
+	return [{ order: discardable, misplay: false }];
 }
 
 /**
@@ -61,7 +72,7 @@ export async function take_action(game) {
 
 	// Look for playables, trash and important discards in own hand
 	let playable_orders = me.thinksPlayables(state, state.ourPlayerIndex);
-	let trash_orders = me.thinksTrash(state, state.ourPlayerIndex).filter(o => common.thoughts[o].saved);
+	let trash_orders = me.thinksTrash(state, state.ourPlayerIndex).filter(o => common.thoughts[o].clued);
 
 	// Add cards called to discard
 	for (const order of state.ourHand) {
@@ -108,6 +119,13 @@ export async function take_action(game) {
 
 	if (discards.length > 0)
 		logger.info('discards', logHand(discards));
+
+	/*const urgent = playable_orders.filter(o => me.thoughts[o].finesse_index !== -1);
+
+	if (urgent.length > 0) {
+		console.log('urgent playables', urgent);
+		return { type: ACTION.PLAY, target: Utils.maxOn(urgent, o => -me.thoughts[o].finesse_index), tableID };
+	}*/
 
 	if (state.clue_tokens > 0) {
 		const fix_clue = find_fix_clue(game);
@@ -158,7 +176,7 @@ export async function take_action(game) {
 	if (all_actions.length === 0) {
 		return { type: ACTION.DISCARD, target: me.lockedDiscard(state, state.ourHand), tableID };
 	}
-	else if (state.inEndgame()) {
+	else if (state.inEndgame() && state.maxScore - state.score < 2*state.variant.suits.length) {
 		logger.highlight('purple', 'Attempting to solve endgame...');
 
 		const workerData = { game: Utils.toJSON(game), playerTurn: state.ourPlayerIndex, conv: 'RefSieve', logLevel: logger.level, shortForms };

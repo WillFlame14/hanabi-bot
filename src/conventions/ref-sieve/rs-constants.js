@@ -5,6 +5,7 @@ export const CLUE_INTERP = /** @type {const} */ ({
 	REF_DC: 'ref dc',
 	LOCK: 'lock',
 	REVEAL: 'reveal',
+	RECLUE: 'reclue',
 	STALL: 'stall'
 });
 

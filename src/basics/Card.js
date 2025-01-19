@@ -150,6 +150,7 @@ export class Card extends ActualCard {
 	// Boolean flags about the state of the card
 	focused = false;
 	finessed = false;
+	possibly_finessed = false;
 	bluffed = false;
 	possibly_bluffed = false;
 	chop_moved = false;
@@ -158,12 +159,16 @@ export class Card extends ActualCard {
 	was_cm = false;
 	superposition = false;	// Whether the card is currently in a superposition
 	hidden = false;
+	called_to_play = false;
 	called_to_discard = false;
 	permission_to_discard = false;
 	certain_finessed = false;
 	trash = false;
 	uncertain = false;
 	known = false;
+
+	/** @type {{ giver: number, turn: number }} */
+	firstTouch;
 
 	finesse_index = -1;	// Action index of when the card was finessed
 	reasoning = /** @type {number[]} */ ([]);		// The action indexes of when the card's possibilities/inferences were updated
@@ -244,12 +249,12 @@ export class Card extends ActualCard {
 
 	/** Returns whether the card has been "touched" (i.e. clued or finessed). */
 	get touched() {
-		return this.clued || this.finessed || this.known;
+		return this.clued || this.finessed || this.known || this.called_to_play;
 	}
 
 	/** Returns whether the card has been "saved" (i.e. clued, finessed or chop moved). */
 	get saved() {
-		return this.clued || this.finessed || this.chop_moved || this.known;
+		return this.clued || this.finessed || this.chop_moved || this.known || this.called_to_play;
 	}
 
 	/**

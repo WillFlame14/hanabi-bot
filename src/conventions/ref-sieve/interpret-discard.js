@@ -1,4 +1,3 @@
-import { isTrash } from '../../basics/hanabi-util.js';
 import { team_elim, undo_hypo_stacks } from '../../basics/helper.js';
 import { find_sarcastics, interpret_sarcastic } from '../shared/sarcastic.js';
 import * as Basics from '../../basics.js';
@@ -71,13 +70,13 @@ export function interpret_rs_sarcastic(game, discardAction) {
  * @param {DiscardAction} action
  */
 export function interpret_discard(game, action) {
-	const { common, me, state } = game;
+	const { common, state } = game;
 	const { order, playerIndex, suitIndex, rank, failed } = action;
 	const identity = { suitIndex, rank };
 
 	Basics.onDiscard(this, action);
 
-	const thoughts = common.thoughts[order];
+	/*const thoughts = common.thoughts[order];
 
 	// If bombed or the card doesn't match any of our inferences (and is not trash), rewind to the reasoning and adjust
 	if (!thoughts.rewinded && (failed || (!state.hasConsistentInferences(thoughts) && !isTrash(state, me, state.deck[order], order)))) {
@@ -90,7 +89,7 @@ export function interpret_discard(game, action) {
 			Object.assign(game, new_game);
 			return;
 		}
-	}
+	}*/
 
 	// Discarding a useful card
 	if (state.deck[order].clued && rank > state.play_stacks[suitIndex] && rank <= state.max_ranks[suitIndex]) {

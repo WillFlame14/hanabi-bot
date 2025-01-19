@@ -88,7 +88,9 @@ function best_value(new_game, i, value) {
 
 	const { suitIndex, rank } = state.deck[discard];
 	const action = /** @type {const} */({ type: 'discard', suitIndex, rank, order: discard, playerIndex, failed: false});
-	const diff = 0.25 + (1 - cardValue(state, me, state.deck[discard], discard)) + (discard !== state.hands[playerIndex][0] && sieving_trash() ? -10 : 0);
+
+	const diff = Math.min(state.inEndgame() ? 0 : 10, 0.25 + (1 - cardValue(state, me, state.deck[discard], discard)))
+		+ ((discard !== state.hands[playerIndex][0] && sieving_trash()) ? -10 : 0);
 	const new_value = value + mult(diff);
 
 	logger.info(state.playerNames[playerIndex], 'discarding', logCard(action), mult(diff).toFixed(2), diff);
@@ -165,12 +167,13 @@ export function get_result(game, hypo_game, action) {
 		return -100;
 	}
 
-	if (hypo_game.lastMove === CLUE_INTERP.REF_PLAY && playables.length === 0) {
-		logger.info(clue_str, 'looks like ref play but gets no playables!');
+	if ((hypo_game.lastMove === CLUE_INTERP.REF_PLAY || hypo_game.lastMove === CLUE_INTERP.RECLUE) && playables.length === 0) {
+		logger.info(clue_str, `looks like ${hypo_game.lastMove} but gets no playables!`);
 		return -100;
 	}
 
 	const bad_inferences = state.hands[target].find(o =>
+		!common.thoughts[o].touched &&
 		!bad_touch.includes(o) && !trash.includes(o) && !hypo_state.hasConsistentInferences(hypo_common.thoughts[o]));
 
 	if (bad_inferences !== undefined) {
@@ -178,7 +181,7 @@ export function get_result(game, hypo_game, action) {
 		return -100;
 	}
 
-	if (hypo_game.lastMove === CLUE_INTERP.REVEAL && playables.length === 0 && trash.every(o => hypo_state.deck[o].newly_clued)) {
+	if (hypo_game.lastMove === CLUE_INTERP.REVEAL && playables.length === 0 && trash.length > 0 && trash.every(o => hypo_state.deck[o].newly_clued)) {
 		logger.info(clue_str, `only reveals new trash but isn't a trash push!`);
 		return -100;
 	}

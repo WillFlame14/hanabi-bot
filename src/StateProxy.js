@@ -140,7 +140,7 @@ export function original(value) {
 
 /**
  * @template T
- * @param {(draft: { -readonly [P in keyof T]: T[P] }) => void} func
+ * @param {(draft: { -readonly [P in keyof T]: T[P] }, ...args: unknown[]) => void} func
  */
 export function produceC(func) {
 	/** @type {(state: T, ...args: unknown[]) => T} */

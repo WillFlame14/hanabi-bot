@@ -1,14 +1,17 @@
 import { CLUE, MAX_H_LEVEL } from '../src/constants.js';
 import { State } from '../src/basics/State.js';
-import { cardCount, shortForms } from '../src/variants.js';
+import { cardCount, find_possibilities, shortForms } from '../src/variants.js';
 import * as Utils from '../src/tools/util.js';
 
 import { logAction, logCard, logClue } from '../src/tools/log.js';
 import { team_elim } from '../src/basics/helper.js';
+import { produceC } from '../src/StateProxy.js';
 
 /**
  * @typedef {import('../src/basics/Game.js').Game} Game
+ * @typedef {import('../src/basics/Card.js').ActualCard} ActualCard
  * @typedef {import('../src/types.js').Action} Action
+ * @typedef {import('../src/types.js').BaseClue} BaseClue
  * @typedef {import('../src/variants.js').Variant} Variant
  * 
  * @typedef SetupOptions
@@ -393,4 +396,36 @@ export function parseAction(state, rawAction) {
 			}
 		}
 	}
+}
+
+/** @type {(draft: ActualCard, clues: (BaseClue & { giver: number })[]) => void} */
+const update = (draft, clues) => {
+	draft.clued = true;
+	for (const clue of clues)
+		draft.clues.push({ ...clue, turn: -1 });
+};
+
+/** @type {(draft: ActualCard, clues: (BaseClue & { giver: number })[]) => ActualCard} */
+const updateC = produceC(update);
+
+/**
+ * @param {Game} game
+ * @param {number} order
+ * @param {(BaseClue & { giver: number })[]} clues
+ * @param {boolean} [fully_known]
+ */
+export function preClue(game, order, clues, fully_known = false) {
+	const { common, state } = game;
+	state.deck[order] = updateC(state.deck[order], clues);
+
+	const possibilities = state.base_ids.union(fully_known ?
+		state.deck[order] :
+		clues.reduce((a, c) => a.intersect(find_possibilities(c, state.variant)), state.all_ids)
+	);
+
+	common.updateThoughts(order, (draft) => {
+		draft.inferred = possibilities;
+		draft.possible = possibilities;
+		update(draft, clues);
+	});
 }

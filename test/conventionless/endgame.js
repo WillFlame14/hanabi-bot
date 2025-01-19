@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 
-import { COLOUR, PLAYER, expandShortCard, setup } from '../test-utils.js';
+import { COLOUR, PLAYER, expandShortCard, preClue, setup } from '../test-utils.js';
 import HGroup from '../../src/conventions/h-group.js';
 import * as ExAsserts from '../extra-asserts.js';
 
@@ -9,7 +9,6 @@ import { ACTION, CLUE, ENDGAME_SOLVING_FUNCS } from '../../src/constants.js';
 import { solve_game } from '../../src/conventions/shared/endgame.js';
 import logger from '../../src/tools/logger.js';
 import { logObjectiveAction } from '../../src/tools/log.js';
-import { produce } from '../../src/StateProxy.js';
 import { Fraction } from '../../src/tools/fraction.js';
 
 logger.setLevel(logger.LEVELS.ERROR);
@@ -187,42 +186,16 @@ describe('partial endgames', () => {
 			discarded: ['r3', 'r4'],
 			clue_tokens: 0,
 			init: (game) => {
-				const { common, state } = game;
-				const update = (giver, rank) => (draft) => {
-					draft.clued = true;
-					draft.clues.push({ giver, type: CLUE.RANK, value: rank, turn: -1 });
-					draft.clues.push({ giver, type: CLUE.COLOUR, value: COLOUR.RED, turn: -1 });
-				};
+				const { state } = game;
 
 				const a_slot5 = state.hands[PLAYER.ALICE][4];
-				state.deck = state.deck.with(a_slot5, produce(state.deck[a_slot5], update(PLAYER.BOB, 3)));
-
-				let { inferred, possible } = common.thoughts[a_slot5];
-				common.updateThoughts(a_slot5, (draft) => {
-					draft.inferred = inferred.intersect(expandShortCard('r3'));
-					draft.possible = possible.intersect(expandShortCard('r3'));
-					update(PLAYER.BOB, 3)(draft);
-				});
+				preClue(game, a_slot5, [{ type: CLUE.RANK, value: 3, giver: PLAYER.BOB }, { type: CLUE.COLOUR, value: COLOUR.RED, giver: PLAYER.BOB }]);
 
 				const b_slot5 = state.hands[PLAYER.BOB][4];
-				state.deck = state.deck.with(b_slot5, produce(state.deck[b_slot5], update(PLAYER.CATHY, 4)));
-
-				({ inferred, possible } = common.thoughts[b_slot5]);
-				common.updateThoughts(b_slot5, (draft) => {
-					draft.inferred = inferred.intersect(expandShortCard('r4'));
-					draft.possible = possible.intersect(expandShortCard('r4'));
-					update(PLAYER.CATHY, 4)(draft);
-				});
+				preClue(game, b_slot5, [{ type: CLUE.RANK, value: 4, giver: PLAYER.CATHY }, { type: CLUE.COLOUR, value: COLOUR.RED, giver: PLAYER.CATHY }]);
 
 				const c_slot5 = state.hands[PLAYER.CATHY][4];
-				state.deck = state.deck.with(c_slot5, produce(state.deck[c_slot5], update(PLAYER.ALICE, 5)));
-
-				({ inferred, possible } = common.thoughts[c_slot5]);
-				common.updateThoughts(c_slot5, (draft) => {
-					draft.inferred = inferred.intersect(expandShortCard('r5'));
-					draft.possible = possible.intersect(expandShortCard('r5'));
-					update(PLAYER.ALICE, 5)(draft);
-				});
+				preClue(game, c_slot5, [{ type: CLUE.RANK, value: 5, giver: PLAYER.ALICE }, { type: CLUE.COLOUR, value: COLOUR.RED, giver: PLAYER.ALICE }]);
 
 				game.state.cardsLeft = 2;
 			}

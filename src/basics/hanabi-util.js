@@ -110,6 +110,11 @@ export function cardValue(state, player, identity, order = -1) {
 	// Unknown card in our hand, return average of possibilities
 	if (suitIndex === -1 && rank === -1 && order !== -1) {
 		const card = player.thoughts[order];
+
+		// Possible in rare circumstances when simulating endgames and trash cards are drawn but not clued.
+		if (card.possible.length === 0)
+			return 0;
+
 		return card.possible.reduce((sum, curr) => sum += cardValue(state, player, curr), 0) / card.possible.length;
 	}
 
@@ -135,4 +140,15 @@ export function cardValue(state, player, identity, order = -1) {
  */
 export function knownAs(game, order, regex) {
 	return game.common.thoughts[order].possible.every(i => regex.test(game.state.variant.suits[i.suitIndex]));
+}
+
+/**
+ * @param {Game} game
+ * @param {number} index
+ * @param {number} suitIndex
+ */
+export function getIgnoreOrders(game, index, suitIndex) {
+	return (game.next_ignore[index] ?? [])
+		.filter(i => i.inference === undefined || i.inference.suitIndex === suitIndex)
+		.map(i => i.order);
 }

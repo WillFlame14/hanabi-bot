@@ -1,6 +1,7 @@
 import { CLUE } from '../../../constants.js';
 import { CLUE_INTERP } from '../h-constants.js';
-import { getIgnoreOrders, rankLooksPlayable } from '../hanabi-logic.js';
+import { getIgnoreOrders } from '../../../basics/hanabi-util.js';
+import { rankLooksPlayable } from '../hanabi-logic.js';
 import { find_connecting } from './connecting-cards.js';
 import { cardTouched, colourableSuits, variantRegexes } from '../../../variants.js';
 import { finalize_connections } from './interpret-clue.js';

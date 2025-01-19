@@ -151,6 +151,14 @@ export class State {
 	}
 
 	/**
+	 * Returns the player index of the next player, in turn order.
+	 * @param {number} playerIndex
+	 */
+	lastPlayerIndex(playerIndex) {
+		return (playerIndex + this.numPlayers - 1) % this.numPlayers;
+	}
+
+	/**
 	 * Returns whether the state is in the endgame.
 	 */
 	inEndgame() {

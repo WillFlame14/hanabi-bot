@@ -46,8 +46,12 @@ export function onClue(game, action) {
 			const new_inferred = inferred[operation](new_possible);
 
 			player.updateThoughts(order, (draft) => {
-				if (list.includes(order))
+				if (list.includes(order)) {
+					if (!player.thoughts[order].clued)
+						draft.firstTouch = { giver, turn: state.turn_count };
+
 					update_func(draft);
+				}
 
 				draft.possible = possible[operation](new_possible);
 				draft.inferred = new_inferred;
