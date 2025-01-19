@@ -179,7 +179,7 @@ export function cardTouched(card, variant, clue) {
 
 		if (rank === variant.specialRank) {
 			if (variant.specialRankAllClueRanks)
-				return true;
+				return rank != value;
 			if (variant.specialRankNoClueRanks)
 				return false;
 
