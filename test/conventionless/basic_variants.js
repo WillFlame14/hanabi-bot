@@ -100,3 +100,45 @@ describe('black', () => {
 		assert.ok(!game.state.isCritical(expandShortCard('r1')));
 	});
 });
+
+describe('deceptive-ones', () => {
+	it('does not try to clue rank 1', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y1', 'r4', 'y3', 'b4', 'b4'],
+		], {
+			starting: PLAYER.BOB,
+			variant: {
+    				"id": 1672,
+    				"name": "Deceptive-Ones (5 Suits)",
+    				"suits": ["Red", "Yellow", "Green", "Blue", "Purple"],
+    				"specialRank": 1,
+    				"specialRankDeceptive": true,
+    				"clueRanks": [2, 3, 4, 5]
+  			},
+		});
+
+		assert.ok(!state.allValidClues(PLAYER.BOB).some(clue => clue.type === CLUE.RANK && clue.value === 1))
+	});
+});
+
+describe('pink-ones', () => {
+	it('does not try to clue rank 1', () => {
+		const game = setup(HGroup, [
+			['xx', 'xx', 'xx', 'xx', 'xx'],
+			['y1', 'r4', 'y3', 'b4', 'b4'],
+		], {
+			starting: PLAYER.BOB,
+			variant: {
+    				"id": 327,
+    				"name": "Pink-Ones (5 Suits)",
+    				"suits": ["Red", "Yellow", "Green", "Blue", "Purple"],
+    				"specialRank": 1,
+    				"specialRankAllClueRanks": true,
+    				"clueRanks": [2, 3, 4, 5]
+  			},
+		});
+
+		assert.ok(!state.allValidClues(PLAYER.BOB).some(clue => clue.type === CLUE.RANK && clue.value === 1))
+	});
+});
