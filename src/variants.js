@@ -182,7 +182,7 @@ export function cardTouched(card, variant, clue) {
 			if (variant.specialRankDeceptive)
 				return (suitIndex % 4) + (variant.specialRank === 1 ? 2 : 1) === value && rank != value;
 		}
-		
+
 		if (variantRegexes.pinkish.test(suit))
 			return true;
 
