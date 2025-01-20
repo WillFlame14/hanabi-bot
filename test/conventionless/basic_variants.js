@@ -118,7 +118,7 @@ describe('deceptive-ones', () => {
   			},
 		});
 
-		assert.ok(!state.allValidClues(PLAYER.BOB).some(clue => clue.type === CLUE.RANK && clue.value === 1))
+		assert.ok(!game.state.allValidClues(PLAYER.BOB).some(clue => clue.type === CLUE.RANK && clue.value === 1))
 	});
 });
 
@@ -139,6 +139,6 @@ describe('pink-ones', () => {
   			},
 		});
 
-		assert.ok(!state.allValidClues(PLAYER.BOB).some(clue => clue.type === CLUE.RANK && clue.value === 1))
+		assert.ok(!game.state.allValidClues(PLAYER.BOB).some(clue => clue.type === CLUE.RANK && clue.value === 1))
 	});
 });
