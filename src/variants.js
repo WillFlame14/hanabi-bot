@@ -173,10 +173,6 @@ export function cardTouched(card, variant, clue) {
 	else if (type === CLUE.RANK) {
 		if (rank === -1 || variantRegexes.brownish.test(suit))
 			return false;
-
-		if (variantRegexes.pinkish.test(suit))
-			return true;
-
 		if (rank === variant.specialRank) {
 			if (variant.specialRankAllClueRanks)
 				return rank != value;
@@ -184,8 +180,11 @@ export function cardTouched(card, variant, clue) {
 				return false;
 
 			if (variant.specialRankDeceptive)
-				return (suitIndex % 4) + (variant.specialRank === 1 ? 2 : 1) === value;
+				return (suitIndex % 4) + (variant.specialRank === 1 ? 2 : 1) === value && rank != value;
 		}
+
+		if (variantRegexes.pinkish.test(suit))
+			return true;
 
 		if (variant.chimneys)
 			return rank >= value;
